@@ -6,6 +6,11 @@ export default defineConfig({
   test: {
     name: 'client:unit',
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'test/unit/**/*.test.ts', 'test/unit/**/*.test.tsx'],
+    include: [
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+      'test/unit/**/*.test.ts',
+      'test/unit/**/*.test.tsx',
+    ],
   },
 });

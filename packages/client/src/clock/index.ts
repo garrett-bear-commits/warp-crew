@@ -11,7 +11,7 @@ export interface ClockSample {
 }
 
 export interface Clock {
-  /** Server-anchored epoch ms: deviceNow() + offset(). Equal to deviceNow() until the first sample. */
+  /** Server-anchored integer epoch ms: round(deviceNow() + offset()). Equal to deviceNow() until the first sample. */
   now(): number;
   /** Device wall clock (epoch ms). Only for device gaps and display, never for credit on its own. */
   deviceNow(): number;
@@ -82,7 +82,9 @@ export function createClock(opts: ClockOptions = {}): Clock {
     return m;
   };
   return {
-    now: () => deviceNow() + offset,
+    // integer epoch ms: the wire contract's EpochMs is an integer and a median offset built from
+    // rtt/2 estimates is fractional
+    now: () => Math.round(deviceNow() + offset),
     deviceNow,
     observe(sentAt, receivedAt, serverNow) {
       if (![sentAt, receivedAt, serverNow].every(Number.isFinite)) return;

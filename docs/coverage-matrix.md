@@ -105,9 +105,9 @@ Paths are repo-relative. Test ids name the file (and describe/it where useful). 
 | 9.2 | Route tests with fakes (inject), tokens minted in-test | `apps/server/test/pg/*.test.ts` | ✅ |
 | 9.3 | Integration on real Postgres: migrations from empty, prune, anchor ordering, lock serialisation, lineage CAS under concurrency, import/close idempotency, outbox drain, SIGTERM/crash mid-write, concurrent duplicate receipt verify, restore/import manifest mismatch | `packages/server/test/pg/*.test.ts`, `apps/server/test/pg/*.test.ts` | ✅ |
 | 9.4 | Contract tests from shared fixtures both sides; oasdiff vs last released tag; legacy-client fixture replay | `contracts/test/contracts.test.ts`, `openapi.json` committed | ✅ (oasdiff against a released tag starts at the first tag) |
-| 9.5 | Save corpus + codec fuzz; engine conformance kit | `packages/client` codec tests, `apps/template-game` corpus | see client/template |
+| 9.5 | Save corpus + codec fuzz; engine conformance kit | `packages/client` codec tests; `apps/template-game/test/corpus/*.json` (6 saves, v1+v2), `test/unit/codec.test.ts` (round-trip, monotone, fuzz), `test/unit/conformance-kit.ts` + `engine.test.ts` (apply-only/step-only/mixed, determinism per seed) | ✅ (`pnpm -F @foundation/template-game test`: 33 tests) |
 | 9.6 | Bench (k6) | `docs/capacity.md` | ⛔ needs a deployed Lab |
-| 9.7 | Real-browser acceptance (Playwright WebKit + Chromium): blocked storage, pagehide → beacon, hidden → resume + head check, quarantined save shows pending review, iframe harness | `apps/template-game/e2e` | see template |
+| 9.7 | Real-browser acceptance (Playwright WebKit + Chromium): blocked storage, pagehide → beacon, hidden → resume + head check, quarantined save shows pending review, iframe harness | `apps/template-game/e2e/*.spec.ts` (13 specs: boot/play/save, teardown beacon ×3, blocked storage, quarantine → promote → adopt, daily/achievement/inbox/code, liveops config, purchase/restart/leaderboard, multi-tab, iframe host, restore panel ×2) | ✅ (`pnpm test:e2e`: 26 passed, chromium + webkit iPhone 13) |
 | 9.8 | Smoke after deploy: check-health --assert, canary write/read with qa_ identity | `packages/tooling check-health`, `docs/runbooks/new-game.md` | ✅ |
 
 ## §10 Deployment
@@ -120,4 +120,4 @@ Paths are repo-relative. Test ids name the file (and describe/it where useful). 
 
 ## §11 Adding a game (template game as executable checklist)
 
-See IMPLEMENTATION_STATUS.md "template game" — daily reward, windowed achievement, scheduled sale, announcement, make-good from admin, config publish without rebuild, flag at 50 %, SKU mock, inbox, code campaign, draft season.
+`apps/template-game` (ADR-031): engine + codec + UI over every core path; the Playwright suite proves daily reward, achievement unlock/claim, scheduled sale + `sale.summer` at 50 %, announcement, make-good letter + grant from the admin API, `idle.rate` config publish without rebuild, SKU kill switch, minBuild 426, sandbox purchase, draft → active season + run submit, restart with entitlement, restore-to-point/forward-only/KV break-glass, multi-tab leader, cross-site iframe host, blocked storage, teardown beacon, quarantine → pending review → promote → adopt.

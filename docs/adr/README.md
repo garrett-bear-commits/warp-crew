@@ -20,3 +20,4 @@ Format: Context → Decision → Consequences. All dated 2026-08-17 unless state
 | [ADR-028](ADR-028-features-live-in-server-package.md) | Feature folders live under `packages/server/src/features/*` with three exported entry points |
 | [ADR-029](ADR-029-client-sync-decisions.md) | Client sync decisions: sessionId per device slot, pending commandId replacement, refused_regression re-check |
 | [ADR-030](ADR-030-tooling-and-inspector-decisions.md) | Content-addressed static releases; inspector retry keeps commandId on network/5xx only |
+| [ADR-031](ADR-031-template-game-decisions.md) | Template game: policy unwraps the codec envelope, `state.v` derived, integer clock, isPaused idle, proactive update banner, e2e via admin API |

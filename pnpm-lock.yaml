@@ -87,6 +87,9 @@ importers:
       '@foundation/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@foundation/server':
+        specifier: workspace:*
+        version: link:../../packages/server
       react:
         specifier: ^19.2.8
         version: 19.2.8

@@ -1,0 +1,7 @@
+{
+  "name": "06-v2-whale",
+  "note": "schema 2 save with a very deep counter (idle ticks dominate) and a display name",
+  "schemaVersion": 2,
+  "blob": "{\"schemaVersion\":2,\"state\":{\"v\":2,\"counter\":987654,\"gold\":9876543.25,\"gems\":1200,\"clicks\":40000,\"upgrades\":{\"auto\":20,\"click\":10},\"cosmetics\":[\"badge-week\"],\"settledAt\":1787003000000,\"playerName\":\"Clicky\"}}",
+  "expectedProgress": 987654
+}

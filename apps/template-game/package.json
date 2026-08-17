@@ -10,11 +10,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "VITE_API_URL=http://127.0.0.1:8090 vite build && playwright test"
   },
   "dependencies": {
     "@foundation/client": "workspace:*",
     "@foundation/contracts": "workspace:*",
+    "@foundation/server": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

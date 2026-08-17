@@ -34,6 +34,8 @@ jobs:
       - run: pnpm build
       - run: pnpm guards
       - run: pnpm test
+      - run: pnpm test:pg
+      - run: pnpm test:model
       - name: template game bundle size gate (§3)
         run: node --experimental-strip-types packages/tooling/src/bundle-size.ts apps/template-game/dist 600000
       - name: browser acceptance (Playwright chromium + webkit)

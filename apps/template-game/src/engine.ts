@@ -105,6 +105,9 @@ export const templateEngine: Engine<TemplateState, TemplateAction, TemplateEffec
     }
     return { state, effects };
   },
+  // No producers → nothing to simulate: the loop consumes no ticks (and publishes nothing) until the
+  // first auto-clicker is bought. Step and onGap are exact no-ops in that state anyway.
+  isPaused: (state) => autoPerTick(state) === 0,
   step(state, dtTicks, ctx) {
     const effects: TemplateEffect[] = [];
     const income = autoPerTick(state) * dtTicks;
@@ -138,14 +141,22 @@ export const templateEngine: Engine<TemplateState, TemplateAction, TemplateEffec
   },
 };
 
-/** Numbered save migrations (v1 → v2 added gems/clicks/cosmetics). */
-export const MIGRATIONS: Record<number, (old: Record<string, unknown>) => Record<string, unknown>> =
-  {
-    2: (old) => ({
+const asRecord = (v: unknown): Record<string, unknown> =>
+  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+
+/**
+ * Numbered save migrations (defineSave: migrations[k] converts a raw value at schema k into k+1).
+ * 1 → 2 added gems/clicks/cosmetics.
+ */
+export const MIGRATIONS: Record<number, (old: unknown) => unknown> = {
+  1: (raw) => {
+    const old = asRecord(raw);
+    return {
       ...old,
       v: 2,
       gems: typeof old.gems === 'number' ? old.gems : 0,
       clicks: typeof old.clicks === 'number' ? old.clicks : 0,
       cosmetics: Array.isArray(old.cosmetics) ? old.cosmetics : [],
-    }),
-  };
+    };
+  },
+};

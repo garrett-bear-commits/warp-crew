@@ -14,10 +14,9 @@ import { createHash } from 'node:crypto';
 import { templateGame } from '../../server/games/template/game.config.ts';
 import { templatePolicy } from '../../server/games/template/policy.ts';
 
-export const E2E_ADMIN_SECRET = 'e2e-admin-secret-0123456789';
-export const E2E_OPS_SECRET = 'e2e-ops-secret-0123456789';
+import { E2E_ADMIN_SECRET, E2E_API_PORT, E2E_OPS_SECRET } from './const.ts';
 
-const port = Number(process.env.E2E_API_PORT ?? 8090);
+const port = Number(process.env.E2E_API_PORT ?? E2E_API_PORT);
 const test = await createTestDatabase('e2e');
 await migrateUp(test.url);
 await enableAppRole(test.url, test.name, 'foundation_app_e2e');
