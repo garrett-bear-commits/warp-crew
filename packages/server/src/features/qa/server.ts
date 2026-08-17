@@ -1,7 +1,7 @@
 // qa feature (lab only, §4.3): qa_ identity mint. Snapshot import lives in lineage (QaImport).
 // Routes register only when GAME_ENV=lab (the route helper drops auth=lab routes elsewhere).
 import type { FastifyInstance } from 'fastify';
-import type { QaMintBody} from '@foundation/contracts';
+import type { QaMintBody } from '@foundation/contracts';
 import { type QaMintResult } from '@foundation/contracts';
 import { mintMockToken } from '@foundation/jest-verify';
 import { mintPlayerToken } from '@foundation/testkit';

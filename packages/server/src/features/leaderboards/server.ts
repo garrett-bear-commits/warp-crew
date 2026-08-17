@@ -21,6 +21,7 @@ import {
   type PublishReceipt,
   type GrantReward,
 } from '@foundation/contracts';
+import { Type } from '@sinclair/typebox';
 import { defineCommand } from '../../cqrs/define.ts';
 import { AppError } from '../../errors.ts';
 import { route } from '../../http/route.ts';
@@ -36,9 +37,19 @@ type ClaimRes = Omit<PlacementClaimResult, 'serverNow' | 'requestId'>;
 type NameRes = Omit<DisplayNameResult, 'serverNow' | 'requestId'>;
 type Receipt = Omit<PublishReceipt, 'serverNow' | 'requestId'>;
 
-export const BoardStart = defineCommand<typeof RunStartBody, StartRes>({
+/** Route params (board) are folded into the command payload so the schema stays closed. */
+const RunStartCommand = Type.Object(
+  { ...RunStartBody.properties, board: Type.String({ minLength: 1, maxLength: 64 }) },
+  { additionalProperties: false },
+);
+const RunSubmitCommand = Type.Object(
+  { ...RunSubmitBody.properties, board: Type.String({ minLength: 1, maxLength: 64 }) },
+  { additionalProperties: false },
+);
+
+export const BoardStart = defineCommand<typeof RunStartCommand, StartRes>({
   type: 'boards.start',
-  schema: RunStartBody,
+  schema: RunStartCommand,
   actorPolicy: 'player',
   scope: 'player',
   lock: 'player',
@@ -47,9 +58,9 @@ export const BoardStart = defineCommand<typeof RunStartBody, StartRes>({
   limit: 'boards',
   replay: { fromStored: (r) => ({ ...r, duplicate: true }) },
 });
-export const BoardSubmit = defineCommand<typeof RunSubmitBody, SubmitRes>({
+export const BoardSubmit = defineCommand<typeof RunSubmitCommand, SubmitRes>({
   type: 'boards.submit',
-  schema: RunSubmitBody,
+  schema: RunSubmitCommand,
   actorPolicy: 'player',
   scope: 'player',
   lock: 'player',
@@ -182,7 +193,7 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
 
   bus.register(BoardStart, async (input, exec, tx) => {
     const t = tx!;
-    const board = (input as unknown as { board: string }).board;
+    const board = input.board;
     if (!boardCfg(board)) throw new AppError('not_found', 'unknown board');
     const season = await activeSeason(t, board, exec.now);
     if (!season) throw new AppError('not_found', 'no active season', { board });
@@ -221,7 +232,7 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
 
   bus.register(BoardSubmit, async (input, exec, tx): Promise<SubmitRes> => {
     const t = tx!;
-    const board = (input as unknown as { board: string }).board;
+    const board = input.board;
     const cfg = boardCfg(board);
     if (!cfg) throw new AppError('not_found', 'unknown board');
     const hidden = await t<
@@ -240,6 +251,10 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
     >`SELECT run_id, board_key, season_key, player_key, started_at, rules_version FROM leaderboard_runs WHERE run_id = ${input.runId}`;
     if (!run[0] || run[0].player_key !== exec.playerKey || run[0].board_key !== board)
       return { outcome: 'rejected_unknown_run' };
+    const already = await t<
+      { id: string }[]
+    >`SELECT id FROM leaderboard_submissions WHERE run_id = ${input.runId}`;
+    if (already[0]) return { outcome: 'duplicate' };
     const season = await t<
       SeasonRow[]
     >`SELECT * FROM leaderboard_seasons WHERE board_key = ${board} AND season_key = ${run[0].season_key}`;
@@ -265,10 +280,13 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
       return { outcome: map[a.reason] };
     }
     const level = input.summary ? 2 : 1;
-    // quarantine top-N until review: would this score land in the top N?
+    // quarantine top-N until review: would this score land in the top N among all accepted (not rejected) submissions?
     const better = await t<
       { n: number }[]
-    >`SELECT count(*)::int AS n FROM leaderboard_entries WHERE board_key = ${board} AND season_key = ${season[0].season_key} AND (score > ${input.score} OR (score = ${input.score} AND elapsed_ms < ${elapsedMs}))`;
+    >`SELECT count(DISTINCT s.player_key)::int AS n FROM leaderboard_submissions s LEFT JOIN leaderboard_reviews r ON r.submission_id = s.id
+      WHERE s.board_key = ${board} AND s.season_key = ${season[0].season_key} AND s.player_key <> ${exec.playerKey!}
+        AND r.action IS DISTINCT FROM 'reject' AND s.visibility IN ('visible', 'quarantined')
+        AND (s.score > ${input.score} OR (s.score = ${input.score} AND s.elapsed_ms < ${elapsedMs}))`;
     const provisionalRank = (better[0]?.n ?? 0) + 1;
     const visibility = provisionalRank <= season[0].quarantine_top_n ? 'quarantined' : 'visible';
     await t`INSERT INTO leaderboard_submissions (run_id, board_key, season_key, player_key, score, elapsed_ms, summary, proof, verification_level, visibility, command_id)
