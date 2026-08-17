@@ -1,0 +1,123 @@
+# Coverage matrix — requirement → implementation → tests
+
+Status: ✅ implemented + evidence · 🧪 implemented, evidence runs only with a resource noted · ⛔ external gate (interface + mock + fail-closed + tests; real integration needs credentials/devices/production).
+Paths are repo-relative. Test ids name the file (and describe/it where useful). Rows follow docs/architecture-v1.md sections.
+
+## §1 Principles (invariants ledger)
+
+| # | Invariant | Implementation | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 1.1 | INSERT-only hot path; refusals stored with reason; refused write = 200 `stored_refused` | `packages/server/src/features/saves/{placement,server}.ts`, migration `0003_saves.sql` | `packages/server/test/unit/placement.test.ts`, `apps/server/test/pg/saves.test.ts` "shallower write is stored refused" | ✅ |
+| 1.2 | Server assigns seq under per-player advisory lock; client counter diagnostic; no ON CONFLICT DO NOTHING on ledgers (command reservation deliberately uses it) | `db/index.ts takeLock`, `cqrs/bus.ts #reserve`, `db/snapshots.ts insertSnapshot` (plain INSERT), `rewards/mint.ts` | `saves.test.ts` concurrency (50 writes, no seq collision), `packages/server/test/pg/bus.test.ts`, `infra.test.ts` mintGrant duplicate raises | ✅ |
+| 1.3 | Save only gets deeper; progress safe integer 0…2^53−1 (BIGINT); guard reads newest anchored head WITH blob | `placement.ts`, `contracts/src/common.ts SafeInt`, `db/snapshots.ts storedHead` | `placement.test.ts` properties, `contracts/test/contracts.test.ts` "progress must be a safe integer", `saves.test.ts` "never blocks on a pruned head" | ✅ |
+| 1.4 | Explicit disposition per stored write; deepest anchored in active generation is read + retention anchor; quarantined never anchor/never "saved to cloud" | `placement.ts`, `db/snapshots.ts anchorRow`, `0011 prune_save_blobs` | `saves.test.ts` quarantine + pendingQuarantine cases, `saves.test.ts` retention case; client verdict mapping (`packages/client`) | ✅ |
+| 1.5 | Generations are the only way backwards; newer generation wins on the client | `features/lineage/server.ts`, `placement.ts` stale_generation | `apps/server/test/pg/lineage.test.ts`; client model tests (`packages/client`) | ✅ |
+| 1.6 | Identity fails closed: no_secret → 503, alg pinned, aud == GAME_ID, iat window, rotation list, step-up | `packages/jest-verify/src/identity.ts`, `server/src/auth/index.ts`, `cqrs/bus.ts STEP_UP_MAX_AGE_MS`, `config.ts validateConfig` | `jest-verify/test/verifiers.test.ts` (conformance both verifiers), `server/test/unit/{ops,config}.test.ts`, `saves.test.ts` identity cases, `lineage.test.ts` step-up | ✅ |
+| 1.7 | Money = signed facts only; provider-token idempotency; sandbox never mints (CHECK); grant-before-confirm; per-pack promotion; negative adjustments reference admin action | `features/purchases/server.ts`, migration `0004`, `rewards/mint.ts` | `apps/server/test/pg/money.test.ts` (sandbox, paid off/on, duplicate, race, unclassified, adjustments CHECK) | ✅ (real minting ⛔ ADR-024) |
+| 1.8 | Client claims never mint premium; budgets; placements provisional | `rewards/mint.ts` claimSourced budget, `features/achievements/*`, `features/leaderboards/*` | `features.test.ts` achievements budget + leaderboards; `infra.test.ts` budget cap | ✅ |
+| 1.9 | Grants are the one reward primitive (server-authored, idempotently claimable, auditable, retroactive) | `rewards/mint.ts`, `features/grants/server.ts` | `money.test.ts` grants block, `infra.test.ts` | ✅ |
+| 1.10 | Server is truth; local copy operational; KV write-only mirror + break-glass; bounded head check; blocked ≠ empty | `packages/client/src/{boot,storage,restore,providers}` | client unit + model tests | see §5 rows |
+| 1.11 | No platform writes before identity; identity gates push and selects slot | `packages/client/src/{boot,sync}` | client tests | see §5 |
+| 1.12 | Restore = write local → confirm → reload under one restoring gate; only leader tab writes | `packages/client/src/{restore,tabs}` | client tests | see §5 |
+| 1.13 | Server clock: serverNow in every response; credit = min(deviceGap, serverGap+tol); Date.now banned outside clock | `http/route.ts` (serverNow+requestId appended), `contracts` Response(), `eslint.config.js` no-restricted-syntax, `packages/client/src/clock` | `contracts.test.ts` "every response schema carries serverNow", lint | ✅ |
+| 1.14 | Engine purity: injected now/rng, two seeded streams, journal records inputs, offline never advances progressOf | `packages/client/src/engine/*`, `journal` | client loop tests | see §5 |
+| 1.15 | Refusal/outage/degraded = product contracts; outage never blocks play/purchase grant/local save; sync status visible | client sync verdicts + SyncPill; server 200 refusals | client tests; `saves.test.ts` | ✅/§5 |
+| 1.16 | Ops truth in tables; `/health/ops?assert=`; scariest query at boot; migrations checksummed + locked; PITR restore-verified | `health/index.ts`, `server.ts boot`, `db/migrate.ts`, job `restore.verify` | `features.test.ts` health/ops, `infra.test.ts` migrations, `server/test/unit/ops.test.ts` | ✅ (PITR itself ⛔ managed DB) |
+
+## §3 Repository rules
+
+| # | Rule | Implementation | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 3.1 | pnpm monorepo, Node 24, TS 5.9, vitest | root `package.json`, `.nvmrc`, `tsconfig.base.json` (ADR-022/027) | `pnpm typecheck && pnpm test` | ✅ |
+| 3.2 | Feature = folder with contract/server/client entry points enforced by exports; features import only contracts of other features | `packages/server/package.json exports`, `features/*/{contract,server,client}.ts`, `tooling/src/lint/feature-boundary.js`, `tooling/src/guards/feature-shape.ts` (ADR-013/028) | `pnpm lint`, `pnpm guards` | ✅ |
+| 3.3 | Browser bundles contain zero node modules and zero TypeBox runtime | `eslint.config.js` browser rules, `contracts/src/enums.ts` (values only), `tooling/src/guards/bundle-browser-safe.ts` | `contracts.test.ts` "enums module is browser-safe", `pnpm guards` after `pnpm build` | ✅ |
+| 3.4 | One CI job builds the template game and gates bundle size | `.github/workflows/ci.yml`, `tooling/src/bundle-size.ts` | CI | ✅ |
+| 3.5 | Borrowed patterns attributed (NOTICE) | `NOTICE` | — | ✅ |
+
+## §4 Server
+
+| # | Requirement | Implementation | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 4.1.1 | Client input {type, commandId, payload}; ExecCtx server-derived; client can never supply actor/gameId/playerKey | `cqrs/define.ts`, closed body schemas (`additionalProperties:false`), `http/route.ts buildExec` | `contracts.test.ts` closed bodies, `saves.test.ts` "client can never supply…" | ✅ |
+| 4.1.2 | Idempotency vocabulary: commandId transport (admin Idempotency-Key maps to it), requestId correlation only, business keys (restartId, provider token, grantKey, runId), request_hash over {type, canonicalPayload}, every field frozen incl. reason, beacon shares hash | `cqrs/{hash,bus}.ts`, `http/route.ts` preValidation, features | `bus.test.ts`, `saves.test.ts` (422 mismatch incl. reason; beacon shares commandId), `lineage.test.ts` (restartId, Idempotency-Key), `money.test.ts` (token) | ✅ |
+| 4.1.3 | defineCommand shape (actorPolicy, scope, lock, idempotency owner+retention, tx, limit, stepUp) | `cqrs/define.ts` | `bus.test.ts` (policy, step-up, tx none) | ✅ |
+| 4.1.4 | Typed bus keyed by definition; explicit registration; boot asserts every declared command has one handler; middleware onion; reservation via INSERT…ON CONFLICT DO NOTHING RETURNING; concurrent duplicate waits on unique index → replay or 422; no in_progress; scope_key = player key or 'game' | `cqrs/bus.ts`, `server.ts assertComplete` | `bus.test.ts` (dup, concurrent, mismatch, scope, admin audit, failed re-reserve) | ✅ |
+| 4.1.5 | One tx per command; commands row finalised {command_id,type,scope_key,actor,request_hash,status,result,trace_id,duration_ms}; retention 7d/90d/1y; tombstones as long as fact exists; offline > 7 d retry → duplicate + original seq, no 500 | `cqrs/bus.ts`, `0001_core.sql`, `0011 apply_retention` | `bus.test.ts` "offline > 7 days" | ✅ |
+| 4.1.6 | Ledgers are the event history; inspector timeline UNION view; rebuild-projection for pure projections | `0012_views.sql player_timeline`, `features/admin/server.ts RebuildProjection` | `features.test.ts` admin reads (timeline kinds, rebuild) | ✅ |
+| 4.1.7 | Outbox = only fan-out; per-consumer deliveries with leases; bounded backoff; dead letters (ops alert); replay; reactions dispatch deterministic system commands (commandId = outbox:<id>:<consumer>) | `outbox/index.ts`, `features/achievements/server.ts` reaction, `features/admin` replay | `features.test.ts` outbox DLQ/replay + achievements reaction idempotent redelivery, `infra.test.ts` crash/lease | ✅ |
+| 4.2.1 | Config via env-schema (all listed vars); QA routes only in lab; prod refuses memory limiter/mock; GAME_ID/GAME_ENV never persisted | `config.ts`, `http/route.ts` (auth=lab), guard `sql-no-tenancy` | `server/test/unit/config.test.ts`, `pnpm guards`, `lineage.test.ts` qa routes | ✅ |
+| 4.2.2 | Auth: requirePlayer/requireAdmin(scopes, timing-safe, audited)/requireOps | `auth/index.ts`, `http/route.ts` | `ops.test.ts` auth primitives, `saves.test.ts` 401/403, `lineage.test.ts` audit | ✅ |
+| 4.2.3 | Rate limits: PG store in prod; per-player writes; per-IP ceilings; auth failures; registered gate for codes | `limits/index.ts`, `http/route.ts`, `grants/server.ts` registeredOnly | `ops.test.ts` limiter, `infra.test.ts` pg limiter, `money.test.ts` code registered gate | ✅ |
+| 4.2.4 | CORS allowlist (client host + per-game pattern); text/plain parser; beacon carries auth in body; bodyLimit | `http/app.ts` | `features.test.ts` CORS, `saves.test.ts` beacon | ✅ |
+| 4.2.5 | Encoded blob limits: encoded ≤, decoded ≤, ratio ≤ 20×, streaming inflate + byte counter + time budget; bytes/sha of canonical JSON; bomb fixtures in route tests | `codec/blob.ts` | `server/test/unit/codec.test.ts`, `saves.test.ts` bombs | ✅ |
+| 4.2.6 | Error envelope with closed ErrorCode; soft outcomes 200 with disposition/reason | `errors.ts`, `http/app.ts`, `contracts/src/common.ts` | route tests (envelope shape everywhere) | ✅ |
+| 4.2.7 | Health: liveness, ready (SELECT 1, migrations head, secrets byte length, admin keys count), ops 15-min rollup two-tier assert | `health/index.ts` | `features.test.ts` health, `ops.test.ts` thresholds | ✅ |
+| 4.2.8 | Jobs: prune, outbox drain, season autoclose, rate-window sweep, economy anomaly nightly, restore-verify weekly, retention sweeps; setInterval().unref() under per-job advisory lock; job_runs heartbeats | `jobs/index.ts`, `server.ts`, features push jobs | `infra.test.ts` jobs; `/health/ops` lists jobs | ✅ |
+| 4.2.9 | Migrations: deployment step, one tx per file, sha256 checksums, advisory lock, lock_timeout 3 s, N-1 rule (runbook), boot checks head+checksums and refuses, --check diffs against schema.sql, --repair documented | `db/migrate.ts`, `apps/server/src/cli/migrate.ts`, `packages/server/schema.sql`, `docs/runbooks/migrations.md` | `infra.test.ts` migrations block | ✅ |
+| 4.2.10 | DB roles: migrator + app with enumerated authority; column-level UPDATE on commands; SECURITY DEFINER prune/retention/erase/promote; REVOKE on ledgers; raise-trigger fence | `0011_privileges.sql`, test harnesses connect as `foundation_app` | `saves.test.ts` privileges case, `money.test.ts` fence, `infra.test.ts` schema description | ✅ |
+| 4.3 | Features table (identity, saves, lineage, purchases, grants, achievements/quests, leaderboards, inbox, liveops, telemetry, journal, admin, qa) | `packages/server/src/features/*` | `apps/server/test/pg/*.test.ts` (64 tests) | ✅ (quests share the achievements evaluator; criteria DSL windows/tracks are v1.1) |
+| 4.4 | Data model incl. retention plan | migrations 0001–0012 | `infra.test.ts`, `saves.test.ts` retention | ✅ |
+
+## §5 Client web adapter (packages/client)
+
+| # | Requirement | Implementation | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 5.1 | Engine<S,A,E> contract, Ctx, Effect ring, loop.ts (rAF accumulator, catch-up cap, big-gap hand-off), per-genre tps | `packages/client/src/engine/*` | `packages/client` unit tests | see IMPLEMENTATION_STATUS (client) |
+| 5.2 | Boot machine, storage tiers, KV break-glass, sync (commandId, beacon ≤ 64 KiB, timers, verdicts), generations, restore, identity switch, multi-tab, journal, clock, player-visible status | `packages/client/src/{boot,storage,sync,restore,identity,tabs,journal,clock}` | client unit + model-based tests | see IMPLEMENTATION_STATUS (client) |
+| 5.3 | Providers (Jest, mock, standalone) + conformance; React package | `packages/client/src/providers/*`, `src/react/*` | client tests | see IMPLEMENTATION_STATUS (client) |
+
+## §6 Protocol
+
+| # | Requirement | Implementation | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 6.1 | Headers; beacon carries them in body; every mutation carries commandId; serverNow in every response | `contracts/src/routes.ts`, `common.ts Response/Mutation` | `contracts.test.ts` | ✅ |
+| 6.2 | Saves/lineage/purchases/grants/liveops/leaderboards routes exactly as listed; 426 build_too_old; refusals 200 | `contracts/src/*.ts`, features | route tests; `features.test.ts` route coverage asserts every contract route is registered | ✅ |
+| 6.3 | Versioning: additive /v1, CONTRACT_VERSION in /health, OpenAPI committed | `contracts/src/enums.ts`, `openapi.json`, `scripts/generate-openapi.ts` | `contracts.test.ts` openapi up-to-date; legacy-client fixture replay: `contracts/src/fixtures` shared both sides | ✅ (recorded per-release fixtures accrue from the first release) |
+
+## §7 Integrity and money rules
+
+| # | Requirement | Implementation | Tests | Status |
+| --- | --- | --- | --- | --- |
+| 7.1 | Criteria sources tagged; client-claim rewards budgeted | `contracts/src/achievements.ts`, `rewards/mint.ts` | `features.test.ts`, `infra.test.ts` | ✅ |
+| 7.2 | Disposition + flags; quarantine never anchor; promotion append-only terminal (UNIQUE + BEFORE INSERT raise), re-validated under lock; undo via new generation; pendingQuarantine; supersession | `0003 save_reviews`, `0011 promote_snapshot`, `saves/server.ts` | `saves.test.ts` terminal reviews block | ✅ |
+| 7.3 | maxProgressPerHour; nightly economy z-score; impossible-gem check hook | `placement.ts` progress_jump, `server.ts` economy.anomaly job, `GamePolicy.maxEarnablePremium` | `placement.test.ts`, job registered | ✅ (z-score job exercised in `/health/ops` job list; nightly cadence) |
+| 7.4 | player_flags consulted by middleware; refunds → negative adjustment + strikes escalate; entitlement = Σpaid − Σrefunded on restart only | `features/identity/server.ts` guard, `purchases/server.ts`, `game/facts.ts entitlementFor` | `money.test.ts`, `lineage.test.ts` | ✅ |
+| 7.5 | Leaderboards: server-observed duration, summary-bounded, quarantine top-N, close ignores quarantined + boards_hidden, seed for verified runs, level-3 replay interface | `features/leaderboards/*` | `features.test.ts` season lifecycle | ✅ (level 3 = interface only, as specified) |
+| 7.6 | Admin: scoped keys, separate origin + strict CSP, textContent, images by magic bytes, read-key writes alert; codes ≥ 40 bits + campaign lock; no secrets in client packages | `apps/server/admin-static.ts`, `apps/server/admin-inspector`, `grants/server.ts`, guards | inspector tests, `money.test.ts` codes, `pnpm guards` | ✅ |
+| 7.7 | Threat model page | `docs/threat-model.md` | — | ✅ |
+
+## §8 Observability and operations
+
+| # | Requirement | Implementation | Status |
+| --- | --- | --- | --- |
+| 8.1 | DB-native metrics via commands/ledgers, /health/ops rollup | `health/index.ts` | ✅ |
+| 8.2 | Sentry server (sampled), release tagging, cron monitor per game reading job_runs, redaction shared with pino | `logging.ts` redaction/scrub; `SENTRY_DSN` config | ⛔ Sentry wiring needs a DSN/project (interface: config + redaction module) |
+| 8.3 | pino JSON with requestId/commandId, hashed player key, redaction | `logging.ts`, `server.ts createLogger` | ✅ |
+| 8.4 | DR: PITR, nightly dump, weekly restore verify writing restore_verified_at, erasure ledger replay, SLO doc | `restore.verify` job, `docs/slo.md`, `docs/runbooks/restore-drill.md` | ✅ code + docs; PITR/dumps ⛔ managed DB |
+| 8.5 | Wrong-target protection: manifests {game, env, takenAt, schemaHead, contractVersion} validated vs explicit destination | `lineage/server.ts QaImport`, `packages/tooling manifest-check` | ✅ |
+| 8.6 | Fleet: fleet.json consumed by check-health/deploy | `fleet.json`, `packages/tooling` | ✅ |
+
+## §9 Testing
+
+| # | Requirement | Where | Status |
+| --- | --- | --- | --- |
+| 9.1 | Pure domain + property tests on placement; model-based sync tests (v1, not deferrable) | `server/test/unit/placement.test.ts`; `packages/client` model project | ✅ / see client |
+| 9.2 | Route tests with fakes (inject), tokens minted in-test | `apps/server/test/pg/*.test.ts` | ✅ |
+| 9.3 | Integration on real Postgres: migrations from empty, prune, anchor ordering, lock serialisation, lineage CAS under concurrency, import/close idempotency, outbox drain, SIGTERM/crash mid-write, concurrent duplicate receipt verify, restore/import manifest mismatch | `packages/server/test/pg/*.test.ts`, `apps/server/test/pg/*.test.ts` | ✅ |
+| 9.4 | Contract tests from shared fixtures both sides; oasdiff vs last released tag; legacy-client fixture replay | `contracts/test/contracts.test.ts`, `openapi.json` committed | ✅ (oasdiff against a released tag starts at the first tag) |
+| 9.5 | Save corpus + codec fuzz; engine conformance kit | `packages/client` codec tests, `apps/template-game` corpus | see client/template |
+| 9.6 | Bench (k6) | `docs/capacity.md` | ⛔ needs a deployed Lab |
+| 9.7 | Real-browser acceptance (Playwright WebKit + Chromium): blocked storage, pagehide → beacon, hidden → resume + head check, quarantined save shows pending review, iframe harness | `apps/template-game/e2e` | see template |
+| 9.8 | Smoke after deploy: check-health --assert, canary write/read with qa_ identity | `packages/tooling check-health`, `docs/runbooks/new-game.md` | ✅ |
+
+## §10 Deployment
+
+| # | Requirement | Where | Status |
+| --- | --- | --- | --- |
+| 10.1 | One image (node:24-alpine, dumb-init, non-root, HEALTHCHECK) | `apps/server/Dockerfile` | ✅ (image build needs Docker; not pushed) |
+| 10.2 | new-server scaffolds games/<id>/; < 1 h to check-health green | `packages/tooling new-server`, `docs/runbooks/new-game.md` | ✅ |
+| 10.3 | URL-hosted auto-updating client: hashed assets + no-cache index, frame-ancestors, in-place hash-verified deploy with v/ history, zip fallback, version banner, minBuildVersion/426 | `packages/tooling deploy-static/zip`, `liveops` minBuild, client UpdateBanner | ✅ (host choice ADR-023; Jest URL-hosting confirmation ⛔ external) |
+
+## §11 Adding a game (template game as executable checklist)
+
+See IMPLEMENTATION_STATUS.md "template game" — daily reward, windowed achievement, scheduled sale, announcement, make-good from admin, config publish without rebuild, flag at 50 %, SKU mock, inbox, code campaign, draft season.
