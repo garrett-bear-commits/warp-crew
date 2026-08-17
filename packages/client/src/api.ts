@@ -45,6 +45,24 @@ export interface Api {
   readonly baseUrl: string;
 }
 
+function raceAbort(p: Promise<Response>, signal: AbortSignal): Promise<Response> {
+  if (signal.aborted) return Promise.reject(new Error('aborted'));
+  return new Promise((resolve, reject) => {
+    const onAbort = (): void => reject(new Error('aborted'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    p.then(
+      (r) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(r);
+      },
+      (e) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(e);
+      },
+    );
+  });
+}
+
 export function createApi(o: ApiClientOptions): Api {
   const f = o.fetch ?? fetch;
   async function call<T>(
@@ -69,7 +87,10 @@ export function createApi(o: ApiClientOptions): Api {
       if (body !== undefined) init.body = typeof body === 'string' ? body : JSON.stringify(body);
       if (opts.signal) init.signal = opts.signal;
       if (opts.keepalive) init.keepalive = true;
-      const res = await f(`${o.baseUrl}${path}`, init);
+      const request = f(`${o.baseUrl}${path}`, init);
+      // Race the signal explicitly: the bounded head check (§5.2) must resolve on time even
+      // when a fetch implementation ignores `signal`.
+      const res = opts.signal ? await raceAbort(request, opts.signal) : await request;
       const json = (await res.json().catch(() => null)) as unknown;
       if (res.ok) return { ok: true, status: res.status, body: json as T };
       return { ok: false, status: res.status, error: (json as ErrorEnvelope | null) ?? null };

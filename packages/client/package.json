@@ -6,7 +6,7 @@
   "description": "Web adapter: engine contract, loop, storage, sync, journal, clock, providers, react hooks",
   "exports": {
     ".": "./src/index.ts",
-    "./react": "./src/react/index.ts",
+    "./react": "./src/react/index.tsx",
     "./providers/jest": "./src/providers/jest.ts",
     "./providers/mock": "./src/providers/mock.ts",
     "./providers/standalone": "./src/providers/standalone.ts"

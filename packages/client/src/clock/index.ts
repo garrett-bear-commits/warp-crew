@@ -53,7 +53,11 @@ export function medianOffset(samples: readonly ClockSample[]): number {
 }
 
 /** offline/streak/timer credit = min(deviceGap, serverGap + tolerance), never negative (§1, ADR-009). */
-export function offlineCredit(deviceGapMs: number, serverGapMs: number, toleranceMs: number): number {
+export function offlineCredit(
+  deviceGapMs: number,
+  serverGapMs: number,
+  toleranceMs: number,
+): number {
   const d = Number.isFinite(deviceGapMs) ? Math.max(0, deviceGapMs) : 0;
   const s = Number.isFinite(serverGapMs) ? Math.max(0, serverGapMs) : 0;
   const t = Number.isFinite(toleranceMs) ? Math.max(0, toleranceMs) : 0;

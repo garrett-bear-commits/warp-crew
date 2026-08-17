@@ -44,7 +44,10 @@ export interface LoopDeps<S, A, E extends Effect> {
   effects: EffectRing<E>;
   options: LoopOptions;
   /** Name/args extractor for the journal (args only for bounded schemas — see journal/index.ts). */
-  describeAction?: (action: A) => { name: string; args?: Record<string, number | boolean | string> };
+  describeAction?: (action: A) => {
+    name: string;
+    args?: Record<string, number | boolean | string>;
+  };
   onJournal?: (entry: JournalInput) => void;
   /** Contract violations (onGap raised progressOf). Reported, never thrown mid-frame. */
   onInvariant?: (message: string) => void;

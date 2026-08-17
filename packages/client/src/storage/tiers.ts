@@ -6,8 +6,7 @@
 export type StorageMode = 'local' | 'memory';
 
 export type StorageSetResult =
-  | { ok: true }
-  | { ok: false; reason: 'quota' | 'blocked'; message?: string };
+  { ok: true } | { ok: false; reason: 'quota' | 'blocked'; message?: string };
 
 export interface StorageTier {
   /** Primary tier in use. `memory` when localStorage is unavailable (blocked/partitioned/throws). */
