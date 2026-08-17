@@ -1,0 +1,26 @@
+{
+  "name": "@foundation/testkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PG test database, FakeClock, fakeFetch, mock provider pathologies, token minting",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pg": "./src/pg.ts",
+    "./browser": "./src/browser.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@foundation/contracts": "workspace:*",
+    "@testcontainers/postgresql": "^12.1.0",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

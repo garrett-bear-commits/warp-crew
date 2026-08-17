@@ -1,0 +1,44 @@
+{
+  "name": "foundation",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Game Foundation v1 — reusable server + web adapter + contracts + tooling",
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@10.30.1",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=10.0.0 <11"
+  },
+  "scripts": {
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "build": "pnpm -r --if-present run build",
+    "test": "pnpm -r --if-present run test",
+    "test:unit": "vitest run --project unit --project contract",
+    "test:contract": "vitest run --project contract",
+    "test:pg": "vitest run --project pg",
+    "test:model": "vitest run --project model",
+    "test:e2e": "pnpm --filter @foundation/template-game run test:e2e",
+    "guards": "node --experimental-strip-types packages/tooling/src/guards/run-all.ts",
+    "openapi": "node --experimental-strip-types packages/contracts/scripts/generate-openapi.ts",
+    "db:up": "docker compose -f infra/docker-compose.yml up -d postgres",
+    "db:down": "docker compose -f infra/docker-compose.yml down -v",
+    "migrate": "node --experimental-strip-types apps/server/src/cli/migrate.ts",
+    "foundation": "node --experimental-strip-types packages/tooling/src/cli.ts",
+    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm guards && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.10.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "prettier": "^3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10"
+  }
+}

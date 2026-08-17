@@ -1,0 +1,27 @@
+{
+  "name": "@foundation/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeBox schemas + Static types + closed enums + fixtures + CONTRACT_VERSION (isomorphic)",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schemas": "./src/index.ts",
+    "./enums": "./src/enums.ts",
+    "./routes": "./src/routes.ts",
+    "./fixtures": "./src/fixtures/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "openapi": "node --experimental-strip-types scripts/generate-openapi.ts"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.52"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10"
+  }
+}
