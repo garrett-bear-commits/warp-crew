@@ -74,6 +74,7 @@ export const KillSwitches = Type.Object({
   skus: Type.Array(Type.String()),
   commands: Type.Array(Type.String()),
 });
+export type KillSwitches = Static<typeof KillSwitches>;
 
 /** GET /v1/config — public part + per-player flags after identity. */
 export const ConfigResponse = Response(
@@ -240,3 +241,4 @@ export const SegmentPreviewResponse = Response(
   { id: Type.String(), count: NonNegInt },
   { $id: 'SegmentPreviewResponse' },
 );
+export type SegmentPreviewResponse = Static<typeof SegmentPreviewResponse>;

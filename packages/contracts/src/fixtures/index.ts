@@ -12,7 +12,7 @@ export const FIXTURE_UUIDS = {
   runId: '9b2d5c1e-8f0a-4c7b-a1d2-3e4f5a6b7c8d',
 } as const;
 
-export const T0 = 1_755_475_200_000; // 2026-08-17T00:00:00Z
+export const T0 = 1_786_924_800_000; // 2026-08-17T00:00:00Z
 export const REQUEST_ID = 'req_fixture_0001';
 
 export interface Fixture<B extends TSchema | undefined, R extends TSchema> {

@@ -3,9 +3,14 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres';
 import { AppError } from '../errors.ts';
 
-export type Tx = TransactionSql<Record<string, unknown>>;
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export type Types = {};
+/** Query surface shared by the pool and a transaction (tagged template + unsafe + json). */
+export type Q = Sql<Types>;
+/** A transaction handle: everything Q offers plus savepoints. */
+export type Tx = TransactionSql<Types> & Sql<Types>;
 export type Db = {
-  sql: Sql;
+  sql: Sql<Types>;
   tx<T>(fn: (tx: Tx) => Promise<T>): Promise<T>;
   end(): Promise<void>;
 };

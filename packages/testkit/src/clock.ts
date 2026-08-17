@@ -1,7 +1,7 @@
 /** Deterministic clock for tests. Every server/client module takes a `now()` — never Date.now. */
 export class FakeClock {
   #now: number;
-  constructor(start = 1_755_475_200_000) {
+  constructor(start = 1_786_924_800_000) {
     this.#now = start;
   }
   now = (): number => this.#now;

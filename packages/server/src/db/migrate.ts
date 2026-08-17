@@ -85,6 +85,8 @@ export async function migrateUp(
         applied.push(f.name);
         log(`applied ${f.name}`);
       }
+      // the app role reads schema_migrations at boot (head + checksum check)
+      await sql`GRANT SELECT ON schema_migrations TO foundation_app`;
       const all = await sql<
         { name: string; checksum: string }[]
       >`SELECT name, checksum FROM schema_migrations ORDER BY name`;

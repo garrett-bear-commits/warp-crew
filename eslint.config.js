@@ -28,7 +28,10 @@ export default tseslint.config(
   {
     plugins: { foundation: { rules: { 'feature-boundary': featureBoundaryRule } } },
     rules: {
-      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports' }],
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', disallowTypeAnnotations: false },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
@@ -74,6 +77,7 @@ export default tseslint.config(
       'apps/server/admin-inspector/src/**',
       'packages/server/src/features/*/client.ts',
       'packages/server/src/features/*/contract.ts',
+      'packages/server/src/http/client-fetch.ts',
       'packages/contracts/src/enums.ts',
     ],
     rules: {
@@ -99,7 +103,7 @@ export default tseslint.config(
           patterns: [
             { group: ['node:*'], message: 'No node builtins in browser code.' },
             {
-              group: ['@foundation/contracts', '@foundation/contracts/schemas'],
+              regex: '^@foundation/contracts(/schemas)?$',
               message:
                 'Browser code imports contracts as types, or values from @foundation/contracts/enums only.',
               allowTypeImports: true,

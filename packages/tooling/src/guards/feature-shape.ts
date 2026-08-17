@@ -25,7 +25,7 @@ export function guardFeatureShape(): GuardResult {
     for (const file of walk(resolve(featuresDir, f), (p) => p.endsWith('.ts'))) {
       const src = read(file);
       const re =
-        /from\s+['"](\.\.\/([^/'"]+)\/([^'"]+)|@foundation\/server\/features\/([^/'"]+)\/([^'"]+))['"]/g;
+        /from\s+['"](\.\.\/([^/.'"][^/'"]*)\/([^'"]+)|@foundation\/server\/features\/([^/'"]+)\/([^'"]+))['"]/g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(src))) {
         const to = m[2] ?? m[4];

@@ -626,10 +626,6 @@
                         {
                           "const": "blob_too_large",
                           "type": "string"
-                        },
-                        {
-                          "const": "schema_downgrade_refused",
-                          "type": "string"
                         }
                       ]
                     },
@@ -955,10 +951,6 @@
                         },
                         {
                           "const": "blob_too_large",
-                          "type": "string"
-                        },
-                        {
-                          "const": "schema_downgrade_refused",
                           "type": "string"
                         }
                       ]
@@ -1452,10 +1444,6 @@
                             {
                               "const": "blob_too_large",
                               "type": "string"
-                            },
-                            {
-                              "const": "schema_downgrade_refused",
-                              "type": "string"
                             }
                           ]
                         },
@@ -1813,10 +1801,6 @@
                               },
                               {
                                 "const": "blob_too_large",
-                                "type": "string"
-                              },
-                              {
-                                "const": "schema_downgrade_refused",
                                 "type": "string"
                               }
                             ]
@@ -7710,10 +7694,6 @@
                             {
                               "const": "blob_too_large",
                               "type": "string"
-                            },
-                            {
-                              "const": "schema_downgrade_refused",
-                              "type": "string"
                             }
                           ]
                         },
@@ -8256,10 +8236,6 @@
                               },
                               {
                                 "const": "blob_too_large",
-                                "type": "string"
-                              },
-                              {
-                                "const": "schema_downgrade_refused",
                                 "type": "string"
                               }
                             ]

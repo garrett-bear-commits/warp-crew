@@ -28,6 +28,8 @@ export function guardNoSecrets(): GuardResult {
       continue;
     }
     if (rel.includes('tooling/src/guards/')) continue;
+    // .env.example files hold documented placeholders (dev-only local URLs, CHANGE_ME values)
+    if (rel.endsWith('.env.example')) continue;
     const src = read(f);
     for (const [re, what] of PATTERNS) {
       const m = re.exec(src);

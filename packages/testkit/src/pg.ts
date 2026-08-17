@@ -76,6 +76,33 @@ export async function stopContainer(): Promise<void> {
   containerUrl = null;
 }
 
+/**
+ * Grant LOGIN + password to the app role and CONNECT on the database. Roles are cluster-global, so
+ * parallel test files serialise on an advisory lock (ALTER ROLE races raise "tuple concurrently updated").
+ */
+export async function enableAppRole(url: string, dbName: string, password: string): Promise<void> {
+  const sql = postgres(url, { max: 1, onnotice: () => {} });
+  try {
+    await sql`SELECT pg_advisory_lock(5, 1)`;
+    try {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          await sql.unsafe(`ALTER ROLE foundation_app LOGIN PASSWORD '${password}'`);
+          break;
+        } catch (e) {
+          if (attempt === 4 || !/concurrently updated/.test(String(e))) throw e;
+          await new Promise((r) => setTimeout(r, 50 * (attempt + 1)));
+        }
+      }
+      await sql.unsafe(`GRANT CONNECT ON DATABASE "${dbName}" TO foundation_app`);
+    } finally {
+      await sql`SELECT pg_advisory_unlock(5, 1)`;
+    }
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+}
+
 export function connect(
   url: string,
   opts: { max?: number; role?: { user: string; password: string } } = {},

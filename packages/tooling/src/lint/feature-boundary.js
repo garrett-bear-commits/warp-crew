@@ -33,7 +33,7 @@ export const featureBoundaryRule = {
       ImportDeclaration(node) {
         const spec = String(node.source.value);
         // relative import into a sibling feature dir: ../<feature>/<entry>
-        const rel = /^\.\.\/([^/]+)\/(.+)$/.exec(spec);
+        const rel = /^\.\.\/([^/.][^/]*)\/(.+)$/.exec(spec);
         // absolute import through the package exports: @foundation/server/features/<f>/<entry>
         const abs = /^@foundation\/server\/features\/([^/]+)\/(.+)$/.exec(spec);
         const m = rel ?? abs;

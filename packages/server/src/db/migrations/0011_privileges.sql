@@ -48,7 +48,7 @@ GRANT UPDATE (status) ON feedback TO foundation_app;
 
 -- ── commands: finalise the reserved row only (column-level) ──────────────────
 GRANT SELECT, INSERT ON commands, command_tombstones TO foundation_app;
-GRANT UPDATE (status, result, error_code, duration_ms, trace_id) ON commands TO foundation_app;
+GRANT UPDATE (status, result, error_code, duration_ms, trace_id, outcome_ref) ON commands TO foundation_app;
 
 -- ── projections + operational tables: full DML except DELETE where noted ─────
 GRANT SELECT, INSERT, UPDATE ON
@@ -148,12 +148,11 @@ BEGIN
       WHERE (retention = '7d'  AND received_at < now() - interval '7 days')
          OR (retention = '90d' AND received_at < now() - interval '90 days')
          OR (retention = '1y'  AND received_at < now() - interval '1 year')
-      RETURNING scope_key, command_id, type, request_hash, result
+      RETURNING scope_key, command_id, type, request_hash, outcome_ref
   )
   INSERT INTO command_tombstones (scope_key, command_id, type, request_hash, outcome_ref)
-    SELECT scope_key, command_id, type, request_hash,
-           COALESCE(result->>'seq', result->>'generation', result->>'grantKey', result->>'outcome')
-    FROM expired
+    SELECT scope_key, command_id, type, request_hash, outcome_ref
+    FROM expired WHERE outcome_ref IS NOT NULL
     ON CONFLICT (scope_key, command_id) DO NOTHING;
   GET DIAGNOSTICS c_cmd = ROW_COUNT;
   -- tombstones outlive the fact they point at: drop save tombstones whose snapshot is gone

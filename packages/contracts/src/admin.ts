@@ -139,6 +139,7 @@ export const AdminAdjustmentResult = Response(
   { adjustmentId: NonNegInt, duplicate: Type.Boolean() },
   { $id: 'AdminAdjustmentResult' },
 );
+export type AdminAdjustmentResult = Static<typeof AdminAdjustmentResult>;
 
 /** Admin: code campaign. */
 export const AdminCodeCampaignBody = Mutation(
@@ -162,6 +163,7 @@ export const AdminCodeCampaignResult = Response(
   { campaignId: Type.String(), codes: NonNegInt, duplicate: Type.Boolean() },
   { $id: 'AdminCodeCampaignResult' },
 );
+export type AdminCodeCampaignResult = Static<typeof AdminCodeCampaignResult>;
 
 /** Admin: replay an outbox row for one consumer. */
 export const AdminOutboxReplayBody = Mutation(
@@ -193,6 +195,7 @@ export const AdminRebuildProjectionResult = Response(
   { projection: Type.String(), rows: NonNegInt, duplicate: Type.Boolean() },
   { $id: 'AdminRebuildProjectionResult' },
 );
+export type AdminRebuildProjectionResult = Static<typeof AdminRebuildProjectionResult>;
 
 /** Admin: player overview (read). */
 export const PlayerOverview = Response(
@@ -231,6 +234,7 @@ export const TimelineItem = Type.Object({
   summary: Type.String(),
   detail: Type.Optional(Type.Unknown()),
 });
+export type TimelineItem = Static<typeof TimelineItem>;
 export const TimelineResponse = Response(
   { playerKey: PlayerKey, items: Type.Array(TimelineItem) },
   { $id: 'TimelineResponse' },
@@ -250,10 +254,12 @@ export const AdminActionRecord = Type.Object({
   at: EpochMs,
   outcome: Type.String(),
 });
+export type AdminActionRecord = Static<typeof AdminActionRecord>;
 export const AdminActionsResponse = Response(
   { items: Type.Array(AdminActionRecord) },
   { $id: 'AdminActionsResponse' },
 );
+export type AdminActionsResponse = Static<typeof AdminActionsResponse>;
 
 export const OutboxDeadLetter = Type.Object({
   id: NonNegInt,
@@ -265,10 +271,12 @@ export const OutboxDeadLetter = Type.Object({
   deadAt: EpochMs,
   replayedAt: Type.Optional(EpochMs),
 });
+export type OutboxDeadLetter = Static<typeof OutboxDeadLetter>;
 export const OutboxDeadLettersResponse = Response(
   { items: Type.Array(OutboxDeadLetter) },
   { $id: 'OutboxDeadLettersResponse' },
 );
+export type OutboxDeadLettersResponse = Static<typeof OutboxDeadLettersResponse>;
 
 /** Lab-only: mint a qa_ identity token. */
 export const QaMintBody = Mutation(
@@ -313,3 +321,4 @@ export const QaImportResult = Response(
   { generation: NonNegInt, seq: NonNegInt, duplicate: Type.Boolean() },
   { $id: 'QaImportResult' },
 );
+export type QaImportResult = Static<typeof QaImportResult>;

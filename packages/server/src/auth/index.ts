@@ -66,7 +66,7 @@ export function authenticatePlayerFromParts(
   };
 }
 
-export function sha256Hex(s: string): string {
+export function sha256HexOf(s: string): string {
   return createHash('sha256').update(s).digest('hex');
 }
 
@@ -86,8 +86,8 @@ export function authenticateAdmin(
   if (!keyId || !secret) throw new AppError('unauthorized', 'admin key id and secret required');
   const key = keys.find((k) => k.keyId === keyId);
   // Compare against a real or dummy hash either way (constant work per request).
-  const target = key?.secretSha256 ?? sha256Hex('no-such-key');
-  const ok = safeEqualHex(sha256Hex(secret), target);
+  const target = key?.secretSha256 ?? sha256HexOf('no-such-key');
+  const ok = safeEqualHex(sha256HexOf(secret), target);
   if (!key || !ok) throw new AppError('unauthorized', 'admin credentials rejected');
   return { kind: 'admin', keyId: key.keyId, scopes: key.scopes };
 }
@@ -103,7 +103,7 @@ export function authenticateOps(
 ): Extract<Actor, { kind: 'ops' }> {
   const given = headers.get(HEADERS.opsSecret);
   if (!opsSecret) throw new AppError('not_configured', 'OPS_SECRET not configured');
-  if (!given || !safeEqualHex(sha256Hex(given), sha256Hex(opsSecret)))
+  if (!given || !safeEqualHex(sha256HexOf(given), sha256HexOf(opsSecret)))
     throw new AppError('unauthorized', 'ops secret rejected');
   return { kind: 'ops' };
 }

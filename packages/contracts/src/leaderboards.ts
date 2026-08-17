@@ -78,6 +78,7 @@ export const BoardEntry = Type.Object({
   score: NonNegInt,
   submittedAt: EpochMs,
 });
+export type BoardEntry = Static<typeof BoardEntry>;
 
 /** GET /v1/leaderboards/:board/top (public, no ids) */
 export const BoardTopResponse = Response(
@@ -154,6 +155,7 @@ export const DisplayNameResult = Response(
   { displayName: Type.String(), moderated: Type.Boolean() },
   { $id: 'DisplayNameResult' },
 );
+export type DisplayNameResult = Static<typeof DisplayNameResult>;
 
 export const BoardParams = Type.Object({ board: BoardKey });
 

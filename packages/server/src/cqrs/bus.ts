@@ -172,7 +172,8 @@ export class CommandBus {
             const r = await handler(input.payload, ctx, tx);
             if (rowId) {
               const ms = Number((process.hrtime.bigint() - started) / 1_000_000n);
-              await tx`UPDATE commands SET status = 'done', result = ${tx.json(r as never)}, duration_ms = ${ms}, trace_id = ${ctx.requestId} WHERE id = ${rowId}`;
+              const ref = def.outcomeRef ? def.outcomeRef(r) : null;
+              await tx`UPDATE commands SET status = 'done', result = ${tx.json(r as never)}, duration_ms = ${ms}, trace_id = ${ctx.requestId}, outcome_ref = ${ref} WHERE id = ${rowId}`;
             }
             if (ctx.actor.kind === 'admin')
               await this.#audit(tx, def as AnyCommandDef, input, ctx, 'ok');

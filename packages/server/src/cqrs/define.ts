@@ -26,6 +26,8 @@ export interface ExecCtx {
   now: number;
   buildVersion?: string;
   ip?: string;
+  /** How the command arrived (the beacon route shares the command + hash with the normal route). */
+  transport?: 'http' | 'beacon';
 }
 
 export interface ReplayHooks<R> {

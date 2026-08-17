@@ -1,6 +1,11 @@
 // Real-Postgres harness (ADR-025): fresh database per file, migrations from empty, then the app
 // connects as the `foundation_app` role so privilege boundaries are exercised in every test.
-import { createTestDatabase, connect, type TestDatabase } from '@foundation/testkit/pg';
+import {
+  createTestDatabase,
+  connect,
+  enableAppRole,
+  type TestDatabase,
+} from '@foundation/testkit/pg';
 import { createDb, type Db } from '../../src/db/index.ts';
 import { migrateUp } from '../../src/db/migrate.ts';
 import type { Sql } from 'postgres';
@@ -21,8 +26,7 @@ export async function setupPg(prefix = 'srv'): Promise<PgHarness> {
   const test = await createTestDatabase(prefix);
   await migrateUp(test.url);
   const root = connect(test.url, { max: 2 });
-  await root.unsafe(`ALTER ROLE foundation_app LOGIN PASSWORD '${APP_ROLE.password}'`);
-  await root.unsafe(`GRANT CONNECT ON DATABASE "${test.name}" TO foundation_app`);
+  await enableAppRole(test.url, test.name, APP_ROLE.password);
   const u = new URL(test.url);
   u.username = APP_ROLE.user;
   u.password = APP_ROLE.password;

@@ -9,7 +9,7 @@ import { AppError } from '../../src/errors.ts';
 import { requestHash } from '../../src/cqrs/hash.ts';
 
 let h: PgHarness;
-const clock = fixedClock(1_755_475_200_000);
+const clock = fixedClock(1_786_924_800_000);
 
 const AddSchema = Type.Object(
   { amount: Type.Integer({ minimum: 0 }) },
@@ -316,14 +316,15 @@ describe('command bus on real Postgres', () => {
     ).rejects.toMatchObject({ code: 'idempotency_mismatch' });
   });
 
-  it('expired without a tombstone hook → bad_request, never a 500 or a re-execution', async () => {
+  it('expired without an outcomeRef → no tombstone; a retry re-executes (commands that produce facts MUST declare outcomeRef)', async () => {
     const commandId = randomUUID();
-    await bus.execute(Slow, { commandId, payload: { amount: 1 } }, ctx('pexp'));
+    const first = await bus.execute(Slow, { commandId, payload: { amount: 1 } }, ctx('pexp'));
     await h.root`UPDATE commands SET received_at = now() - interval '8 days' WHERE command_id = ${commandId}`;
     await h.db.sql`SELECT apply_retention()`;
-    await expect(
-      bus.execute(Slow, { commandId, payload: { amount: 1 } }, ctx('pexp')),
-    ).rejects.toMatchObject({ code: 'bad_request' });
+    const tomb = await h.root`SELECT 1 FROM command_tombstones WHERE command_id = ${commandId}`;
+    expect(tomb.length).toBe(0);
+    const again = await bus.execute(Slow, { commandId, payload: { amount: 1 } }, ctx('pexp'));
+    expect(again.seq).toBe(first.seq + 1);
   });
 
   it('admin actor: every command is audited in admin_actions', async () => {

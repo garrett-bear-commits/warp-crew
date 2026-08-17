@@ -28,6 +28,7 @@ CREATE TABLE commands (
   received_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
   duration_ms   INTEGER,
   retention     TEXT         NOT NULL CHECK (retention IN ('7d', '90d', '1y')),
+  outcome_ref   TEXT,                            -- compact ref copied to the tombstone at prune time
   UNIQUE (scope_key, command_id)
 );
 CREATE INDEX commands_received ON commands (received_at);

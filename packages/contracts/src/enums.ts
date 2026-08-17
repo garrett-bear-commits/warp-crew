@@ -19,7 +19,6 @@ export const SAVE_REFUSAL_REASONS = [
   'stale_generation',
   'malformed',
   'blob_too_large',
-  'schema_downgrade_refused',
 ] as const;
 export type SaveRefusalReason = (typeof SAVE_REFUSAL_REASONS)[number];
 

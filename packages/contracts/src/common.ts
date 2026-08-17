@@ -81,3 +81,4 @@ export type ErrorEnvelope = Static<typeof ErrorEnvelope>;
 export const SaveReasonSchema = StringEnum(SAVE_REASONS);
 
 export const Ok = Response({ ok: Type.Literal(true) });
+export type Ok = Static<typeof Ok>;

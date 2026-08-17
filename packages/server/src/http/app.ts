@@ -2,6 +2,7 @@
 // envelope, CORS allowlist, text/plain JSON parser (beacon), health routes. Features register
 // their routes through the helpers in ./route.ts.
 import Fastify, {
+  LogController,
   type FastifyBaseLogger,
   type FastifyInstance,
   type FastifyRequest,
@@ -43,7 +44,7 @@ export function envelope(
 export function buildFastify(ctx: AppContext): FastifyInstance {
   const app = Fastify({
     loggerInstance: ctx.log as unknown as FastifyBaseLogger,
-    disableRequestLogging: true,
+    logController: new LogController({ disableRequestLogging: true }),
     trustProxy: 1,
     bodyLimit: Math.max(ctx.game.blobLimits.maxEncodedBytes + 8 * 1024, 64 * 1024),
     genReqId: (req) => {

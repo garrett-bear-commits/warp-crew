@@ -14,7 +14,7 @@ import {
 } from '../src/index.ts';
 
 const GAME = 'template';
-const NOW = 1_755_475_200_000;
+const NOW = 1_786_924_800_000;
 const secret = randomSecretB64();
 const oldSecret = randomSecretB64();
 const otherSecret = randomSecretB64();
