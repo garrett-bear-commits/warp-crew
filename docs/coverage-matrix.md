@@ -16,11 +16,11 @@ Paths are repo-relative. Test ids name the file (and describe/it where useful). 
 | 1.7 | Money = signed facts only; provider-token idempotency; sandbox never mints (CHECK); grant-before-confirm; per-pack promotion; negative adjustments reference admin action | `features/purchases/server.ts`, migration `0004`, `rewards/mint.ts` | `apps/server/test/pg/money.test.ts` (sandbox, paid off/on, duplicate, race, unclassified, adjustments CHECK) | ✅ (real minting ⛔ ADR-024) |
 | 1.8 | Client claims never mint premium; budgets; placements provisional | `rewards/mint.ts` claimSourced budget, `features/achievements/*`, `features/leaderboards/*` | `features.test.ts` achievements budget + leaderboards; `infra.test.ts` budget cap | ✅ |
 | 1.9 | Grants are the one reward primitive (server-authored, idempotently claimable, auditable, retroactive) | `rewards/mint.ts`, `features/grants/server.ts` | `money.test.ts` grants block, `infra.test.ts` | ✅ |
-| 1.10 | Server is truth; local copy operational; KV write-only mirror + break-glass; bounded head check; blocked ≠ empty | `packages/client/src/{boot,storage,restore,providers}` | client unit + model tests | see §5 rows |
-| 1.11 | No platform writes before identity; identity gates push and selects slot | `packages/client/src/{boot,sync}` | client tests | see §5 |
-| 1.12 | Restore = write local → confirm → reload under one restoring gate; only leader tab writes | `packages/client/src/{restore,tabs}` | client tests | see §5 |
+| 1.10 | Server is truth; local copy operational; KV write-only mirror + break-glass; bounded head check; blocked ≠ empty | `packages/client/src/{boot,storage,restore,providers}` | `packages/client/test/unit/{boot-restore,clock-storage,providers}.test.ts`, `test/model/sync.model.test.ts`; e2e `blocked-storage.spec.ts`, `restore-panel.spec.ts` | ✅ |
+| 1.11 | No platform writes before identity; identity gates push and selects slot | `packages/client/src/{boot,sync}` | `test/unit/boot-restore.test.ts`, `test/unit/sync-flows.test.ts` | ✅ |
+| 1.12 | Restore = write local → confirm → reload under one restoring gate; only leader tab writes | `packages/client/src/{restore,tabs}` | `test/unit/boot-restore.test.ts` (gate blocks teardown push), `test/unit/loop-journal-tabs.test.ts` (leader); e2e `multi-tab.spec.ts`, `restore-panel.spec.ts` | ✅ |
 | 1.13 | Server clock: serverNow in every response; credit = min(deviceGap, serverGap+tol); Date.now banned outside clock | `http/route.ts` (serverNow+requestId appended), `contracts` Response(), `eslint.config.js` no-restricted-syntax, `packages/client/src/clock` | `contracts.test.ts` "every response schema carries serverNow", lint | ✅ |
-| 1.14 | Engine purity: injected now/rng, two seeded streams, journal records inputs, offline never advances progressOf | `packages/client/src/engine/*`, `journal` | client loop tests | see §5 |
+| 1.14 | Engine purity: injected now/rng, two seeded streams, journal records inputs, offline never advances progressOf | `packages/client/src/engine/*`, `journal` | `test/unit/loop-journal-tabs.test.ts` (onGap never raises progressOf; catch-up cap; isPaused), `apps/template-game/test/unit/{engine,conformance-kit}` | ✅ |
 | 1.15 | Refusal/outage/degraded = product contracts; outage never blocks play/purchase grant/local save; sync status visible | client sync verdicts + SyncPill; server 200 refusals | client tests; `saves.test.ts` | ✅/§5 |
 | 1.16 | Ops truth in tables; `/health/ops?assert=`; scariest query at boot; migrations checksummed + locked; PITR restore-verified | `health/index.ts`, `server.ts boot`, `db/migrate.ts`, job `restore.verify` | `features.test.ts` health/ops, `infra.test.ts` migrations, `server/test/unit/ops.test.ts` | ✅ (PITR itself ⛔ managed DB) |
 
@@ -62,9 +62,9 @@ Paths are repo-relative. Test ids name the file (and describe/it where useful). 
 
 | # | Requirement | Implementation | Tests | Status |
 | --- | --- | --- | --- | --- |
-| 5.1 | Engine<S,A,E> contract, Ctx, Effect ring, loop.ts (rAF accumulator, catch-up cap, big-gap hand-off), per-genre tps | `packages/client/src/engine/*` | `packages/client` unit tests | see IMPLEMENTATION_STATUS (client) |
-| 5.2 | Boot machine, storage tiers, KV break-glass, sync (commandId, beacon ≤ 64 KiB, timers, verdicts), generations, restore, identity switch, multi-tab, journal, clock, player-visible status | `packages/client/src/{boot,storage,sync,restore,identity,tabs,journal,clock}` | client unit + model-based tests | see IMPLEMENTATION_STATUS (client) |
-| 5.3 | Providers (Jest, mock, standalone) + conformance; React package | `packages/client/src/providers/*`, `src/react/*` | client tests | see IMPLEMENTATION_STATUS (client) |
+| 5.1 | Engine<S,A,E> contract, Ctx, Effect ring, loop.ts (rAF accumulator, catch-up cap, big-gap hand-off), per-genre tps | `packages/client/src/engine/{contract,loop}.ts` | `packages/client/test/unit/loop-journal-tabs.test.ts`; template engine conformance kit | ✅ |
+| 5.2 | Boot machine, storage tiers, KV break-glass, sync (commandId, beacon ≤ 64 KiB, timers, verdicts), generations, restore, identity switch, multi-tab, journal, clock, player-visible status | `packages/client/src/{boot,storage,sync,restore,identity,tabs,journal,clock}` (ADR-029) | `test/unit/{verdicts,ratchet-reconcile,clock-storage,sync-flows,boot-restore,loop-journal-tabs}.test.ts` (unit, 538 incl. providers), `test/model/sync.model.test.ts` (fast-check vs server-truth model: 400 + 120 runs, 0 counterexamples); e2e `boot-play-save`, `teardown-beacon`, `quarantine-pending-review`, `iframe-host` | ✅ |
+| 5.3 | Providers (Jest, mock, standalone) + conformance; React package | `packages/client/src/providers/{types,mock,standalone,jest,conformance}.ts`, `src/react/index.tsx` | `test/unit/providers.test.ts` (conformance: 17 pathology sets × 22 cases + standalone + jest wrapper), `test/unit/react.test.tsx` | ✅ (Jest SDK itself ⛔ real platform) |
 
 ## §6 Protocol
 
@@ -101,7 +101,7 @@ Paths are repo-relative. Test ids name the file (and describe/it where useful). 
 
 | # | Requirement | Where | Status |
 | --- | --- | --- | --- |
-| 9.1 | Pure domain + property tests on placement; model-based sync tests (v1, not deferrable) | `server/test/unit/placement.test.ts`; `packages/client` model project | ✅ / see client |
+| 9.1 | Pure domain + property tests on placement; model-based sync tests (v1, not deferrable) | `server/test/unit/placement.test.ts`; `packages/client/test/model/sync.model.test.ts` | ✅ |
 | 9.2 | Route tests with fakes (inject), tokens minted in-test | `apps/server/test/pg/*.test.ts` | ✅ |
 | 9.3 | Integration on real Postgres: migrations from empty, prune, anchor ordering, lock serialisation, lineage CAS under concurrency, import/close idempotency, outbox drain, SIGTERM/crash mid-write, concurrent duplicate receipt verify, restore/import manifest mismatch | `packages/server/test/pg/*.test.ts`, `apps/server/test/pg/*.test.ts` | ✅ |
 | 9.4 | Contract tests from shared fixtures both sides; oasdiff vs last released tag; legacy-client fixture replay | `contracts/test/contracts.test.ts`, `openapi.json` committed | ✅ (oasdiff against a released tag starts at the first tag) |

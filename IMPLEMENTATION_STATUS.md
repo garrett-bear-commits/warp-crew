@@ -20,15 +20,33 @@ Branch `game-foundation-v1` off an empty `main` (main is untouched). Checkpoint 
 | 2 | server spine: bus, idempotency/tombstones, Postgres locks/migrations/roles, outbox DLQ+replay, jobs, limits, auth, health, Docker | done |
 | 3 | saves + lineage: append-only snapshots, dispositions, size/bomb guards, terminal quarantine reviews, generation-only rollback, restore/reattach/erasure/CAS, property + real-PG concurrency tests | done |
 | 4 | identity/purchases/grants: Jest + mock verifiers + conformance, fail-closed tokens, receipt ledgers, sandbox non-minting, real minting off (ADR-024), grants/codes/cohorts | done |
-| 5 | client adapter (`packages/client`) incl. model-based sync tests | see "Client" below |
-| 6 | features: achievements, leaderboards L1–2, inbox, announcements, telemetry, journal, liveops (flags/schedules/segments/content/kill switches/minBuild), admin + inspector, Lab QA | done (server); inspector see "Inspector" |
-| 7 | template game + Playwright (Chromium + WebKit) + migration/restore/outbox-crash/receipt-replay tests + runbooks + tooling | see "Template game" |
+| 5 | client adapter (`packages/client`) incl. model-based sync tests (540 tests, 0 counterexamples) | done |
+| 6 | features: achievements, leaderboards L1–2, inbox, announcements, telemetry, journal, liveops (flags/schedules/segments/content/kill switches/minBuild), admin + static inspector (separate origin, strict CSP), Lab QA | done |
+| 7 | template game + Playwright (Chromium + WebKit) + migration/restore/outbox-crash/receipt-replay tests + runbooks + tooling | done |
 
 ## Commands and results
 
-Run from the repo root on 2026-08-17 (macOS, Node 24.13.1, pnpm 10.30.1, Docker 29, `postgres:16-alpine` via `pnpm db:up`, `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:55432/foundation_test`).
+Run from the repo root on 2026-08-18 (macOS, Node 24.13.1, pnpm 10.30.1, Docker 29, `postgres:16-alpine` via `pnpm db:up`, `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:55432/foundation_test`).
 
-RESULTS_TABLE
+| Command | Result |
+| --- | --- |
+| `pnpm install` | ok (lockfile committed; Node 24.13.1 / pnpm 10.30.1 pinned via `packageManager` + `engine-strict`) |
+| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | exit 0 — prettier clean; eslint 0 errors/0 warnings (incl. `foundation/feature-boundary`, browser-import and `Date.now` rules); tsc clean in every package; Vite builds `apps/template-game/dist` and `apps/server/admin-inspector/dist`; guards 6/6 PASS (mutation-command-id 43 mutations, sql-no-tenancy 219 files, bundle-browser-safe 4 bundle files, feature-shape 13 features, no-secrets 346 files, no-placeholders 305 files); per-package vitest: contracts 26, testkit 3, tooling 41, jest-verify 56, client 538 + model 2, server 38, app-server 21, template-game 33 |
+| `pnpm test:unit` (root runner, projects `*:unit` + `*:contract`) | 26 files, 756 tests passed |
+| `DATABASE_URL_TEST=… pnpm test:pg` (real postgres:16, migrations from empty, app role) | 6 files, 89 tests passed — `packages/server/test/pg/{bus,infra}.test.ts`, `apps/server/test/pg/{saves,lineage,money,features}.test.ts` |
+| `pnpm test:model` (fast-check model-based sync tests) | 1 file, 2 tests passed: 400 runs × ≤ 18 commands + 120 runs with invariants after every command, 0 counterexamples |
+| `pnpm test:e2e` (Playwright: builds the game with `VITE_API_URL`, boots a fresh lab API + iframe host + `vite preview`) | `26 passed (40.4s)` — 13 specs × chromium + webkit (iPhone 13): boot/play/save + reload from server, teardown beacon, blocked storage, quarantine → pending review → promote → adopt, daily reward / achievement / make-good letter / announcement / code campaign, liveops config publish without rebuild + 50 % flag + scheduled sale + kill switch + minBuild 426, mock SKU purchase + draft season leaderboard + restart, multi-tab leader/follower, cross-site iframe host, restore panel |
+| `node --experimental-strip-types packages/tooling/src/bundle-size.ts apps/template-game/dist 600000` | OK (total gzip 91613 B of 600000 B budget) |
+| `git diff --check` | clean |
+| `DATABASE_URL=… pnpm migrate --up` / `--status` / `--check packages/server/schema.sql` | applied 12 files, head `4970b846e8c64a1b`, status ok, `schema.sql` committed and matching |
+| Docker image build (`docker build -f apps/server/Dockerfile .`) | not run — Docker was used only for the Postgres container; the image is a plain node:24-alpine Dockerfile with HEALTHCHECK; building/pushing an image is a deployment step (out of scope by instruction) |
+| Sentry / PITR / Jest platform calls | not run — external gates (see below) |
+
+Totals: 756 unit/contract + 2 model + 89 real-Postgres + 26 browser = 873 tests, all passing; 0 skipped; no `TODO`/`FIXME`/placeholder text (guarded).
+
+## Coverage
+
+`docs/coverage-matrix.md` has 70 requirement rows: 63 fully implemented with local evidence (90 %), 5 implemented with a documented external remainder (money minting switch, PITR itself, Jest platform confirmation, Sentry DSN, k6 on a deployed Lab), 2 external-only gates (Sentry wiring, k6 bench). Every locally runnable row has a named test; nothing is marked done without a command in the table above.
 
 ## Gates (external; interface + mock + fail-closed + tests in place)
 
@@ -65,4 +83,4 @@ See `README.md` ("Everyday commands"): `pnpm install`, `pnpm db:up`, `pnpm migra
 
 ## Best next action
 
-NEXT_ACTION
+Take the stack to Lab (§12 P0 verifications): confirm with Jest that URL-hosted production/review mode is supported and obtain the literal game id/aud + `JEST_JWS_SECRETS`; run `pnpm foundation preflight`, `pnpm migrate --up`, start the image, `pnpm foundation check-health --assert page`; verify the sandbox receipt price shape with real receipts and, if it matches `purchase.price` (0 = sandbox, > 0 = paid), flip `purchases.mintPremium` to `'on'` in the game config (ADR-024). Then wire Sentry (`SENTRY_DSN`) and PITR/restore-verify on the managed database and run the restore drill runbook once with a second person.
