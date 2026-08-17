@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Foundation admin inspector</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1>Admin inspector</h1>
+      <p id="status" class="status" aria-live="polite">Not connected.</p>
+    </header>
+
+    <main>
+      <section class="card" id="connect">
+        <h2>Connection</h2>
+        <form id="connect-form" autocomplete="off">
+          <label>
+            API origin
+            <input name="origin" type="url" value="http://localhost:8080" required />
+          </label>
+          <label>
+            Admin key id
+            <input name="keyId" type="text" autocomplete="off" required />
+          </label>
+          <label>
+            Admin secret
+            <input name="secret" type="password" autocomplete="off" required />
+          </label>
+          <p class="hint">Credentials stay in this tab's memory only. Reload forgets them.</p>
+          <div class="row">
+            <button type="submit">Use these credentials</button>
+            <button type="button" id="forget">Forget</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" id="player">
+        <h2>Player</h2>
+        <form id="lookup-form" autocomplete="off">
+          <label>
+            Player key
+            <input name="playerKey" type="text" required />
+          </label>
+          <div class="row">
+            <button type="submit">Load</button>
+          </div>
+        </form>
+        <div id="overview" class="block"></div>
+        <details open>
+          <summary>Timeline</summary>
+          <div id="timeline" class="scroll"></div>
+        </details>
+        <details open>
+          <summary>Save history</summary>
+          <div id="saves" class="scroll"></div>
+        </details>
+        <details open>
+          <summary>Blob viewer</summary>
+          <div id="blob" class="block"></div>
+        </details>
+      </section>
+
+      <section class="card" id="writes">
+        <h2>Write actions</h2>
+
+        <details>
+          <summary>Send letter</summary>
+          <form id="letter-form" data-path="/admin/v1/letters" autocomplete="off">
+            <label>Player key <input name="playerKey" data-player required /></label>
+            <label>Title <input name="title" required maxlength="200" /></label>
+            <label>Body <textarea name="body" required maxlength="4000" rows="4"></textarea></label>
+            <label>Grant key (optional) <input name="grantKey" maxlength="200" /></label>
+            <label>Ticket ref (optional) <input name="ticketRef" maxlength="128" /></label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <div class="row"><button type="submit">Send letter</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+
+        <details>
+          <summary>Mint grant</summary>
+          <form id="grant-form" data-path="/admin/v1/grants" autocomplete="off">
+            <label>Player key <input name="playerKey" data-player required /></label>
+            <label
+              >Grant key (business key) <input name="grantKey" required maxlength="200"
+            /></label>
+            <label>
+              Rewards (JSON array)
+              <textarea name="rewards" required rows="3" data-json></textarea>
+            </label>
+            <label>Title (optional) <input name="title" maxlength="200" /></label>
+            <label
+              >Body (optional) <textarea name="body" maxlength="2000" rows="2"></textarea>
+            </label>
+            <label>Ticket ref (optional) <input name="ticketRef" maxlength="128" /></label>
+            <label
+              >Expires at, epoch ms (optional) <input name="expiresAt" type="number" min="0"
+            /></label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <div class="row"><button type="submit">Mint grant</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+
+        <details>
+          <summary>Cohort grant</summary>
+          <form id="cohort-form" data-path="/admin/v1/grants/cohort" autocomplete="off">
+            <label>Grant key prefix <input name="grantKeyPrefix" required maxlength="120" /></label>
+            <label>
+              Segment predicate (JSON)
+              <textarea name="predicate" required rows="3" data-json></textarea>
+            </label>
+            <label>
+              Rewards (JSON array)
+              <textarea name="rewards" required rows="3" data-json></textarea>
+            </label>
+            <label>Title (optional) <input name="title" maxlength="200" /></label>
+            <label
+              >Body (optional) <textarea name="body" maxlength="2000" rows="2"></textarea>
+            </label>
+            <label>Ticket ref (optional) <input name="ticketRef" maxlength="128" /></label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <label class="check"
+              ><input name="dryRun" type="checkbox" checked /> Dry run (count only)</label
+            >
+            <div class="row"><button type="submit">Run cohort grant</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+
+        <details>
+          <summary>Publish flag</summary>
+          <form id="flag-form" data-path="/admin/v1/liveops/flags" autocomplete="off">
+            <label>Flag key <input name="key" required maxlength="64" /></label>
+            <label class="check"><input name="enabled" type="checkbox" checked /> Enabled</label>
+            <label
+              >Value (true/false, number, or text) <input name="value" required maxlength="256"
+            /></label>
+            <label
+              >Rollout percent
+              <input name="rolloutPercent" type="number" min="0" max="100" value="100" required
+            /></label>
+            <label>Segment id (optional) <input name="segmentId" /></label>
+            <label class="check"><input name="shadow" type="checkbox" /> Shadow mode</label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <div class="row"><button type="submit">Publish flag</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+
+        <details>
+          <summary>Publish content</summary>
+          <form id="content-form" data-path="/admin/v1/liveops/content" autocomplete="off">
+            <label
+              >Kind
+              <select name="kind" id="content-kind" required></select
+            ></label>
+            <label
+              >Env
+              <select name="env" id="content-env" required></select
+            ></label>
+            <label>
+              Document (JSON)
+              <textarea name="document" required rows="6" data-json></textarea>
+            </label>
+            <label>Min build version (optional) <input name="minBuildVersion" /></label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <div class="row"><button type="submit">Publish content</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+
+        <details>
+          <summary>Restore to seq</summary>
+          <form id="restore-form" data-path="/admin/v1/players/restore" autocomplete="off">
+            <label>Player key <input name="playerKey" data-player required /></label>
+            <label>Seq <input name="seq" type="number" min="0" required /></label>
+            <label
+              >Expected generation <input name="expectedGeneration" type="number" min="0" required
+            /></label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <div class="row"><button type="submit">Restore (new generation)</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+
+        <details>
+          <summary>Save review (promote / reject)</summary>
+          <form id="review-form" data-path="/admin/v1/saves/reviews" autocomplete="off">
+            <label>Player key <input name="playerKey" data-player required /></label>
+            <label>Seq <input name="seq" type="number" min="0" required /></label>
+            <label>
+              Action
+              <select name="action" required>
+                <option value="promote">promote</option>
+                <option value="reject">reject</option>
+              </select>
+            </label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <div class="row"><button type="submit">Submit review</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+
+        <details>
+          <summary>Player flag</summary>
+          <form id="player-flag-form" data-path="/admin/v1/players/flags" autocomplete="off">
+            <label>Player key <input name="playerKey" data-player required /></label>
+            <label
+              >Flag
+              <select name="flag" id="player-flag-kind" required></select
+            ></label>
+            <label class="check"><input name="enabled" type="checkbox" checked /> Enabled</label>
+            <label>Until, epoch ms (optional) <input name="until" type="number" min="0" /></label>
+            <label>Reason <input name="reason" required maxlength="512" /></label>
+            <div class="row"><button type="submit">Set flag</button></div>
+            <output class="result"></output>
+          </form>
+        </details>
+      </section>
+
+      <section class="card" id="ops">
+        <h2>Admin actions</h2>
+        <div class="row"><button type="button" id="load-actions">Load admin actions</button></div>
+        <div id="actions" class="scroll"></div>
+      </section>
+
+      <section class="card" id="outbox">
+        <h2>Outbox dead letters</h2>
+        <form id="dead-letters-form" autocomplete="off">
+          <label>Replay reason <input name="reason" maxlength="512" /></label>
+          <div class="row"><button type="submit">Load dead letters</button></div>
+          <output class="result"></output>
+        </form>
+        <div id="dead-letters" class="scroll"></div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

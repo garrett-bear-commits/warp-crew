@@ -52,6 +52,20 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       h.root`UPDATE purchase_transactions SET granted = 5 WHERE provider_token = 'tok-sandbox-1'`,
     ).rejects.toThrow(/ledger_fence|check constraint/);
   });
+  it('concurrent duplicate receipt verify (§9): one recorded, the rest duplicate, one ledger row', async () => {
+    const receipt = h.receipt({ playerKey: 'racer', token: 'tok-race', sku: 'gems_100', price: 0 });
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        post('racer', '/v1/purchases/verify', { commandId: h.uuid(), purchaseSigned: receipt }),
+      ),
+    );
+    const outcomes = results.map((r) => r.json().outcome);
+    expect(outcomes.filter((o) => o === 'recorded').length).toBe(1);
+    expect(outcomes.filter((o) => o === 'duplicate').length).toBe(5);
+    const rows =
+      await h.root`SELECT count(*)::int AS n FROM purchase_transactions WHERE provider_token = 'tok-race'`;
+    expect(rows[0]!.n).toBe(1);
+  });
   it('paid receipt with mintPremium=off (default, ADR-024): classified paid, granted 0, no grant minted', async () => {
     const r = await post('buyer', '/v1/purchases/verify', {
       commandId: h.uuid(),

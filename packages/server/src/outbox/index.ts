@@ -35,6 +35,7 @@ export async function emitOutbox(
   tx: Tx,
   msg: { kind: string; playerKey?: string | null; payload: unknown; commandId?: string | null },
   consumers: readonly OutboxConsumer[],
+  nowMs?: number,
 ): Promise<number> {
   const rows = await tx<
     { id: number }[]
@@ -42,7 +43,10 @@ export async function emitOutbox(
   const id = Number(rows[0]!.id);
   for (const c of consumers) {
     if (c.kinds !== '*' && !c.kinds.includes(msg.kind)) continue;
-    await tx`INSERT INTO outbox_deliveries (outbox_id, consumer, state) VALUES (${id}, ${c.name}, 'pending')`;
+    if (nowMs !== undefined)
+      await tx`INSERT INTO outbox_deliveries (outbox_id, consumer, state, next_attempt_at) VALUES (${id}, ${c.name}, 'pending', ${new Date(nowMs)})`;
+    else
+      await tx`INSERT INTO outbox_deliveries (outbox_id, consumer, state) VALUES (${id}, ${c.name}, 'pending')`;
   }
   return id;
 }
@@ -100,7 +104,7 @@ export class Outbox {
     tx: Tx,
     msg: { kind: string; playerKey?: string | null; payload: unknown; commandId?: string | null },
   ): Promise<number> {
-    return emitOutbox(tx, msg, this.#consumers);
+    return emitOutbox(tx, msg, this.#consumers, this.#clock.now());
   }
 
   /**

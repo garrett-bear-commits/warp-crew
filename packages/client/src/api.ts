@@ -1,0 +1,86 @@
+// Browser-safe fetch helper (§6 headers, §4.2 error envelope). A deliberate copy of the tiny
+// helper in packages/server/src/http/client-fetch.ts: the client package must not depend on
+// @foundation/server (lint), and the helper is small enough that one copy per side is cheaper
+// than a shared package. Types only from @foundation/contracts; no TypeBox runtime.
+import type { ErrorEnvelope } from '@foundation/contracts';
+import { HEADERS } from '@foundation/contracts/enums';
+
+export interface ClientAuth {
+  playerKey: string;
+  token: string;
+  buildVersion?: string;
+}
+
+export interface ApiClientOptions {
+  baseUrl: string;
+  fetch?: typeof fetch;
+  auth?: () => ClientAuth | null;
+  requestId?: () => string;
+}
+
+export type ApiResult<T> =
+  | { ok: true; status: number; body: T }
+  | { ok: false; status: number; error: ErrorEnvelope | null; networkError?: string };
+
+export interface CallOptions {
+  /** Attach player headers (default true). */
+  auth?: boolean;
+  /** Send the body as text/plain (the beacon route; not preflighted). */
+  text?: boolean;
+  /** Abort signal (bounded head check, §5.2). */
+  signal?: AbortSignal;
+  /** Override auth for one call (identity switch pushes under the previous token, §5.2). */
+  authOverride?: ClientAuth | null;
+  /** fetch keepalive (teardown fallback when sendBeacon is unavailable). */
+  keepalive?: boolean;
+}
+
+export interface Api {
+  call<T>(
+    method: 'GET' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    opts?: CallOptions,
+  ): Promise<ApiResult<T>>;
+  readonly baseUrl: string;
+}
+
+export function createApi(o: ApiClientOptions): Api {
+  const f = o.fetch ?? fetch;
+  async function call<T>(
+    method: 'GET' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    opts: CallOptions = {},
+  ): Promise<ApiResult<T>> {
+    const headers: Record<string, string> = {};
+    if (body !== undefined) headers['content-type'] = opts.text ? 'text/plain' : 'application/json';
+    if (opts.auth !== false) {
+      const a = opts.authOverride !== undefined ? opts.authOverride : o.auth?.();
+      if (a) {
+        headers[HEADERS.playerKey] = a.playerKey;
+        headers[HEADERS.authorization] = `Bearer ${a.token}`;
+        if (a.buildVersion) headers[HEADERS.buildVersion] = a.buildVersion;
+      }
+    }
+    if (o.requestId) headers[HEADERS.requestId] = o.requestId();
+    try {
+      const init: RequestInit = { method, headers };
+      if (body !== undefined) init.body = typeof body === 'string' ? body : JSON.stringify(body);
+      if (opts.signal) init.signal = opts.signal;
+      if (opts.keepalive) init.keepalive = true;
+      const res = await f(`${o.baseUrl}${path}`, init);
+      const json = (await res.json().catch(() => null)) as unknown;
+      if (res.ok) return { ok: true, status: res.status, body: json as T };
+      return { ok: false, status: res.status, error: (json as ErrorEnvelope | null) ?? null };
+    } catch (e) {
+      return {
+        ok: false,
+        status: 0,
+        error: null,
+        networkError: e instanceof Error ? e.message : String(e),
+      };
+    }
+  }
+  return { call, baseUrl: o.baseUrl };
+}
