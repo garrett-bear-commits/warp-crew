@@ -1,0 +1,11 @@
+{
+  "fleet": [
+    {
+      "name": "template-lab",
+      "game": "template",
+      "env": "lab",
+      "apiUrl": "http://localhost:8080",
+      "staticUrl": "http://localhost:8080/static"
+    }
+  ]
+}

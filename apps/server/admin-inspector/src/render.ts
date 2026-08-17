@@ -208,9 +208,7 @@ function renderValue(value: unknown, budget: { left: number }): Node {
     ? value.map((v, i) => [String(i), v] as [string, unknown])
     : Object.entries(value as Record<string, unknown>);
   const label = Array.isArray(value) ? `[${entries.length}]` : `{${entries.length}}`;
-  const details = el('details', entries.length <= 20 ? { open: '' } : {}, [
-    text('summary', label),
-  ]);
+  const details = el('details', entries.length <= 20 ? { open: '' } : {}, [text('summary', label)]);
   const ul = el('ul');
   for (const [k, v] of entries) {
     if (budget.left <= 0) {

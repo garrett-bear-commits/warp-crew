@@ -24,6 +24,7 @@
   "devDependencies": {
     "@foundation/testkit": "workspace:*",
     "@types/node": "^24.10.0",
+    "happy-dom": "^20.11.2",
     "typescript": "5.9.3",
     "vite": "^8.2.1",
     "vitest": "^4.1.10"

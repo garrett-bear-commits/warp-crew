@@ -112,7 +112,7 @@ function showResult(out: HTMLElement, tone: 'ok' | 'err' | 'warn', msg: string):
 // ─── Writes with commandId reuse ───────────────────────────────────
 
 interface WriteSlot {
-  commandId?: string;
+  commandId?: string | undefined;
 }
 
 /**
@@ -258,7 +258,9 @@ function bindWriteForm(id: string, spec: FieldSpec[], onOk?: (body: unknown) => 
 let loadedPlayerKey = '';
 
 function prefillPlayerInputs(playerKey: string): void {
-  for (const input of document.querySelectorAll<HTMLInputElement>('input[data-player]')) {
+  for (const input of Array.from(
+    document.querySelectorAll<HTMLInputElement>('input[data-player]'),
+  )) {
     if (!input.value || input.value === loadedPlayerKey) input.value = playerKey;
   }
   loadedPlayerKey = playerKey;
@@ -499,13 +501,9 @@ bindWriteForm(
     if (loadedPlayerKey) void loadPlayer(loadedPlayerKey);
   },
 );
-bindWriteForm(
-  'review-form',
-  [S('playerKey'), S('seq', 'int'), S('action'), S('reason')],
-  () => {
-    if (loadedPlayerKey) void loadPlayer(loadedPlayerKey);
-  },
-);
+bindWriteForm('review-form', [S('playerKey'), S('seq', 'int'), S('action'), S('reason')], () => {
+  if (loadedPlayerKey) void loadPlayer(loadedPlayerKey);
+});
 bindWriteForm('player-flag-form', [
   S('playerKey'),
   S('flag'),

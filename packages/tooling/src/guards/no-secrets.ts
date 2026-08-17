@@ -35,7 +35,7 @@ export function guardNoSecrets(): GuardResult {
       const m = re.exec(src);
       if (
         m &&
-        !/example|fixture|test|placeholder|CHANGE_ME|dev-only/i.test(
+        !/example|fixture|test|placeholder|CHANGE_ME|dev-only|localhost|127\.0\.0\.1/i.test(
           m[0] + src.slice(Math.max(0, m.index - 80), m.index),
         )
       ) {

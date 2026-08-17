@@ -6,5 +6,5 @@
     "types": ["node"],
     "lib": ["ES2023", "DOM"]
   },
-  "include": ["src/**/*.ts", "games/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "games/**/*.ts", "test/**/*.ts", "admin-inspector/src/**/*.ts"]
 }
