@@ -10,7 +10,7 @@ Section-by-section evidence lives in `docs/coverage-matrix.md`. External gates (
 
 ## Branch and commits
 
-Branch `game-foundation-v1` off an empty `main` (main is untouched). Checkpoint commits: `git log --oneline` (CP1 → CP7 in order; each commit compiles and its tests pass at that point).
+Branch `game-foundation-v1`; `main` has no commits (this repository was empty before the branch). No tags exist. Checkpoint commits: `git log --oneline` (CP1 → CP7, then the audit-fix commits); each commit compiles and its tests pass at that point. Nothing has been pushed.
 
 ## Checkpoints
 
@@ -26,27 +26,46 @@ Branch `game-foundation-v1` off an empty `main` (main is untouched). Checkpoint 
 
 ## Commands and results
 
-Run from the repo root on 2026-08-18 (macOS, Node 24.13.1, pnpm 10.30.1, Docker 29, `postgres:16-alpine` via `pnpm db:up`, `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:55432/foundation_test`).
+Rerun from the repo root on 2026-08-18 after the audit fixes (macOS, Node 24.13.1, pnpm 10.30.1, Docker 29, `postgres:16-alpine` via `pnpm db:up`, `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:55432/foundation_test`). Nothing below is carried over from an earlier run.
 
 | Command | Result |
 | --- | --- |
-| `pnpm install` | ok (lockfile committed; Node 24.13.1 / pnpm 10.30.1 pinned via `packageManager` + `engine-strict`) |
-| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | exit 0 — prettier clean; eslint 0 errors/0 warnings (incl. `foundation/feature-boundary`, browser-import and `Date.now` rules); tsc clean in every package; Vite builds `apps/template-game/dist` and `apps/server/admin-inspector/dist`; guards 6/6 PASS (mutation-command-id 43 mutations, sql-no-tenancy 219 files, bundle-browser-safe 4 bundle files, feature-shape 13 features, no-secrets 346 files, no-placeholders 305 files); per-package vitest: contracts 26, testkit 3, tooling 41, jest-verify 56, client 558 + model 2, server 38, app-server 21, template-game 33 |
-| `pnpm test:unit` (root runner, projects `*:unit` + `*:contract`) | 26 files, 756 tests passed |
-| `DATABASE_URL_TEST=… pnpm test:pg` (real postgres:16, migrations from empty, app role) | 6 files, 89 tests passed — `packages/server/test/pg/{bus,infra}.test.ts`, `apps/server/test/pg/{saves,lineage,money,features}.test.ts` |
-| `pnpm test:model` (fast-check model-based sync tests) | 1 file, 2 tests passed: 400 runs × ≤ 18 commands + 120 runs with invariants after every command, 0 counterexamples |
-| `pnpm test:e2e` (Playwright: builds the game with `VITE_API_URL`, boots a fresh lab API + iframe host + `vite preview`) | `26 passed (40.4s)` — 13 specs × chromium + webkit (iPhone 13): boot/play/save + reload from server, teardown beacon, blocked storage, quarantine → pending review → promote → adopt, daily reward / achievement / make-good letter / announcement / code campaign, liveops config publish without rebuild + 50 % flag + scheduled sale + kill switch + minBuild 426, mock SKU purchase + draft season leaderboard + restart, multi-tab leader/follower, cross-site iframe host, restore panel |
-| `node --experimental-strip-types packages/tooling/src/bundle-size.ts apps/template-game/dist 600000` | OK (total gzip 91613 B of 600000 B budget) |
+| `pnpm install` | ok (lockfile committed; Node 24 / pnpm 10.30.1 pinned via `packageManager` + `engine-strict`); `@sentry/node` added to `packages/server` |
+| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | exit 0 — prettier clean; eslint 0 errors/0 warnings; tsc clean in every package; Vite builds `apps/template-game/dist` and `apps/server/admin-inspector/dist`; guards 6/6 PASS (mutation-command-id 43, sql-no-tenancy 226 files, bundle-browser-safe 4 bundle files, feature-shape 13, no-secrets 358 files, no-placeholders 317 files); per-package vitest: contracts 28, testkit 3, tooling 41, jest-verify 56, client 558 + model 2, server 44, app-server 21, template-game 33 |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 29 files, 784 tests passed |
+| `DATABASE_URL_TEST=… pnpm test:pg` (real postgres:16, migrations from empty incl. `0013_outbox_lease_token`, app role) | 7 files, 102 tests passed — `packages/server/test/pg/{bus,infra}.test.ts`, `apps/server/test/pg/{saves,lineage,money,features,audit}.test.ts` |
+| `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples; the server-truth model now replays refused/quarantined writes with their original disposition) |
+| `pnpm test:e2e` (Playwright chromium + webkit iPhone 13 against a fresh lab API, iframe host, `vite preview`) | `26 passed (44.0s)` |
 | `git diff --check` | clean |
-| `DATABASE_URL=… pnpm migrate --up` / `--status` / `--check packages/server/schema.sql` | applied 12 files, head `4970b846e8c64a1b`, status ok, `schema.sql` committed and matching |
-| Docker image build (`docker build -f apps/server/Dockerfile .`) | not run — Docker was used only for the Postgres container; the image is a plain node:24-alpine Dockerfile with HEALTHCHECK; building/pushing an image is a deployment step (out of scope by instruction) |
-| Sentry / PITR / Jest platform calls | not run — external gates (see below) |
+| `git archive HEAD \| docker build -f apps/server/Dockerfile -` | image built from a clean checkout (admin inspector built in the builder stage); smoke-run against the local Postgres: `/health/ready` → 200 `status: ready`, inspector origin served with `default-src 'none'` CSP |
+| `DATABASE_URL=… pnpm migrate --up` / `--check packages/server/schema.sql --write` | 13 files applied, head `347d4c7da5c1f5ce`, `schema.sql` regenerated and committed |
+| `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)"; the detector itself is unit-tested (`test/openapi-diff.test.ts`) and CI runs it against the last tag once one exists |
+| Sentry / managed PITR / object storage / Jest platform calls | not run — external gates (below); the local paths (Sentry wiring with an injected transport, isolated-restore verification, erasure export/replay) are tested |
 
-Totals: 756 unit/contract + 2 model + 89 real-Postgres + 26 browser = 873 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Totals: 784 unit/contract + 2 model + 102 real-Postgres + 26 browser = 914 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+
+## Audit findings (2026-08-18) — all fixed with regression tests
+
+| # | Finding | Fix | Evidence |
+| --- | --- | --- | --- |
+| 1 | BootMachine kept the guest SyncClient after an identity switch | `bootMachine.rebind()`; per-player auth; guest sync retired; every re-check path uses the current player | `packages/client/test/unit/boot-restore.test.ts` (switch → long hide → visible: only account credentials; property test over random switches) |
+| 2 | PGSSL mapped `verify` → `require` and otherwise `prefer` | `pgSslOption`: off→false, require→require, verify→verify-full; prod refuses off | `packages/server/test/unit/config.test.ts` TLS block |
+| 3 | Save tombstones lost disposition/reason/flags; replay of a refused write looked like `duplicate` | full-result tombstones; `replaySaveResult` (anchored→duplicate; refused/quarantined unchanged); client verdicts follow | `apps/server/test/pg/audit.test.ts` F3, client `sync-flows`/`verdicts` tests, model test |
+| 4 | Live checksum wrote `restore_verified_at` | `live.integrity` job → `live_integrity_verified_at`; `verifyIsolatedRestore` + `markRestoreVerified`; erasure export/replay CLI | `audit.test.ts` F4 (two databases + JSONL file) |
+| 5 | Code redemption checked then incremented (race across players) | atomic `UPDATE … WHERE redemptions < max RETURNING` before minting | `audit.test.ts` F5 (3 players × 5 rounds, max=1) |
+| 6 | Outbox finalisation not tied to the lease | `lease_token` column (migration 0013); finalisation only by token holder; `stale` counter | `audit.test.ts` F6 (two workers, lease expiry, stale finalisation) |
+| 7 | Admin replay opened a second transaction | `replayInTx(tx, …)` used by the command | `audit.test.ts` F7 (PG_POOL=1, rollback atomicity, audited route) |
+| 8 | pendingQuarantine on empty heads | server already returned it; client now preserves it on the `empty` shape and exposes `pendingReview` | `audit.test.ts` F8, client `boot-restore` + `react` tests |
+| 9 | Followers could still ship saves/journal/telemetry/beacons | `mayWrite()` gate, timers stopped on demotion, queued data shipped after `playHere()` | `packages/client/test/unit/multi-tab.test.ts` |
+| 10 | Dockerfile copied a pre-built inspector | builder stage; CI builds `git archive HEAD \| docker build` | this table |
+| 11 | `no-placeholders` guard failed on the status file | reworded the doc; guard unchanged | `pnpm guards` |
+| 12 | Sentry was config-only | real optional wiring (init, release, spans, send-time sampling, redaction) | `packages/server/test/unit/sentry.test.ts` |
+| 13 | Over-claims in docs | matrix rows 6.3/8.2/8.4/9.2/9.4/10.1 corrected; openapi-diff detector added; branch state stated exactly | this file, `docs/coverage-matrix.md` |
+| 14 | Same patterns nearby | advisory locks on provider token / runId; foreign token rejected, foreign runId 403 | `audit.test.ts` F14 |
 
 ## Coverage
 
-`docs/coverage-matrix.md` has 70 requirement rows: 63 fully implemented with local evidence (90 %), 5 implemented with a documented external remainder (money minting switch, PITR itself, Jest platform confirmation, Sentry DSN, k6 on a deployed Lab), 2 external-only gates (Sentry wiring, k6 bench). Every locally runnable row has a named test; nothing is marked done without a command in the table above.
+`docs/coverage-matrix.md` has 70 requirement rows: every locally runnable row is implemented with a named test; the rows carrying an external remainder are 1.7 (real minting switch, ADR-024), 1.16/8.4 (managed PITR/dumps), 6.3/9.4 (tag-based OpenAPI diff and per-release fixture recordings — no release exists), 8.2 (Sentry DSN + cron monitor), 9.6 (k6 on a deployed Lab), 10.3 (Jest URL-hosting confirmation). Nothing is marked done without a command in the table above.
 
 ## Gates (external; interface + mock + fail-closed + tests in place)
 
@@ -55,10 +74,10 @@ Totals: 756 unit/contract + 2 model + 89 real-Postgres + 26 browser = 873 tests,
 | Jest URL-hosted production/review mode (§14) | provider-neutral hashed static deploy + zip fallback (ADR-023), `frame-ancestors` documented | confirmation with Jest; the literal game id/aud |
 | Jest sandbox receipt price shape (§14, ADR-024) | verifier + classification (paid/sandbox/unclassified/unsupported); `purchases.mintPremium = 'off'` default; tests for both modes | verify the receipt shape on Lab with real receipts, then flip the game config |
 | Jest HS256 secret / player token | `createJestIdentityVerifier` (alg pinned, aud, iat, rotation) + conformance | `JEST_JWS_SECRETS` from the Developer Console |
-| Managed Postgres PITR + nightly dumps + restore drill | `restore.verify` job, manifests, `manifest-check`, runbook | a managed database and a backup bucket |
-| Sentry (server) | redaction/scrub module, `SENTRY_DSN` config | a DSN and a project |
+| Managed Postgres PITR + nightly dumps + restore drill | `live.integrity` job, `verifyIsolatedRestore`/`markRestoreVerified`, erasure export/replay (`apps/server/src/cli/dr.ts`), manifests, `manifest-check`, runbook | a managed database and a backup bucket (PITR/dump/R2 are external) |
+| Sentry (server) | real optional wiring (`observability/sentry.ts`: init, release/environment tags, request + command spans, send-time sampling, redaction; tested through an injected transport) | a DSN and a project; the per-game cron monitor |
 | k6 bench, physical-device storage matrix | `docs/capacity.md`, Playwright mobile emulation | a deployed Lab and devices |
-| Docker image push / deploy | `apps/server/Dockerfile` (built locally only if Docker is present) | a registry and a host — deployment is out of scope by instruction |
+| Docker image push / deploy | `apps/server/Dockerfile` (built locally from `git archive HEAD` and smoke-run) | a registry and a host — deployment is out of scope by instruction |
 
 ## Security assumptions
 
