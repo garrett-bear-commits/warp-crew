@@ -224,6 +224,59 @@ describe('F5 code redemption reserves capacity atomically across players', () =>
   });
 });
 
+describe('F14 nearby patterns: business keys shared across players are serialised, never 500', () => {
+  it('two different players presenting receipts for the same provider token concurrently: one recorded, the other rejected (token owned by another player), no 500', async () => {
+    const results = await Promise.all(
+      ['pa', 'pb'].map((p) =>
+        post(p, '/v1/purchases/verify', {
+          commandId: h.uuid(),
+          purchaseSigned: h.receipt({
+            playerKey: p,
+            token: 'shared-tok',
+            sku: 'gems_100',
+            price: 0,
+          }),
+        }),
+      ),
+    );
+    expect(results.map((r) => r.statusCode)).toEqual([200, 200]);
+    const outcomes = results.map((r) => r.json().outcome).sort();
+    expect(outcomes).toEqual(['recorded', 'rejected']);
+    expect(results.find((r) => r.json().outcome === 'rejected')!.json().reason).toBe(
+      'sub_mismatch',
+    );
+    const rows =
+      await h.root`SELECT count(*)::int AS n FROM purchase_transactions WHERE provider_token = 'shared-tok'`;
+    expect(rows[0]!.n).toBe(1);
+  });
+  it('two players starting a run with the same client-minted runId concurrently: one owns it, the other is refused (403), no 500', async () => {
+    await admin('/admin/v1/leaderboards/seasons', {
+      commandId: h.uuid(),
+      board: 'clicks',
+      seasonKey: 'race',
+      rulesVersion: 'v1',
+      status: 'active',
+      startsAt: h.clock.now() - 1000,
+      endsAt: h.clock.now() + 3_600_000,
+      scoreMin: 0,
+      scoreMax: 100000,
+      maxElapsedMs: 600000,
+      quarantineTopN: 1,
+      reason: 'race',
+    });
+    const runId = h.uuid();
+    const results = await Promise.all(
+      ['la', 'lb'].map((p) =>
+        post(p, '/v1/leaderboards/clicks/start', { commandId: h.uuid(), runId }),
+      ),
+    );
+    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 403]);
+    const runs =
+      await h.root`SELECT count(*)::int AS n FROM leaderboard_runs WHERE run_id = ${runId}`;
+    expect(runs[0]!.n).toBe(1);
+  });
+});
+
 describe('F6 outbox lease tokens: two workers, lease expiry, stale finalisation', () => {
   const clock = fixedClock(1_786_924_800_000);
   it('two workers draining the same rows never double-deliver; a stale holder cannot finalise', async () => {

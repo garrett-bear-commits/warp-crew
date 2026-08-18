@@ -197,6 +197,8 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
     if (!boardCfg(board)) throw new AppError('not_found', 'unknown board');
     const season = await activeSeason(t, board, exec.now);
     if (!season) throw new AppError('not_found', 'no active season', { board });
+    // runId is client-minted: serialise on it across players so a shared/forged id cannot 500 on the PK
+    await t`SELECT pg_advisory_xact_lock(7, hashtext(${input.runId}))`;
     const existing = await t<
       {
         run_id: string;
@@ -204,8 +206,11 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
         rules_version: string;
         seed: string;
         started_at: Date;
+        player_key: string;
       }[]
-    >`SELECT run_id, season_key, rules_version, seed, started_at FROM leaderboard_runs WHERE run_id = ${input.runId}`;
+    >`SELECT run_id, season_key, rules_version, seed, started_at, player_key FROM leaderboard_runs WHERE run_id = ${input.runId}`;
+    if (existing[0] && existing[0].player_key !== exec.playerKey)
+      throw new AppError('forbidden', 'runId belongs to another player');
     if (existing[0])
       return {
         runId: input.runId,

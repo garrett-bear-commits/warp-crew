@@ -8,7 +8,13 @@ import type { PendingQuarantine, SnapshotMeta } from '@foundation/contracts';
 import type { CacheEnvelope } from '../storage/envelope.ts';
 
 export type RemoteHead =
-  | { kind: 'empty'; generation: number; erased?: boolean }
+  | {
+      kind: 'empty';
+      generation: number;
+      erased?: boolean;
+      /** A player whose only writes are quarantined: no anchor, but a save awaits review. */
+      pendingQuarantine?: PendingQuarantine;
+    }
   | {
       kind: 'snapshot';
       generation: number;
@@ -78,6 +84,10 @@ export function reconcile<S>(input: ReconcileInput<S>): ReconcileDecision {
     return { action: 'start_new', reason: 'unreachable_new_identity', generation: 0 };
   }
 
+  // A quarantined save deeper than the anchor (or with no anchor at all) awaits review: carried on
+  // every decision so the player learns of it instead of silently starting new / keeping local.
+  const pq = remote.pendingQuarantine ? { pendingQuarantine: remote.pendingQuarantine } : {};
+
   if (remote.kind === 'empty') {
     if (remote.erased)
       return {
@@ -85,7 +95,8 @@ export function reconcile<S>(input: ReconcileInput<S>): ReconcileDecision {
         reason: 'erased',
         generation: Math.max(remote.generation, local?.generation ?? 0),
       };
-    if (!local) return { action: 'start_new', reason: 'both_empty', generation: remote.generation };
+    if (!local)
+      return { action: 'start_new', reason: 'both_empty', generation: remote.generation, ...pq };
     // A newer generation on the server always wins even when it holds no snapshot yet
     // (restart/erase from another device): the client starts fresh in that generation.
     if (remote.generation > local.generation)
@@ -94,15 +105,16 @@ export function reconcile<S>(input: ReconcileInput<S>): ReconcileDecision {
         reason: 'remote_newer_generation',
         generation: remote.generation,
         pushLocalFirst: local.dirty || local.pending !== undefined,
+        ...pq,
       };
     return {
       action: 'keep_local',
       reason: 'remote_empty_local_present',
       generation: local.generation,
+      ...pq,
     };
   }
 
-  const pq = remote.pendingQuarantine ? { pendingQuarantine: remote.pendingQuarantine } : {};
   if (!local)
     return {
       action: 'adopt_remote',

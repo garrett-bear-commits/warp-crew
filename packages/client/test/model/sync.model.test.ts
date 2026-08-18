@@ -147,13 +147,28 @@ class PushDuplicateRetry implements fc.AsyncCommand<Model, Real> {
     const second = await r.client.sync.push('timer');
     await r.client.idle();
     if (second.skipped) return;
-    // the request landed the first time: the retry is a duplicate under the SAME commandId
+    // the request landed the first time: the retry replays under the SAME commandId — `duplicate`
+    // for an anchored original, the ORIGINAL verdict for a refused/quarantined one (audit F3);
+    // a refusal is never turned into "saved"
     if (first.verdict === 'unreachable') {
       expect(second.commandId).toBe(first.commandId);
-      expect(second.verdict).toBe('duplicate');
       const row = r.w.server.rows.find((x) => x.commandId === first.commandId)!;
-      if (row.disposition === 'anchored')
+      const expected =
+        row.disposition === 'anchored'
+          ? 'duplicate'
+          : row.disposition === 'stored_quarantined'
+            ? 'synced_quarantined'
+            : row.reason === 'progress_regression'
+              ? 'refused_regression'
+              : 'refused_stale_generation';
+      expect(second.verdict, `replay of ${row.disposition}/${row.reason ?? '-'}`).toBe(expected);
+      if (row.disposition === 'anchored') {
+        expect(r.client.sync.status().kind).toBe('saved_to_cloud');
         m.synced.push({ generation: row.generation, progress: row.progress });
+      } else {
+        expect(r.client.sync.envelope().lastVerdict).not.toBe('synced');
+        expect(r.client.sync.status().kind).not.toBe('saved_to_cloud');
+      }
     }
   }
   toString = () => 'pushDuplicateRetry';

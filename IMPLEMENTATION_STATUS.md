@@ -20,7 +20,7 @@ Branch `game-foundation-v1` off an empty `main` (main is untouched). Checkpoint 
 | 2 | server spine: bus, idempotency/tombstones, Postgres locks/migrations/roles, outbox DLQ+replay, jobs, limits, auth, health, Docker | done |
 | 3 | saves + lineage: append-only snapshots, dispositions, size/bomb guards, terminal quarantine reviews, generation-only rollback, restore/reattach/erasure/CAS, property + real-PG concurrency tests | done |
 | 4 | identity/purchases/grants: Jest + mock verifiers + conformance, fail-closed tokens, receipt ledgers, sandbox non-minting, real minting off (ADR-024), grants/codes/cohorts | done |
-| 5 | client adapter (`packages/client`) incl. model-based sync tests (540 tests, 0 counterexamples) | done |
+| 5 | client adapter (`packages/client`) incl. model-based sync tests (560 tests, 0 counterexamples; audit fixes F1/F3/F8/F9) | done |
 | 6 | features: achievements, leaderboards L1–2, inbox, announcements, telemetry, journal, liveops (flags/schedules/segments/content/kill switches/minBuild), admin + static inspector (separate origin, strict CSP), Lab QA | done |
 | 7 | template game + Playwright (Chromium + WebKit) + migration/restore/outbox-crash/receipt-replay tests + runbooks + tooling | done |
 
@@ -31,7 +31,7 @@ Run from the repo root on 2026-08-18 (macOS, Node 24.13.1, pnpm 10.30.1, Docker 
 | Command | Result |
 | --- | --- |
 | `pnpm install` | ok (lockfile committed; Node 24.13.1 / pnpm 10.30.1 pinned via `packageManager` + `engine-strict`) |
-| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | exit 0 — prettier clean; eslint 0 errors/0 warnings (incl. `foundation/feature-boundary`, browser-import and `Date.now` rules); tsc clean in every package; Vite builds `apps/template-game/dist` and `apps/server/admin-inspector/dist`; guards 6/6 PASS (mutation-command-id 43 mutations, sql-no-tenancy 219 files, bundle-browser-safe 4 bundle files, feature-shape 13 features, no-secrets 346 files, no-placeholders 305 files); per-package vitest: contracts 26, testkit 3, tooling 41, jest-verify 56, client 538 + model 2, server 38, app-server 21, template-game 33 |
+| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | exit 0 — prettier clean; eslint 0 errors/0 warnings (incl. `foundation/feature-boundary`, browser-import and `Date.now` rules); tsc clean in every package; Vite builds `apps/template-game/dist` and `apps/server/admin-inspector/dist`; guards 6/6 PASS (mutation-command-id 43 mutations, sql-no-tenancy 219 files, bundle-browser-safe 4 bundle files, feature-shape 13 features, no-secrets 346 files, no-placeholders 305 files); per-package vitest: contracts 26, testkit 3, tooling 41, jest-verify 56, client 558 + model 2, server 38, app-server 21, template-game 33 |
 | `pnpm test:unit` (root runner, projects `*:unit` + `*:contract`) | 26 files, 756 tests passed |
 | `DATABASE_URL_TEST=… pnpm test:pg` (real postgres:16, migrations from empty, app role) | 6 files, 89 tests passed — `packages/server/test/pg/{bus,infra}.test.ts`, `apps/server/test/pg/{saves,lineage,money,features}.test.ts` |
 | `pnpm test:model` (fast-check model-based sync tests) | 1 file, 2 tests passed: 400 runs × ≤ 18 commands + 120 runs with invariants after every command, 0 counterexamples |

@@ -23,6 +23,7 @@ jobs:
       CI: 'true'
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
       - uses: pnpm/action-setup@v4
         with: { version: 10.30.1 }
       - uses: actions/setup-node@v4
@@ -36,6 +37,8 @@ jobs:
       - run: pnpm test
       - run: pnpm test:pg
       - run: pnpm test:model
+      - name: OpenAPI breaking-change check vs the last released tag (reports 'unavailable' when no tag exists)
+        run: git fetch --tags --quiet || true && pnpm -F @foundation/contracts openapi:diff
       - name: template game bundle size gate (§3)
         run: node --experimental-strip-types packages/tooling/src/bundle-size.ts apps/template-game/dist 600000
       - name: clean-checkout Docker image build (§10; admin inspector built in a builder stage)

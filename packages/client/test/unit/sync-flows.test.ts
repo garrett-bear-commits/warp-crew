@@ -83,6 +83,179 @@ describe('sync client — push, verdicts, commandId reuse (§5.2 Sync)', () => {
     expect(w.server.rows.filter((r) => r.commandId === ids[0]).length).toBe(1);
   });
 
+  describe('retry replay by commandId (audit F3: anchored → duplicate; refused/quarantined → the ORIGINAL disposition)', () => {
+    /** A fetch that lets the next PUT land on the server but loses its response. */
+    const losingNextPut = (w: ReturnType<typeof makeWorld>) => {
+      const real = w.ff.fetch;
+      const knob = { drop: false };
+      const f: typeof fetch = async (input, init) => {
+        const res = await real(input, init);
+        if (knob.drop && init?.method === 'PUT') {
+          knob.drop = false;
+          throw new TypeError('response lost');
+        }
+        return res;
+      };
+      return { fetch: f, knob };
+    };
+
+    it('retry after an ANCHORED write (response lost) → duplicate: pending acked, lastAckedSeq = the original seq, floor kept, "Saved to cloud" — same from the tombstone (> 7 d)', async () => {
+      for (const tombstone of [false, true]) {
+        const w = makeWorld();
+        const { fetch, knob } = losingNextPut(w);
+        const { client } = w.newClient({ fetch });
+        await client.boot();
+        client.dispatch({ type: 'inc', n: 4 });
+        knob.drop = true;
+        const first = await client.sync.push('important');
+        expect(!first.skipped && first.verdict).toBe('unreachable');
+        const pending = client.sync.envelope().pending!;
+        expect(pending).toBeDefined();
+        const row = w.server.rows.find((r) => r.commandId === pending.commandId)!;
+        expect(row.disposition).toBe('anchored');
+        if (tombstone) w.server.pruneCommandRows();
+        const retry = await client.sync.push('important');
+        expect(!retry.skipped && retry.verdict).toBe('duplicate');
+        expect(!retry.skipped && retry.commandId).toBe(pending.commandId);
+        expect(!retry.skipped && retry.result?.reason).toBeUndefined();
+        expect(!retry.skipped && retry.result?.flags).toBeUndefined();
+        const env = client.sync.envelope();
+        expect(env.pending).toBeUndefined();
+        expect(env.lastAckedSeq).toBe(row.seq);
+        expect(env.lastVerdict).toBe('duplicate');
+        expect(env.lastSyncedAt).not.toBeNull();
+        expect(env.ratchetFloor).toEqual({ playerId: 'guest-1', generation: 0, progress: 4 });
+        expect(client.sync.status().kind).toBe('saved_to_cloud');
+        expect(client.sync.statusText()).toMatch(/^Saved to cloud/);
+        // one row, no second write
+        expect(w.server.rows.filter((r) => r.commandId === pending.commandId).length).toBe(1);
+        expect(putBodies(w).filter((b) => b.commandId === pending.commandId).length).toBe(2);
+      }
+    });
+
+    it('retry after a REFUSED write (response lost) → the same refused_regression as the first time: pending dropped (not acked), lastAckedSeq unchanged, local kept, head re-check triggered, never "saved to cloud" — same from the tombstone', async () => {
+      for (const tombstone of [false, true]) {
+        const w = makeWorld();
+        const { fetch, knob } = losingNextPut(w);
+        const { client } = w.newClient({ fetch });
+        await client.boot();
+        client.dispatch({ type: 'inc', n: 2 });
+        const ok = await client.sync.push('important');
+        expect(!ok.skipped && ok.verdict).toBe('synced');
+        const ackedSeq = client.sync.envelope().lastAckedSeq;
+        w.server.otherDeviceWrite(
+          50,
+          JSON.stringify({ schemaVersion: 2, state: { count: 50, ticks: 0, progress: 50 } }),
+        );
+        client.dispatch({ type: 'inc', n: 1 });
+        knob.drop = true;
+        const first = await client.sync.push('important');
+        expect(!first.skipped && first.verdict).toBe('unreachable');
+        const pending = client.sync.envelope().pending!;
+        const row = w.server.rows.find((r) => r.commandId === pending.commandId)!;
+        expect(row.disposition).toBe('stored_refused');
+        expect(row.reason).toBe('progress_regression');
+        if (tombstone) w.server.pruneCommandRows();
+        const events: SyncEvent<CounterState>[] = [];
+        client.sync.onEvent((e) => events.push(e));
+        const retry = await client.sync.push('important');
+        expect(!retry.skipped && retry.verdict).toBe('refused_regression');
+        expect(!retry.skipped && retry.commandId).toBe(pending.commandId);
+        expect(!retry.skipped && retry.result?.disposition).toBe('stored_refused');
+        expect(!retry.skipped && retry.result?.reason).toBe('progress_regression');
+        expect(!retry.skipped && retry.result?.currentProgress).toBe(50);
+        expect(!retry.skipped && retry.result?.seq).toBe(row.seq);
+        const env = client.sync.envelope();
+        expect(env.pending).toBeUndefined(); // retrying the same snapshot cannot help
+        expect(env.lastAckedSeq).toBe(ackedSeq); // NOT acked as if saved
+        expect(env.lastVerdict).toBe('refused_regression');
+        expect(env.lastVerdict).not.toBe('synced');
+        expect(env.progress).toBe(3); // local copy kept
+        expect(client.state().progress).toBe(3);
+        expect(env.ratchetFloor).toEqual({ playerId: 'guest-1', generation: 0, progress: 3 });
+        expect(client.sync.status().kind).not.toBe('saved_to_cloud');
+        expect(client.sync.statusText()).not.toMatch(/Saved to cloud/);
+        // the same head re-check path as a first-time refusal: server_deeper → recheck → the deeper
+        // cloud copy against a dirty local → prompt
+        expect(events.some((e) => e.type === 'server_deeper' && e.serverProgress === 50)).toBe(
+          true,
+        );
+        await w.timers.flush();
+        expect(client.bootMachine.state().phase).toBe('prompt');
+        expect(client.bootMachine.state().prompt?.remote.progress).toBe(50);
+        client.bootMachine.resolvePrompt('keep_local');
+        await client.idle();
+        expect(client.bootMachine.state().phase).toBe('live');
+        expect(w.server.rows.filter((r) => r.commandId === pending.commandId).length).toBe(1);
+      }
+    });
+
+    it('retry after a QUARANTINED write (response lost) → synced_quarantined ("Saved, pending review"): pending acked as awaiting review, lastAckedSeq = seq, never "saved to cloud" — same from the tombstone', async () => {
+      for (const tombstone of [false, true]) {
+        const w = makeWorld();
+        w.server = new (
+          w.server.constructor as typeof import('../helpers/server-model.ts').ServerTruth
+        )({ gameId: 'game', now: w.clock.now, knownSchemaVersions: [1] });
+        w.ff.reset();
+        w.server.mount(w.ff);
+        const { fetch, knob } = losingNextPut(w);
+        const { client } = w.newClient({ fetch });
+        await client.boot();
+        client.dispatch({ type: 'inc', n: 3 });
+        knob.drop = true;
+        const first = await client.sync.push('important');
+        expect(!first.skipped && first.verdict).toBe('unreachable');
+        const pending = client.sync.envelope().pending!;
+        const row = w.server.rows.find((r) => r.commandId === pending.commandId)!;
+        expect(row.disposition).toBe('stored_quarantined');
+        if (tombstone) w.server.pruneCommandRows();
+        const retry = await client.sync.push('important');
+        expect(!retry.skipped && retry.verdict).toBe('synced_quarantined');
+        expect(!retry.skipped && retry.result?.disposition).toBe('stored_quarantined');
+        expect(!retry.skipped && retry.result?.flags).toEqual(['schema_unknown']);
+        const env = client.sync.envelope();
+        expect(env.pending).toBeUndefined(); // delivered: awaiting review, not retried
+        expect(env.lastAckedSeq).toBe(row.seq);
+        expect(env.lastVerdict).toBe('synced_quarantined');
+        expect(env.lastSyncedAt).toBeNull();
+        expect(env.ratchetFloor).toEqual({ playerId: 'guest-1', generation: 0, progress: 3 });
+        expect(client.sync.status().kind).toBe('pending_review');
+        expect(client.sync.statusText()).toBe('Saved, pending review');
+        expect(w.server.rows.filter((r) => r.commandId === pending.commandId).length).toBe(1);
+      }
+    });
+
+    it('a duplicate that (tolerantly) still carries flags/reason is never "saved to cloud"', async () => {
+      const w = makeWorld();
+      const { client } = w.newClient();
+      await client.boot();
+      client.dispatch({ type: 'inc', n: 1 });
+      // an old server replaying `duplicate` + the original quarantine flags
+      w.ff.on('PUT', '/v1/saves', (call) => {
+        const b = call.body as SaveWriteBody;
+        return new Response(
+          JSON.stringify({
+            disposition: 'duplicate',
+            flags: ['progress_jump'],
+            seq: 3,
+            currentProgress: 0,
+            generation: b.generation,
+            blobSha256: 'a'.repeat(64),
+            requestId: 'r',
+            serverNow: w.clock.now(),
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      });
+      const r = await client.sync.push('important');
+      expect(!r.skipped && r.verdict).toBe('synced_quarantined');
+      expect(client.sync.envelope().lastVerdict).toBe('synced_quarantined');
+      expect(client.sync.envelope().lastSyncedAt).toBeNull();
+      expect(client.sync.envelope().lastAckedSeq).toBe(3);
+      expect(client.sync.statusText()).toBe('Saved, pending review');
+    });
+  });
+
   it('a newer snapshot replaces an unacked pending with a NEW commandId (payload never drifts under one id)', async () => {
     const w = makeWorld();
     const { client } = w.newClient();

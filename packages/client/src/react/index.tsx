@@ -3,7 +3,7 @@
 // useTeardown, useTickScheduler, useEffects(kinds), defineModals + ONE Z table, MaintenanceScreen,
 // UpdateBanner, Inbox, SyncPill, PrivacyPanel (diagnostics toggle only), useGameState(selector).
 // React 19, no CSS framework: every element carries a stable `foundation-*` className hook.
-import type { InboxLetter } from '@foundation/contracts';
+import type { InboxLetter, PendingQuarantine } from '@foundation/contracts';
 import type { SyncVerdict } from '@foundation/contracts/enums';
 import {
   Component,
@@ -147,6 +147,12 @@ export interface SaveSyncView {
   text: string;
   lastVerdict: SyncVerdict | null;
   lastReport: PushReport | null;
+  /**
+   * A newer (or the only) save awaits review on the server, as of the last head check — set even
+   * when this device's cache was empty and the remote had no anchor (audit F8): the player learns
+   * "a newer save is awaiting review" instead of silently starting new.
+   */
+  pendingReview: PendingQuarantine | null;
   saveNow(): void;
 }
 
@@ -175,7 +181,17 @@ export function useSaveSync<S, A, E extends Effect>(
     const status: SyncStatus = booted ? client.sync.status() : { kind: 'local_only' };
     const text = booted ? client.sync.statusText() : 'Loading…';
     const lastVerdict = booted ? client.sync.envelope().lastVerdict : null;
-    return { status, text, lastVerdict, lastReport, saveNow: () => client.saveNow('important') };
+    const pendingReview = booted
+      ? (client.bootMachine.state().pendingQuarantine ?? client.sync.pendingQuarantine())
+      : null;
+    return {
+      status,
+      text,
+      lastVerdict,
+      lastReport,
+      pendingReview,
+      saveNow: () => client.saveNow('important'),
+    };
   }, [client, tick, lastReport]);
 }
 

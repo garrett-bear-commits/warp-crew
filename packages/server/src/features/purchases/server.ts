@@ -172,10 +172,15 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
     if (v.purchases.length !== 1) return { outcome: 'rejected', reason: 'malformed_purchase' };
     const r = v.purchases[0]!;
     if (r.playerId !== playerKey) return { outcome: 'rejected', reason: 'sub_mismatch' };
-    // provider token = business key (grant-before-confirm: a retry with a new commandId is still one purchase)
+    // provider token = business key (grant-before-confirm: a retry with a new commandId is still one purchase).
+    // Serialise on the token across players (a lock, never ON CONFLICT DO NOTHING on a ledger append).
+    await t`SELECT pg_advisory_xact_lock(6, hashtext(${r.purchaseToken}))`;
     const existing = await t<
-      TxRow[]
-    >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, created_at, completed_at, recorded_at FROM purchase_transactions WHERE provider_token = ${r.purchaseToken}`;
+      (TxRow & { player_key: string })[]
+    >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, created_at, completed_at, recorded_at, player_key FROM purchase_transactions WHERE provider_token = ${r.purchaseToken}`;
+    // a token already recorded for ANOTHER player is never replayed to this one
+    if (existing[0] && existing[0].player_key !== playerKey)
+      return { outcome: 'rejected', reason: 'sub_mismatch' };
     if (existing[0]) return { outcome: 'duplicate', purchase: toRecord(existing[0]) };
     const c = classifyReceipt(r, game.catalog);
     let granted = 0;

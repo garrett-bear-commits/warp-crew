@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import fc from 'fast-check';
 import type { SaveWriteBody } from '@foundation/contracts';
 import { makeWorld } from '../helpers/world.ts';
 import { createSlot, slotKey } from '../../src/storage/envelope.ts';
@@ -339,6 +340,129 @@ describe('boot machine (§5.2 State lifecycle)', () => {
     expect(client.bootMachine.state().pendingQuarantine?.progress).toBe(5000);
     expect(client.state().progress).toBe(5);
   });
+
+  describe('pendingQuarantine on both head shapes (audit F8)', () => {
+    const pq = { seq: 1, progress: 9, flags: ['schema_unknown'], receivedAt: 5 };
+    it('empty cache + `{empty:true, generation, pendingQuarantine}` (only quarantined writes) → start_new, but boot state, sync and the view all expose "pending review"', async () => {
+      const w = makeWorld({ registered: true, localStorage: null });
+      w.ff.on(
+        'GET',
+        '/v1/saves/current',
+        () =>
+          new Response(
+            JSON.stringify({
+              empty: true,
+              generation: 0,
+              pendingQuarantine: pq,
+              requestId: 'r',
+              serverNow: w.clock.now(),
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+      );
+      const { client } = w.newClient();
+      const r = await client.boot();
+      expect(r.decision.action).toBe('start_new');
+      expect(r.decision.reason).toBe('both_empty');
+      expect(r.decision.pendingQuarantine).toEqual(pq);
+      expect(client.bootMachine.state().pendingQuarantine).toEqual(pq);
+      expect(client.sync.pendingQuarantine()).toEqual(pq);
+      expect(client.state().progress).toBe(0);
+      // fetchHead preserves it on the empty shape
+      const h = await client.sync.fetchHead({ withBlob: false });
+      expect(h.ok && h.head.kind === 'empty' && h.head.pendingQuarantine).toEqual(pq);
+    });
+
+    it('the same against the server model: a player whose only writes are quarantined; a second empty device learns of the pending save; local slot present + empty remote with pending → keep_local + pending', async () => {
+      const w = makeWorld();
+      w.server = new (
+        w.server.constructor as typeof import('../helpers/server-model.ts').ServerTruth
+      )({ gameId: 'game', now: w.clock.now, knownSchemaVersions: [1] });
+      w.ff.reset();
+      w.server.mount(w.ff);
+      w.server.otherDeviceWrite(7, blob(7)); // schemaVersion 2 unknown → quarantined, no anchor
+      expect(w.server.current(false)).toMatchObject({
+        empty: true,
+        pendingQuarantine: { progress: 7 },
+      });
+      // device with an empty cache
+      const { client } = w.newClient({ localStorage: null });
+      const r = await client.boot();
+      expect(r.decision).toMatchObject({
+        action: 'start_new',
+        reason: 'both_empty',
+        pendingQuarantine: { progress: 7, seq: expect.any(Number) },
+      });
+      expect(client.bootMachine.state().pendingQuarantine?.progress).toBe(7);
+      // device with a local slot: keep_local, still told about the pending review
+      const { client: c2 } = w.newClient();
+      await c2.boot();
+      c2.dispatch({ type: 'inc', n: 1 });
+      await c2.sync.autosave();
+      c2.destroy();
+      const { client: c3 } = w.newClient();
+      const r3 = await c3.boot();
+      expect(r3.decision.action).toBe('keep_local');
+      expect(r3.decision.pendingQuarantine?.progress).toBe(7);
+      expect(c3.bootMachine.state().pendingQuarantine?.progress).toBe(7);
+      // a manual re-check keeps it, and clears it once the server no longer reports one
+      await c3.bootMachine.recheck();
+      expect(c3.bootMachine.state().pendingQuarantine?.progress).toBe(7);
+      w.server.rows = [];
+      await c3.bootMachine.recheck();
+      expect(c3.bootMachine.state().pendingQuarantine).toBeNull();
+      expect(c3.sync.pendingQuarantine()).toBeNull();
+    });
+
+    it('snapshot + pendingQuarantine shape → adopt the anchor AND expose the pending review (adoptRemote keeps it on the head)', async () => {
+      const w = makeWorld({ localStorage: null });
+      const snapshot = {
+        seq: 2,
+        generation: 0,
+        progress: 5,
+        clientSeq: 0,
+        baseSeq: 0,
+        sessionId: '00000000-0000-4000-8000-00000000dead',
+        commandId: '00000000-0000-4000-8000-00000000c0de',
+        savedAt: 1,
+        receivedAt: 1,
+        bytes: 1,
+        encBytes: 1,
+        blobSha256: 'a'.repeat(64),
+        schemaVersion: 2,
+        buildVersion: 'x',
+        reason: 'autosave',
+        disposition: 'anchored',
+        flags: [],
+        hasBlob: true,
+      };
+      w.ff.on(
+        'GET',
+        '/v1/saves/current',
+        (call) =>
+          new Response(
+            JSON.stringify({
+              empty: false,
+              generation: 0,
+              snapshot,
+              pendingQuarantine: { ...pq, seq: 3, progress: 900 },
+              ...(call.url.includes('meta=1') ? {} : { blob: blob(5), enc: 'json' }),
+              requestId: 'r',
+              serverNow: w.clock.now(),
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+      );
+      const { client } = w.newClient();
+      const r = await client.boot();
+      expect(r.decision.action).toBe('adopt_remote');
+      expect(client.state().progress).toBe(5);
+      expect(client.bootMachine.state().pendingQuarantine).toMatchObject({ seq: 3, progress: 900 });
+      expect(client.sync.pendingQuarantine()).toMatchObject({ seq: 3, progress: 900 });
+      const h = await client.sync.fetchHead({ withBlob: true });
+      expect(h.ok && h.head.kind === 'snapshot' && h.head.pendingQuarantine?.seq).toBe(3);
+    });
+  });
 });
 
 describe('restore (§1, §5.2 Restore, ADR-005 break-glass)', () => {
@@ -524,6 +648,211 @@ describe('identity switch (§5.2 guest → account)', () => {
     platform.controls.switchIdentity('acct-3', true);
     await w.timers.flush();
     expect(outcomes[0]!.kind).toBe('kept_target');
+  });
+
+  describe('after the switch every path uses the CURRENT player (audit F1)', () => {
+    /** Auth identity of every recorded call/beacon at index ≥ from. */
+    const identitiesSince = (
+      w: ReturnType<typeof makeWorld>,
+      from: number,
+      beaconsFrom: number,
+    ) => {
+      const keys = w.ff.calls.slice(from).map((c) => ({
+        url: c.url,
+        key: c.headers['x-player-key'],
+        token: c.headers['authorization'],
+      }));
+      const beacons = w.beacons.slice(beaconsFrom).map((b) => {
+        const body = JSON.parse(b.body) as { playerKey: string; token: string };
+        return { url: b.url, key: body.playerKey, token: body.token };
+      });
+      return [...keys, ...beacons];
+    };
+
+    it('guest → account, then long hide → visible / server_deeper / broadcast / manual recheck / timers / beacon: only the account identity, envelope and slot are used; the guest sync is retired and its slot never written again', async () => {
+      let listener: ((ev: { data: unknown }) => void) | null = null;
+      const w = makeWorld();
+      const { client, platform } = w.newClient({
+        sync: { longHideMs: 60_000, autosaveMs: 10_000, pushMs: 60_000, headCheckMs: 800 },
+        channel: () => {
+          const ch = {
+            onmessage: null as ((ev: { data: unknown }) => void) | null,
+            postMessage() {},
+            close() {},
+          };
+          queueMicrotask(() => {
+            listener = ch.onmessage;
+          });
+          return ch;
+        },
+      });
+      await client.boot();
+      const guestSync = client.sync;
+      client.dispatch({ type: 'inc', n: 6 });
+      platform.controls.switchIdentity('acct-1', true);
+      await w.timers.flush();
+      await client.idle();
+      expect(client.player?.playerId).toBe('acct-1');
+      expect(client.sync.playerId).toBe('acct-1');
+      // the boot machine was rebound: its player and sync are the account's
+      expect(client.bootMachine.state().player?.playerId).toBe('acct-1');
+      expect(client.bootMachine.sync()).toBe(client.sync);
+      expect(client.bootMachine.state().phase).toBe('live');
+      // the guest sync is retired for good
+      expect(guestSync.retired()).toBe(true);
+      expect((await guestSync.push('important')).skipped).toBe('retired');
+      expect(guestSync.beacon()).toBe(false);
+      expect(await guestSync.autosave()).toBe(false);
+      expect(await guestSync.shipJournal()).toBe(false);
+      expect((await guestSync.bootRepush()).skipped).toBe('retired');
+      guestSync.start(); // cannot be restarted
+      const guestSlotAfterSwitch = w.ls!.getItem(slotKey('game', 'guest-1'));
+      const mark = w.ff.calls.length;
+      const beaconMark = w.beacons.length;
+
+      // 1. visible after a long hide → head re-check with the ACCOUNT's sync/envelope/slot
+      platform.controls.setVisible(false);
+      await w.timers.flush();
+      w.server.forPlayer('acct-1').otherDeviceWrite(40, blob(40));
+      await w.timers.advance(120_000);
+      platform.controls.setVisible(true);
+      await w.timers.flush();
+      await client.idle();
+      expect(client.state().progress).toBe(40);
+      expect(client.sync.envelope().playerId).toBe('acct-1');
+      expect(client.sync.envelope().progress).toBe(40);
+      expect(w.ls!.getItem(slotKey('game', 'acct-1'))).toContain('"progress":40');
+
+      // 2. server_deeper (refused_regression) → immediate re-check with the account
+      w.server.forPlayer('acct-1').otherDeviceWrite(80, blob(80));
+      client.dispatch({ type: 'inc', n: 1 });
+      const r = await client.sync.push('important');
+      expect(!r.skipped && r.verdict).toBe('refused_regression');
+      await w.timers.flush();
+      expect(client.bootMachine.state().phase).toBe('prompt');
+      expect(client.bootMachine.state().prompt?.remote.progress).toBe(80);
+      client.bootMachine.resolvePrompt('adopt_remote');
+      await client.idle();
+      expect(client.state().progress).toBe(80);
+      expect(client.bootMachine.state().phase).toBe('live');
+
+      // 3. broadcast: a sibling tab announces a newer generation for the account (a guest
+      //    announcement is ignored)
+      listener!({
+        data: { type: 'generation', gameId: 'game', playerId: 'guest-1', generation: 9, at: 0 },
+      });
+      await client.idle();
+      expect(client.sync.envelope().generation).toBe(0);
+      w.server.forPlayer('acct-1').restart({ progress: 1, blob: blob(1) });
+      listener!({
+        data: { type: 'generation', gameId: 'game', playerId: 'acct-1', generation: 1, at: 0 },
+      });
+      await client.idle();
+      expect(client.sync.envelope().generation).toBe(1);
+      expect(client.state().progress).toBe(1);
+
+      // 4. manual recheck + timers (autosave/push/journal/integrity) + teardown beacon
+      client.dispatch({ type: 'inc', n: 2 });
+      await client.bootMachine.recheck();
+      client.reportError(new Error('boom'));
+      await w.timers.advance(130_000);
+      client.dispatch({ type: 'inc', n: 1 }); // something new to beacon at teardown
+      platform.controls.setVisible(false);
+      await w.timers.flush();
+      platform.controls.firePageHide();
+      await w.timers.flush();
+      await client.idle();
+      expect(w.beacons.length).toBeGreaterThan(beaconMark);
+
+      // every request/beacon after the switch is the account's; none the guest's
+      const ids = identitiesSince(w, mark, beaconMark);
+      expect(ids.length).toBeGreaterThan(5);
+      for (const c of ids) {
+        expect(c.key, c.url).toBe('acct-1');
+        expect(c.token, c.url).toMatch(/mock\.acct-1\./);
+      }
+      expect(ids.some((c) => c.url.endsWith('/v1/journal'))).toBe(true);
+      expect(ids.some((c) => c.url.endsWith('/v1/telemetry/integrity'))).toBe(true);
+      // the guest slot was never written after the switch
+      expect(w.ls!.getItem(slotKey('game', 'guest-1'))).toBe(guestSlotAfterSwitch);
+      expect(guestSync.envelope().playerId).toBe('guest-1');
+      client.destroy();
+    });
+
+    it('property: after N random switches with random ops between, no request ever carries a stale identity and no previous slot is written', async () => {
+      const ops = ['dispatch', 'push', 'hideLong', 'recheck', 'tick', 'saveNow', 'switch'] as const;
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.constantFrom(...ops), { minLength: 6, maxLength: 16 }),
+          async (script) => {
+            const w = makeWorld();
+            const { client, platform } = w.newClient({
+              sync: { longHideMs: 60_000, autosaveMs: 30_000, pushMs: 60_000, headCheckMs: 800 },
+            });
+            await client.boot();
+            let current = 'guest-1';
+            let n = 0;
+            let mark = w.ff.calls.length;
+            let beaconMark = w.beacons.length;
+            const frozen = new Map<string, string | null>();
+            const check = () => {
+              for (const c of identitiesSince(w, mark, beaconMark)) {
+                expect(c.key, `${c.url} after switch to ${current}`).toBe(current);
+                expect(c.token, c.url).toMatch(new RegExp(`mock\\.${current}\\.`));
+              }
+              for (const [id, raw] of frozen)
+                expect(w.ls!.getItem(slotKey('game', id)), `slot ${id} written`).toBe(raw);
+              expect(client.player?.playerId).toBe(current);
+              expect(client.sync.playerId).toBe(current);
+              expect(client.bootMachine.state().player?.playerId).toBe(current);
+              expect(client.bootMachine.sync()?.playerId).toBe(current);
+            };
+            for (const op of script) {
+              switch (op) {
+                case 'dispatch':
+                  client.dispatch({ type: 'inc', n: 1 });
+                  break;
+                case 'push':
+                  await client.sync.push('important');
+                  break;
+                case 'hideLong':
+                  platform.controls.setVisible(false);
+                  await w.timers.advance(61_000);
+                  platform.controls.setVisible(true);
+                  break;
+                case 'recheck':
+                  await client.bootMachine.recheck();
+                  break;
+                case 'tick':
+                  await w.timers.advance(61_000);
+                  break;
+                case 'saveNow':
+                  client.saveNow('important');
+                  break;
+                case 'switch': {
+                  const prevSync = client.sync;
+                  const next = `acct-${++n}`;
+                  platform.controls.switchIdentity(next, true);
+                  await w.timers.flush();
+                  await client.idle();
+                  expect(prevSync.retired()).toBe(true);
+                  frozen.set(current, w.ls!.getItem(slotKey('game', current)));
+                  current = next;
+                  mark = w.ff.calls.length;
+                  beaconMark = w.beacons.length;
+                  break;
+                }
+              }
+              await w.timers.flush();
+              await client.idle();
+              check();
+            }
+            client.destroy();
+          },
+        ),
+        { numRuns: 10 },
+      );
+    }, 60_000);
   });
 });
 

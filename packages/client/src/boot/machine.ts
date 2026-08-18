@@ -92,6 +92,17 @@ export interface BootMachine<S> {
   /** Force a bounded head re-check + reconcile now (visible after long hide, manual refresh). */
   recheck(): Promise<ReconcileDecision | null>;
   sync(): SyncClient<S> | null;
+  /**
+   * Identity switch (audit F1): the adapter built a NEW sync/slot for the new player; every later
+   * re-check (visible after a long hide, server_deeper, broadcast, manual) must use it. A re-check
+   * that was in flight for the previous player is abandoned at its next await.
+   */
+  rebind(binding: {
+    player: Player;
+    sync: SyncClient<S>;
+    slot: Slot<S>;
+    decision?: ReconcileDecision;
+  }): void;
 }
 
 export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
@@ -165,18 +176,22 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     };
   };
 
-  /** Act on a decision against the current sync envelope. Returns false when the adoption failed. */
+  /** The sync client this step started with was replaced (identity switch): abandon the step. */
+  const stale = (s: SyncClient<S>): boolean => s !== sync;
+
+  /** Act on a decision against `s`'s envelope. Returns false when the adoption failed / was abandoned. */
   const act = async (
+    s: SyncClient<S>,
     decision: ReconcileDecision,
     head: RemoteHead | null,
     hadLocal: boolean,
   ): Promise<boolean> => {
-    const s = sync!;
     switch (decision.action) {
       case 'keep_local':
         return true;
       case 'adopt_remote': {
         if (decision.pushLocalFirst && hadLocal) await s.bootRepush();
+        if (stale(s)) return false;
         const env = s.envelope();
         const needAdopt =
           !!head &&
@@ -199,6 +214,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
           return false;
         }
         if (decision.pushLocalFirst && hadLocal) await s.bootRepush();
+        if (stale(s)) return false;
         s.startNew(decision.generation, 'boot');
         return true;
       }
@@ -207,6 +223,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
         if (!p) return true;
         const choice = await waitPrompt(p);
         if (choice === 'keep_local') return true;
+        if (stale(s)) return false;
         const r = await s.adoptRemote(head!, 'boot');
         if (!r.ok) {
           note(`adopt failed: ${r.reason}; keeping local`);
@@ -220,13 +237,14 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
   };
 
   const headCheck = async (
+    s: SyncClient<S>,
     timeoutMs: number,
   ): Promise<{
     head: RemoteHead | null;
     unreachable: boolean;
     blocked: 'update_required' | null;
   }> => {
-    const r = await sync!.fetchHead({ withBlob: false, timeoutMs });
+    const r = await s.fetchHead({ withBlob: false, timeoutMs });
     if (r.ok) return { head: r.head, unreachable: false, blocked: null };
     if (r.verdict === 'update_required')
       return { head: null, unreachable: false, blocked: 'update_required' };
@@ -265,7 +283,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     let decision: ReconcileDecision;
     let head: RemoteHead | null = null;
     for (;;) {
-      const hc = await headCheck(local ? headCheckMs : emptyCacheMs);
+      const hc = await headCheck(sync, local ? headCheckMs : emptyCacheMs);
       if (hc.blocked) {
         set({ phase: 'blocked', blockedReason: hc.blocked });
         throw new Error('update required');
@@ -288,7 +306,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
       set({ phase: 'checkingCloud' });
     }
 
-    await act(decision, head, local !== null);
+    await act(sync, decision, head, local !== null);
     if (phase() === 'blocked') throw new Error(`blocked: ${st.blockedReason}`);
     set({ phase: 'reconciled', prompt: null });
     // §5.2: re-push the last unacked snapshot before offline credit is computed by the loop
@@ -305,13 +323,17 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
   };
 
   const recheck = async (): Promise<ReconcileDecision | null> => {
-    if (!sync || phase() !== 'live') return null;
-    const hc = await headCheck(headCheckMs);
+    // bind to the CURRENT player's sync for the whole step: an identity switch mid-flight makes
+    // this step stale and it stops before touching the new player's envelope
+    const s = sync;
+    if (!s || s.retired() || phase() !== 'live') return null;
+    const hc = await headCheck(s, headCheckMs);
+    if (stale(s)) return null;
     if (hc.blocked) {
       set({ phase: 'blocked', blockedReason: hc.blocked });
       return null;
     }
-    const env = sync.envelope();
+    const env = s.envelope();
     const decision = reconcile({
       local: env,
       remote: hc.head,
@@ -321,7 +343,8 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     set({ decision, pendingQuarantine: decision.pendingQuarantine ?? null });
     if (decision.action === 'keep_local' || decision.action === 'cloud_unreachable')
       return decision;
-    await act(decision, hc.head, true);
+    await act(s, decision, hc.head, true);
+    if (stale(s)) return null;
     if (phase() !== 'blocked') set({ phase: 'live', prompt: null });
     return decision;
   };
@@ -349,6 +372,20 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     },
     recheck,
     sync: () => sync,
+    rebind(binding) {
+      sync = binding.sync;
+      slot = binding.slot;
+      set({
+        player: binding.player,
+        ...(binding.decision
+          ? {
+              decision: binding.decision,
+              pendingQuarantine: binding.decision.pendingQuarantine ?? null,
+            }
+          : {}),
+        prompt: null,
+      });
+    },
   };
 }
 

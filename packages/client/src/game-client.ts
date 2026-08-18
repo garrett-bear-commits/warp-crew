@@ -182,12 +182,13 @@ export function createGameClient<S, A, E extends Effect>(
   const integrityQueue: IntegrityEvent[] = [];
   let integrityInFlight: { commandId: string; events: IntegrityEvent[] } | null = null;
 
-  const currentAuth = (): ClientAuth | null => {
-    if (!player) return null;
-    const token = platform.identity.tokenFor(player.playerId);
+  /** Auth for ONE player: null once the provider no longer vouches for that id (identity switch). */
+  const authFor = (playerId: string): ClientAuth | null => {
+    const token = platform.identity.tokenFor(playerId);
     if (!token) return null;
-    return { playerKey: player.playerId, token, buildVersion };
+    return { playerKey: playerId, token, buildVersion };
   };
+  const currentAuth = (): ClientAuth | null => (player ? authFor(player.playerId) : null);
   const api: Api = createApi({
     baseUrl: cfg.serverUrl,
     ...(cfg.fetch ? { fetch: cfg.fetch } : {}),
@@ -263,7 +264,9 @@ export function createGameClient<S, A, E extends Effect>(
       codec,
       slot: s,
       envelope: env,
-      auth: currentAuth,
+      // bound to THIS player: after an identity switch the previous player's client can never
+      // carry the new player's token (audit F1)
+      auth: () => authFor(p.playerId),
       clock,
       timers,
       gate,
@@ -340,7 +343,8 @@ export function createGameClient<S, A, E extends Effect>(
   });
 
   const flushIntegrity = async (): Promise<void> => {
-    if (!sync || !currentAuth()) return;
+    // followers hold their events (never lost) and ship once they lead (audit F9)
+    if (!sync || !leader.isLeader() || !currentAuth()) return;
     if (!integrityInFlight) {
       if (integrityQueue.length === 0) return;
       integrityInFlight = { commandId: mintId(), events: integrityQueue.splice(0, 20) };
@@ -404,13 +408,19 @@ export function createGameClient<S, A, E extends Effect>(
     });
   };
 
-  /** Bind a player after an identity switch: slot + sync + bounded head check + reconcile. */
+  /**
+   * Bind a player after an identity switch: retire the previous player's sync (its timers, beacon,
+   * journal shipping and slot writes stop for good), then slot + sync + bounded head check +
+   * reconcile for the new player, and hand the new binding to the boot machine so every later
+   * re-check uses the CURRENT player's sync/auth/envelope/slot (audit F1).
+   */
   const rebind = async (
     next: Player,
   ): Promise<{ sync: SyncClient<S>; hadLocal: boolean; remoteEmpty: boolean }> => {
-    sync?.stop();
+    sync?.retire();
     player = next;
     writeLastKnownPlayerId(storage, gameId, next.playerId);
+    if (spool) journal.bindSpool(spool, journalSpoolKey(gameId, next.playerId));
     const s = createSlot(storage, slotKey(gameId, next.playerId), codec, {
       gameId,
       playerId: next.playerId,
@@ -418,6 +428,7 @@ export function createGameClient<S, A, E extends Effect>(
     const read = s.read();
     const local = read.ok ? read.envelope : null;
     const sc = buildSync(next, local ?? freshEnvelope(next), s);
+    bootMachine.rebind({ player: next, sync: sc, slot: s });
     const head = await sc.fetchHead({ withBlob: false });
     const remote = head.ok ? head.head : null;
     const decision = reconcile({
@@ -432,8 +443,9 @@ export function createGameClient<S, A, E extends Effect>(
     } else if (decision.action === 'start_new' && decision.reason !== 'erased') {
       sc.startNew(decision.generation, 'boot');
     }
+    if (sc === sync) bootMachine.rebind({ player: next, sync: sc, slot: s, decision });
     buildRestore();
-    if (leader.isLeader()) sc.start();
+    if (leader.isLeader() && sc === sync) sc.start();
     return { sync: sc, hadLocal: local !== null, remoteEmpty: !remote || remote.kind === 'empty' };
   };
 
@@ -452,6 +464,21 @@ export function createGameClient<S, A, E extends Effect>(
   const boot = async (): Promise<BootResult<S>> => {
     if (cfg.requestPersist !== false) void requestPersistentStorage();
     spool = cfg.spool === undefined ? await createSpool() : (cfg.spool ?? memorySpool());
+    // leader election FIRST: only the leader writes (slot, boot re-push, adoption persist);
+    // followers are read-only with "Play here". Deciding it before the boot machine runs means the
+    // leader's boot re-push and adoption persist actually happen, and a follower never writes.
+    await leader.request();
+    cleanups.push(
+      leader.onChange((r) => {
+        emit({ type: 'leader', role: r });
+        // demoted (another tab took over): stop the loop AND every background mutation path;
+        // queued journal entries / integrity events are held until this tab leads again (audit F9)
+        if (r === 'follower') {
+          loop.stop();
+          sync?.stop();
+        }
+      }),
+    );
     const result = await bootMachine.boot();
     const p = result.player;
     booted = true;
@@ -459,16 +486,9 @@ export function createGameClient<S, A, E extends Effect>(
     journal.bindSpool(spool, journalSpoolKey(gameId, p.playerId));
     await journal.load();
     buildRestore();
-    // leader election: only the leader writes; followers are read-only with "Play here"
-    const role = await leader.request();
-    emit({ type: 'leader', role });
-    cleanups.push(
-      leader.onChange((r) => {
-        emit({ type: 'leader', role: r });
-        if (r === 'follower') loop.stop();
-      }),
-    );
-    if (role === 'leader') {
+    emit({ type: 'leader', role: leader.role() });
+    // the role may have flipped during boot (another tab took over): consult it now
+    if (leader.isLeader()) {
       loop.start();
       sync!.start();
     }
@@ -497,11 +517,12 @@ export function createGameClient<S, A, E extends Effect>(
     // sibling tabs / other devices moved to a newer generation
     cleanups.push(
       bus.onGenerationChanged((m) => {
-        if (!sync || m.playerId !== sync.playerId || m.generation <= sync.envelope().generation)
-          return;
+        // bind to the CURRENT player's sync for the whole step (stale after an identity switch)
+        const s = sync;
+        if (!s || m.playerId !== s.playerId || m.generation <= s.envelope().generation) return;
         void track(
-          sync.fetchHead({ withBlob: true, timeoutMs: 5_000 }).then((h) => {
-            if (h.ok && sync) return sync.adoptRemote(h.head, 'broadcast');
+          s.fetchHead({ withBlob: true, timeoutMs: 5_000 }).then((h) => {
+            if (h.ok && s === sync) return s.adoptRemote(h.head, 'broadcast');
             return undefined;
           }),
         );
@@ -552,8 +573,9 @@ export function createGameClient<S, A, E extends Effect>(
     clock,
     boot,
     saveNow(reason) {
-      if (!sync) return;
-      void sync.autosave().then(() => sync?.push(reason));
+      const s = sync;
+      if (!s) return;
+      void s.autosave().then(() => (s === sync ? s.push(reason) : undefined));
     },
     get booted() {
       return booted;

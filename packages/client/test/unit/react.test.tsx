@@ -178,6 +178,41 @@ describe('react shells (§5.3)', () => {
     expect(m.el.querySelector('.foundation-sync-pill')?.textContent).toMatch(/^Saved to cloud/);
     expect(m.el.querySelector('.foundation-sync-saved_to_cloud')).not.toBeNull();
     expect((view as unknown as ReturnType<typeof useSaveSync>).lastVerdict).toBe('synced');
+    expect((view as unknown as ReturnType<typeof useSaveSync>).pendingReview).toBeNull();
+    m.unmount();
+  });
+
+  it('useSaveSync.pendingReview: an empty-cache device against an empty-with-pendingQuarantine head learns a newer save awaits review (audit F8)', async () => {
+    const w = makeWorld({ localStorage: null });
+    const pq = { seq: 4, progress: 12, flags: ['progress_jump'], receivedAt: 1 };
+    w.ff.on(
+      'GET',
+      '/v1/saves/current',
+      () =>
+        new Response(
+          JSON.stringify({
+            empty: true,
+            generation: 0,
+            pendingQuarantine: pq,
+            requestId: 'r',
+            serverNow: w.clock.now(),
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+    );
+    const { client, platform } = w.newClient();
+    await client.boot();
+    let view: ReturnType<typeof useSaveSync> | null = null;
+    function Probe() {
+      view = useSaveSync(client as Client, 1_000);
+      return null;
+    }
+    const m = mount(
+      <PlatformProvider platform={platform} client={client}>
+        <Probe />
+      </PlatformProvider>,
+    );
+    expect((view as unknown as ReturnType<typeof useSaveSync>).pendingReview).toEqual(pq);
     m.unmount();
   });
 

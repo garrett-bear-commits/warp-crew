@@ -18,6 +18,7 @@ Format: Context → Decision → Consequences. All dated 2026-08-17 unless state
 | [ADR-026](ADR-026-command-idempotency-storage.md) | Idempotency: reserved commands row + tombstones, `request_hash` over `{type, canonicalPayload}` |
 | [ADR-027](ADR-027-server-runs-typescript-natively.md) | Server packages run TypeScript source under Node 24 type stripping; no build step |
 | [ADR-028](ADR-028-features-live-in-server-package.md) | Feature folders live under `packages/server/src/features/*` with three exported entry points |
-| [ADR-029](ADR-029-client-sync-decisions.md) | Client sync decisions: sessionId per device slot, pending commandId replacement, refused_regression re-check |
+| [ADR-029](ADR-029-client-sync-decisions.md) | Client sync decisions: sessionId per device slot, pending commandId replacement, refused_regression re-check; audit fixes F1 (identity rebind + retired sync), F3 (replay mapping), F8 (pendingQuarantine on empty heads), F9 (followers never mutate, leader decided before boot) |
 | [ADR-030](ADR-030-tooling-and-inspector-decisions.md) | Content-addressed static releases; inspector retry keeps commandId on network/5xx only |
 | [ADR-031](ADR-031-template-game-decisions.md) | Template game: policy unwraps the codec envelope, `state.v` derived, integer clock, isPaused idle, proactive update banner, e2e via admin API |
+| [ADR-032](ADR-032-audit-fixes.md) | Decisions taken while fixing the v1 audit findings (replay semantics, TLS, lease tokens, DR markers, Sentry sampling, business-key locks) |

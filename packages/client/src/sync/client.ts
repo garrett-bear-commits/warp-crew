@@ -6,6 +6,7 @@
 // beacon and the boot re-push included. Client state/progress are claims; sync metadata lives
 // in the envelope, never in S. Only `synced` is ever shown as "saved to cloud".
 import type {
+  PendingQuarantine,
   SaveBeaconBody,
   SaveCurrentResponse,
   SaveWriteBody,
@@ -39,7 +40,13 @@ export type HaltReason = 'server_behind' | 'update_required' | 'erased' | 'adopt
 export type PushReport =
   | {
       skipped:
-        'restoring' | 'follower' | 'halted' | 'in_flight' | 'awaiting_adopt' | 'nothing_to_push';
+        | 'restoring'
+        | 'follower'
+        | 'halted'
+        | 'in_flight'
+        | 'awaiting_adopt'
+        | 'nothing_to_push'
+        | 'retired';
     }
   | ({ skipped?: undefined; commandId: string; reason: SaveReason } & MappedVerdict);
 
@@ -135,6 +142,8 @@ export interface SyncClient<S> {
   shipJournal(): Promise<boolean>;
   status(): SyncStatus;
   statusText(): string;
+  /** A deeper (or only) quarantined save awaiting review, as of the last successful head check. */
+  pendingQuarantine(): PendingQuarantine | null;
   onEvent(cb: (e: SyncEvent<S>) => void): () => void;
   onVerdict(cb: (verdict: SyncVerdict, report: PushReport) => void): () => void;
   start(): void;
@@ -146,6 +155,12 @@ export interface SyncClient<S> {
   needsPush(): boolean;
   /** Re-read the local slot (after "Play here": the previous leader may have written it). */
   reloadFromSlot(): boolean;
+  /**
+   * Permanently retire this client (identity switch: the previous player's sync must never write
+   * its slot, push, beacon or ship again). Unlike stop(), a retired client cannot be started.
+   */
+  retire(): void;
+  retired(): boolean;
 }
 
 const DEFAULT_AUTOSAVE_MS = 10_000;
@@ -162,7 +177,13 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
   let env: CacheEnvelope<S> = deps.envelope;
   /** Canonical JSON of the state the current pending snapshot encodes (memory only). */
   let pendingCanonical: string | null = env.pending ? codec.encode(env.state) : null;
-  let dirtySincePending = env.dirty;
+  /**
+   * Live state changed since the pending snapshot was taken. A slot's `dirty` means "not acked
+   * yet"; when it holds a pending, the envelope state IS that snapshot's state (the loop runs it
+   * from boot), so nothing changed since — the boot re-push ack leaves the envelope clean.
+   */
+  const dirtySinceFor = (e: CacheEnvelope<S>): boolean => (e.pending ? false : e.dirty);
+  let dirtySincePending = dirtySinceFor(env);
   let halted: HaltReason | null = null;
   let awaitingAdopt: number | null = null;
   let inFlight: Promise<PushReport> | null = null;
@@ -172,6 +193,8 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
   let backoffUntil = 0;
   let journalShip: { commandId: string; batch: ReturnType<Journal['takeForShip']> } | null = null;
   let running = false;
+  let retired = false;
+  let lastPendingQuarantine: PendingQuarantine | null = null;
   const subs = new Set<(e: SyncEvent<S>) => void>();
 
   const emit = (e: SyncEvent<S>): void => {
@@ -179,15 +202,18 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     for (const s of subs) s(e);
   };
 
+  /** Followers and retired clients never write the (shared / previous player's) slot. */
+  const mayWrite = (): boolean => !retired && !(deps.isLeader && !deps.isLeader());
+
   const persist = (): boolean => {
     if (gate.isRestoring()) return false;
-    if (deps.isLeader && !deps.isLeader()) return false;
+    if (!mayWrite()) return false;
     const r = slot.write(env);
     return r.ok;
   };
 
   const kvMirror = (blob: string): void => {
-    if (!deps.kv || !deps.kvKey || gate.isRestoring()) return;
+    if (!deps.kv || !deps.kvKey || gate.isRestoring() || !mayWrite()) return;
     try {
       deps.kv.set(deps.kvKey, blob);
       void deps.kv.flush().catch(() => undefined);
@@ -337,11 +363,9 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
         delete next.pending;
         next.dirty = dirtySincePending;
       }
-      // a duplicate replays the original result: without a refusal reason or quarantine flags the
-      // original write was anchored, so it counts as "saved to cloud" too
-      const anchoredOriginal =
-        v === 'duplicate' && !mapped.result.reason && !(mapped.result.flags?.length ?? 0);
-      if (v === 'synced' || v === 'synced_divergent' || anchoredOriginal)
+      // `duplicate` is only ever mapped for an anchored original (a replayed refusal/quarantine maps
+      // to its original verdict), so it counts as "saved to cloud" too
+      if (v === 'synced' || v === 'synced_divergent' || v === 'duplicate')
         next.lastSyncedAt = clock.now();
       env = next;
       if (acksCurrentPending) pendingCanonical = null;
@@ -391,6 +415,7 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     reason: SaveReason,
     opts: { auth?: ClientAuth; reusePendingOnly?: boolean } = {},
   ): Promise<PushReport> => {
+    if (retired) return { skipped: 'retired' };
     if (!enabled) {
       const mapped = mapVerdict({ kind: 'disabled' }, { localGeneration: env.generation });
       env = { ...env, lastVerdict: mapped.verdict };
@@ -481,10 +506,16 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     const b = res.body;
     if (!b || typeof b !== 'object' || typeof b.generation !== 'number')
       return { ok: false, unreachable: false, status: res.status };
+    lastPendingQuarantine = b.pendingQuarantine ?? null;
     if (b.empty || !b.snapshot) {
       return {
         ok: true,
-        head: { kind: 'empty', generation: b.generation, ...(b.erased ? { erased: true } : {}) },
+        head: {
+          kind: 'empty',
+          generation: b.generation,
+          ...(b.erased ? { erased: true } : {}),
+          ...(b.pendingQuarantine ? { pendingQuarantine: b.pendingQuarantine } : {}),
+        },
       };
     }
     const head: RemoteHead = { kind: 'snapshot', generation: b.generation, snapshot: b.snapshot };
@@ -506,7 +537,8 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     pendingCanonical = null;
     dirtySincePending = false;
     persist();
-    if (next.generation !== from) deps.bus?.announce(env.playerId, env.generation, clock.now());
+    if (next.generation !== from && !retired)
+      deps.bus?.announce(env.playerId, env.generation, clock.now());
     emit({
       type: 'generation_changed',
       from,
@@ -520,6 +552,7 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     head: RemoteHead,
     sourceKind: GenerationSource,
   ): Promise<{ ok: true; state: S } | { ok: false; reason: string }> {
+    if (retired) return { ok: false, reason: 'retired' };
     // never swap the envelope under an in-flight push (its pending would be dropped mid-request);
     // when the adoption is triggered from inside the push itself there is nothing to wait for
     if (inFlight && !inPush) await inFlight.catch(() => undefined);
@@ -623,7 +656,7 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
 
   const autosave = async (): Promise<boolean> => {
     if (gate.isRestoring()) return false;
-    if (deps.isLeader && !deps.isLeader()) return false;
+    if (!mayWrite()) return false;
     if (!env.dirty && !dirtySincePending) return true; // clean: nothing to snapshot
     const p = await ensurePending('autosave');
     const ok = p !== null;
@@ -634,7 +667,7 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
 
   const beacon = (): boolean => {
     if (!enabled || halted || gate.isRestoring()) return false;
-    if (deps.isLeader && !deps.isLeader()) return false;
+    if (!mayWrite()) return false;
     const auth = deps.auth();
     if (!auth) return false;
     // nothing new since the last acknowledged snapshot: no teardown write
@@ -679,7 +712,11 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
               dirty: dirtySincePending,
             };
             delete next.pending;
-            if (mapped.verdict === 'synced' || mapped.verdict === 'synced_divergent')
+            if (
+              mapped.verdict === 'synced' ||
+              mapped.verdict === 'synced_divergent' ||
+              mapped.verdict === 'duplicate'
+            )
               next.lastSyncedAt = clock.now();
             env = next;
             pendingCanonical = null;
@@ -694,6 +731,8 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
   const shipJournal = async (): Promise<boolean> => {
     const j = deps.journal;
     if (!j || !enabled || halted || gate.isRestoring()) return false;
+    // followers hold their entries (never lost) and ship only once they lead; retired never ships
+    if (!mayWrite()) return false;
     const auth = deps.auth();
     if (!auth) return false;
     if (!journalShip) {
@@ -722,7 +761,7 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
 
   const needsPush = (): boolean => {
     if (!enabled || halted) return false;
-    if (deps.isLeader && !deps.isLeader()) return false;
+    if (!mayWrite()) return false;
     if (clock.deviceNow() < backoffUntil) return false;
     return env.dirty || env.pending !== undefined || dirtySincePending;
   };
@@ -781,6 +820,14 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     }
   };
 
+  const stop = (): void => {
+    running = false;
+    if (autosaveHandle !== null) timers.clear(autosaveHandle);
+    if (pushHandle !== null) timers.clear(pushHandle);
+    autosaveHandle = null;
+    pushHandle = null;
+  };
+
   const scheduleAutosave = (): void => {
     autosaveHandle = timers.set(() => {
       autosaveHandle = null;
@@ -815,6 +862,7 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     push: (reason, opts) => push(reason, opts ?? {}),
     beacon,
     bootRepush() {
+      if (retired) return Promise.resolve({ skipped: 'retired' });
       if (env.pending) return push(env.pending.reason, { reusePendingOnly: true });
       if (env.dirty) return push('boot-retry');
       return Promise.resolve({ skipped: 'nothing_to_push' });
@@ -825,6 +873,7 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
     shipJournal,
     status,
     statusText,
+    pendingQuarantine: () => lastPendingQuarantine,
     onEvent(cb) {
       subs.add(cb);
       return () => {
@@ -841,24 +890,18 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
       };
     },
     start() {
-      if (running) return;
+      if (running || retired) return;
       running = true;
       scheduleAutosave();
       schedulePush();
     },
-    stop() {
-      running = false;
-      if (autosaveHandle !== null) timers.clear(autosaveHandle);
-      if (pushHandle !== null) timers.clear(pushHandle);
-      autosaveHandle = null;
-      pushHandle = null;
-    },
+    stop,
     reloadFromSlot() {
       const r = slot.read();
       if (!r.ok) return false;
       env = { ...r.envelope, sessionId: env.sessionId };
       pendingCanonical = env.pending ? codec.encode(env.state) : null;
-      dirtySincePending = env.dirty;
+      dirtySincePending = dirtySinceFor(env);
       emit({ type: 'reloaded', state: env.state });
       return true;
     },
@@ -868,5 +911,10 @@ export function createSyncClient<S>(deps: SyncClientDeps<S>): SyncClient<S> {
       awaitingAdopt = null;
     },
     needsPush,
+    retire() {
+      retired = true;
+      stop();
+    },
+    retired: () => retired,
   };
 }

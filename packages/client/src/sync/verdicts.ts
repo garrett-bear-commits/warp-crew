@@ -1,7 +1,9 @@
 // Verdict mapping (§5.2 Sync verdicts, §6 Errors, ADR-019). Pure: an HTTP outcome (status +
 // SaveWriteResult | ErrorEnvelope | network error) → SyncVerdict. Refusals are 200 + reason, so
 // most branches read the disposition; 4xx/5xx are transport/auth/contract/precondition only.
-// Only `synced` may ever be shown as "saved to cloud".
+// Only `synced` may ever be shown as "saved to cloud". A retried commandId replays `duplicate`
+// for an anchored original and the ORIGINAL disposition (reason/flags) for a refused/quarantined
+// one, so a lost response never turns a refusal into "saved".
 import type { ErrorEnvelope, SaveWriteResult } from '@foundation/contracts';
 import type { SyncVerdict } from '@foundation/contracts/enums';
 
@@ -81,29 +83,38 @@ export function mapVerdict(outcome: HttpOutcome, ctx: VerdictContext): MappedVer
       result: r,
       serverGeneration: r.generation,
     };
+    const refused = (): MappedVerdict => {
+      switch (r.reason) {
+        case 'progress_regression':
+          return { ...base, verdict: 'refused_regression' };
+        case 'stale_generation':
+          return { ...base, verdict: staleOrBehind(r.generation, ctx) };
+        case 'malformed':
+        case 'blob_too_large':
+          return { ...base, verdict: 'refused_malformed' };
+        default:
+          return {
+            ...base,
+            verdict: 'rejected_transport',
+            detail: 'refused without a known reason',
+          };
+      }
+    };
     switch (r.disposition) {
       case 'anchored':
         return { ...base, verdict: r.divergent ? 'synced_divergent' : 'synced' };
       case 'stored_quarantined':
         return { ...base, verdict: 'synced_quarantined' };
       case 'duplicate':
+        // A retried commandId (audit F3): the server replays `duplicate` only for an ANCHORED
+        // original; a refused/quarantined original replays its ORIGINAL disposition. Tolerant path
+        // for a `duplicate` that still carries a refusal reason or quarantine flags: it is the
+        // original verdict, never "saved to cloud".
+        if (r.reason) return refused();
+        if (r.flags && r.flags.length > 0) return { ...base, verdict: 'synced_quarantined' };
         return { ...base, verdict: 'duplicate' };
       case 'stored_refused':
-        switch (r.reason) {
-          case 'progress_regression':
-            return { ...base, verdict: 'refused_regression' };
-          case 'stale_generation':
-            return { ...base, verdict: staleOrBehind(r.generation, ctx) };
-          case 'malformed':
-          case 'blob_too_large':
-            return { ...base, verdict: 'refused_malformed' };
-          default:
-            return {
-              ...base,
-              verdict: 'rejected_transport',
-              detail: 'refused without a known reason',
-            };
-        }
+        return refused();
       default:
         return { ...base, verdict: 'rejected_transport', detail: 'unknown disposition' };
     }

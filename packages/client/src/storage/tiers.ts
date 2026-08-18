@@ -1,7 +1,9 @@
 // Storage tiers (§5.2, ADR-005): localStorage primary (sync, teardown-safe) → memory shim.
 // Under URL hosting the origin is cross-site to jest.com, so blocked/partitioned storage is a
 // normal case: every access is wrapped, and "blocked ≠ empty" — the mode is reported so the
-// player can be told "Not saving on this device — cloud only".
+// player can be told "Not saving on this device — cloud only". The memory overlay holds ONLY what
+// failed to reach the primary (quota/blocked): a value the primary accepted is read back from the
+// primary, so a sibling tab's later write to the shared localStorage is what "Play here" reloads.
 
 export type StorageMode = 'local' | 'memory';
 
@@ -12,7 +14,7 @@ export interface StorageTier {
   /** Primary tier in use. `memory` when localStorage is unavailable (blocked/partitioned/throws). */
   readonly mode: StorageMode;
   get(key: string): string | null;
-  /** Writes through to the primary tier and always to the memory overlay (so a session survives a quota failure). */
+  /** Writes through to the primary tier; the memory overlay keeps the value only when the primary refused it (so a session survives a quota failure). */
   set(key: string, value: string): StorageSetResult;
   remove(key: string): void;
   /** Keys visible in the primary tier (prefix filter). Memory overlay keys included. */
@@ -128,6 +130,8 @@ export function createStorage(opts: CreateStorageOptions = {}): StorageTier {
       if (!primary) return { ok: false, reason: 'blocked' };
       try {
         primary.setItem(key, value);
+        // the primary is authoritative for this key again (another tab may write it next)
+        overlay.removeItem(key);
         return { ok: true };
       } catch (e) {
         lastError = e instanceof Error ? e.message : String(e);

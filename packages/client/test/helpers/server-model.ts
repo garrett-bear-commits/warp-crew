@@ -1,8 +1,11 @@
 // "Server truth" model (§9): an in-memory implementation of the server placement rules —
-// deepest anchored wins per generation, refusals stored (200 + reason, ADR-019), duplicate by
-// commandId (request-hash checked → 422 idempotency_mismatch on payload drift), stale
-// generation refused, generations only move forward, GET current exposes the anchor +
-// pendingQuarantine, lineage restoreToSeq/reattach with 409 stale_generation. Auth: mock tokens.
+// deepest anchored wins per generation, refusals stored (200 + reason, ADR-019), replay by
+// commandId (request-hash checked → 422 idempotency_mismatch on payload drift; an anchored
+// original replays `duplicate`, a refused/quarantined original replays its ORIGINAL disposition
+// with reason/flags — audit F3, from the commands row or the tombstone alike), stale generation
+// refused, generations only move forward, GET current exposes the anchor + pendingQuarantine
+// (also with `empty: true` when the only writes are quarantined), lineage restoreToSeq/reattach
+// with 409 stale_generation. Auth: mock tokens.
 // Serves both the unit flows (through fakeFetch) and the fast-check model runs.
 import type {
   ErrorEnvelope,
@@ -46,6 +49,12 @@ export interface ServerOptions {
   maxProgressPerHour?: number;
 }
 
+/** Server replay rule (mirror of packages/server/src/features/saves/server.ts replaySaveResult). */
+export function replaySaveResult(stored: SaveWriteResult): SaveWriteResult {
+  if (stored.disposition === 'anchored') return { ...stored, disposition: 'duplicate' };
+  return { ...stored };
+}
+
 /** Deterministic string hash for the request_hash (canonical payload without auth/transport). */
 function hash(s: string): string {
   let h = 2166136261;
@@ -61,8 +70,10 @@ export class ServerTruth {
   generation = 0;
   generationKind = 'initial';
   erased = false;
-  /** Command replay store: commandId → {hash, result}. */
+  /** Command replay store: commandId → {hash, result} (full row, 7 d retention on the server). */
   commands = new Map<string, { hash: string; result: SaveWriteResult }>();
+  /** Idempotency tombstones (> 7 d): kept for as long as the snapshot exists; same replay shape. */
+  tombstones = new Map<string, { hash: string; result: SaveWriteResult }>();
   /** Fault knobs. */
   down = false;
   forceStatus: 401 | 426 | 429 | 503 | null = null;
@@ -90,6 +101,12 @@ export class ServerTruth {
       this.others.set(key, m);
     }
     return m;
+  }
+
+  /** Retention: the full commands rows age out (> 7 d) into tombstones; replay is unchanged. */
+  pruneCommandRows(): void {
+    for (const [id, c] of this.commands) this.tombstones.set(id, c);
+    this.commands.clear();
   }
 
   /** Deepest anchored row with a blob in the given generation (the anchor). */
@@ -157,13 +174,13 @@ export class ServerTruth {
       };
     const { commandId, ...payload } = body;
     const h = hash(JSON.stringify(payload));
-    const seen = this.commands.get(commandId);
+    const seen = this.commands.get(commandId) ?? this.tombstones.get(commandId);
     if (seen) {
       if (seen.hash !== h)
         return { status: 422, body: { error: 'idempotency_mismatch', correlationId: 'model' } };
       return {
         status: 200,
-        body: { ...seen.result, disposition: 'duplicate', requestId: 'model', serverNow: now },
+        body: { ...replaySaveResult(seen.result), requestId: 'model', serverNow: now },
       };
     }
     const seq = this.lastSeq() + 1;

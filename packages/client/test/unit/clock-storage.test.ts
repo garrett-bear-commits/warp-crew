@@ -151,6 +151,21 @@ describe('storage tiers (§5.2, ADR-005)', () => {
     expect(t.set('x', '1').ok).toBe(false);
     expect(t.mode).toBe('memory');
   });
+  it('a value the primary accepted is read back from the primary: a sibling tab\'s later write to the shared localStorage is visible (multi-tab "Play here" reload)', () => {
+    const shared = memoryStorage();
+    const tabA = createStorage({ localStorage: shared });
+    const tabB = createStorage({ localStorage: shared });
+    expect(tabA.set('k', 'from-a').ok).toBe(true);
+    expect(tabB.get('k')).toBe('from-a');
+    expect(tabB.set('k', 'from-b').ok).toBe(true);
+    expect(tabA.get('k')).toBe('from-b');
+    tabB.remove('k');
+    expect(tabA.get('k')).toBeNull();
+    // memory mode still reads its own overlay
+    const mem = createStorage({ localStorage: null });
+    mem.set('m', '1');
+    expect(mem.get('m')).toBe('1');
+  });
   it('keys(prefix) merges overlay + primary', () => {
     const t = createStorage({ localStorage: memoryStorage() });
     t.set('foundation:g:slot:a', '1');

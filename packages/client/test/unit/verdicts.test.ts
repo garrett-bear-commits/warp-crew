@@ -34,6 +34,60 @@ describe('mapVerdict (§5.2) — every branch', () => {
     ).toBe('synced_quarantined'));
   it('200 duplicate → duplicate', () =>
     expect(res(200, ok({ disposition: 'duplicate' })).verdict).toBe('duplicate'));
+  it('200 duplicate replaying an anchored original (no reason/flags, divergent kept) → duplicate', () => {
+    const m = res(
+      200,
+      ok({ disposition: 'duplicate', divergent: { headSeq: 4, headWriterAt: 0 } }),
+    );
+    expect(m.verdict).toBe('duplicate');
+    expect(m.result?.divergent).toBeDefined();
+  });
+  it('tolerant path: a `duplicate` that still carries a refusal reason maps to the ORIGINAL refused verdict', () => {
+    expect(res(200, ok({ disposition: 'duplicate', reason: 'progress_regression' })).verdict).toBe(
+      'refused_regression',
+    );
+    expect(
+      res(200, ok({ disposition: 'duplicate', reason: 'stale_generation', generation: 2 })).verdict,
+    ).toBe('refused_stale_generation');
+    expect(
+      res(200, ok({ disposition: 'duplicate', reason: 'stale_generation', generation: 0 })).verdict,
+    ).toBe('server_behind');
+    expect(res(200, ok({ disposition: 'duplicate', reason: 'malformed' })).verdict).toBe(
+      'refused_malformed',
+    );
+    expect(res(200, ok({ disposition: 'duplicate', reason: 'blob_too_large' })).verdict).toBe(
+      'refused_malformed',
+    );
+  });
+  it('tolerant path: a `duplicate` that still carries quarantine flags → synced_quarantined (never "saved")', () =>
+    expect(res(200, ok({ disposition: 'duplicate', flags: ['progress_jump'] })).verdict).toBe(
+      'synced_quarantined',
+    ));
+  it('a `duplicate` with an empty flags array is a plain anchored replay → duplicate', () =>
+    expect(res(200, ok({ disposition: 'duplicate', flags: [] })).verdict).toBe('duplicate'));
+  it('replayed stored_refused (retry of a refused write, from the row or the tombstone) → the same refused_* verdict as the first time', () => {
+    const first = ok({
+      disposition: 'stored_refused',
+      reason: 'progress_regression',
+      seq: 9,
+      currentProgress: 50,
+    });
+    const a = res(200, first);
+    const b = res(200, { ...first }); // the tombstone replays the identical shape
+    expect(a.verdict).toBe('refused_regression');
+    expect(b.verdict).toBe(a.verdict);
+    expect(b.result?.currentProgress).toBe(50);
+    expect(b.result?.seq).toBe(9);
+  });
+  it('replayed stored_quarantined (retry of a quarantined write) → synced_quarantined with the original flags/seq', () => {
+    const m = res(
+      200,
+      ok({ disposition: 'stored_quarantined', flags: ['schema_unknown'], seq: 7, generation: 1 }),
+    );
+    expect(m.verdict).toBe('synced_quarantined');
+    expect(m.result?.flags).toEqual(['schema_unknown']);
+    expect(m.result?.seq).toBe(7);
+  });
   it('200 stored_refused progress_regression → refused_regression', () =>
     expect(
       res(200, ok({ disposition: 'stored_refused', reason: 'progress_regression' })).verdict,
