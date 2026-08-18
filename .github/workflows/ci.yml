@@ -38,6 +38,8 @@ jobs:
       - run: pnpm test:model
       - name: template game bundle size gate (§3)
         run: node --experimental-strip-types packages/tooling/src/bundle-size.ts apps/template-game/dist 600000
+      - name: clean-checkout Docker image build (§10; admin inspector built in a builder stage)
+        run: git archive HEAD | docker build -f apps/server/Dockerfile -
       - name: browser acceptance (Playwright chromium + webkit)
         run: |
           pnpm --filter @foundation/template-game exec playwright install --with-deps chromium webkit

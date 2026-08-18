@@ -190,8 +190,29 @@ export function route<
         if (key && b && typeof b === 'object' && b.commandId === undefined) b.commandId = key;
       }
     },
-    handler: async (req, reply) => {
-      const exec = await buildExec(ctx, def, req);
+    handler: async (req, reply) =>
+      ctx.sentry.span(
+        {
+          name: `${def.method} ${def.path}`,
+          op: 'http.server',
+          attributes: { 'http.request.method': def.method, 'http.route': def.path },
+        },
+        async (setStatus) => {
+          try {
+            const r = await handleRoute(req, reply);
+            setStatus(reply.statusCode);
+            return r;
+          } catch (e) {
+            setStatus(e instanceof AppError ? e.status : 500);
+            throw e;
+          }
+        },
+      ),
+  });
+
+  async function handleRoute(req: FastifyRequest, reply: FastifyReply): Promise<unknown> {
+    {
+      const exec = await buildExec(ctx, def!, req);
       if (isWrite && exec && (exec.actor.kind === 'player' || exec.actor.kind === 'admin')) {
         const v = await ctx.limiter.hit(`ip.write:${ip(req)}`, 'ip.write');
         if (!v.allowed)
@@ -217,8 +238,8 @@ export function route<
         return { ...(o.body as object), serverNow: ctx.clock.now(), requestId: req.requestId };
       }
       return { ...(out as object), serverNow: ctx.clock.now(), requestId: req.requestId };
-    },
-  });
+    }
+  }
 }
 
 /** Test/boot helper: which contract routes are registered on this app. */

@@ -73,3 +73,28 @@ describe('config: env-schema + fail-closed validation', () => {
     expect(() => validateConfig(c)).not.toThrow();
   });
 });
+
+describe('Postgres TLS mapping (audit F2)', () => {
+  it('off → false, require → require, verify → verify-full; never prefer/plaintext fallback', async () => {
+    const { pgSslOption } = await import('../../src/db/index.ts');
+    expect(pgSslOption('off')).toBe(false);
+    expect(pgSslOption('require')).toBe('require');
+    expect(pgSslOption('verify')).toBe('verify-full');
+    for (const v of ['off', 'require', 'verify'] as const)
+      expect(pgSslOption(v)).not.toBe('prefer');
+  });
+  it('production config can only resolve to require or verify-full', () => {
+    const prod = {
+      ...base,
+      GAME_ENV: 'prod',
+      RATE_LIMIT_STORE: 'pg',
+      IDENTITY_PROVIDER: 'jest',
+      PAYMENTS_PROVIDER: 'jest',
+      JEST_JWS_SECRETS: Buffer.alloc(32, 1).toString('base64'),
+    };
+    expect(loadConfig(prod).pgSsl).toBe('verify'); // default in prod
+    expect(loadConfig({ ...prod, PGSSL: 'require' }).pgSsl).toBe('require');
+    expect(() => loadConfig({ ...prod, PGSSL: 'off' })).toThrow(/PGSSL/);
+    expect(() => loadConfig({ ...prod, PGSSL: 'prefer' })).toThrow();
+  });
+});

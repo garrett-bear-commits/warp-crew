@@ -118,6 +118,8 @@ export function buildFastify(ctx: AppContext): FastifyInstance {
     const now = ctx.clock.now();
     if (err instanceof AppError) {
       if (err.status >= 500)
+        ctx.sentry.captureException(err, { requestId: req.requestId, code: err.code });
+      if (err.status >= 500)
         req.log.error(
           { err: err.message, code: err.code, requestId: req.requestId },
           'request failed',
@@ -172,6 +174,10 @@ export function buildFastify(ctx: AppContext): FastifyInstance {
     if (fe.statusCode === 404)
       return reply.status(404).send(envelope('not_found', 'not found', req.requestId, now));
     req.log.error({ err, requestId: req.requestId }, 'unhandled error');
+    ctx.sentry.captureException(err, {
+      requestId: req.requestId,
+      route: req.routeOptions?.url ?? req.url,
+    });
     return reply.status(500).send(envelope('internal', 'internal error', req.requestId, now));
   });
 

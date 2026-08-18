@@ -3,6 +3,7 @@ import type { Logger } from 'pino';
 import type { ServerConfig } from '../config.ts';
 import type { Db } from '../db/index.ts';
 import type { CommandBus, CommandGuard } from '../cqrs/bus.ts';
+import type { SentryHandle } from '../observability/sentry.ts';
 import type { QueryBus } from '../cqrs/query.ts';
 import type { Outbox } from '../outbox/index.ts';
 import type { ServerClock } from '../clock/index.ts';
@@ -33,6 +34,8 @@ export interface AppContext {
   declaredQueries: QueryDef<unknown, unknown>[];
   /** Live-ops settings cache (min build, maintenance, kill switches) refreshed by the liveops feature. */
   liveops: LiveopsCache;
+  /** Sentry handle (no-op without SENTRY_DSN). */
+  sentry: SentryHandle;
   /** Guards installed on the bus by features (kill switches, player flags). */
   busGuards: CommandGuard[];
   /** Set by the identity feature: touch the players projection (throttled). */

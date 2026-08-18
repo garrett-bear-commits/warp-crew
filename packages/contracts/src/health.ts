@@ -71,7 +71,10 @@ export const OpsSnapshotResponse = Type.Object(
       pendingReviews: NonNegInt,
     }),
     purchases: Type.Object({ paid: NonNegInt, sandbox: NonNegInt, unclassified: NonNegInt }),
+    /** Written only by an isolated-restore verification (dr). */
     restoreVerifiedAt: Type.Optional(EpochMs),
+    /** Weekly self-check of the live database's newest anchored blobs. */
+    liveIntegrityVerifiedAt: Type.Optional(EpochMs),
     issues: Type.Array(OpsIssue),
   },
   { $id: 'OpsSnapshotResponse' },

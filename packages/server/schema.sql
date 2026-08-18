@@ -312,6 +312,7 @@ col outbox_deliveries.lease_until timestamp with time zone YES
 col outbox_deliveries.next_attempt_at timestamp with time zone NO now()
 col outbox_deliveries.last_error text YES 
 col outbox_deliveries.delivered_at timestamp with time zone YES 
+col outbox_deliveries.lease_token uuid YES 
 col player_flags.player_key text NO 
 col player_flags.flag text NO 
 col player_flags.enabled boolean NO 

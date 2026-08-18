@@ -24,5 +24,7 @@ export * from './game/config.ts';
 export * from './game/facts.ts';
 export * from './rewards/mint.ts';
 export * from './logging.ts';
+export * from './dr/index.ts';
+export * from './observability/sentry.ts';
 export * from './server.ts';
 export { MIGRATIONS_DIR } from './db/migrations/index.ts';

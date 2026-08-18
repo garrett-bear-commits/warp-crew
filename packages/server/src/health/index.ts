@@ -236,6 +236,10 @@ export async function opsSnapshot(ctx: AppContext): Promise<OpsSnapshotResponse>
     { value: { at?: number } }[]
   >`SELECT value FROM ops_markers WHERE key = 'restore_verified_at'`;
   const restoreVerifiedAt = rv[0]?.value?.at;
+  const li = await sql<
+    { value: { at?: number } }[]
+  >`SELECT value FROM ops_markers WHERE key = 'live_integrity_verified_at'`;
+  const liveIntegrityVerifiedAt = li[0]?.value?.at;
   const base: Omit<OpsSnapshotResponse, 'issues' | 'status'> = {
     serverNow: now,
     windowMinutes: 15,
@@ -265,6 +269,7 @@ export async function opsSnapshot(ctx: AppContext): Promise<OpsSnapshotResponse>
       unclassified: purchases[0]?.unclassified ?? 0,
     },
     ...(typeof restoreVerifiedAt === 'number' ? { restoreVerifiedAt } : {}),
+    ...(typeof liveIntegrityVerifiedAt === 'number' ? { liveIntegrityVerifiedAt } : {}),
   };
   const issues = assessOps(base);
   const status = issues.some((i) => i.tier === 'page') ? 'page' : issues.length ? 'warn' : 'ok';

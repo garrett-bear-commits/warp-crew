@@ -19,11 +19,26 @@ export type LockSpec = { kind: 'player'; key: string } | { kind: 'game' } | { ki
 
 export interface DbOptions {
   max?: number;
-  ssl?: 'require' | 'prefer' | boolean;
+  /** postgres.js ssl option: false | 'require' | 'verify-full'. Never 'prefer' (silent plaintext fallback). */
+  ssl?: 'require' | 'verify-full' | false;
   /** Bounds the wait on the commands unique index for concurrent duplicates (→ 503 retry_later). */
   lockTimeoutMs?: number;
   statementTimeoutMs?: number;
   applicationName?: string;
+}
+
+/** PGSSL config → postgres.js ssl option. off → false, require → 'require', verify → 'verify-full'. No 'prefer'. */
+export function pgSslOption(
+  pgSsl: 'off' | 'require' | 'verify',
+): false | 'require' | 'verify-full' {
+  switch (pgSsl) {
+    case 'off':
+      return false;
+    case 'require':
+      return 'require';
+    case 'verify':
+      return 'verify-full';
+  }
 }
 
 export function createDb(url: string, opts: DbOptions = {}): Db {

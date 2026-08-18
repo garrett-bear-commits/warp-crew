@@ -68,8 +68,9 @@ export function registerAdmin(app: FastifyInstance, ctx: AppContext): void {
     return { ok: true as const };
   });
 
-  bus.register(OutboxReplay, async (input, exec) => {
-    const ok = await ctx.outbox.replay(input.outboxId, input.consumer, actorLabel(exec));
+  bus.register(OutboxReplay, async (input, exec, tx) => {
+    // replay rides the command's own transaction (audit F7): one connection, atomic with the audit row
+    const ok = await ctx.outbox.replayInTx(tx!, input.outboxId, input.consumer, actorLabel(exec));
     if (!ok) throw new AppError('not_found', 'outbox row not found');
     return { ok: true as const };
   });

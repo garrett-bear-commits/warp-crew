@@ -42,7 +42,7 @@ Run from the repo root on 2026-08-18 (macOS, Node 24.13.1, pnpm 10.30.1, Docker 
 | Docker image build (`docker build -f apps/server/Dockerfile .`) | not run — Docker was used only for the Postgres container; the image is a plain node:24-alpine Dockerfile with HEALTHCHECK; building/pushing an image is a deployment step (out of scope by instruction) |
 | Sentry / PITR / Jest platform calls | not run — external gates (see below) |
 
-Totals: 756 unit/contract + 2 model + 89 real-Postgres + 26 browser = 873 tests, all passing; 0 skipped; no `TODO`/`FIXME`/placeholder text (guarded).
+Totals: 756 unit/contract + 2 model + 89 real-Postgres + 26 browser = 873 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
 
 ## Coverage
 

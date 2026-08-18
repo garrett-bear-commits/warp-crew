@@ -11,7 +11,7 @@ import {
 } from '@foundation/jest-verify';
 import type { ServerConfig } from './config.ts';
 import type { GameConfig, GamePolicy } from './game/config.ts';
-import { createDb, type Db } from './db/index.ts';
+import { createDb, pgSslOption, type Db } from './db/index.ts';
 import { checkSchema } from './db/migrate.ts';
 import { CommandBus } from './cqrs/bus.ts';
 import { QueryBus } from './cqrs/query.ts';
@@ -35,6 +35,8 @@ import { registerJournal } from './features/journal/server.ts';
 import { registerAdmin } from './features/admin/server.ts';
 import { registerQa } from './features/qa/server.ts';
 import { redactionPaths } from './logging.ts';
+import { verifyLiveIntegrity } from './dr/index.ts';
+import { initSentry, type SentryHandle } from './observability/sentry.ts';
 
 export interface CreateServerOptions {
   config: ServerConfig;
@@ -45,6 +47,8 @@ export interface CreateServerOptions {
   db?: Db;
   /** Skip the boot schema check (tests that migrate themselves still keep it on by default). */
   skipSchemaCheck?: boolean;
+  /** Injected Sentry handle (tests); default: initSentry from config.sentryDsn (no-op without a DSN). */
+  sentry?: SentryHandle;
 }
 
 export interface Server {
@@ -69,7 +73,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     o.db ??
     createDb(o.config.databaseUrl, {
       max: o.config.pgPool,
-      ssl: o.config.pgSsl === 'off' ? false : o.config.pgSsl === 'verify' ? 'require' : 'prefer',
+      ssl: pgSslOption(o.config.pgSsl),
       applicationName: `foundation-${o.config.gameId}-${o.config.env}`,
     });
   const identity =
@@ -85,6 +89,14 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
       : createMockPaymentsVerifier();
   const limiter =
     o.config.rateLimitStore === 'pg' ? createPgLimiter(db.sql, clock) : createMemoryLimiter(clock);
+  const sentry =
+    o.sentry ??
+    initSentry({
+      dsn: o.config.sentryDsn,
+      release: o.config.buildVersion,
+      gameId: o.config.gameId,
+      env: o.config.env,
+    });
   const outbox = new Outbox(db, clock, {}, log);
   const jobs: JobDef[] = [];
   const busGuards: AppContext['busGuards'] = [];
@@ -94,6 +106,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     limiter,
     guards: busGuards,
     log,
+    trace: (info, fn) => sentry.span(info, fn),
     onExecuted: (e) => {
       if (!e.ok && e.errorCode !== 'validation_failed' && e.errorCode !== 'unauthorized')
         log.warn(
@@ -122,6 +135,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     declaredQueries: [],
     liveops,
     busGuards,
+    sentry,
   };
 
   const app = buildFastify(ctx);
@@ -181,26 +195,12 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     },
   });
   jobs.push({
-    name: 'restore.verify',
+    name: 'live.integrity',
     intervalMs: 7 * 24 * 3_600_000,
-    async run() {
-      // Weekly restore verification: prove the newest anchored blob for a sample of players decodes and matches its sha (a real PITR drill is a runbook step; this marks restore_verified_at).
-      const rows = await db.sql<
-        { id: string; blob_sha256: string }[]
-      >`SELECT s.id, s.blob_sha256 FROM save_snapshots s JOIN save_blobs b ON b.save_id = s.id WHERE s.disposition = 'anchored' ORDER BY s.received_at DESC LIMIT 50`;
-      const { sha256Hex } = await import('./db/canonical.ts');
-      let ok = 0;
-      for (const r of rows) {
-        const b = await db.sql<
-          { blob: Buffer }[]
-        >`SELECT blob FROM save_blobs WHERE save_id = ${r.id}`;
-        if (b[0] && sha256Hex(b[0].blob.toString('utf8')) === r.blob_sha256) ok++;
-      }
-      const verified = ok === rows.length;
-      if (verified)
-        await db.sql`INSERT INTO ops_markers (key, value) VALUES ('restore_verified_at', ${db.sql.json({ at: clock.now(), sampled: rows.length })}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
-      return { sampled: rows.length, ok, verified };
-    },
+    // Weekly self-check of the LIVE database (audit F4): re-hash the newest anchored blobs and mark
+    // live_integrity_verified_at. restore_verified_at is written only by an isolated-restore
+    // verification (dr/index.ts verifyIsolatedRestore → markRestoreVerified; runbook restore-drill).
+    run: () => verifyLiveIntegrity(db.sql, clock.now()),
   });
   const runner = createJobRunner(db, clock, jobs, log);
 
@@ -245,6 +245,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     async stop() {
       runner.stop();
       await app.close();
+      await sentry.close(2000);
       if (!o.db) await db.end();
     },
   };

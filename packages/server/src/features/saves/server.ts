@@ -23,11 +23,34 @@ import { actorLabel } from '../../cqrs/bus.ts';
 type WriteResult = Omit<SaveWriteResult, 'serverNow' | 'requestId'>;
 type ReviewResult = Omit<AdminSaveReviewResult, 'serverNow' | 'requestId'>;
 
-interface SaveTombstone {
-  seq: number;
-  generation: number;
-  currentProgress: number;
-  blobSha256: string;
+/**
+ * Replay semantics for a retried commandId (§4.1, audit F3): a retry of an ANCHORED write replays
+ * `duplicate` (the row exists, nothing new happened); a retry of a refused or quarantined write
+ * replays the ORIGINAL disposition with its reason/flags/divergence so the client never turns a
+ * refusal into "saved to cloud". The tombstone keeps the full result so the same holds after > 7 d.
+ */
+export function replaySaveResult(stored: WriteResult): WriteResult {
+  if (stored.disposition === 'anchored') return { ...stored, disposition: 'duplicate' };
+  return stored;
+}
+
+export function saveTombstoneRef(r: WriteResult): string {
+  return JSON.stringify(r);
+}
+
+export function saveFromTombstone(ref: string | null): WriteResult {
+  const t = JSON.parse(ref ?? '{}') as Partial<WriteResult>;
+  const base: WriteResult = {
+    disposition: t.disposition ?? 'anchored',
+    seq: t.seq ?? 0,
+    generation: t.generation ?? 0,
+    currentProgress: t.currentProgress ?? 0,
+    blobSha256: t.blobSha256 ?? '0'.repeat(64),
+  };
+  if (t.reason) base.reason = t.reason;
+  if (t.flags && t.flags.length) base.flags = t.flags;
+  if (t.divergent) base.divergent = t.divergent;
+  return replaySaveResult(base);
 }
 
 export const SavesWrite = defineCommand<typeof SaveWriteBody, WriteResult>({
@@ -39,26 +62,8 @@ export const SavesWrite = defineCommand<typeof SaveWriteBody, WriteResult>({
   idempotency: { owner: 'client', retention: '7d' },
   tx: 'required',
   limit: 'saves.write',
-  replay: {
-    fromStored: (r) => ({ ...r, disposition: 'duplicate' }),
-    fromTombstone: (ref) => {
-      const t = JSON.parse(ref ?? '{}') as Partial<SaveTombstone>;
-      return {
-        disposition: 'duplicate',
-        seq: t.seq ?? 0,
-        generation: t.generation ?? 0,
-        currentProgress: t.currentProgress ?? 0,
-        blobSha256: t.blobSha256 ?? '0'.repeat(64),
-      };
-    },
-  },
-  outcomeRef: (r) =>
-    JSON.stringify({
-      seq: r.seq,
-      generation: r.generation,
-      currentProgress: r.currentProgress,
-      blobSha256: r.blobSha256,
-    } satisfies SaveTombstone),
+  replay: { fromStored: replaySaveResult, fromTombstone: saveFromTombstone },
+  outcomeRef: saveTombstoneRef,
 });
 
 export const SavesReview = defineCommand<typeof AdminSaveReviewBody, ReviewResult>({

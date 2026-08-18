@@ -32,6 +32,11 @@ export interface BusDeps {
   limiter?: RateLimiter;
   guards?: CommandGuard[];
   log?: { warn(o: object, msg: string): void; info(o: object, msg: string): void };
+  /** Optional tracer: wraps every execution in a span (Sentry). */
+  trace?: <T>(
+    info: { name: string; op: string; attributes?: Record<string, string | number | boolean> },
+    fn: (setStatus: (code: number) => void) => Promise<T>,
+  ) => Promise<T>;
   /** Called after each execution (metrics/logging). */
   onExecuted?: (e: {
     type: string;
@@ -93,6 +98,32 @@ export class CommandBus {
   }
 
   async execute<S extends TSchema, R>(
+    def: CommandDef<S, R>,
+    input: CommandInput<Static<S>>,
+    ctx: ExecCtx,
+  ): Promise<R> {
+    const trace = this.#deps.trace;
+    if (!trace) return this.#run(def, input, ctx);
+    return trace(
+      {
+        name: `command ${def.type}`,
+        op: 'command',
+        attributes: { 'command.type': def.type, 'command.scope': def.scope },
+      },
+      async (setStatus) => {
+        try {
+          const r = await this.#run(def, input, ctx);
+          setStatus(200);
+          return r;
+        } catch (e) {
+          setStatus(e instanceof AppError ? e.status : 500);
+          throw e;
+        }
+      },
+    );
+  }
+
+  async #run<S extends TSchema, R>(
     def: CommandDef<S, R>,
     input: CommandInput<Static<S>>,
     ctx: ExecCtx,

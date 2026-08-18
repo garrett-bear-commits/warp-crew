@@ -263,7 +263,12 @@ export function registerGrants(app: FastifyInstance, ctx: AppContext): void {
         ...(g[0] ? { grant: toGrant(g[0]) } : {}),
       };
     }
-    if (c.redemptions >= c.max) return { outcome: 'exhausted', duplicate: false };
+    // Reserve capacity atomically across players BEFORE minting: two players redeeming the last slot
+    // concurrently hold different player locks, so the counter itself is the arbiter.
+    const reserved = await t<
+      { redemptions: number }[]
+    >`UPDATE codes SET redemptions = redemptions + 1 WHERE code_hash = ${h} AND redemptions < ${c.max} RETURNING redemptions`;
+    if (!reserved[0]) return { outcome: 'exhausted', duplicate: false };
     const grantKey = `code:${c.campaign_id}:${h.slice(0, 12)}`;
     const m = await mintGrant(t, {
       playerKey,
@@ -277,7 +282,6 @@ export function registerGrants(app: FastifyInstance, ctx: AppContext): void {
     // redeeming is the claim
     await t`INSERT INTO grant_claims (grant_id, player_key, command_id, claimed_at) VALUES (${m.id}, ${playerKey}, ${input.commandId}, ${new Date(exec.now)})`;
     await t`INSERT INTO code_redemptions (code_hash, player_key, grant_id) VALUES (${h}, ${playerKey}, ${m.id})`;
-    await t`UPDATE codes SET redemptions = redemptions + 1 WHERE code_hash = ${h}`;
     await ctx.outbox.emit(t, {
       kind: 'code.redeemed',
       playerKey,
