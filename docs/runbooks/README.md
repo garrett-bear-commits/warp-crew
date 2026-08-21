@@ -18,3 +18,4 @@ Each runbook is a checklist a second person can run. Commands assume the repo ro
 | [quarantine-review.md](quarantine-review.md) | promote / reject a quarantined save |
 | [erasure.md](erasure.md) | player erasure request |
 | [new-game.md](new-game.md) | bringing a game to Lab in < 1 h |
+| [jest-launch.md](jest-launch.md) | Developer Console, self-hosted version, Simulator, sandbox, and launch evidence |

@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { E2E_API_PORT, E2E_GAME_PORT, E2E_HOST_PORT } from './e2e/const.ts';
+import { E2E_API_PORT, E2E_GAME_PORT, E2E_HOST_PORT, E2E_JEST_GAME_PORT } from './e2e/const.ts';
 
 // Real-browser acceptance (§9): Chromium + WebKit (mobile emulation), the template game built and
 // served by `vite preview` (4173), the API on 8090 (fresh Postgres, GAME_ENV=lab), and a
@@ -38,6 +38,14 @@ export default defineConfig({
     {
       command: `pnpm exec vite preview --port ${E2E_GAME_PORT} --strictPort`,
       url: `http://localhost:${E2E_GAME_PORT}/`,
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      // Local/mock evidence only: serve the source through a second Vite origin so the spec can
+      // select ?platform=jest without changing the normal mock acceptance build.
+      command: `VITE_API_URL=http://127.0.0.1:${E2E_API_PORT} VITE_ALLOW_QA_QUERY=true pnpm exec vite --host 127.0.0.1 --port ${E2E_JEST_GAME_PORT} --strictPort`,
+      url: `http://127.0.0.1:${E2E_JEST_GAME_PORT}/`,
       reuseExistingServer: false,
       timeout: 60_000,
     },

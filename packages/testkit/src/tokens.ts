@@ -53,6 +53,7 @@ export interface MintReceiptOpts {
   completedAt?: number | null;
   price?: number;
   currency?: string;
+  sandbox?: true;
   aud?: string | null;
   batch?: boolean;
 }
@@ -67,6 +68,7 @@ export function mintReceipt(o: MintReceiptOpts): string {
   };
   if (o.price !== undefined) purchase.price = o.price;
   if (o.currency !== undefined) purchase.currency = o.currency;
+  if (o.sandbox) purchase.sandbox = true;
   const payload: Record<string, unknown> = { sub: o.playerId };
   if (o.aud !== null) payload.aud = o.aud ?? o.gameId;
   if (o.batch) payload.purchases = [purchase];

@@ -17,7 +17,10 @@ import { CATALOG, type GameConfig } from './config.ts';
 export function createPlatform(cfg: GameConfig, clock: Clock): PlatformAdapter {
   switch (cfg.platform) {
     case 'jest':
-      return createJestPlatform();
+      return createJestPlatform({
+        autoLoginReminders: cfg.autoLoginReminders,
+        now: clock.now,
+      });
     case 'standalone':
       return createStandalonePlatform({
         playerId: cfg.playerId,
@@ -33,7 +36,8 @@ export function createPlatform(cfg: GameConfig, clock: Clock): PlatformAdapter {
           registered: cfg.registered,
           // tokens are minted on demand with a server-anchored iat (step-up needs iat ≤ 5 min)
           now: () => clock.now(),
-          // sandbox prices: the receipt classifies as `sandbox` → recorded, never mints (ADR-007)
+          // Local checkout is explicitly signed as sandbox; price is never used as the classifier.
+          sandboxPurchases: true,
           products: CATALOG.map((c) => ({ sku: c.sku, title: c.title, price: 0, currency: 'USD' })),
         },
       );
@@ -47,6 +51,7 @@ export function createPlatform(cfg: GameConfig, clock: Clock): PlatformAdapter {
         analytics: mock.analytics,
         loading: mock.loading,
         lifecycle: documentLifecycle(),
+        entryPayload: mock.entryPayload,
         errors: consoleErrorSink(),
       };
       return platform;

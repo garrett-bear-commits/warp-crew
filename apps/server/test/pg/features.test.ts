@@ -523,7 +523,13 @@ describe('achievements + daily reward: one evaluator over ledgers, claims budget
     // a paid purchase (server fact) unlocks patron via the outbox reaction (deterministic system command)
     await post('ach', '/v1/purchases/verify', {
       commandId: h.uuid(),
-      purchaseSigned: h.receipt({ playerKey: 'ach', token: 'tok-ach', sku: 'gems_100', price: 2 }),
+      purchaseSigned: h.receipt({
+        playerKey: 'ach',
+        token: 'tok-ach',
+        sku: 'gems_100',
+        price: 2,
+        currency: 'USD',
+      }),
     });
     const drained = await h.drainOutbox();
     expect(drained.dead).toBe(0);

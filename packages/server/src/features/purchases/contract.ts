@@ -2,6 +2,9 @@
 export type {
   PurchaseVerifyBody,
   PurchaseVerifyResult,
+  PurchaseBatchVerifyBody,
+  PurchaseBatchVerifyResult,
+  PurchaseVerification,
   PurchasesMineResponse,
   AdjustmentsAckBody,
   AdjustmentsAckResult,

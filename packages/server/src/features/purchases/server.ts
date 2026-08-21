@@ -3,9 +3,12 @@
 import type { FastifyInstance } from 'fastify';
 import {
   PurchaseVerifyBody,
+  PurchaseBatchVerifyBody,
   AdjustmentsAckBody,
   AdminAdjustmentBody,
   type PurchaseVerifyResult,
+  type PurchaseBatchVerifyResult,
+  type PurchaseVerification,
   type PurchasesMineResponse,
   type AdjustmentsAckResult,
   type AdminAdjustmentResult,
@@ -18,13 +21,14 @@ import { defineCommand } from '../../cqrs/define.ts';
 import { AppError } from '../../errors.ts';
 import { route } from '../../http/route.ts';
 import type { AppContext } from '../../http/context.ts';
-import type { Q } from '../../db/index.ts';
+import type { Q, Tx } from '../../db/index.ts';
 import type { CatalogPack } from '../../game/config.ts';
 import { mintGrant } from '../../rewards/mint.ts';
 import { actorLabel } from '../../cqrs/bus.ts';
 import { entitlementFor } from '../../game/facts.ts';
 
 type VerifyResult = Omit<PurchaseVerifyResult, 'serverNow' | 'requestId'>;
+type BatchVerifyResult = Omit<PurchaseBatchVerifyResult, 'serverNow' | 'requestId'>;
 type AckResult = Omit<AdjustmentsAckResult, 'serverNow' | 'requestId'>;
 type AdjResult = Omit<AdminAdjustmentResult, 'serverNow' | 'requestId'>;
 
@@ -32,12 +36,21 @@ export type Classified =
   | { kind: 'unsupported'; pack: null }
   | { kind: Exclude<PurchaseClassification, 'unsupported'>; pack: CatalogPack };
 
-/** Only the signed receipt may classify money. A signed price of zero is sandbox; absent price is unclassified, never paid. */
+const VALID_CURRENCIES = new Set(Intl.supportedValuesOf('currency'));
+
+/** Only signed facts classify money. Unknown products stay unsupported; sandbox provenance beats price. */
 export function classifyReceipt(r: VerifiedReceipt, catalog: readonly CatalogPack[]): Classified {
   const pack = catalog.find((p) => p.sku === r.productSku);
   if (!pack) return { kind: 'unsupported', pack: null };
-  if (r.price === 0) return { kind: 'sandbox', pack };
-  if (typeof r.price === 'number' && r.price > 0) return { kind: 'paid', pack };
+  if (r.sandbox) return { kind: 'sandbox', pack };
+  if (
+    typeof r.price === 'number' &&
+    Number.isFinite(r.price) &&
+    r.price > 0 &&
+    typeof r.currency === 'string' &&
+    VALID_CURRENCIES.has(r.currency)
+  )
+    return { kind: 'paid', pack };
   return { kind: 'unclassified', pack };
 }
 
@@ -59,9 +72,24 @@ export const PurchasesVerify = defineCommand<typeof PurchaseVerifyBody, VerifyRe
   idempotency: { owner: 'client', retention: '90d' },
   tx: 'required',
   limit: 'purchases',
+  stepUp: true,
   replay: {
     fromStored: (r) => ({ ...r, outcome: r.outcome === 'recorded' ? 'duplicate' : r.outcome }),
   },
+});
+export const PurchasesVerifyBatch = defineCommand<
+  typeof PurchaseBatchVerifyBody,
+  BatchVerifyResult
+>({
+  type: 'purchases.verifyBatch',
+  schema: PurchaseBatchVerifyBody,
+  actorPolicy: 'player',
+  scope: 'player',
+  lock: 'player',
+  idempotency: { owner: 'client', retention: '90d' },
+  tx: 'required',
+  limit: 'purchases',
+  stepUp: true,
 });
 export const PurchasesAck = defineCommand<typeof AdjustmentsAckBody, AckResult>({
   type: 'purchases.ackAdjustments',
@@ -94,6 +122,7 @@ interface TxRow {
   grant_key: string | null;
   price: string | null;
   currency: string | null;
+  sandbox: boolean | null;
   created_at: Date;
   completed_at: Date | null;
   recorded_at: Date;
@@ -107,6 +136,7 @@ const toRecord = (r: TxRow): PurchaseRecord => ({
   ...(r.grant_key ? { grantKey: r.grant_key } : {}),
   ...(r.price !== null ? { price: Number(r.price) } : {}),
   ...(r.currency ? { currency: r.currency } : {}),
+  sandbox: r.sandbox,
   createdAt: r.created_at.getTime(),
   completedAt: r.completed_at ? r.completed_at.getTime() : null,
   recordedAt: r.recorded_at.getTime(),
@@ -136,7 +166,7 @@ const toAdj = (r: AdjRow): PurchaseAdjustment => ({
 export async function listPurchases(q: Q, playerKey: string): Promise<PurchaseRecord[]> {
   const rows = await q<
     TxRow[]
-  >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, created_at, completed_at, recorded_at FROM purchase_transactions WHERE player_key = ${playerKey} ORDER BY created_at, id`;
+  >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, created_at, completed_at, recorded_at FROM purchase_transactions WHERE player_key = ${playerKey} ORDER BY created_at, id`;
   return rows.map(toRecord);
 }
 
@@ -154,34 +184,35 @@ export async function listAdjustments(
 
 export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
   const { bus, game } = ctx;
-  ctx.declaredCommands.push(PurchasesVerify, PurchasesAck, AdminAdjust);
+  ctx.declaredCommands.push(PurchasesVerify, PurchasesVerifyBatch, PurchasesAck, AdminAdjust);
 
-  bus.register(PurchasesVerify, async (input, exec, tx): Promise<VerifyResult> => {
-    const t = tx!;
-    const playerKey = exec.playerKey!;
-    const v = ctx.payments.verifyReceipt(input.purchaseSigned, ctx.config.gameId);
-    if (!v.ok) {
-      if (v.reason === 'no_secret')
-        throw new AppError(
-          'not_configured',
-          'payments verifier has no secret; refusing to verify',
-          { reason: v.reason },
-        );
-      return { outcome: 'rejected', reason: v.reason };
-    }
-    if (v.purchases.length !== 1) return { outcome: 'rejected', reason: 'malformed_purchase' };
-    const r = v.purchases[0]!;
-    if (r.playerId !== playerKey) return { outcome: 'rejected', reason: 'sub_mismatch' };
-    // provider token = business key (grant-before-confirm: a retry with a new commandId is still one purchase).
-    // Serialise on the token across players (a lock, never ON CONFLICT DO NOTHING on a ledger append).
-    await t`SELECT pg_advisory_xact_lock(6, hashtext(${r.purchaseToken}))`;
+  const recordReceipt = async (
+    t: Tx,
+    playerKey: string,
+    r: VerifiedReceipt,
+    commandId: string,
+    exec: Parameters<typeof actorLabel>[0],
+    tokenLocked = false,
+  ): Promise<PurchaseVerification> => {
+    if (!tokenLocked) await t`SELECT pg_advisory_xact_lock(6, hashtext(${r.purchaseToken}))`;
     const existing = await t<
       (TxRow & { player_key: string })[]
-    >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, created_at, completed_at, recorded_at, player_key FROM purchase_transactions WHERE provider_token = ${r.purchaseToken}`;
-    // a token already recorded for ANOTHER player is never replayed to this one
+    >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, created_at, completed_at, recorded_at, player_key FROM purchase_transactions WHERE provider_token = ${r.purchaseToken}`;
     if (existing[0] && existing[0].player_key !== playerKey)
-      return { outcome: 'rejected', reason: 'sub_mismatch' };
-    if (existing[0]) return { outcome: 'duplicate', purchase: toRecord(existing[0]) };
+      return {
+        purchaseToken: r.purchaseToken,
+        outcome: 'rejected',
+        reason: 'sub_mismatch',
+        completion: 'withhold',
+      };
+    if (existing[0])
+      return {
+        purchaseToken: r.purchaseToken,
+        outcome: 'duplicate',
+        purchase: toRecord(existing[0]),
+        completion: existing[0].grant_key ? 'ready' : 'withhold',
+      };
+
     const c = classifyReceipt(r, game.catalog);
     let granted = 0;
     let grantKey: string | null = null;
@@ -200,13 +231,13 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
         rewards: [{ kind: 'premium_currency', amount: granted }],
         reason: `purchase ${r.productSku}`,
         actor: actorLabel(exec),
-        commandId: input.commandId,
+        commandId,
       });
     }
     const ins = await t<TxRow[]>`
-      INSERT INTO purchase_transactions (provider_token, player_key, sku, pack_key, base_amount, granted, price, currency, classification, created_at, completed_at, source, command_id, grant_key)
-      VALUES (${r.purchaseToken}, ${playerKey}, ${r.productSku}, ${c.pack?.packKey ?? null}, ${c.pack?.baseAmount ?? 0}, ${granted}, ${r.price ?? null}, ${r.currency ?? null}, ${c.kind}, ${new Date(r.createdAt)}, ${r.completedAt === null ? null : new Date(r.completedAt)}, 'live_receipt', ${input.commandId}, ${grantKey})
-      RETURNING id, sku, pack_key, classification, granted, grant_key, price, currency, created_at, completed_at, recorded_at`;
+      INSERT INTO purchase_transactions (provider_token, player_key, sku, pack_key, base_amount, granted, price, currency, sandbox, classification, created_at, completed_at, source, command_id, grant_key)
+      VALUES (${r.purchaseToken}, ${playerKey}, ${r.productSku}, ${c.pack?.packKey ?? null}, ${c.pack?.baseAmount ?? 0}, ${granted}, ${r.price ?? null}, ${r.currency ?? null}, ${r.sandbox}, ${c.kind}, ${new Date(r.createdAt)}, ${r.completedAt === null ? null : new Date(r.completedAt)}, 'live_receipt', ${commandId}, ${grantKey})
+      RETURNING id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, created_at, completed_at, recorded_at`;
     await ctx.outbox.emit(t, {
       kind: 'purchase.recorded',
       playerKey,
@@ -217,9 +248,69 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
         granted,
         grantKey,
       },
-      commandId: input.commandId,
+      commandId,
     });
-    return { outcome: 'recorded', purchase: toRecord(ins[0]!) };
+    return {
+      purchaseToken: r.purchaseToken,
+      outcome: 'recorded',
+      purchase: toRecord(ins[0]!),
+      completion: grantKey ? 'ready' : 'withhold',
+    };
+  };
+
+  bus.register(PurchasesVerify, async (input, exec, tx): Promise<VerifyResult> => {
+    const t = tx!;
+    const playerKey = exec.playerKey!;
+    const v = ctx.payments.verifyReceipt(input.purchaseSigned, ctx.config.gameId);
+    if (!v.ok) {
+      if (v.reason === 'no_secret')
+        throw new AppError(
+          'not_configured',
+          'payments verifier has no secret; refusing to verify',
+          { reason: v.reason },
+        );
+      return { outcome: 'rejected', reason: v.reason, completion: 'withhold' };
+    }
+    if (v.purchases.length !== 1)
+      return { outcome: 'rejected', reason: 'malformed_purchase', completion: 'withhold' };
+    const r = v.purchases[0]!;
+    if (r.playerId !== playerKey)
+      return { outcome: 'rejected', reason: 'sub_mismatch', completion: 'withhold' };
+    return recordReceipt(t, playerKey, r, input.commandId, exec);
+  });
+
+  bus.register(PurchasesVerifyBatch, async (input, exec, tx): Promise<BatchVerifyResult> => {
+    const t = tx!;
+    const playerKey = exec.playerKey!;
+    const v = ctx.payments.verifyReceipt(input.purchasesSigned, ctx.config.gameId);
+    if (!v.ok) {
+      if (v.reason === 'no_secret')
+        throw new AppError(
+          'not_configured',
+          'payments verifier has no secret; refusing to verify',
+          { reason: v.reason },
+        );
+      return { outcome: 'rejected', reason: v.reason, results: [] };
+    }
+    if (v.purchases.length > 50)
+      return { outcome: 'rejected', reason: 'malformed_purchase', results: [] };
+    if (v.purchases.some((purchase) => purchase.playerId !== playerKey))
+      return { outcome: 'rejected', reason: 'sub_mismatch', results: [] };
+
+    const unique = new Map<string, VerifiedReceipt>();
+    for (const purchase of v.purchases) {
+      const prior = unique.get(purchase.purchaseToken);
+      if (prior && JSON.stringify(prior) !== JSON.stringify(purchase))
+        return { outcome: 'rejected', reason: 'malformed_purchase', results: [] };
+      if (!prior) unique.set(purchase.purchaseToken, purchase);
+    }
+    for (const token of [...unique.keys()].sort())
+      await t`SELECT pg_advisory_xact_lock(6, hashtext(${token}))`;
+
+    const results: PurchaseVerification[] = [];
+    for (const purchase of unique.values())
+      results.push(await recordReceipt(t, playerKey, purchase, input.commandId, exec, true));
+    return { outcome: 'processed', results };
   });
 
   bus.register(PurchasesAck, async (input, exec, tx) => {
@@ -290,6 +381,14 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
       return bus.execute(PurchasesVerify, { commandId: body.commandId, payload: body }, exec!);
     },
   );
+  route<
+    typeof PurchaseBatchVerifyBody,
+    typeof import('@foundation/contracts').PurchaseBatchVerifyResult
+  >(app, ctx, 'purchases.verifyBatch', async ({ body, exec }) => {
+    if (ctx.liveops.killSwitch('command', 'purchases.verifyBatch'))
+      throw new AppError('forbidden', 'purchases are switched off');
+    return bus.execute(PurchasesVerifyBatch, { commandId: body.commandId, payload: body }, exec!);
+  });
   route<typeof AdjustmentsAckBody, typeof import('@foundation/contracts').AdjustmentsAckResult>(
     app,
     ctx,

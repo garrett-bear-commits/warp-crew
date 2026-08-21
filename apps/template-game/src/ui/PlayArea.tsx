@@ -23,6 +23,14 @@ export function PlayArea() {
   const perSec = perTick * TPS * rate;
   const readOnly = role !== 'leader';
   const theme = live?.flags?.['ui.theme'];
+  const click = (): void => {
+    if (clicks === 0) {
+      // The template's first core-value moment: the first action visibly advances the game.
+      client.platform.analytics.markFirstMilestone();
+      client.platform.analytics.track('first_click', { counter_before: counter });
+    }
+    client.dispatch({ type: 'click' });
+  };
   return (
     <section
       className="panel play"
@@ -44,12 +52,7 @@ export function PlayArea() {
           Clicks <b data-testid="clicks">{clicks}</b>
         </span>
       </div>
-      <button
-        className="big"
-        data-testid="click"
-        disabled={readOnly}
-        onClick={() => client.dispatch({ type: 'click' })}
-      >
+      <button className="big" data-testid="click" disabled={readOnly} onClick={click}>
         Click (+{perClick})
       </button>
       <p className="muted">

@@ -40,8 +40,14 @@ export function createGameApi(o: {
   baseUrl: string;
   clock: Clock;
   auth: () => ClientAuth | null;
+  refreshAuth: () => Promise<boolean>;
 }): GameApi {
-  const base = createApi({ baseUrl: o.baseUrl, auth: o.auth, requestId: mintId });
+  const base = createApi({
+    baseUrl: o.baseUrl,
+    auth: o.auth,
+    refreshAuth: o.refreshAuth,
+    requestId: mintId,
+  });
   let last = 0;
   const subs = new Set<(s: number) => void>();
   const api: Api = {

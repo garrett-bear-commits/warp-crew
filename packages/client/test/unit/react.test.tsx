@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import {
@@ -76,6 +76,23 @@ describe('react shells (§5.3)', () => {
       ),
     );
     expect(m.el.querySelector('b')?.textContent).toBe('codes');
+    m.unmount();
+  });
+
+  it('RegistrationGate exposes an awaitable platform login action without blocking dismissal', async () => {
+    const login = vi.fn(async () => {});
+    const m = mount(
+      <RegistrationGate registered={false} onLogin={login} loginLabel="Keep my progress">
+        <b>registered content</b>
+      </RegistrationGate>,
+    );
+
+    const button = m.el.querySelector('.foundation-registration-login') as HTMLButtonElement;
+    expect(button.textContent).toBe('Keep my progress');
+    await act(async () => button.click());
+    expect(login).toHaveBeenCalledTimes(1);
+    expect(button.disabled).toBe(false);
+    expect(m.el.querySelector('b')).toBeNull();
     m.unmount();
   });
 

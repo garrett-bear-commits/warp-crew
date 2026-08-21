@@ -1,6 +1,6 @@
 # ADR-023 Provider-neutral static hosting + zip fallback; no Cloudflare/Railway coupling in v1
 
-Date: 2026-08-17. Status: accepted.
+Date: 2026-08-17. Status: accepted. Platform documentation reviewed: 2026-08-20.
 
 ## Context
 §10/§14 name Cloudflare Pages / R2 or Railway static as candidate hosts and Railway for the server.
@@ -20,3 +20,16 @@ or Railway API.
 ## Consequences
 Deploying to a specific host is one adapter script outside v1 scope; `fleet.json` keeps
 host-neutral fields (name, apiUrl, staticUrl, env).
+
+Jest now officially supports registering a self-hosted URL as a game version (Developer Console →
+Versions → Add self-hosted URL). The platform loads that URL verbatim in its iframe and supports
+preview, activation, and later switching of the active version. The ZIP pipeline remains a
+fallback, not a requirement. Source: [Jest HTML5 SDK](https://docs.jest.com/sdk/html5),
+[Manage builds](https://docs.jest.com/dev-console/builds), and the May 11, 2026 entry in
+[What's new](https://docs.jest.com/whats-new).
+
+This repository's local static deploy and iframe harness are evidence for asset layout and local
+framing behavior only. They do not prove the real Jest shell accepts the origin. Before review,
+verify the registered URL, `frame-ancestors`, CORS to the API, SDK bootstrap, storage partitioning,
+and mobile behavior in the hosted emulator/Simulator. Prefer one self-hosted origin for the game
+and `/v1` reverse proxying on that origin; a separate API origin remains an explicit external gate.

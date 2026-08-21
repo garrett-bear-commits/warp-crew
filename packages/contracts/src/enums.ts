@@ -170,6 +170,7 @@ export const JOURNAL_ENTRY_KINDS = ['action', 'settle', 'gap'] as const;
 export type JournalEntryKind = (typeof JOURNAL_ENTRY_KINDS)[number];
 
 export const INTEGRITY_EVENT_KINDS = [
+  'platform_incompatible',
   'game_error',
   'storage_blocked',
   'save_backstop_unreachable',

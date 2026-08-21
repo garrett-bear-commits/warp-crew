@@ -13,7 +13,7 @@ Format: Context → Decision → Consequences. All dated 2026-08-17 unless state
 | [ADR-021](ADR-021-admin-inspector-static-page.md) | Admin inspector is a static TypeScript page on a separate origin |
 | [ADR-022](ADR-022-toolchain-pins.md) | Node 24 / pnpm 10 / TypeScript 5.9 pinned; ESLint + Prettier as gate |
 | [ADR-023](ADR-023-provider-neutral-static-hosting.md) | Provider-neutral static hosting + zip fallback; no Cloudflare/Railway coupling in v1 |
-| [ADR-024](ADR-024-purchase-minting-gate.md) | Real premium minting from receipts is off until the sandbox receipt shape is verified |
+| [ADR-024](ADR-024-purchase-minting-gate.md) | Real premium minting remains owner-gated pending real Jest payload validation |
 | [ADR-025](ADR-025-integration-tests-real-postgres.md) | Integration tests run on real Postgres 16 (Docker/testcontainers), never a fake |
 | [ADR-026](ADR-026-command-idempotency-storage.md) | Idempotency: reserved commands row + tombstones, `request_hash` over `{type, canonicalPayload}` |
 | [ADR-027](ADR-027-server-runs-typescript-natively.md) | Server packages run TypeScript source under Node 24 type stripping; no build step |

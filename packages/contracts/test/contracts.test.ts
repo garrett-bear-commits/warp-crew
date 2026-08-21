@@ -58,13 +58,40 @@ describe('route registry invariants', () => {
   it('admin routes declare a scope; step-up only on value commands', () => {
     for (const r of ROUTES) {
       if (r.auth === 'admin') expect(r.adminScope, `${r.id}`).toBeDefined();
-      if (r.stepUp) expect(['lineage', 'grants'].includes(r.feature)).toBe(true);
+      if (r.stepUp) expect(['lineage', 'grants', 'purchases'].includes(r.feature)).toBe(true);
     }
   });
 
   it('MutationBody base requires commandId as a uuid', () => {
     expect(check(MutationBody, { commandId: 'not-a-uuid' })).toBe(false);
     expect(check(MutationBody, { commandId: saveWriteBody.commandId })).toBe(true);
+  });
+
+  it('declares a step-up batch purchase verification route', () => {
+    const route = ROUTE_BY_ID.get('purchases.verifyBatch');
+    expect(route).toMatchObject({
+      method: 'POST',
+      path: '/v1/purchases/verify-batch',
+      auth: 'player',
+      feature: 'purchases',
+      stepUp: true,
+    });
+  });
+
+  it('requires the server completion decision on direct purchase verification', () => {
+    const schema = ROUTE_BY_ID.get('purchases.verify')!.response as unknown as {
+      required?: string[];
+    };
+    expect(schema.required).toContain('completion');
+  });
+
+  it('requires nullable signed sandbox provenance on purchase records', () => {
+    const purchase = (
+      ROUTE_BY_ID.get('purchases.verify')!.response as unknown as {
+        properties: { purchase: { required?: string[] } };
+      }
+    ).properties.purchase;
+    expect(purchase.required).toContain('sandbox');
   });
 });
 

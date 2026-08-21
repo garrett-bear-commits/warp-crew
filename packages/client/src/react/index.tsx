@@ -220,12 +220,43 @@ export function LoadingGate(props: { ready: boolean; fallback?: ReactNode; child
 export function RegistrationGate(props: {
   registered: boolean;
   prompt?: ReactNode;
+  /** Calls the provider's registration flow. Resolving may mean either completion or dismissal. */
+  onLogin?: () => void | Promise<void>;
+  loginLabel?: ReactNode;
   children: ReactNode;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   if (props.registered) return <>{props.children}</>;
+  const login = async (): Promise<void> => {
+    if (!props.onLogin || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await props.onLogin();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="foundation-registration-gate">
       {props.prompt ?? <p>Sign in to use this feature.</p>}
+      {props.onLogin ? (
+        <button
+          className="foundation-registration-login"
+          disabled={busy}
+          onClick={() => void login()}
+        >
+          {busy ? 'Opening…' : (props.loginLabel ?? 'Sign in')}
+        </button>
+      ) : null}
+      {error ? (
+        <p className="foundation-registration-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

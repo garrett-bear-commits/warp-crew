@@ -1,7 +1,7 @@
 // Template game build (ADR-010 URL-hosted, auto-updating client): hashed immutable assets, a
 // no-cache index.html served by the static host, no source maps in the bundle, `.ts` imports
 // straight from the workspace packages (Vite strips types). VITE_API_URL / VITE_BUILD_VERSION are
-// the only build-time inputs (see src/config.ts).
+// plus the Jest platform/login/notification settings are build-time inputs (see src/config.ts).
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { dirname, resolve } from 'node:path';

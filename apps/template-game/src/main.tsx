@@ -53,6 +53,7 @@ const api = createGameApi({
     const token = platform.identity.tokenFor(p.playerId);
     return token ? { playerKey: p.playerId, token, buildVersion: cfg.buildVersion } : null;
   },
+  refreshAuth: async () => (await platform.identity.refreshCredential()) !== null,
 });
 
 const bootPromise = client.boot().then(

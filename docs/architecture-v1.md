@@ -1,5 +1,5 @@
 Game Foundation — Architecture v1
-Status: decided, not built. Date: 2026-08-17. Owner: Nikolay. Scope: the reusable core (server + web adapter + contracts + tooling) that is built first; games are added on top afterwards. First platform is jest.com; switching platform must be one provider implementation. Sources of truth for evidence: docs/foundation-research/ (Barrowdeep deep-read, boilerplate read, design panel, industry review + red-team, gap report). This document contains only current decisions.
+Status: decided; implementation evidence is tracked separately. Date: 2026-08-17. Owner: Nikolay. Scope: the reusable core (server + web adapter + contracts + tooling) that is built first; games are added on top afterwards. First platform is jest.com; switching platform must be one provider implementation. Sources of truth for evidence: docs/foundation-research/ (Barrowdeep deep-read, boilerplate read, design panel, industry review + red-team, gap report) plus the official Jest references linked in §14. This document contains current decisions, not a claim that every platform integration has passed.
 
 1. Principles (the invariants ledger)
 Each is a rule with an incident or a source behind it; each gets a test named after it.
@@ -10,7 +10,11 @@ A save may only get deeper. progress is a game-supplied monotone ordinal (playti
 Every stored write has an explicit disposition — anchored | stored_quarantined | stored_refused | duplicate — and deepest anchored in the active generation is both the read anchor and the retention anchor. Quarantined rows are never the anchor and are never reported to the player as "saved to cloud".
 Generations are the only way backwards (restart, admin restore, player restore-to-point, erasure). A newer generation always wins on the client.
 Identity fails closed. Provider token verified before any player-keyed read/write; no_secret → 503, never open; alg pinned; aud == GAME_ID mandatory; iat window; secret rotation list; token age step-up for value commands.
-Money is signed facts only. Provider receipt is the sole input; provider-token idempotency; sandbox never mints (schema CHECK); grant-before-confirm; per-pack promotions keyed by pack id; negative adjustments always reference an admin action.
+Money is signed facts only. Provider receipt is the sole input; provider-token idempotency; signed
+`sandbox: true` is authoritative before price; the current schema keeps sandbox `granted = 0`
+pending owner approval because Jest's official guidance recommends delivering test items while
+excluding them from revenue; grant-before-confirm; per-pack promotions keyed by pack id; negative
+adjustments always reference an admin action.
 Client claims never mint premium value. Everything the server reads out of a blob or a journal is a claim: rewards from claims are cosmetic/soft or budgeted; placements are provisional until reviewed.
 Grants are the one reward primitive — server-authored, idempotently claimable, auditable, retroactive.
 The server is the truth for state; the local copy is operational truth during play. Platform KV is a write-only mirror with a human-initiated break-glass read. Boot always performs a bounded server head check. Blocked ≠ empty.
@@ -26,7 +30,7 @@ Engine (per game)        Engine<S,A,E>: newState · apply · step? · progressOf
 Web adapter (core)       @foundation/client: state lifecycle, storage, sync, journal, providers, hooks
 Server (core, per game)  @foundation/server: CQRS spine, ledgers, features, live-ops, admin — one deployment per game
 Platform provider        Jest (identity · payments · notifications · KV mirror) | mock | future web
-Per-game deployment: the same server image + games/<id>/ config + secrets → one Railway service + one Postgres per game; the client is URL-hosted on our own static host and Jest is pointed at it once.
+Per-game deployment: the same server image + games/<id>/ config + secrets → one Railway service + one Postgres per game; the client is preferably one self-hosted URL origin with `/v1` reverse-proxied on that origin. Jest officially supports registering that URL as a version and loads it verbatim in the iframe; real shell/framing/CORS behavior remains an external gate.
 Not in scope: real-time multiplayer with an authoritative sim (separate app on the same core), tenancy, compliance work (Jest-only launch), a tick-engine package (an engine implements step; helpers later).
 3. Repository and packages
 Private pnpm monorepo, Node 24 LTS (native type stripping), TypeScript 5.9, vitest everywhere.
@@ -172,11 +176,11 @@ Contract tests from shared fixtures both sides; oasdiff breaking vs last release
 Save corpus: each release contributes ≥ 5 sanitised saves; CI loads all through HEAD, round-trips, asserts progressOf monotone; codec fuzz.
 Engine conformance kit (step and apply-only modes, action fuzz, golden stream WebKit vs Node measured).
 Bench: k6 at 1×/5×/20× an assumed 1k-DAU game, spike, monthly 2 h soak on Lab; nightly p95 threshold.
-Real-browser acceptance (Playwright on WebKit + Chromium, mobile emulation, and one physical-device pass): blocked/partitioned storage, pagehide → beacon delivered, hidden → resume with server head check, quarantined save shows "pending review", URL-hosted build executing inside a jest.com-shaped iframe harness (and the Jest simulator).
+Real-browser acceptance (Playwright on WebKit + Chromium, mobile emulation, and one physical-device pass): blocked/partitioned storage, pagehide → beacon delivered, hidden → resume with server head check, quarantined save shows "pending review", URL-hosted build executing inside a jest.com-shaped local iframe harness. Local Playwright/mock evidence is separate from the real Jest hosted emulator, Simulator, sandbox, and mobile-shell gates.
 Smoke after deploy: check-health --assert, canary write/read with a Lab qa_ identity.
 10. Deployment
 Server: one image (node:24-alpine, dumb-init, non-root, HEALTHCHECK /health/ready) → one Railway service + Postgres per game per env (prod, lab); GAME_ID + secrets in env; pnpm foundation new-server --game <id> scaffolds games/<id>/; target < 1 h to check-health --assert green on Lab (+ a written half-day client checklist: game id, aud, secrets, PITR, Sentry project, monitor, host).
-Client: URL-hosted, auto-updating — hashed immutable assets + no-cache index.html on our static host per game (Cloudflare Pages/R2 or the game's Railway service), frame-ancestors https://jest.com https://*.jest.com, in-place hash-verified deploy with v/ history; Jest is pointed at the URL once. Running sessions: version-check banner + reload at safe points, minBuildVersion/426 for stragglers. Zip pipeline kept in tooling as a fallback. Verify once with Jest that URL hosting is a supported production/review mode.
+Client: URL-hosted, auto-updating — hashed immutable assets + no-cache index.html on one static origin per game (Cloudflare Pages/R2 or the game's Railway service), `frame-ancestors https://jest.com https://*.jest.com`, in-place hash-verified deploy with v/ history; register the full URL as a Jest self-hosted version, then preview/activate it in the Developer Console. Prefer same-origin `/v1` proxying. Running sessions: version-check banner + reload at safe points, minBuildVersion/426 for stragglers. ZIP pipeline kept in tooling as a fallback. Verify framing, CORS, storage partitioning, SDK calls, and mobile behavior in the real hosted shell before review.
 Rollout: Lab → smallest game → rest; flags with rollout % and shadow mode are the canary for behaviour; cohort-based bundle serving is possible from our host.
 11. Adding a game on top of the core
 Checklist (this is what "game #2" does; the template game is the executable version):
@@ -184,7 +188,7 @@ Checklist (this is what "game #2" does; the template game is the executable vers
 apps/<game>/: engine implementing Engine<S,A,E> (two RNG streams, progressOf, summary, optional step/onGap/settle), codec (defineSave with numbered migrations), UI over state + effects.
 apps/server/games/<game>/: game.config.ts (features: [...], providers, catalog, boards, origins, retention, maxProgressPerHour, journal mode), policy.ts (validateBlob, summary extraction, sanitizeForQa, criteria budgets), content/ (achievements, quests, daily rewards, offers, announcements as documents), .env.example, railway.json.
 Journal allowlist + domain event schemas for anything achievements/quests should see.
-Wire createGameClient(gameConfig) + PlatformProvider (Jest in prod, standalone on our QA host, mock in tests); LoadingGate → markLoaded once; RegistrationGate; comeback ladder ≥ 3 variants/slot; one SKU end-to-end (buy, recover, verify, restart entitlement); one board with a draft season; inbox; one code campaign.
+Wire createGameClient(gameConfig) + PlatformProvider (Jest in prod, standalone on our QA host, mock in local tests); `JestSDK.init` before all other SDK calls; LoadingGate → `markGameLoaded` once; RegistrationGate with `login`; official lifecycle/data/entry-payload/analytics seams; comeback notifications for registered players; one SKU end-to-end (buy, recover, verify, restart entitlement); one board with a draft season; inbox; one code campaign.
 Run the engine conformance kit, contribute saves to the corpus, add a legacy-fixture recording to CI.
 new-server on Lab, check-health --assert, canary, storage-matrix afternoon on real devices, then prod.
 docs/analytics.md for the game generated from the typed event registry.
@@ -192,7 +196,7 @@ Rule of thumb: change what a mechanic says, costs, rewards or when = publish con
 
 12. Plan and estimate
 Phase	Weeks	Deliverable / gate
-P0 feasibility + measure	0.5	gates: Jest confirms URL-hosted production/review mode (fallback: zip pipeline) and the sandbox receipt shape (fallback: classify by Dev-Console list); production queries (accepted rows > 64 KiB; save_backstop_unreachable.where; teardown delivery by browser family), device storage matrix afternoon, remaining §14 verifications, record Railway backup/sleep settings
+P0 feasibility + measure	0.5	gates: register and preview a self-hosted URL version, verify the real Jest shell's framing/CORS/storage behavior, and validate signed sandbox receipts (sandbox flag before price); production queries (accepted rows > 64 KiB; save_backstop_unreachable.where; teardown delivery by browser family), device storage matrix afternoon, remaining §14 verifications, record Railway backup/sleep settings
 P1 scaffold + contracts	1	monorepo, CI (typecheck/unit/PG), contracts for every route incl. commandId/baseSeq/sessionId/reason/disposition/beacon, hand-authored fixture examples validated against the schemas (recordings from the real server are added at the end of P2), ops thresholds; gate: contract tests green against a stub server
 P2 server core + features	4.5–5	spine (typed bus, tx/lock, idempotency, outbox, jobs, migrations, roles), identity + jest-verify, saves, lineage, purchases, grants, achievements evaluator + content docs, leaderboards (levels 1–2, quarantine), inbox, liveops (flags/schedules/segments/content), telemetry, journal, admin (inspector + five writes), qa; PITR + restore verify; Sentry; gate: check-health --assert on Lab, every copied Barrowdeep test has a counterpart, admin phone page can send a letter + grant
 P3 client adapter	3–3.5	engine contract + loop, storage tiers, boot machine, sync (commandId, beacon, verdicts incl. quarantined, divergence), generations, restore, KV break-glass, identity switch, journal, clock, multi-tab, providers (Jest, mock, standalone), React hooks/shells, conformance kit, model-based sync tests, real-browser acceptance; gate: template game on the full stack incl. one daily reward, one windowed achievement, one scheduled sale, one announcement, one make-good from the admin page, one config publish without rebuild, one flag at 50 %
@@ -243,7 +247,7 @@ ADR-018 No service worker / offline story. Decision: the host page must load any
 ADR-019 Refusal is 200, not 4xx. Decision: refusal as data so the client keeps the local copy and can surface a choice; 4xx reserved for transport, auth, contract and precondition errors.
 
 14. Open verifications and questions
-Verify (P0, cheap): Jest supports URL-hosted games in production/review; Jest sandbox receipt price shape; whether <game>.builds.jest.com is same-site with jest.com; Jest's third-party-request wording (client Sentry); whether Jest offers staged activation; Railway log retention; Sentry Team monitor counts; the literal Jest game id and aud.
+Verify (P0, cheap): register/preview/activate a self-hosted URL version; real iframe framing, CORS, storage partitioning, SDK bootstrap, and mobile behavior; signed sandbox flag and delivery/accounting behavior; whether <game>.builds.jest.com is same-site with jest.com; Jest's third-party-request wording (client Sentry); Railway log retention; Sentry Team monitor counts; the literal Jest game id and aud.
 
 Decide (Nikolay): journal on by default for every game (on | errors_only | off); admin inspector as static page vs small SPA; Node 24 / pnpm on the working machines; eslint+prettier (recommended) vs Biome; whether game #2 needs subscriptions or offers in v1 (else v1.1); static host choice (Cloudflare Pages vs Railway static).
 
@@ -268,14 +272,14 @@ export function withLock<T>(db: Db, lock: { kind: 'player'|'game'|'none'; key?: 
 export function place(write: SaveWrite, head: StoredHead | null, last: LastRow | null, activeGeneration: number): Placement; // pure
 
 // providers
-export interface IdentityClient /* browser, packages/client */ { ready(): Promise<void>; isReady(): boolean; getPlayer(): Player | null; tokenFor(playerId: string): string | null;
+export interface IdentityClient /* browser, packages/client */ { ready(): Promise<void>; isReady(): boolean; getPlayer(): Player | null; login(entryPayload?: Record<string, unknown>): Promise<void>; refreshCredential(): Promise<string | null>; tokenFor(playerId: string): string | null;
   previousToken(): { playerId: string; token: string } | null; onIdentityChanged(cb: (prev: Player | null, next: Player) => void): () => void }
 export interface IdentityVerifier /* node, packages/jest-verify */ { verify(token: string, claimedKey: string, gameId: string, now: number): TokenResult }
 export interface PaymentsVerifier /* node, packages/jest-verify */ { verifyReceipt(jws: string, gameId: string): ReceiptResult }
-export interface PaymentsProvider { products(): Promise<Product[]>; begin(sku: string): Promise<PurchaseOutcome>; complete(token: string): Promise<boolean>; recoverIncomplete(grant: GrantFn, onSigned?: (jws: string) => void): Promise<void> }
+export interface PaymentsProvider { products(): Promise<Product[]>; begin(sku: string): Promise<PurchaseOutcome>; complete(token: string): Promise<PurchaseCompletionOutcome>; recoverIncompleteBatch(grant: GrantBatchFn): Promise<void> }
 export interface PlatformKV { set(key: string, value: string): void; delete(key: string): void; flush(): Promise<void>;
   readBreakGlass(key: string): Promise<string | null> }  // write-only mirror on the normal path; read only from the human-initiated recover flow
-export interface NotificationsProvider { eligible(): boolean; scheduleLadder(items: LadderItem[]): Promise<ScheduleResult>; unschedule(id: string): Promise<void> }
+export interface NotificationsProvider { eligible(): boolean; scheduleLadder(items: LadderItem[]): Promise<ScheduleResult>; unschedule(identifier: string): Promise<void> } // Jest implementation maps this seam to scheduleNotification/unscheduleNotification
 
 // client
 export function createGameClient<S, A, E>(cfg: { engine: Engine<S, A, E>; codec: SaveCodec<S>; platform: PlatformAdapter; serverUrl: string; gameId: string;

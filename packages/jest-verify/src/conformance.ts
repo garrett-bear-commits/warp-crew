@@ -114,6 +114,7 @@ export interface ReceiptMinter {
     sku: string;
     price?: number;
     currency?: string;
+    sandbox?: true;
     completedAt?: number | null;
     batch?: boolean;
   }): string;
@@ -156,13 +157,21 @@ export function paymentsConformance(
       },
     },
     {
-      name: 'sandbox receipt (price 0) verifies (classification happens later; sandbox never mints)',
+      name: 'signed sandbox provenance survives a positive simulator price',
       run: () => {
         const r = v.verifyReceipt(
-          mint.valid({ playerId: 'p1', gameId, purchaseToken: 'tok2', sku: 'gems_200', price: 0 }),
+          mint.valid({
+            playerId: 'p1',
+            gameId,
+            purchaseToken: 'tok2',
+            sku: 'gems_200',
+            price: 4.99,
+            currency: 'USD',
+            sandbox: true,
+          }),
           gameId,
         );
-        return okOne(r) && r.ok && r.purchases[0]!.price === 0;
+        return okOne(r) && r.ok && r.purchases[0]!.sandbox === true;
       },
     },
     {

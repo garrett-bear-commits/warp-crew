@@ -47,10 +47,12 @@ test('sandbox purchase → season → run → restart → old generation refused
   const player = freshPlayer();
   await openGame(page, player);
 
-  // purchase through the mock payments (price 0 → sandbox): recorded, granted 0
+  // purchase through mock payments carries signed sandbox provenance: record it, grant 0, and
+  // intentionally leave it incomplete until the owner-approved sandbox delivery model exists.
   await page.getByTestId('buy-gems_100').click();
-  await expect(page.getByTestId('purchase-outcome')).toContainText('recorded (sandbox)');
-  await expect(page.getByTestId('purchase-outcome')).toContainText('granted 0');
+  await expect(page.getByTestId('purchase-outcome')).toContainText(
+    'recorded but left incomplete (sandbox; delivery gate pending)',
+  );
   await expect(page.getByTestId('purchase-count')).toHaveText('1');
   await expect(page.getByTestId('gems')).toHaveText('0');
   const mine = await playerGet<{

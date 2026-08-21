@@ -51,6 +51,8 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
       ready: async () => {},
       isReady: () => true,
       getPlayer: () => player,
+      login: async () => {},
+      refreshCredential: async () => o.token,
       tokenFor: (id) => (id === o.playerId ? o.token : null),
       previousToken() {
         const p = previous;
@@ -81,7 +83,8 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
         kind: 'error',
         message: 'purchases are unavailable on the standalone platform',
       }),
-      complete: async () => false,
+      complete: async () => ({ kind: 'invalid_token', message: 'purchases are unavailable' }),
+      recoverIncompleteBatch: async () => {},
       recoverIncomplete: async () => {},
     },
     notifications: {
@@ -104,7 +107,7 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
         }
       },
     },
-    analytics: { track() {} },
+    analytics: { track() {}, markFirstMilestone() {} },
     loading: {
       markLoaded() {
         if (loaded) return;
@@ -114,6 +117,7 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
       progress() {},
     },
     lifecycle: documentLifecycle(),
+    entryPayload: () => ({}),
     errors: consoleErrorSink(),
   };
 }

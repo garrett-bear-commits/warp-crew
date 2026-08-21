@@ -99,15 +99,15 @@ test('config publish without rebuild: idle.rate ×2, sale.summer at 50 %, schedu
   expect(flagged.length).toBeLessThanOrEqual(17);
   const notFlagged = ids.find((id) => !flagged.includes(id))!;
 
-  // a flagged player sees the banner with the scheduled sale + discount; an unflagged one does not
+  // a flagged player sees event messaging, but neither the banner nor the client invents a price
   await openGame(page, flagged[0]!);
   await expect(page.getByTestId('sale-banner')).toBeVisible();
-  await expect(page.getByTestId('sale-banner')).toContainText('30% off');
+  await expect(page.getByTestId('sale-banner')).toContainText('platform price');
   await expect(page.getByTestId('sale-schedule')).toContainText('summer-sale');
-  await expect(page.getByTestId('price-gems_100')).toHaveText('$0.69');
+  await expect(page.getByTestId('price-gems_100')).toContainText('0.00');
   await openGame(page, notFlagged);
   await expect(page.getByTestId('sale-banner')).toHaveCount(0);
-  await expect(page.getByTestId('price-gems_100')).toHaveText('$0.99');
+  await expect(page.getByTestId('price-gems_100')).toContainText('0.00');
 
   // SKU kill switch hides the pack in the shop
   await expect(page.getByTestId('sku-gems_100')).toBeVisible();

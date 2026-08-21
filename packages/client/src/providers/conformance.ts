@@ -154,14 +154,19 @@ export function platformConformance(
       },
     },
     {
-      name: 'payments.complete(token) resolves a boolean',
+      name: 'payments.complete(token) preserves a completion verdict',
       run: async () => {
         const r = await settle(payments.complete('any-token'));
-        return r.ok && typeof r.value === 'boolean';
+        return (
+          r.ok &&
+          (r.value.kind === 'success' ||
+            r.value.kind === 'retryable_error' ||
+            r.value.kind === 'invalid_token')
+        );
       },
     },
     {
-      name: `payments.recoverIncomplete() yields ${expect.incompletePurchases} grant call(s) with signed receipts`,
+      name: `payments.recoverIncomplete() yields ${expect.incompletePurchases} grant call(s) with signed batch evidence`,
       run: async () => {
         const seen: string[] = [];
         let signed = 0;
@@ -179,7 +184,7 @@ export function platformConformance(
         return (
           r.ok &&
           seen.length === expect.incompletePurchases &&
-          signed === expect.incompletePurchases
+          signed === (expect.incompletePurchases > 0 ? 1 : 0)
         );
       },
     },

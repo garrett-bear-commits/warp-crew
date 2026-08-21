@@ -143,7 +143,9 @@ export const purchaseVerifyBody: C.PurchaseVerifyBody = {
 };
 
 export const purchaseVerifyResult: C.PurchaseVerifyResult = {
+  purchaseToken: 'provider-token-fixture',
   outcome: 'recorded',
+  completion: 'withhold',
   purchase: {
     id: 1,
     sku: 'gems_200',
@@ -152,10 +154,30 @@ export const purchaseVerifyResult: C.PurchaseVerifyResult = {
     granted: 0,
     price: 0,
     currency: 'USD',
+    sandbox: true,
     createdAt: T0,
     completedAt: T0 + 1000,
     recordedAt: T0 + 2000,
   },
+  requestId: REQUEST_ID,
+  serverNow: T0 + 2000,
+};
+
+export const purchaseBatchVerifyBody: C.PurchaseBatchVerifyBody = {
+  commandId: FIXTURE_UUIDS.commandId2,
+  purchasesSigned: 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZW1wbGF0ZSIsInB1cmNoYXNlcyI6W119.fixture',
+};
+
+export const purchaseBatchVerifyResult: C.PurchaseBatchVerifyResult = {
+  outcome: 'processed',
+  results: [
+    {
+      purchaseToken: 'provider-token-fixture',
+      outcome: 'recorded',
+      completion: 'withhold',
+      purchase: purchaseVerifyResult.purchase!,
+    },
+  ],
   requestId: REQUEST_ID,
   serverNow: T0 + 2000,
 };
@@ -345,6 +367,7 @@ export const ROUTE_FIXTURES: Record<string, { body?: unknown; response: unknown 
   'saves.current': [{ response: saveCurrentEmpty }, { response: saveCurrentWithSnapshot }],
   'lineage.restart': [{ body: lineageRestartBody, response: generationReceipt }],
   'purchases.verify': [{ body: purchaseVerifyBody, response: purchaseVerifyResult }],
+  'purchases.verifyBatch': [{ body: purchaseBatchVerifyBody, response: purchaseBatchVerifyResult }],
   'grants.claim': [{ body: grantClaimBody, response: grantClaimResult }],
   'codes.redeem': [
     { body: codeRedeemBody, response: { ...grantClaimResult, outcome: 'redeemed' } },

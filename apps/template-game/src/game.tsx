@@ -19,6 +19,8 @@ import {
 import type { GameApi } from './api.ts';
 import type { GameConfig } from './config.ts';
 import type { TemplateAction, TemplateEffect, TemplateState } from './engine.ts';
+import { recoverPurchasesOnStartup } from './purchases.ts';
+import { refreshRetentionPlan } from './retention.ts';
 import { compareBuildVersions } from './versions.ts';
 
 export type TemplateClient = GameClient<TemplateState, TemplateAction, TemplateEffect>;
@@ -109,6 +111,7 @@ export function GameProvider(props: {
   );
   const toastId = useRef(0);
   const visible = useVisibility();
+  const registered = client.player?.registered === true;
 
   const toast = useCallback((text: string) => {
     const id = ++toastId.current;
@@ -188,6 +191,54 @@ export function GameProvider(props: {
     [api],
   );
 
+  // Registered players get one deterministic D1-D7 rolling plan on startup and every return.
+  // Guests schedule nothing; unsupported/moderated results remain observable but never block play.
+  useEffect(() => {
+    if (!booted || !visible || !registered) return;
+    let alive = true;
+    void refreshRetentionPlan(
+      client.platform.notifications,
+      client.player,
+      cfg.buildVersion,
+      cfg.notificationAssetReference,
+    ).then((result) => {
+      if (!alive) return;
+      client.platform.analytics.track('notification_plan_result', {
+        scheduled: result.scheduled.length,
+        failed: result.failed.length,
+      });
+      if (result.failed.length)
+        client.reportError(new Error('notification plan partially failed'), {
+          failed: result.failed.length,
+        });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [booted, visible, registered, client, cfg.buildVersion, cfg.notificationAssetReference]);
+
+  // Attribute notification entries through the official payload, with a strict allow-list so
+  // arbitrary entry data (including names or message text) never enters analytics.
+  const entryTracked = useRef(false);
+  useEffect(() => {
+    if (!booted || entryTracked.current) return;
+    entryTracked.current = true;
+    const entry = client.platform.entryPayload();
+    const template = entry.notification_template;
+    const offset = entry.notification_offset;
+    if (
+      typeof template === 'string' &&
+      /^template_return_d[1-7]_v1$/.test(template) &&
+      typeof offset === 'string' &&
+      /^D[1-7]$/.test(offset)
+    ) {
+      client.platform.analytics.track('notification_entry', {
+        notification_template: template,
+        notification_offset: offset,
+      });
+    }
+  }, [booted, client]);
+
   const applyGrant = useCallback(
     (grant: Grant) => {
       for (const a of grantActions(grant)) client.dispatch(a);
@@ -218,6 +269,23 @@ export function GameProvider(props: {
     if (!booted || bootWork.current) return;
     bootWork.current = true;
     void (async () => {
+      const recovery = await recoverPurchasesOnStartup(
+        api.purchases,
+        client.platform.payments,
+        mintId,
+      );
+      // The server grant is already durable before provider completion. Claiming here updates this
+      // session immediately; an interrupted claim remains available in the existing grants inbox.
+      for (const grantKey of recovery.grantKeys) await claimGrant(grantKey);
+      if (recovery.errors.length)
+        client.reportError(new Error('purchase recovery incomplete'), {
+          errors: recovery.errors.length,
+        });
+      if (recovery.pagesVerified > 0)
+        toast(
+          `Purchase recovery: ${recovery.ready} ready, ${recovery.withheld} pending, ${recovery.rejected} rejected`,
+        );
+
       const mine = await api.purchases.mine();
       if (mine.ok && mine.body.pendingAdjustments.length) {
         for (const adj of mine.body.pendingAdjustments)
@@ -244,7 +312,7 @@ export function GameProvider(props: {
         });
       }
     })();
-  }, [api, booted, cfg.buildVersion, client, clock, diagnostics, toast]);
+  }, [api, booted, cfg.buildVersion, claimGrant, client, clock, diagnostics, toast]);
 
   const setDiagnostics = useCallback(
     (v: boolean) => {

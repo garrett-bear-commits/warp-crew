@@ -1,14 +1,16 @@
-// Jest platform (§5.3 createJestPlatform, ADR-013 provider switch = one implementation). Wraps
-// `window.JestSDK` DEFENSIVELY: every call no-ops safely (or degrades to the documented failure
-// value) when the SDK or a method is absent, throws, or returns an unexpected shape. The SDK
-// surface used here is the minimum the foundation needs: init / getPlayer / getPlayerSigned
-// (HS256 token, no exp) / payments (products, beginPurchase → purchaseSigned, completePurchase,
-// recoverIncomplete) / kv (set, delete, flush, get for break-glass) / notifications
-// (isEligible, scheduleLadder, unschedule) / share / analytics.track / markLoaded.
+// Minimal Jest HTML5 SDK mirror, reviewed 2026-08-20. Official sources:
+// https://docs.jest.com/sdk/html5, https://docs.jest.com/sdk/html5/player,
+// https://docs.jest.com/sdk/html5/platform-login, https://docs.jest.com/sdk/html5/app-lifecycle,
+// https://docs.jest.com/sdk/html5/notifications, https://docs.jest.com/sdk/html5/payments,
+// https://docs.jest.com/sdk/html5/loading-screen, https://docs.jest.com/sdk/html5/analytics,
+// https://docs.jest.com/sdk/html5/entry-payload. Review this mirror at least once per quarter and
+// before every Jest launch. Signed data is carried to the server; browser code never decides grants.
 import type { IntegrityEvent } from '@foundation/contracts';
+import { createClock } from '../clock/index.ts';
 import {
   consoleErrorSink,
   documentLifecycle,
+  PlatformIncompatibleError,
   type ErrorSink,
   type IdentityClient,
   type IncompletePurchase,
@@ -16,423 +18,558 @@ import {
   type PlatformAdapter,
   type Player,
   type Product,
+  type PurchaseCompletionOutcome,
   type PurchaseOutcome,
+  type RecoveryBatch,
   type ScheduleResult,
 } from './types.ts';
 
-/** The shape we read from the SDK. Every member is optional: presence is checked at call time. */
+type JP = { playerId: string; registered: boolean };
+type JPurchase = {
+  purchaseToken: string;
+  productSku: string;
+  credits: number;
+  createdAt: number;
+  completedAt: number | null;
+  price: number;
+  currency: string;
+  sandbox?: true;
+};
+type JNotification = {
+  identifier?: string;
+  scheduledAt?: Date;
+  scheduledInDays?: number | undefined;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  assetReference?: string;
+  body: string;
+  title?: string;
+  ctaText: string;
+  entryPayload?: Record<string, string>;
+};
 export interface JestSdkLike {
-  init?(): Promise<unknown> | unknown;
-  getPlayer?():
-    | {
-        playerId?: string;
-        id?: string;
-        registered?: boolean;
-        isRegistered?: boolean;
-        displayName?: string;
-        name?: string;
-      }
-    | null
-    | undefined;
-  getPlayerSigned?():
-    | Promise<string | { token?: string; signed?: string } | null | undefined>
-    | string
-    | null
-    | undefined;
-  onPlayerChanged?(cb: (player: unknown) => void): unknown;
-  payments?: {
-    getProducts?(): Promise<unknown> | unknown;
-    beginPurchase?(sku: string): Promise<unknown> | unknown;
-    completePurchase?(token: string): Promise<unknown> | unknown;
-    recoverIncomplete?(): Promise<unknown> | unknown;
-    purchaseSigned?(token: string): Promise<unknown> | unknown;
+  init(options?: { autoLoginReminders?: boolean }): Promise<void>;
+  getPlayer(): JP;
+  getPlayerSigned(): Promise<{ player: JP; playerSigned: string }>;
+  login(options?: { entryPayload?: Record<string, unknown> }): Promise<void>;
+  data: {
+    set(data: Record<string, unknown>): void;
+    set(key: string, value: unknown): void;
+    delete(key: string): void;
+    flush(): Promise<void>;
+    get(key: string): unknown;
   };
-  kv?: {
-    set?(key: string, value: string): Promise<unknown> | unknown;
-    delete?(key: string): Promise<unknown> | unknown;
-    flush?(): Promise<unknown> | unknown;
-    get?(key: string): Promise<unknown> | unknown;
+  lifecycle: {
+    onHide(listener: () => void): () => void;
+    onShow(listener: () => void): () => void;
+    onExitRequested(listener: () => void | Promise<void>): () => void;
   };
-  notifications?: {
-    isEligible?(): boolean | Promise<boolean>;
-    scheduleLadder?(items: LadderItem[]): Promise<unknown> | unknown;
-    schedule?(item: LadderItem): Promise<unknown> | unknown;
-    unschedule?(id: string): Promise<unknown> | unknown;
+  getEntryPayload(): Record<string, unknown>;
+  captureEvent(name: string, properties?: Record<string, unknown>): void;
+  markFirstMilestone(): void;
+  setLoadingProgress(progress: number): void;
+  markGameLoaded(): void;
+  notifications: {
+    scheduleNotification(item: JNotification): void;
+    unscheduleNotification(item: { identifier: string }): void;
   };
-  share?(payload: { title?: string; text?: string; url?: string }): Promise<unknown> | unknown;
-  analytics?: { track?(name: string, props?: Record<string, unknown>): unknown };
-  markLoaded?(): unknown;
-  setLoadingProgress?(fraction: number): unknown;
-  errors?: { report?(e: unknown): unknown };
+  payments: {
+    getProducts(): Promise<
+      Array<{
+        sku: string;
+        name: string;
+        description: string | null;
+        price: number;
+        currency: string;
+      }>
+    >;
+    beginPurchase(input: {
+      productSku: string;
+    }): Promise<
+      | { result: 'success'; purchase: JPurchase; purchaseSigned: string }
+      | { result: 'cancel' }
+      | { result: 'error'; error: string }
+    >;
+    completePurchase(input: {
+      purchaseToken: string;
+    }): Promise<
+      { result: 'success' } | { result: 'error'; error: 'internal_error' | 'invalid_token' }
+    >;
+    getIncompletePurchases(): Promise<{
+      purchases: JPurchase[];
+      purchasesSigned: string;
+      hasMore: boolean;
+    }>;
+  };
+  share?(payload: { title?: string; text?: string; url?: string }): Promise<void>;
 }
-
 export interface JestPlatformOptions {
-  /** Injected SDK (tests); undefined probes window.JestSDK; null = absent SDK. */
-  sdk?: JestSdkLike | null;
-  /** How long ready() waits for init before proceeding without identity (ms, default 10 s). */
+  sdk?: Partial<JestSdkLike> | null;
+  autoLoginReminders?: boolean;
+  errors?: ErrorSink;
   initTimeoutMs?: number;
   timers?: { set(cb: () => void, ms: number): unknown; clear(h: unknown): void };
-  errors?: ErrorSink;
+  /** Epoch milliseconds for integrity events; production composition roots should inject Clock.now. */
+  now?: () => number;
 }
 
-const asPromise = async <T>(v: Promise<T> | T): Promise<T> => v;
-
-/** Call an optional SDK method; any throw/rejection becomes `fallback`. */
-async function safe<T>(fn: (() => Promise<T> | T) | undefined, fallback: T): Promise<T> {
-  if (typeof fn !== 'function') return fallback;
-  try {
-    return await asPromise(fn());
-  } catch {
-    return fallback;
-  }
-}
-
-function toPlayer(raw: unknown): Player | null {
-  if (!raw || typeof raw !== 'object') return null;
-  const p = raw as {
-    playerId?: unknown;
-    id?: unknown;
-    registered?: unknown;
-    isRegistered?: unknown;
-    displayName?: unknown;
-    name?: unknown;
+const isPlayer = (x: unknown): x is JP =>
+  !!x &&
+  typeof x === 'object' &&
+  typeof (x as JP).playerId === 'string' &&
+  !!(x as JP).playerId &&
+  typeof (x as JP).registered === 'boolean';
+const toPlayer = (p: JP): Player => ({
+  playerId: p.playerId,
+  registered: p.registered,
+});
+const safeOff = (off: unknown): (() => void) => {
+  let used = false;
+  return () => {
+    if (used) return;
+    used = true;
+    try {
+      if (typeof off === 'function') off();
+    } catch {
+      // SDK unsubscribe is documented idempotent; a broken implementation cannot block teardown.
+    }
   };
-  const id = typeof p.playerId === 'string' ? p.playerId : typeof p.id === 'string' ? p.id : null;
-  if (!id) return null;
-  const out: Player = {
-    playerId: id,
-    registered: p.registered === true || p.isRegistered === true,
+};
+function absent(sdk: Partial<JestSdkLike> | null): string[] {
+  // Every method below backs a configured template launch feature and is required in Jest mode.
+  // `share` is the sole optional capability in this minimal mirror.
+  if (!sdk) return ['JestSDK'];
+  const out: string[] = [];
+  const f = (x: unknown, n: string) => {
+    if (typeof x !== 'function') out.push(n);
   };
-  const dn =
-    typeof p.displayName === 'string'
-      ? p.displayName
-      : typeof p.name === 'string'
-        ? p.name
-        : undefined;
-  if (dn) out.displayName = dn;
+  f(sdk.init, 'init');
+  f(sdk.getPlayer, 'getPlayer');
+  f(sdk.getPlayerSigned, 'getPlayerSigned');
+  f(sdk.login, 'login');
+  f(sdk.data?.set, 'data.set');
+  f(sdk.data?.delete, 'data.delete');
+  f(sdk.data?.flush, 'data.flush');
+  f(sdk.data?.get, 'data.get');
+  f(sdk.lifecycle?.onHide, 'lifecycle.onHide');
+  f(sdk.lifecycle?.onShow, 'lifecycle.onShow');
+  f(sdk.lifecycle?.onExitRequested, 'lifecycle.onExitRequested');
+  f(sdk.getEntryPayload, 'getEntryPayload');
+  f(sdk.captureEvent, 'captureEvent');
+  f(sdk.markFirstMilestone, 'markFirstMilestone');
+  f(sdk.setLoadingProgress, 'setLoadingProgress');
+  f(sdk.markGameLoaded, 'markGameLoaded');
+  f(sdk.notifications?.scheduleNotification, 'notifications.scheduleNotification');
+  f(sdk.notifications?.unscheduleNotification, 'notifications.unscheduleNotification');
+  f(sdk.payments?.getProducts, 'payments.getProducts');
+  f(sdk.payments?.beginPurchase, 'payments.beginPurchase');
+  f(sdk.payments?.completePurchase, 'payments.completePurchase');
+  f(sdk.payments?.getIncompletePurchases, 'payments.getIncompletePurchases');
   return out;
 }
 
-function toToken(raw: unknown): string | null {
-  if (typeof raw === 'string' && raw.length > 0) return raw;
-  if (raw && typeof raw === 'object') {
-    const o = raw as { token?: unknown; signed?: unknown };
-    if (typeof o.token === 'string' && o.token) return o.token;
-    if (typeof o.signed === 'string' && o.signed) return o.signed;
-  }
-  return null;
-}
-
-export function createJestPlatform(
-  opts: JestPlatformOptions = {},
-): PlatformAdapter & { refreshToken(): Promise<string | null> } {
-  const sdk: JestSdkLike | null =
-    opts.sdk === undefined
-      ? (((globalThis as { window?: { JestSDK?: JestSdkLike } }).window?.JestSDK as
-          JestSdkLike | undefined) ?? null)
-      : opts.sdk;
-  const timers = opts.timers ?? {
-    set: (cb: () => void, ms: number) => setTimeout(cb, ms),
-    clear: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>),
-  };
-  const errors = opts.errors ?? consoleErrorSink();
-  const initTimeoutMs = opts.initTimeoutMs ?? 10_000;
-
+export function createJestPlatform(options: JestPlatformOptions = {}): PlatformAdapter {
+  const sdk =
+    options.sdk === undefined
+      ? ((globalThis as { window?: { JestSDK?: Partial<JestSdkLike> } }).window?.JestSDK ?? null)
+      : options.sdk;
+  const errors = options.errors ?? consoleErrorSink();
+  const now = options.now ?? createClock().now;
   let ready = false;
+  let incompat: PlatformIncompatibleError | null = null;
   let player: Player | null = null;
   let token: string | null = null;
   let previous: { playerId: string; token: string } | null = null;
-  const identitySubs = new Set<(prev: Player | null, next: Player) => void>();
-
-  const refreshToken = async (): Promise<string | null> => {
-    if (!sdk) return null;
-    const raw = await safe(sdk.getPlayerSigned?.bind(sdk), null as unknown);
-    token = toToken(raw);
-    return token;
+  const listeners = new Set<(before: Player | null, after: Player) => void>();
+  const fail = (missing: readonly string[]): PlatformIncompatibleError => {
+    if (!incompat) {
+      incompat = new PlatformIncompatibleError(missing);
+      errors.report({
+        kind: 'platform_incompatible',
+        at: now(),
+        message: incompat.message,
+        detail: { missing: missing.join(',').slice(0, 256) },
+      });
+    }
+    return incompat;
   };
-
-  const readyPromise: Promise<void> = (async () => {
-    if (!sdk) {
-      ready = true;
-      return;
+  const report = (message: string): void =>
+    errors.report({ kind: 'game_error', at: now(), message });
+  const signed = async (id: string): Promise<{ player: Player; credential: string }> => {
+    const r = await (sdk!.getPlayerSigned as JestSdkLike['getPlayerSigned'])();
+    if (!r || !isPlayer(r.player) || typeof r.playerSigned !== 'string' || !r.playerSigned)
+      throw fail(['getPlayerSigned() result']);
+    if (r.player.playerId !== id) throw fail(['getPlayerSigned().player.playerId']);
+    return { player: toPlayer(r.player), credential: r.playerSigned };
+  };
+  const reread = async (stable?: string): Promise<void> => {
+    const raw = (sdk!.getPlayer as JestSdkLike['getPlayer'])();
+    if (!isPlayer(raw)) throw fail(['getPlayer() result']);
+    if (stable && raw.playerId !== stable) throw fail(['login stable playerId']);
+    const result = await signed(raw.playerId);
+    if (result.player.registered !== raw.registered)
+      throw fail(['getPlayer()/getPlayerSigned() player']);
+    const before = player;
+    const oldToken = token;
+    player = toPlayer(raw);
+    token = result.credential;
+    if (
+      before &&
+      (before.playerId !== player.playerId || before.registered !== player.registered)
+    ) {
+      if (before.playerId !== player.playerId && oldToken)
+        previous = { playerId: before.playerId, token: oldToken };
+      for (const l of listeners) l(before, player);
     }
-    // bounded init: a hanging SDK must not hang the game forever (identity stays null → no_token)
-    await Promise.race([
-      safe(sdk.init?.bind(sdk), undefined),
-      new Promise<void>((res) => {
-        timers.set(res, initTimeoutMs);
-      }),
-    ]);
-    player = toPlayer(await safe(() => sdk.getPlayer?.(), null));
-    await refreshToken();
-    if (typeof sdk.onPlayerChanged === 'function') {
-      try {
-        sdk.onPlayerChanged((raw) => {
-          const next = toPlayer(raw);
-          if (!next) return;
-          const before = player;
-          if (before && token) previous = { playerId: before.playerId, token };
-          player = next;
-          void refreshToken().then(() => {
-            for (const cb of identitySubs) cb(before, next);
-          });
-        });
-      } catch {
-        /* optional */
-      }
-    }
+  };
+  const boot = (async (): Promise<void> => {
+    const first = absent(sdk);
+    if (first.length) throw fail(first);
+    const timers = options.timers ?? {
+      set: (cb: () => void, ms: number) => setTimeout(cb, ms),
+      clear: (h: unknown) => clearTimeout(h as ReturnType<typeof setTimeout>),
+    };
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const timeout: { handle?: unknown } = {};
+      const finish = (fn: () => void): void => {
+        if (settled) return;
+        settled = true;
+        timers.clear(timeout.handle);
+        fn();
+      };
+      timeout.handle = timers.set(
+        () => finish(() => reject(fail(['init() timeout']))),
+        options.initTimeoutMs ?? 10_000,
+      );
+      void (sdk!.init as JestSdkLike['init'])(
+        options.autoLoginReminders === undefined
+          ? undefined
+          : { autoLoginReminders: options.autoLoginReminders },
+      ).then(
+        () => finish(resolve),
+        () => finish(() => reject(fail(['init()']))),
+      );
+    });
+    const second = absent(sdk);
+    if (second.length) throw fail(second);
+    await reread();
     ready = true;
   })();
-
   const identity: IdentityClient = {
-    ready: () => readyPromise,
+    ready: () => boot,
     isReady: () => ready,
     getPlayer: () => player,
-    tokenFor: (id) => (player && id === player.playerId ? token : null),
-    previousToken() {
-      const p = previous;
+    async login(entryPayload) {
+      await boot;
+      const id = player?.playerId;
+      await (sdk!.login as JestSdkLike['login'])(entryPayload ? { entryPayload } : undefined);
+      await reread(id);
+    },
+    async refreshCredential() {
+      await boot;
+      if (!player) return null;
+      const fresh = await signed(player.playerId);
+      token = fresh.credential;
+      return token;
+    },
+    tokenFor: (id) => (player?.playerId === id ? token : null),
+    previousToken: () => {
+      const out = previous;
       previous = null;
-      return p;
-    },
-    onIdentityChanged(cb) {
-      identitySubs.add(cb);
-      return () => {
-        identitySubs.delete(cb);
-      };
-    },
-  };
-
-  const kv = {
-    set(key: string, value: string) {
-      void safe(() => sdk?.kv?.set?.(key, value), undefined);
-    },
-    delete(key: string) {
-      void safe(() => sdk?.kv?.delete?.(key), undefined);
-    },
-    async flush() {
-      await safe(() => sdk?.kv?.flush?.(), undefined);
-    },
-    async readBreakGlass(key: string) {
-      const v = await safe(() => sdk?.kv?.get?.(key), null as unknown);
-      return typeof v === 'string' ? v : null;
-    },
-  };
-
-  const payments = {
-    async products(): Promise<Product[]> {
-      const raw = await safe(() => sdk?.payments?.getProducts?.(), null as unknown);
-      if (!Array.isArray(raw)) return [];
-      const out: Product[] = [];
-      for (const r of raw) {
-        if (!r || typeof r !== 'object') continue;
-        const p = r as {
-          sku?: unknown;
-          id?: unknown;
-          title?: unknown;
-          name?: unknown;
-          price?: unknown;
-          currency?: unknown;
-          priceText?: unknown;
-          description?: unknown;
-        };
-        const sku = typeof p.sku === 'string' ? p.sku : typeof p.id === 'string' ? p.id : null;
-        if (!sku) continue;
-        const prod: Product = {
-          sku,
-          title: typeof p.title === 'string' ? p.title : typeof p.name === 'string' ? p.name : sku,
-        };
-        if (typeof p.price === 'number') prod.price = p.price;
-        if (typeof p.currency === 'string') prod.currency = p.currency;
-        if (typeof p.priceText === 'string') prod.priceText = p.priceText;
-        if (typeof p.description === 'string') prod.description = p.description;
-        out.push(prod);
-      }
       return out;
     },
-    async begin(sku: string): Promise<PurchaseOutcome> {
-      if (!sdk?.payments?.beginPurchase) return { kind: 'error', message: 'payments unavailable' };
-      let raw: unknown;
-      try {
-        raw = await asPromise(sdk.payments.beginPurchase(sku));
-      } catch (e) {
-        return { kind: 'error', message: e instanceof Error ? e.message : String(e) };
-      }
-      if (!raw || typeof raw !== 'object') return { kind: 'cancel' };
-      const r = raw as {
-        purchaseToken?: unknown;
-        token?: unknown;
-        purchaseSigned?: unknown;
-        signed?: unknown;
-        cancelled?: unknown;
-        canceled?: unknown;
-        status?: unknown;
-      };
-      if (
-        r.cancelled === true ||
-        r.canceled === true ||
-        r.status === 'cancelled' ||
-        r.status === 'canceled'
-      )
-        return { kind: 'cancel' };
-      const purchaseToken =
-        typeof r.purchaseToken === 'string'
-          ? r.purchaseToken
-          : typeof r.token === 'string'
-            ? r.token
-            : null;
-      if (!purchaseToken) return { kind: 'error', message: 'purchase without a token' };
-      let signed =
-        typeof r.purchaseSigned === 'string'
-          ? r.purchaseSigned
-          : typeof r.signed === 'string'
-            ? r.signed
-            : undefined;
-      if (!signed && sdk.payments.purchaseSigned) {
-        const s = await safe(() => sdk.payments!.purchaseSigned!(purchaseToken), null as unknown);
-        signed = toToken(s) ?? undefined;
-      }
-      return signed
-        ? { kind: 'success', purchaseToken, purchaseSigned: signed }
-        : { kind: 'success', purchaseToken };
-    },
-    async complete(t: string) {
-      const r = await safe(() => sdk?.payments?.completePurchase?.(t), false as unknown);
-      return r === true || (r !== false && r !== undefined && r !== null);
-    },
-    async recoverIncomplete(
-      grant: (p: IncompletePurchase) => Promise<boolean>,
-      onSigned?: (jws: string) => void,
-    ) {
-      const raw = await safe(() => sdk?.payments?.recoverIncomplete?.(), null as unknown);
-      if (!Array.isArray(raw)) return;
-      for (const item of raw) {
-        if (!item || typeof item !== 'object') continue;
-        const p = item as {
-          purchaseToken?: unknown;
-          token?: unknown;
-          sku?: unknown;
-          productSku?: unknown;
-          purchaseSigned?: unknown;
-          signed?: unknown;
-        };
-        const purchaseToken =
-          typeof p.purchaseToken === 'string'
-            ? p.purchaseToken
-            : typeof p.token === 'string'
-              ? p.token
-              : null;
-        if (!purchaseToken) continue;
-        const sku =
-          typeof p.sku === 'string' ? p.sku : typeof p.productSku === 'string' ? p.productSku : '';
-        let signed =
-          typeof p.purchaseSigned === 'string'
-            ? p.purchaseSigned
-            : typeof p.signed === 'string'
-              ? p.signed
-              : undefined;
-        if (!signed && sdk?.payments?.purchaseSigned) {
-          const s = await safe(() => sdk.payments!.purchaseSigned!(purchaseToken), null as unknown);
-          signed = toToken(s) ?? undefined;
-        }
-        if (signed) onSigned?.(signed);
-        const rec: IncompletePurchase = signed
-          ? { purchaseToken, sku, purchaseSigned: signed }
-          : { purchaseToken, sku };
-        try {
-          if (await grant(rec)) await payments.complete(purchaseToken);
-        } catch {
-          /* leave incomplete for the next attempt */
-        }
-      }
+    onIdentityChanged: (l) => {
+      listeners.add(l);
+      return () => listeners.delete(l);
     },
   };
-
-  let eligibleCache = false;
-  void safe(() => sdk?.notifications?.isEligible?.(), false).then((v) => {
-    eligibleCache = v === true;
-  });
-  const notifications = {
-    eligible: () => eligibleCache,
-    async scheduleLadder(items: LadderItem[]): Promise<ScheduleResult> {
-      if (!sdk?.notifications)
-        return { scheduled: [], failed: items.map((i) => ({ id: i.id, reason: 'unavailable' })) };
-      if (sdk.notifications.scheduleLadder) {
-        const raw = await safe(() => sdk.notifications!.scheduleLadder!(items), null as unknown);
-        if (
-          raw &&
-          typeof raw === 'object' &&
-          Array.isArray((raw as { scheduled?: unknown }).scheduled)
-        ) {
-          const r = raw as { scheduled: unknown[]; failed?: unknown[] };
-          return {
-            scheduled: r.scheduled.filter((x): x is string => typeof x === 'string'),
-            failed: Array.isArray(r.failed)
-              ? r.failed
-                  .filter(
-                    (f): f is { id: string; reason?: string } =>
-                      !!f &&
-                      typeof f === 'object' &&
-                      typeof (f as { id?: unknown }).id === 'string',
-                  )
-                  .map((f) => ({ id: f.id, reason: f.reason ?? 'failed' }))
-              : [],
-          };
-        }
-        return raw === null
-          ? { scheduled: [], failed: items.map((i) => ({ id: i.id, reason: 'failed' })) }
-          : { scheduled: items.map((i) => i.id), failed: [] };
-      }
-      const scheduled: string[] = [];
-      const failed: { id: string; reason: string }[] = [];
-      for (const it of items) {
-        const ok = await safe(() => sdk.notifications!.schedule?.(it), null as unknown);
-        if (ok === null) failed.push({ id: it.id, reason: 'failed' });
-        else scheduled.push(it.id);
-      }
-      return { scheduled, failed };
-    },
-    async unschedule(id: string) {
-      await safe(() => sdk?.notifications?.unschedule?.(id), undefined);
-    },
+  const hook = (
+    key: keyof JestSdkLike['lifecycle'],
+    cb: () => void | Promise<void>,
+  ): (() => void) => {
+    try {
+      return safeOff((sdk!.lifecycle![key] as (c: typeof cb) => () => void)(cb));
+    } catch {
+      report(`Jest lifecycle ${key} failed`);
+      return () => {};
+    }
   };
-
+  let platformVisible = documentLifecycle().visible();
+  const onHide = (cb: () => void): (() => void) =>
+    hook('onHide', () => {
+      platformVisible = false;
+      cb();
+    });
+  const onShow = (cb: () => void): (() => void) =>
+    hook('onShow', () => {
+      platformVisible = true;
+      cb();
+    });
   let loaded = false;
+  const complete = async (purchaseToken: string): Promise<PurchaseCompletionOutcome> => {
+    try {
+      const result = await (
+        sdk!.payments!.completePurchase as JestSdkLike['payments']['completePurchase']
+      )({ purchaseToken });
+      if (result.result === 'success') return { kind: 'success' };
+      return result.error === 'invalid_token'
+        ? { kind: 'invalid_token', message: result.error }
+        : { kind: 'retryable_error', message: result.error };
+    } catch (error) {
+      return {
+        kind: 'retryable_error',
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  };
+  const recoverBatch = async (
+    grant: (batch: RecoveryBatch) => Promise<readonly string[]>,
+  ): Promise<void> => {
+    const seen = new Set<string>();
+    for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
+      const page = await (
+        sdk!.payments!.getIncompletePurchases as JestSdkLike['payments']['getIncompletePurchases']
+      )();
+      if (
+        !page ||
+        !Array.isArray(page.purchases) ||
+        typeof page.purchasesSigned !== 'string' ||
+        !page.purchasesSigned ||
+        typeof page.hasMore !== 'boolean'
+      )
+        throw fail(['payments.getIncompletePurchases() result']);
+      const purchases: IncompletePurchase[] = [];
+      for (const p of page.purchases) {
+        if (!p || typeof p.purchaseToken !== 'string' || typeof p.productSku !== 'string')
+          throw fail(['payments.getIncompletePurchases().purchases']);
+        purchases.push({ purchaseToken: p.purchaseToken, sku: p.productSku });
+      }
+      const fingerprint = `${page.purchasesSigned}:${purchases.map((p) => p.purchaseToken).join(',')}`;
+      if (seen.has(fingerprint)) {
+        report('Jest incomplete purchase page repeated');
+        return;
+      }
+      seen.add(fingerprint);
+      const requested = new Set(
+        await grant({ purchases, purchasesSigned: page.purchasesSigned, hasMore: page.hasMore }),
+      );
+      let progressed = false;
+      for (const p of purchases)
+        if (requested.has(p.purchaseToken)) {
+          const outcome = await complete(p.purchaseToken);
+          if (outcome.kind === 'success') progressed = true;
+          else if (outcome.kind === 'retryable_error') return;
+          else report('Jest purchase completion returned invalid_token');
+        }
+      if (!page.hasMore || !progressed) return;
+    }
+    report('Jest incomplete purchase recovery page cap reached');
+  };
   return {
     name: 'jest',
     identity,
-    kv,
-    payments,
-    notifications,
+    kv: {
+      set(k, v) {
+        try {
+          void (sdk!.data!.set as JestSdkLike['data']['set'])(k, v);
+        } catch {
+          report('Jest data.set failed');
+        }
+      },
+      delete(k) {
+        try {
+          void (sdk!.data!.delete as JestSdkLike['data']['delete'])(k);
+        } catch {
+          report('Jest data.delete failed');
+        }
+      },
+      flush: () => (sdk!.data!.flush as JestSdkLike['data']['flush'])(),
+      async readBreakGlass(k) {
+        const v = await (sdk!.data!.get as JestSdkLike['data']['get'])(k);
+        return typeof v === 'string' ? v : null;
+      },
+    },
+    payments: {
+      async products(): Promise<Product[]> {
+        const all = await (sdk!.payments!.getProducts as JestSdkLike['payments']['getProducts'])();
+        return all
+          .filter(
+            (p) =>
+              !!p &&
+              typeof p.sku === 'string' &&
+              typeof p.name === 'string' &&
+              typeof p.price === 'number' &&
+              Number.isFinite(p.price) &&
+              p.price >= 0 &&
+              typeof p.currency === 'string' &&
+              /^[A-Z]{3}$/.test(p.currency),
+          )
+          .map((p) => ({
+            sku: p.sku,
+            title: p.name,
+            price: p.price,
+            currency: p.currency,
+            ...(typeof p.description === 'string' ? { description: p.description } : {}),
+          }));
+      },
+      async begin(sku): Promise<PurchaseOutcome> {
+        try {
+          const r = await (
+            sdk!.payments!.beginPurchase as JestSdkLike['payments']['beginPurchase']
+          )({ productSku: sku });
+          if (r.result === 'cancel') return { kind: 'cancel' };
+          if (r.result === 'error') return { kind: 'error', message: r.error };
+          return r.purchase?.purchaseToken && r.purchaseSigned
+            ? {
+                kind: 'success',
+                purchaseToken: r.purchase.purchaseToken,
+                purchaseSigned: r.purchaseSigned,
+              }
+            : { kind: 'error', message: 'malformed purchase result' };
+        } catch (e) {
+          return { kind: 'error', message: e instanceof Error ? e.message : String(e) };
+        }
+      },
+      complete,
+      recoverIncompleteBatch: recoverBatch,
+      async recoverIncomplete(grant, onSigned) {
+        await recoverBatch(async (batch) => {
+          onSigned?.(batch.purchasesSigned);
+          const readyTokens: string[] = [];
+          for (const purchase of batch.purchases)
+            if (await grant(purchase)) readyTokens.push(purchase.purchaseToken);
+          return readyTokens;
+        });
+      },
+    },
+    notifications: {
+      eligible: () => player?.registered === true,
+      async scheduleLadder(items: LadderItem[]): Promise<ScheduleResult> {
+        if (!player?.registered)
+          return {
+            scheduled: [],
+            failed: items.map((x) => ({ id: x.id, reason: 'not_registered' })),
+          };
+        const scheduled: string[] = [];
+        const failed: { id: string; reason: string }[] = [];
+        for (const item of items) {
+          const days =
+            item.scheduledInDays ??
+            (typeof item.delaySec === 'number'
+              ? Math.max(1, Math.min(7, Math.ceil(item.delaySec / 86400)))
+              : undefined);
+          if (
+            (!item.scheduledAt && days === undefined) ||
+            (item.scheduledAt && days !== undefined)
+          ) {
+            failed.push({ id: item.id, reason: 'invalid_schedule' });
+            continue;
+          }
+          try {
+            await (
+              sdk!.notifications!
+                .scheduleNotification as JestSdkLike['notifications']['scheduleNotification']
+            )({
+              identifier: item.id,
+              ...(item.scheduledAt ? { scheduledAt: item.scheduledAt } : { scheduledInDays: days }),
+              ...(item.priority ? { priority: item.priority } : {}),
+              ...(item.assetReference ? { assetReference: item.assetReference } : {}),
+              body: item.body,
+              ...(item.title ? { title: item.title } : {}),
+              ctaText: item.ctaText ?? 'Play now',
+              ...(item.entryPayload ? { entryPayload: item.entryPayload } : {}),
+            });
+            scheduled.push(item.id);
+          } catch {
+            failed.push({ id: item.id, reason: 'schedule_failed' });
+          }
+        }
+        return { scheduled, failed };
+      },
+      async unschedule(id) {
+        if (!player?.registered) return;
+        try {
+          await (
+            sdk!.notifications!
+              .unscheduleNotification as JestSdkLike['notifications']['unscheduleNotification']
+          )({ identifier: id });
+        } catch {
+          report('Jest unscheduleNotification failed');
+        }
+      },
+    },
     share: {
       available: () => typeof sdk?.share === 'function',
       async share(payload) {
-        if (typeof sdk?.share !== 'function') return false;
-        const r = await safe(() => sdk.share!(payload), false as unknown);
-        return r !== false;
+        try {
+          if (!sdk?.share) return false;
+          await sdk.share(payload);
+          return true;
+        } catch {
+          return false;
+        }
       },
     },
     analytics: {
       track(name, props) {
-        void safe(() => sdk?.analytics?.track?.(name, props), undefined);
+        try {
+          (sdk!.captureEvent as JestSdkLike['captureEvent'])(name, props);
+        } catch {
+          report('Jest captureEvent failed');
+        }
+      },
+      markFirstMilestone() {
+        try {
+          (sdk!.markFirstMilestone as JestSdkLike['markFirstMilestone'])();
+        } catch {
+          report('Jest markFirstMilestone failed');
+        }
       },
     },
     loading: {
       markLoaded() {
         if (loaded) return;
         loaded = true;
-        void safe(() => sdk?.markLoaded?.(), undefined);
+        try {
+          (sdk!.markGameLoaded as JestSdkLike['markGameLoaded'])();
+        } catch {
+          report('Jest markGameLoaded failed');
+        }
       },
-      progress(f) {
-        void safe(() => sdk?.setLoadingProgress?.(f), undefined);
+      progress(value) {
+        try {
+          (sdk!.setLoadingProgress as JestSdkLike['setLoadingProgress'])(
+            Math.round(Math.max(0, Math.min(1, value)) * 100),
+          );
+        } catch {
+          report('Jest setLoadingProgress failed');
+        }
       },
     },
-    lifecycle: documentLifecycle(),
-    errors: {
-      report(event: IntegrityEvent) {
-        errors.report(event);
-        void safe(() => sdk?.errors?.report?.(event), undefined);
+    lifecycle: {
+      visible: () => platformVisible,
+      onHide,
+      onShow,
+      onExitRequested: (cb) => hook('onExitRequested', cb),
+      onVisibilityChange(cb) {
+        const h = onHide(() => cb(false)),
+          s = onShow(() => cb(true));
+        return () => {
+          h();
+          s();
+        };
       },
+      onPageHide: (cb) => hook('onExitRequested', cb),
     },
-    refreshToken,
+    entryPayload() {
+      try {
+        const value = (sdk!.getEntryPayload as JestSdkLike['getEntryPayload'])();
+        return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+      } catch {
+        report('Jest getEntryPayload failed');
+        return {};
+      }
+    },
+    errors: { report: (event: IntegrityEvent) => errors.report(event) },
   };
 }

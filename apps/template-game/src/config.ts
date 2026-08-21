@@ -1,7 +1,7 @@
 // Runtime configuration (§11 "Wire createGameClient(gameConfig) + PlatformProvider (Jest in prod,
 // standalone on our QA host, mock in tests)"). Build-time inputs are VITE_API_URL,
-// VITE_BUILD_VERSION and VITE_PLATFORM; everything else comes from the URL so one build serves
-// dev, e2e and prod:
+// VITE_BUILD_VERSION and VITE_PLATFORM. URL controls are development/test-only; real production
+// builds are locked to their build-time platform and never accept QA identities or tokens:
 //   ?platform=mock|jest|standalone   ?player=<id>   ?guest=1   ?token=<qa token>   ?pushMs=<ms>
 import type { StorageTier } from '@foundation/client';
 
@@ -21,21 +21,35 @@ export interface GameConfig {
   pushMs: number;
   /** Config re-fetch interval (ms). */
   configRefreshMs: number;
+  /** Whether Jest may show its escalating automatic registration reminders. */
+  autoLoginReminders: boolean;
+  /** Developer Console asset reference; it must be approved before real notification delivery. */
+  notificationAssetReference: string;
 }
 
-const env = import.meta.env as Record<string, string | undefined>;
+const buildEnv = import.meta.env as Record<string, string | boolean | undefined>;
+
+export interface ReadConfigOptions {
+  /** Test seam; defaults to import.meta.env. */
+  env?: Record<string, string | boolean | undefined>;
+  /** Test seam; defaults to window.location.search. Ignored in production unless QA is flagged. */
+  search?: string;
+  /** Test seam; defaults to import.meta.env.PROD. */
+  production?: boolean;
+}
 
 export const CATALOG = [
-  { sku: 'gems_100', packKey: 'handful', title: 'Handful of gems', amount: 100, price: 0.99 },
-  { sku: 'gems_550', packKey: 'pouch', title: 'Pouch of gems', amount: 550, price: 4.99 },
-  { sku: 'gems_1200', packKey: 'bowl', title: 'Bowl of gems', amount: 1200, price: 9.99 },
+  { sku: 'gems_100', packKey: 'handful', title: 'Handful of gems', amount: 100 },
+  { sku: 'gems_550', packKey: 'pouch', title: 'Pouch of gems', amount: 550 },
+  { sku: 'gems_1200', packKey: 'bowl', title: 'Bowl of gems', amount: 1200 },
 ] as const;
 export type CatalogEntry = (typeof CATALOG)[number];
 
 export const BOARD_KEY = 'clicks';
 export const PLAYER_ID_KEY = 'template:playerId';
 
-function readSearch(): URLSearchParams {
+function readSearch(search?: string): URLSearchParams {
+  if (search !== undefined) return new URLSearchParams(search);
   const g = globalThis as { location?: { search?: string } };
   return new URLSearchParams(g.location?.search ?? '');
 }
@@ -52,21 +66,41 @@ export function resolvePlayerId(storage: StorageTier, params: URLSearchParams): 
   return fresh;
 }
 
-export function readConfig(storage: StorageTier): GameConfig {
-  const params = readSearch();
-  const p = params.get('platform') ?? env.VITE_PLATFORM;
-  // mock is the dev/e2e default; a Jest deployment builds with VITE_PLATFORM=jest
-  const platform: PlatformKind = p === 'jest' || p === 'standalone' ? p : 'mock';
+export function readConfig(storage: StorageTier, options: ReadConfigOptions = {}): GameConfig {
+  const runtimeEnv = options.env ?? buildEnv;
+  const production = options.production ?? runtimeEnv.PROD === true;
+  const allowQaQuery = !production || runtimeEnv.VITE_ALLOW_QA_QUERY === 'true';
+  // Arbitrary query parameters are not a reliable production entry channel on Jest. In production,
+  // entry attribution comes from JestSDK.getEntryPayload() and the provider is build-time only.
+  const params = allowQaQuery ? readSearch(options.search) : new URLSearchParams();
+  const built = runtimeEnv.VITE_PLATFORM;
+  const selected = production ? built : (params.get('platform') ?? built);
+  // mock is the dev/e2e default; a Jest deployment builds with VITE_PLATFORM=jest.
+  let platform: PlatformKind = selected === 'jest' || selected === 'standalone' ? selected : 'mock';
+  // A normal production build fails toward the real platform. Mock production artifacts exist only
+  // for the explicitly flagged local Playwright build and must never be published.
+  if (production && !allowQaQuery && platform === 'mock') platform = 'jest';
   const pushMs = Number(params.get('pushMs'));
   return {
-    apiUrl: env.VITE_API_URL ?? 'http://localhost:8080',
+    apiUrl:
+      typeof runtimeEnv.VITE_API_URL === 'string'
+        ? runtimeEnv.VITE_API_URL
+        : 'http://localhost:8080',
     gameId: 'template',
-    buildVersion: env.VITE_BUILD_VERSION ?? '1.0.0-dev',
+    buildVersion:
+      typeof runtimeEnv.VITE_BUILD_VERSION === 'string'
+        ? runtimeEnv.VITE_BUILD_VERSION
+        : '1.0.0-dev',
     platform,
     playerId: resolvePlayerId(storage, params),
     registered: params.get('guest') !== '1',
     token: params.get('token'),
     pushMs: Number.isFinite(pushMs) && pushMs >= 1000 ? pushMs : 60_000,
     configRefreshMs: 30_000,
+    autoLoginReminders: runtimeEnv.VITE_AUTO_LOGIN_REMINDERS !== 'false',
+    notificationAssetReference:
+      typeof runtimeEnv.VITE_NOTIFICATION_ASSET_REFERENCE === 'string'
+        ? runtimeEnv.VITE_NOTIFICATION_ASSET_REFERENCE
+        : 'template-return-v1',
   };
 }

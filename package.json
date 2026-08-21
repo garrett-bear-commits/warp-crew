@@ -19,7 +19,7 @@
     "test": "pnpm -r --if-present run test",
     "test:unit": "vitest run --project '*:unit' --project '*:contract'",
     "test:contract": "vitest run --project '*:contract'",
-    "test:pg": "vitest run --project '*:pg'",
+    "test:pg": "vitest run --project '*:pg' --maxWorkers 1",
     "test:model": "vitest run --project '*:model'",
     "test:e2e": "pnpm --filter @foundation/template-game run test:e2e",
     "guards": "node --experimental-strip-types packages/tooling/src/guards/run-all.ts",

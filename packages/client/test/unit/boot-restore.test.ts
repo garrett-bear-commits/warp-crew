@@ -581,6 +581,30 @@ describe('restore (§1, §5.2 Restore, ADR-005 break-glass)', () => {
 });
 
 describe('identity switch (§5.2 guest → account)', () => {
+  it('same-id guest registration refreshes client state without rebinding or forking the save slot', async () => {
+    const w = makeWorld();
+    const { client, platform } = w.newClient();
+    await client.boot();
+    client.dispatch({ type: 'inc', n: 4 });
+    await client.sync.autosave();
+    const originalSync = client.sync;
+    const outcomes: IdentitySwitchOutcome<CounterState>[] = [];
+    client.onEvent((e) => {
+      if (e.type === 'identity_switch') outcomes.push(e.outcome);
+    });
+
+    platform.controls.switchIdentity('guest-1', true);
+    await w.timers.flush();
+    await client.idle();
+
+    expect(client.player).toEqual({ playerId: 'guest-1', registered: true });
+    expect(client.sync).toBe(originalSync);
+    expect(client.state().progress).toBe(4);
+    expect(outcomes).toEqual([{ kind: 'no_change' }]);
+    expect(w.ls!.getItem(slotKey('game', 'guest-1'))).toContain('"progress":4');
+    expect(w.ls!.getItem(slotKey('game', 'acct-1'))).toBeNull();
+  });
+
   it('pushes the guest snapshot under the previous token (one use), then adopts trivially into an empty account', async () => {
     const w = makeWorld();
     const { client, platform } = w.newClient();

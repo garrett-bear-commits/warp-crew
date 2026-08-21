@@ -172,6 +172,18 @@ export const ROUTES: readonly RouteDef[] = [
     summary: 'Verify a signed receipt; business key = provider token',
     body: purchases.PurchaseVerifyBody,
     response: purchases.PurchaseVerifyResult,
+    stepUp: true,
+  },
+  {
+    id: 'purchases.verifyBatch',
+    method: 'POST',
+    path: '/v1/purchases/verify-batch',
+    auth: 'player',
+    feature: 'purchases',
+    summary: 'Verify a signed page of purchases; business key = provider token',
+    body: purchases.PurchaseBatchVerifyBody,
+    response: purchases.PurchaseBatchVerifyResult,
+    stepUp: true,
   },
   {
     id: 'purchases.mine',

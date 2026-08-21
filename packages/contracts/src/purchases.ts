@@ -4,6 +4,7 @@ import { PURCHASE_ADJUSTMENT_KINDS, PURCHASE_CLASSIFICATIONS } from './enums.ts'
 
 export const PurchaseClassificationSchema = StringEnum(PURCHASE_CLASSIFICATIONS);
 export const PurchaseAdjustmentKindSchema = StringEnum(PURCHASE_ADJUSTMENT_KINDS);
+export const PurchaseCompletionSchema = StringEnum(['ready', 'withhold'] as const);
 
 /** POST /v1/purchases/verify {commandId, purchaseSigned} — the signed receipt is the only input (§1, ADR-007). */
 export const PurchaseVerifyBody = Mutation(
@@ -26,6 +27,8 @@ export const PurchaseRecord = Type.Object(
     grantKey: Type.Optional(Type.String()),
     price: Type.Optional(Type.Number()),
     currency: Type.Optional(Type.String()),
+    /** Signed sandbox provenance; null only for legacy/imported rows where it was not retained. */
+    sandbox: Type.Union([Type.Boolean(), Type.Null()]),
     createdAt: EpochMs,
     completedAt: Type.Union([EpochMs, Type.Null()]),
     recordedAt: EpochMs,
@@ -36,13 +39,47 @@ export type PurchaseRecord = Static<typeof PurchaseRecord>;
 
 export const PurchaseVerifyResult = Response(
   {
+    /** Verified provider token; present for recorded/duplicate results and authoritative for completion. */
+    purchaseToken: Type.Optional(Type.String({ minLength: 1, maxLength: 2048 })),
     outcome: StringEnum(['recorded', 'duplicate', 'rejected'] as const),
     reason: Type.Optional(Type.String()),
     purchase: Type.Optional(PurchaseRecord),
+    completion: PurchaseCompletionSchema,
   },
   { $id: 'PurchaseVerifyResult' },
 );
 export type PurchaseVerifyResult = Static<typeof PurchaseVerifyResult>;
+
+/** POST /v1/purchases/verify-batch — verifies the signed recovery page as one atomic command. */
+export const PurchaseBatchVerifyBody = Mutation(
+  {
+    purchasesSigned: Type.String({ minLength: 1, maxLength: 131072 }),
+  },
+  { $id: 'PurchaseBatchVerifyBody' },
+);
+export type PurchaseBatchVerifyBody = Static<typeof PurchaseBatchVerifyBody>;
+
+export const PurchaseVerification = Type.Object(
+  {
+    purchaseToken: Type.String({ minLength: 1, maxLength: 2048 }),
+    outcome: StringEnum(['recorded', 'duplicate', 'rejected'] as const),
+    reason: Type.Optional(Type.String()),
+    purchase: Type.Optional(PurchaseRecord),
+    completion: PurchaseCompletionSchema,
+  },
+  { $id: 'PurchaseVerification' },
+);
+export type PurchaseVerification = Static<typeof PurchaseVerification>;
+
+export const PurchaseBatchVerifyResult = Response(
+  {
+    outcome: StringEnum(['processed', 'rejected'] as const),
+    reason: Type.Optional(Type.String()),
+    results: Type.Array(PurchaseVerification, { maxItems: 50 }),
+  },
+  { $id: 'PurchaseBatchVerifyResult' },
+);
+export type PurchaseBatchVerifyResult = Static<typeof PurchaseBatchVerifyResult>;
 
 export const PurchaseAdjustment = Type.Object(
   {

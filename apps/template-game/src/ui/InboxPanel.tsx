@@ -74,6 +74,12 @@ export function InboxPanel() {
       <RegistrationGate
         registered={client.player?.registered === true}
         prompt={<p data-testid="codes-gate">Sign in to redeem codes.</p>}
+        loginLabel="Keep my progress"
+        onLogin={async () => {
+          await client.platform.identity.login({ source: 'codes_gate' });
+          // Login may be dismissed or complete. Either way, re-render from the freshly read player.
+          g.bumpServer();
+        }}
       >
         <div className="row">
           <input

@@ -48,6 +48,18 @@ export interface Harness {
     sku: string;
     price?: number;
     currency?: string;
+    sandbox?: true;
+    aud?: string;
+  }): string;
+  receiptBatch(o: {
+    playerKey: string;
+    purchases: Array<{
+      token: string;
+      sku: string;
+      price?: number;
+      currency?: string;
+      sandbox?: true;
+    }>;
     aud?: string;
   }): string;
   uuid(): string;
@@ -148,7 +160,22 @@ export async function setupHarness(
           completedAt: clock.now() + 1,
           ...(o.price !== undefined ? { price: o.price } : {}),
           ...(o.currency ? { currency: o.currency } : {}),
+          ...(o.sandbox ? { sandbox: true } : {}),
         },
+      }),
+    receiptBatch: (o) =>
+      mintMockReceipt({
+        aud: o.aud ?? 'template',
+        sub: o.playerKey,
+        purchases: o.purchases.map((purchase) => ({
+          purchaseToken: purchase.token,
+          productSku: purchase.sku,
+          createdAt: clock.now(),
+          completedAt: null,
+          ...(purchase.price !== undefined ? { price: purchase.price } : {}),
+          ...(purchase.currency ? { currency: purchase.currency } : {}),
+          ...(purchase.sandbox ? { sandbox: true } : {}),
+        })),
       }),
     uuid: () => randomUUID(),
     drainOutbox: () => server.ctx.outbox.drain(),

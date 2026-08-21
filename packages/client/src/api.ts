@@ -15,6 +15,8 @@ export interface ApiClientOptions {
   baseUrl: string;
   fetch?: typeof fetch;
   auth?: () => ClientAuth | null;
+  /** Refresh the current provider credential for a server-requested step-up retry. */
+  refreshAuth?: () => Promise<boolean>;
   requestId?: () => string;
 }
 
@@ -63,6 +65,14 @@ function raceAbort(p: Promise<Response>, signal: AbortSignal): Promise<Response>
   });
 }
 
+function requestsStepUp(result: ApiResult<unknown>): boolean {
+  if (result.ok || result.status !== 401 || !result.error) return false;
+  const details = result.error.details;
+  return (
+    !!details && typeof details === 'object' && (details as { stepUp?: unknown }).stepUp === true
+  );
+}
+
 export function createApi(o: ApiClientOptions): Api {
   const f = o.fetch ?? fetch;
   async function call<T>(
@@ -71,37 +81,57 @@ export function createApi(o: ApiClientOptions): Api {
     body?: unknown,
     opts: CallOptions = {},
   ): Promise<ApiResult<T>> {
-    const headers: Record<string, string> = {};
-    if (body !== undefined) headers['content-type'] = opts.text ? 'text/plain' : 'application/json';
-    if (opts.auth !== false) {
-      const a = opts.authOverride !== undefined ? opts.authOverride : o.auth?.();
-      if (a) {
-        headers[HEADERS.playerKey] = a.playerKey;
-        headers[HEADERS.authorization] = `Bearer ${a.token}`;
-        if (a.buildVersion) headers[HEADERS.buildVersion] = a.buildVersion;
+    const send = async (): Promise<ApiResult<T>> => {
+      const headers: Record<string, string> = {};
+      if (body !== undefined)
+        headers['content-type'] = opts.text ? 'text/plain' : 'application/json';
+      if (opts.auth !== false) {
+        const a = opts.authOverride !== undefined ? opts.authOverride : o.auth?.();
+        if (a) {
+          headers[HEADERS.playerKey] = a.playerKey;
+          headers[HEADERS.authorization] = `Bearer ${a.token}`;
+          if (a.buildVersion) headers[HEADERS.buildVersion] = a.buildVersion;
+        }
+      }
+      if (o.requestId) headers[HEADERS.requestId] = o.requestId();
+      try {
+        const init: RequestInit = { method, headers };
+        if (body !== undefined) init.body = typeof body === 'string' ? body : JSON.stringify(body);
+        if (opts.signal) init.signal = opts.signal;
+        if (opts.keepalive) init.keepalive = true;
+        const request = f(`${o.baseUrl}${path}`, init);
+        // Race the signal explicitly: the bounded head check (§5.2) must resolve on time even
+        // when a fetch implementation ignores `signal`.
+        const res = opts.signal ? await raceAbort(request, opts.signal) : await request;
+        const json = (await res.json().catch(() => null)) as unknown;
+        if (res.ok) return { ok: true, status: res.status, body: json as T };
+        return { ok: false, status: res.status, error: (json as ErrorEnvelope | null) ?? null };
+      } catch (e) {
+        return {
+          ok: false,
+          status: 0,
+          error: null,
+          networkError: e instanceof Error ? e.message : String(e),
+        };
+      }
+    };
+
+    const first = await send();
+    // Step-up is the only automatic retry. The mutation body — including its commandId — is
+    // reused verbatim, while send() rebuilds Authorization from the freshly signed credential.
+    if (
+      opts.auth !== false &&
+      opts.authOverride === undefined &&
+      o.refreshAuth &&
+      requestsStepUp(first)
+    ) {
+      try {
+        if (await o.refreshAuth()) return send();
+      } catch {
+        // Preserve the original typed step-up response when refresh itself fails.
       }
     }
-    if (o.requestId) headers[HEADERS.requestId] = o.requestId();
-    try {
-      const init: RequestInit = { method, headers };
-      if (body !== undefined) init.body = typeof body === 'string' ? body : JSON.stringify(body);
-      if (opts.signal) init.signal = opts.signal;
-      if (opts.keepalive) init.keepalive = true;
-      const request = f(`${o.baseUrl}${path}`, init);
-      // Race the signal explicitly: the bounded head check (§5.2) must resolve on time even
-      // when a fetch implementation ignores `signal`.
-      const res = opts.signal ? await raceAbort(request, opts.signal) : await request;
-      const json = (await res.json().catch(() => null)) as unknown;
-      if (res.ok) return { ok: true, status: res.status, body: json as T };
-      return { ok: false, status: res.status, error: (json as ErrorEnvelope | null) ?? null };
-    } catch (e) {
-      return {
-        ok: false,
-        status: 0,
-        error: null,
-        networkError: e instanceof Error ? e.message : String(e),
-      };
-    }
+    return first;
   }
   return { call, baseUrl: o.baseUrl };
 }

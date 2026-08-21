@@ -193,6 +193,7 @@ export function createGameClient<S, A, E extends Effect>(
     baseUrl: cfg.serverUrl,
     ...(cfg.fetch ? { fetch: cfg.fetch } : {}),
     auth: currentAuth,
+    refreshAuth: async () => (await platform.identity.refreshCredential()) !== null,
     requestId: mintId,
   });
 
@@ -531,6 +532,14 @@ export function createGameClient<S, A, E extends Effect>(
     // identity switch (guest → account)
     cleanups.push(
       platform.identity.onIdentityChanged((prev, next) => {
+        // Jest registration upgrades a guest in place: the playerId and therefore the save slot
+        // stay stable. Refresh the observable registration state without retiring/rebinding sync.
+        if (prev && prev.playerId === next.playerId) {
+          player = next;
+          if (sync && slot) bootMachine.rebind({ player: next, sync, slot });
+          emit({ type: 'identity_switch', outcome: { kind: 'no_change' } });
+          return;
+        }
         const guest = sync;
         void track(
           identitySwitch.onIdentityChanged(prev, next, guest).then((outcome) => {

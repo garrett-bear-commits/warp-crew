@@ -2709,6 +2709,7 @@
           "purchases"
         ],
         "x-auth": "player",
+        "x-step-up": true,
         "x-mutation": true,
         "x-idempotency": "commandId",
         "parameters": [],
@@ -2721,10 +2722,16 @@
                   "type": "object",
                   "required": [
                     "outcome",
+                    "completion",
                     "serverNow",
                     "requestId"
                   ],
                   "properties": {
+                    "purchaseToken": {
+                      "minLength": 1,
+                      "maxLength": 2048,
+                      "type": "string"
+                    },
                     "outcome": {
                       "anyOf": [
                         {
@@ -2751,6 +2758,7 @@
                         "sku",
                         "classification",
                         "granted",
+                        "sandbox",
                         "createdAt",
                         "completedAt",
                         "recordedAt"
@@ -2796,6 +2804,16 @@
                         "currency": {
                           "type": "string"
                         },
+                        "sandbox": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
                         "createdAt": {
                           "minimum": 0,
                           "maximum": 9007199254740991,
@@ -2811,6 +2829,18 @@
                         },
                         "recordedAt": {}
                       }
+                    },
+                    "completion": {
+                      "anyOf": [
+                        {
+                          "const": "ready",
+                          "type": "string"
+                        },
+                        {
+                          "const": "withhold",
+                          "type": "string"
+                        }
+                      ]
                     },
                     "serverNow": {},
                     "requestId": {
@@ -2914,6 +2944,278 @@
         }
       }
     },
+    "/v1/purchases/verify-batch": {
+      "post": {
+        "operationId": "purchases.verifyBatch",
+        "summary": "Verify a signed page of purchases; business key = provider token",
+        "tags": [
+          "purchases"
+        ],
+        "x-auth": "player",
+        "x-step-up": true,
+        "x-mutation": true,
+        "x-idempotency": "commandId",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "outcome",
+                    "results",
+                    "serverNow",
+                    "requestId"
+                  ],
+                  "properties": {
+                    "outcome": {
+                      "anyOf": [
+                        {
+                          "const": "processed",
+                          "type": "string"
+                        },
+                        {
+                          "const": "rejected",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "reason": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "maxItems": 50,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "purchaseToken",
+                          "outcome",
+                          "completion"
+                        ],
+                        "properties": {
+                          "purchaseToken": {
+                            "minLength": 1,
+                            "maxLength": 2048,
+                            "type": "string"
+                          },
+                          "outcome": {
+                            "anyOf": [
+                              {
+                                "const": "recorded",
+                                "type": "string"
+                              },
+                              {
+                                "const": "duplicate",
+                                "type": "string"
+                              },
+                              {
+                                "const": "rejected",
+                                "type": "string"
+                              }
+                            ]
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "purchase": {
+                            "type": "object",
+                            "required": [
+                              "id",
+                              "sku",
+                              "classification",
+                              "granted",
+                              "sandbox",
+                              "createdAt",
+                              "completedAt",
+                              "recordedAt"
+                            ],
+                            "properties": {
+                              "id": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "sku": {
+                                "type": "string"
+                              },
+                              "packKey": {
+                                "type": "string"
+                              },
+                              "classification": {
+                                "anyOf": [
+                                  {
+                                    "const": "paid",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "sandbox",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unclassified",
+                                    "type": "string"
+                                  },
+                                  {
+                                    "const": "unsupported",
+                                    "type": "string"
+                                  }
+                                ]
+                              },
+                              "granted": {},
+                              "grantKey": {
+                                "type": "string"
+                              },
+                              "price": {
+                                "type": "number"
+                              },
+                              "currency": {
+                                "type": "string"
+                              },
+                              "sandbox": {
+                                "anyOf": [
+                                  {
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "createdAt": {
+                                "minimum": 0,
+                                "maximum": 9007199254740991,
+                                "type": "integer"
+                              },
+                              "completedAt": {
+                                "anyOf": [
+                                  {},
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "recordedAt": {}
+                            }
+                          },
+                          "completion": {
+                            "anyOf": [
+                              {
+                                "const": "ready",
+                                "type": "string"
+                              },
+                              {
+                                "const": "withhold",
+                                "type": "string"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "serverNow": {},
+                    "requestId": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed | bad_request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "build_too_old",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "retry_later | not_configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "commandId",
+                  "purchasesSigned"
+                ],
+                "properties": {
+                  "commandId": {
+                    "format": "uuid",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    "description": "RFC 4122 UUID (client-minted for commandId).",
+                    "type": "string"
+                  },
+                  "purchasesSigned": {
+                    "minLength": 1,
+                    "maxLength": 131072,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/purchases/mine": {
       "get": {
         "operationId": "purchases.mine",
@@ -2948,6 +3250,7 @@
                           "sku",
                           "classification",
                           "granted",
+                          "sandbox",
                           "createdAt",
                           "completedAt",
                           "recordedAt"
@@ -2992,6 +3295,16 @@
                           },
                           "currency": {
                             "type": "string"
+                          },
+                          "sandbox": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "createdAt": {
                             "minimum": 0,
@@ -7174,6 +7487,10 @@
                       "properties": {
                         "kind": {
                           "anyOf": [
+                            {
+                              "const": "platform_incompatible",
+                              "type": "string"
+                            },
                             {
                               "const": "game_error",
                               "type": "string"

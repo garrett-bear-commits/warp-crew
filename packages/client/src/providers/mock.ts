@@ -11,6 +11,7 @@ import {
   bufferedErrorSink,
   type ErrorSink,
   type IdentityClient,
+  type LadderItem,
   type LifecycleProvider,
   type PlatformAdapter,
   type PlatformKV,
@@ -81,6 +82,8 @@ export interface MockPlatformOptions {
   now?: () => number;
   timers?: Timers;
   products?: { sku: string; title: string; price?: number; currency?: string }[];
+  /** Adds the authoritative signed `sandbox: true` fact independently of configured price. */
+  sandboxPurchases?: boolean;
   /** Simulated visibility (tests flip it via the returned controls). */
   initiallyVisible?: boolean;
 }
@@ -158,6 +161,10 @@ export function createMockPlatform(
     ready: () => readyPromise,
     isReady: () => ready,
     getPlayer: () => (ready ? player : null),
+    login: async () => {
+      if (!player.registered) switchIdentity(player.playerId, true);
+    },
+    refreshCredential: async () => (ready ? tokenFor(player.playerId) : null),
     tokenFor,
     previousToken() {
       if (!prev || prevConsumed) return null;
@@ -201,18 +208,20 @@ export function createMockPlatform(
   const products = opts.products ?? [
     { sku: 'pack_small', title: 'Small pack', price: 0.99, currency: 'USD' },
   ];
+  const purchaseData = (token: string, sku: string): Record<string, unknown> => ({
+    purchaseToken: token,
+    productSku: sku,
+    createdAt: now(),
+    completedAt: null,
+    price: products.find((p) => p.sku === sku)?.price ?? 0,
+    currency: products.find((p) => p.sku === sku)?.currency ?? 'USD',
+    ...(opts.sandboxPurchases ? { sandbox: true } : {}),
+  });
   const mintSigned = (token: string, sku: string): string =>
     mintMockReceipt({
       aud: gameId,
       sub: player.playerId,
-      purchase: {
-        purchaseToken: token,
-        productSku: sku,
-        createdAt: now(),
-        completedAt: now() + 1000,
-        price: products.find((p) => p.sku === sku)?.price ?? 0,
-        currency: 'USD',
-      },
+      purchase: purchaseData(token, sku),
     });
   let purchaseCounter = 0;
   const payments = {
@@ -228,7 +237,36 @@ export function createMockPlatform(
     },
     async complete(token: string) {
       completed.push(token);
-      return true;
+      return { kind: 'success' as const };
+    },
+    async recoverIncompleteBatch(
+      grant: (batch: {
+        purchases: { purchaseToken: string; sku: string; purchaseSigned?: string }[];
+        purchasesSigned: string;
+        hasMore: boolean;
+      }) => Promise<readonly string[]>,
+    ) {
+      const n = pathologies.incompletePurchases ?? 0;
+      const purchases = Array.from({ length: n }, (_, i) => {
+        const token = `mockincomplete-${player.playerId}-${i + 1}`;
+        const sku = products[0]?.sku ?? 'pack_small';
+        return { purchaseToken: token, sku, purchaseSigned: mintSigned(token, sku) };
+      });
+      const tokens = new Set(
+        await grant({
+          purchases,
+          purchasesSigned: mintMockReceipt({
+            aud: gameId,
+            sub: player.playerId,
+            purchases: purchases.map((purchase) =>
+              purchaseData(purchase.purchaseToken, purchase.sku),
+            ),
+          }),
+          hasMore: false,
+        }),
+      );
+      for (const purchase of purchases)
+        if (tokens.has(purchase.purchaseToken)) completed.push(purchase.purchaseToken);
     },
     async recoverIncomplete(
       grant: (p: {
@@ -238,28 +276,32 @@ export function createMockPlatform(
       }) => Promise<boolean>,
       onSigned?: (jws: string) => void,
     ) {
-      const n = pathologies.incompletePurchases ?? 0;
-      for (let i = 0; i < n; i++) {
-        const token = `mockincomplete-${player.playerId}-${i + 1}`;
-        const sku = products[0]?.sku ?? 'pack_small';
-        const signed = mintSigned(token, sku);
-        onSigned?.(signed);
-        const ok = await grant({ purchaseToken: token, sku, purchaseSigned: signed });
-        if (ok) completed.push(token);
-      }
+      await payments.recoverIncompleteBatch(async (batch) => {
+        if (batch.purchases.length) onSigned?.(batch.purchasesSigned);
+        const tokens: string[] = [];
+        for (const purchase of batch.purchases)
+          if (await grant(purchase)) tokens.push(purchase.purchaseToken);
+        return tokens;
+      });
     },
   };
 
   const scheduledIds: string[] = [];
   const notifications = {
     eligible: () => !pathologies.notificationsIneligible,
-    async scheduleLadder(items: { id: string; title: string; body: string; delaySec: number }[]) {
+    async scheduleLadder(items: LadderItem[]) {
       if (pathologies.notificationsIneligible)
         return { scheduled: [], failed: items.map((i) => ({ id: i.id, reason: 'ineligible' })) };
       const scheduled: string[] = [];
       const failed: { id: string; reason: string }[] = [];
       for (const it of items) {
-        if (!it.id || it.delaySec < 0) failed.push({ id: it.id, reason: 'invalid' });
+        const exact = it.scheduledAt instanceof Date && Number.isFinite(it.scheduledAt.getTime());
+        const fuzzy =
+          Number.isInteger(it.scheduledInDays) &&
+          (it.scheduledInDays ?? 0) >= 1 &&
+          (it.scheduledInDays ?? 0) <= 7;
+        const legacy = typeof it.delaySec === 'number' && it.delaySec >= 0;
+        if (!it.id || (!legacy && exact === fuzzy)) failed.push({ id: it.id, reason: 'invalid' });
         else {
           scheduled.push(it.id);
           scheduledIds.push(it.id);
@@ -278,6 +320,24 @@ export function createMockPlatform(
   const hideSubs = new Set<() => void>();
   const lifecycle: LifecycleProvider = {
     visible: () => visible,
+    onHide(cb) {
+      hideSubs.add(cb);
+      return () => hideSubs.delete(cb);
+    },
+    onShow(cb) {
+      const wrapped = (v: boolean): void => {
+        if (v) cb();
+      };
+      visSubs.add(wrapped);
+      return () => visSubs.delete(wrapped);
+    },
+    onExitRequested(cb) {
+      const wrapped = (): void => {
+        void cb();
+      };
+      hideSubs.add(wrapped);
+      return () => hideSubs.delete(wrapped);
+    },
     onVisibilityChange(cb) {
       visSubs.add(cb);
       return () => {
@@ -343,6 +403,9 @@ export function createMockPlatform(
       track(name, props) {
         events.push(props ? { name, props } : { name });
       },
+      markFirstMilestone() {
+        events.push({ name: 'first_milestone' });
+      },
     },
     loading: {
       markLoaded() {
@@ -351,6 +414,7 @@ export function createMockPlatform(
       progress() {},
     },
     lifecycle,
+    entryPayload: () => ({}),
     errors: sink,
     controls: {
       localStorage,

@@ -23,13 +23,14 @@ const admin = (url: string, body: unknown, key = 'full') =>
   h.inject({ method: 'POST', url, headers: h.adminHeaders(key), payload: body as object });
 
 describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
-  it('sandbox receipt (price 0) is recorded and never mints (schema CHECK); duplicate provider token → duplicate', async () => {
+  it('signed sandbox receipt is recorded and never mints (schema CHECK); duplicate provider token → duplicate', async () => {
     const receipt = h.receipt({
       playerKey: 'buyer',
       token: 'tok-sandbox-1',
       sku: 'gems_100',
       price: 0,
       currency: 'USD',
+      sandbox: true,
     });
     const r = await post('buyer', '/v1/purchases/verify', {
       commandId: h.uuid(),
@@ -37,6 +38,7 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
     });
     expect(r.statusCode).toBe(200);
     expect(r.json()).toMatchObject({
+      purchaseToken: 'tok-sandbox-1',
       outcome: 'recorded',
       purchase: { sku: 'gems_100', packKey: 'handful', classification: 'sandbox', granted: 0 },
     });
@@ -45,12 +47,345 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       purchaseSigned: receipt,
     });
     expect(again.json()).toMatchObject({
+      purchaseToken: 'tok-sandbox-1',
       outcome: 'duplicate',
       purchase: { id: r.json().purchase.id },
     });
     await expect(
       h.root`UPDATE purchase_transactions SET granted = 5 WHERE provider_token = 'tok-sandbox-1'`,
     ).rejects.toThrow(/ledger_fence|check constraint/);
+    await expect(
+      h.root`UPDATE purchase_transactions SET classification = 'paid' WHERE provider_token = 'tok-sandbox-1'`,
+    ).rejects.toThrow(/ledger_fence|sandbox_not_paid|check constraint/);
+  });
+  it('signed sandbox provenance overrides a positive simulator price and withholds completion', async () => {
+    const r = await post('simulator-buyer', '/v1/purchases/verify', {
+      commandId: h.uuid(),
+      purchaseSigned: h.receipt({
+        playerKey: 'simulator-buyer',
+        token: 'tok-simulator-positive',
+        sku: 'gems_100',
+        price: 4.99,
+        currency: 'USD',
+        sandbox: true,
+      }),
+    });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toMatchObject({
+      outcome: 'recorded',
+      completion: 'withhold',
+      purchase: {
+        classification: 'sandbox',
+        sandbox: true,
+        price: 4.99,
+        currency: 'USD',
+        granted: 0,
+      },
+    });
+  });
+  it('does not infer sandbox or paid value from price without valid signed provenance', async () => {
+    const zero = await post('classification-buyer', '/v1/purchases/verify', {
+      commandId: h.uuid(),
+      purchaseSigned: h.receipt({
+        playerKey: 'classification-buyer',
+        token: 'tok-zero-live',
+        sku: 'gems_100',
+        price: 0,
+        currency: 'USD',
+      }),
+    });
+    expect(zero.json()).toMatchObject({
+      completion: 'withhold',
+      purchase: { classification: 'unclassified', sandbox: false, granted: 0 },
+    });
+
+    const invalidCurrency = await post('classification-buyer', '/v1/purchases/verify', {
+      commandId: h.uuid(),
+      purchaseSigned: h.receipt({
+        playerKey: 'classification-buyer',
+        token: 'tok-invalid-currency',
+        sku: 'gems_100',
+        price: 4.99,
+        currency: 'ZZZ',
+      }),
+    });
+    expect(invalidCurrency.json()).toMatchObject({
+      completion: 'withhold',
+      purchase: { classification: 'unclassified', sandbox: false, granted: 0 },
+    });
+
+    const unsupportedSandbox = await post('classification-buyer', '/v1/purchases/verify', {
+      commandId: h.uuid(),
+      purchaseSigned: h.receipt({
+        playerKey: 'classification-buyer',
+        token: 'tok-unsupported-sandbox',
+        sku: 'unknown_sku',
+        price: 4.99,
+        currency: 'USD',
+        sandbox: true,
+      }),
+    });
+    expect(unsupportedSandbox.json()).toMatchObject({
+      completion: 'withhold',
+      purchase: { classification: 'unsupported', sandbox: true, granted: 0 },
+    });
+  });
+  it('keeps legacy sandbox provenance nullable while every new verified receipt writes a boolean', async () => {
+    await h.root`
+      INSERT INTO purchase_transactions
+        (provider_token, player_key, sku, base_amount, granted, classification, created_at, source)
+      VALUES
+        ('legacy-provenance-token', 'legacy-provenance', 'gems_100', 100, 0, 'unclassified', now(), 'financials_import')`;
+    const mine = await h.inject({
+      method: 'GET',
+      url: '/v1/purchases/mine',
+      headers: h.playerHeaders('legacy-provenance'),
+    });
+    expect(mine.json().purchases).toMatchObject([{ sandbox: null }]);
+  });
+  it('verifies a signed recovery batch atomically and returns one completion decision per token', async () => {
+    const h2 = await setupHarness({
+      prefix: 'purchase_batch',
+      game: { purchases: { mintPremium: 'on' } },
+    });
+    try {
+      const r = await h2.inject({
+        method: 'POST',
+        url: '/v1/purchases/verify-batch',
+        headers: h2.playerHeaders('batch-buyer'),
+        payload: {
+          commandId: h2.uuid(),
+          purchasesSigned: h2.receiptBatch({
+            playerKey: 'batch-buyer',
+            purchases: [
+              { token: 'batch-paid', sku: 'gems_100', price: 4.99, currency: 'USD' },
+              {
+                token: 'batch-sandbox',
+                sku: 'gems_550',
+                price: 4.99,
+                currency: 'USD',
+                sandbox: true,
+              },
+            ],
+          }),
+        },
+      });
+      expect(r.statusCode).toBe(200);
+      expect(r.json()).toMatchObject({
+        outcome: 'processed',
+        results: [
+          {
+            purchaseToken: 'batch-paid',
+            outcome: 'recorded',
+            completion: 'ready',
+            purchase: { classification: 'paid', sandbox: false, granted: 200 },
+          },
+          {
+            purchaseToken: 'batch-sandbox',
+            outcome: 'recorded',
+            completion: 'withhold',
+            purchase: { classification: 'sandbox', sandbox: true, granted: 0 },
+          },
+        ],
+      });
+    } finally {
+      await h2.close();
+    }
+  });
+  it('deduplicates repeated tokens in one signed batch and preserves provider-token idempotency', async () => {
+    const h2 = await setupHarness({
+      prefix: 'purchase_batch_dup',
+      game: { purchases: { mintPremium: 'on' } },
+    });
+    try {
+      const purchasesSigned = h2.receiptBatch({
+        playerKey: 'batch-duplicate',
+        purchases: [
+          { token: 'same-token', sku: 'gems_100', price: 4.99, currency: 'USD' },
+          { token: 'same-token', sku: 'gems_100', price: 4.99, currency: 'USD' },
+        ],
+      });
+      const commandId = h2.uuid();
+      const send = (id: string) =>
+        h2.inject({
+          method: 'POST',
+          url: '/v1/purchases/verify-batch',
+          headers: h2.playerHeaders('batch-duplicate'),
+          payload: { commandId: id, purchasesSigned },
+        });
+
+      const first = await send(commandId);
+      expect(first.json().results).toMatchObject([
+        { purchaseToken: 'same-token', outcome: 'recorded', completion: 'ready' },
+      ]);
+      const sameCommandReplay = await send(commandId);
+      expect(sameCommandReplay.json().results).toEqual(first.json().results);
+      const newCommandReplay = await send(h2.uuid());
+      expect(newCommandReplay.json().results).toMatchObject([
+        { purchaseToken: 'same-token', outcome: 'duplicate', completion: 'ready' },
+      ]);
+
+      const mine = await h2.inject({
+        method: 'GET',
+        url: '/v1/purchases/mine',
+        headers: h2.playerHeaders('batch-duplicate'),
+      });
+      expect(mine.json().purchases).toHaveLength(1);
+      expect(mine.json().entitlement).toBe(200);
+    } finally {
+      await h2.close();
+    }
+  });
+
+  it('returns per-token duplicate/recorded results for a mixed recovery page', async () => {
+    const playerKey = 'batch-mixed';
+    await post(playerKey, '/v1/purchases/verify', {
+      commandId: h.uuid(),
+      purchaseSigned: h.receipt({
+        playerKey,
+        token: 'mixed-existing',
+        sku: 'gems_100',
+        price: 4.99,
+        currency: 'USD',
+      }),
+    });
+
+    const batch = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify-batch',
+      headers: h.playerHeaders(playerKey),
+      payload: {
+        commandId: h.uuid(),
+        purchasesSigned: h.receiptBatch({
+          playerKey,
+          purchases: [
+            { token: 'mixed-existing', sku: 'gems_100', price: 4.99, currency: 'USD' },
+            { token: 'mixed-new', sku: 'gems_550', price: 4.99, currency: 'USD' },
+          ],
+        }),
+      },
+    });
+    expect(batch.json()).toMatchObject({
+      outcome: 'processed',
+      results: [
+        { purchaseToken: 'mixed-existing', outcome: 'duplicate', completion: 'withhold' },
+        { purchaseToken: 'mixed-new', outcome: 'recorded', completion: 'withhold' },
+      ],
+    });
+  });
+
+  it('sorts batch token locks so cross-player races cannot split ownership', async () => {
+    const h2 = await setupHarness({ prefix: 'purchase_batch_race' });
+    try {
+      const send = (playerKey: string, tokens: string[]) =>
+        h2.inject({
+          method: 'POST',
+          url: '/v1/purchases/verify-batch',
+          headers: h2.playerHeaders(playerKey),
+          payload: {
+            commandId: h2.uuid(),
+            purchasesSigned: h2.receiptBatch({
+              playerKey,
+              purchases: tokens.map((token) => ({
+                token,
+                sku: 'gems_100',
+                price: 0,
+                currency: 'USD',
+                sandbox: true as const,
+              })),
+            }),
+          },
+        });
+      const [a, b] = await Promise.all([
+        send('batch-racer-a', ['race-token-a', 'race-token-b']),
+        send('batch-racer-b', ['race-token-b', 'race-token-a']),
+      ]);
+      const outcomes = [a.json(), b.json()].map((body) =>
+        body.results.map((result: { outcome: string }) => result.outcome),
+      );
+      expect(outcomes).toContainEqual(['recorded', 'recorded']);
+      expect(outcomes).toContainEqual(['rejected', 'rejected']);
+    } finally {
+      await h2.close();
+    }
+  });
+  it('requires a fresh step-up identity token for direct and batch purchase verification', async () => {
+    const staleHeaders = h.playerHeaders('step-up-buyer', {
+      iatMs: h.clock.now() - 10 * 60_000,
+    });
+    const direct = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify',
+      headers: staleHeaders,
+      payload: {
+        commandId: h.uuid(),
+        purchaseSigned: h.receipt({
+          playerKey: 'step-up-buyer',
+          token: 'step-up-direct',
+          sku: 'gems_100',
+          price: 4.99,
+          currency: 'USD',
+        }),
+      },
+    });
+    expect(direct.statusCode).toBe(401);
+    expect(direct.json()).toMatchObject({ error: 'unauthorized', details: { stepUp: true } });
+
+    const batch = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify-batch',
+      headers: staleHeaders,
+      payload: {
+        commandId: h.uuid(),
+        purchasesSigned: h.receiptBatch({
+          playerKey: 'step-up-buyer',
+          purchases: [{ token: 'step-up-batch', sku: 'gems_100', price: 4.99, currency: 'USD' }],
+        }),
+      },
+    });
+    expect(batch.statusCode).toBe(401);
+    expect(batch.json()).toMatchObject({ error: 'unauthorized', details: { stepUp: true } });
+  });
+  it('rejects an unsafe signed batch before recording any durable row', async () => {
+    const playerKey = 'batch-rollback';
+    const failed = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify-batch',
+      headers: h.playerHeaders(playerKey),
+      payload: {
+        commandId: h.uuid(),
+        purchasesSigned: h.receiptBatch({
+          playerKey,
+          purchases: [
+            {
+              token: 'batch-before-failure',
+              sku: 'gems_100',
+              price: 0,
+              currency: 'USD',
+              sandbox: true,
+            },
+            {
+              token: 'batch-overflow',
+              sku: 'gems_100',
+              price: 1e20,
+              currency: 'USD',
+            },
+          ],
+        }),
+      },
+    });
+    expect(failed.statusCode).toBe(200);
+    expect(failed.json()).toMatchObject({
+      outcome: 'rejected',
+      reason: 'malformed_purchase',
+      results: [],
+    });
+    const mine = await h.inject({
+      method: 'GET',
+      url: '/v1/purchases/mine',
+      headers: h.playerHeaders(playerKey),
+    });
+    expect(mine.json().purchases).toEqual([]);
   });
   it('concurrent duplicate receipt verify (§9): one recorded, the rest duplicate, one ledger row', async () => {
     const receipt = h.receipt({ playerKey: 'racer', token: 'tok-race', sku: 'gems_100', price: 0 });
@@ -79,6 +414,7 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
     });
     expect(r.json()).toMatchObject({
       outcome: 'recorded',
+      completion: 'withhold',
       purchase: { classification: 'paid', granted: 0 },
     });
     expect(r.json().purchase.grantKey).toBeUndefined();
@@ -223,11 +559,13 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
             token: 'tok-p1',
             sku: 'gems_100',
             price: 4.99,
+            currency: 'USD',
           }),
         },
       });
       expect(r.json()).toMatchObject({
         outcome: 'recorded',
+        completion: 'ready',
         purchase: { classification: 'paid', granted: 200, grantKey: 'purchase:tok-p1' },
       });
       const r2 = await h2.inject({
@@ -241,6 +579,7 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
             token: 'tok-p2',
             sku: 'gems_100',
             price: 4.99,
+            currency: 'USD',
           }),
         },
       });
@@ -285,10 +624,15 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
             token: 'tok-sb',
             sku: 'gems_100',
             price: 0,
+            currency: 'USD',
+            sandbox: true,
           }),
         },
       });
-      expect(sb.json().purchase).toMatchObject({ classification: 'sandbox', granted: 0 });
+      expect(sb.json()).toMatchObject({
+        completion: 'withhold',
+        purchase: { classification: 'sandbox', sandbox: true, granted: 0 },
+      });
     } finally {
       await h2.close();
     }

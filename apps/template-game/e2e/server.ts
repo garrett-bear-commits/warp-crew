@@ -51,6 +51,8 @@ const config: ServerConfig = {
     'http://127.0.0.1:4173',
     'http://localhost:4174',
     'http://127.0.0.1:4174',
+    'http://localhost:4175',
+    'http://127.0.0.1:4175',
   ],
   publicUrl: `http://127.0.0.1:${port}`,
   logLevel: process.env.E2E_LOG_LEVEL ?? 'warn',

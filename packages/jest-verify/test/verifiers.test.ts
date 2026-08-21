@@ -157,6 +157,7 @@ describe('Jest payments verifier — conformance', () => {
             createdAt: NOW,
             ...(o.price !== undefined ? { price: o.price } : {}),
             ...(o.currency !== undefined ? { currency: o.currency } : {}),
+            ...(o.sandbox ? { sandbox: true } : {}),
             ...(o.completedAt !== undefined ? { completedAt: o.completedAt } : {}),
             ...(o.batch ? { batch: true } : {}),
           }),
@@ -205,6 +206,83 @@ describe('Jest payments verifier — conformance', () => {
     );
     expect(v.verifyReceipt(t, GAME)).toEqual({ ok: false, reason: 'bad_alg' });
   });
+  it('preserves signed sandbox provenance even when the simulator keeps a positive price', () => {
+    const t = signHs256(
+      {
+        aud: GAME,
+        sub: 'p1',
+        purchase: {
+          purchaseToken: 'simulator-token',
+          productSku: 'gems_200',
+          createdAt: NOW,
+          completedAt: null,
+          price: 4.99,
+          currency: 'USD',
+          sandbox: true,
+        },
+      },
+      secret,
+    );
+    const result = v.verifyReceipt(t, GAME);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.purchases[0]).toMatchObject({ sandbox: true, price: 4.99 });
+  });
+  it('rejects a sandbox claim other than the documented optional true literal', () => {
+    const t = signHs256(
+      {
+        aud: GAME,
+        sub: 'p1',
+        purchase: {
+          purchaseToken: 'bad-sandbox-shape',
+          productSku: 'gems_200',
+          createdAt: NOW,
+          completedAt: null,
+          price: 4.99,
+          currency: 'USD',
+          sandbox: false,
+        },
+      },
+      secret,
+    );
+    expect(v.verifyReceipt(t, GAME)).toEqual({ ok: false, reason: 'malformed_purchase' });
+  });
+  it('rejects signed purchase facts that cannot be safely persisted or are not one official shape', () => {
+    const valid = {
+      purchaseToken: 'bounded-token',
+      productSku: 'gems_200',
+      createdAt: NOW,
+      completedAt: null,
+      price: 4.99,
+      currency: 'USD',
+    };
+    const malformed: Record<string, unknown>[] = [
+      { ...valid, purchaseToken: 'x'.repeat(2049) },
+      { ...valid, productSku: 'x'.repeat(257) },
+      { ...valid, createdAt: -1 },
+      { ...valid, createdAt: NOW + 0.5 },
+      { ...valid, completedAt: NOW - 1 },
+      { ...valid, price: -0.01 },
+      { ...valid, price: 10_000_000_000 },
+      { ...valid, currency: 'usd' },
+      { ...valid, currency: 'USDX' },
+    ];
+    for (const purchase of malformed) {
+      const token = signHs256({ aud: GAME, sub: 'p1', purchase }, secret);
+      expect(v.verifyReceipt(token, GAME), JSON.stringify(purchase)).toEqual({
+        ok: false,
+        reason: 'malformed_purchase',
+      });
+    }
+
+    const ambiguous = signHs256(
+      { aud: GAME, sub: 'p1', purchase: valid, purchases: [valid] },
+      secret,
+    );
+    expect(v.verifyReceipt(ambiguous, GAME)).toEqual({
+      ok: false,
+      reason: 'malformed_purchase',
+    });
+  });
 });
 
 describe('mock payments verifier — same conformance', () => {
@@ -236,6 +314,7 @@ describe('mock payments verifier — same conformance', () => {
                     completedAt: o.completedAt === undefined ? NOW + 1 : o.completedAt,
                     ...(o.price !== undefined ? { price: o.price } : {}),
                     ...(o.currency !== undefined ? { currency: o.currency } : {}),
+                    ...(o.sandbox ? { sandbox: true } : {}),
                   },
                 }),
           }),

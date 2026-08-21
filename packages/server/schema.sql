@@ -370,6 +370,7 @@ col purchase_transactions.source text NO
 col purchase_transactions.command_id uuid YES 
 col purchase_transactions.grant_key text YES 
 col purchase_transactions.recorded_at timestamp with time zone NO now()
+col purchase_transactions.sandbox boolean YES NULLIF(true, true)
 col rate_limits.key text NO 
 col rate_limits.window_start timestamp with time zone NO 
 col rate_limits.count integer NO 0
@@ -535,6 +536,7 @@ con purchase_transactions.purchase_transactions_classification_check CHECK ((cla
 con purchase_transactions.purchase_transactions_granted_check CHECK ((granted >= 0))
 con purchase_transactions.purchase_transactions_pkey PRIMARY KEY (id)
 con purchase_transactions.purchase_transactions_provider_token_key UNIQUE (provider_token)
+con purchase_transactions.purchase_transactions_sandbox_not_paid CHECK (((sandbox IS DISTINCT FROM true) OR (classification <> 'paid'::text)))
 con purchase_transactions.purchase_transactions_source_check CHECK ((source = ANY (ARRAY['live_receipt'::text, 'financials_import'::text])))
 con rate_limits.rate_limits_pkey PRIMARY KEY (key, window_start)
 con save_blobs.save_blobs_pkey PRIMARY KEY (save_id)

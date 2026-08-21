@@ -1,12 +1,26 @@
 # Implementation status — Game Foundation v1
 
-_Updated at the last checkpoint commit on branch `game-foundation-v1`. Every claim below names the command that produced it; nothing here was inferred._
+_Updated 2026-08-20 on branch `game-foundation-v1`. Every current claim below names the command that produced it; nothing here is inferred._
 
 ## Summary
 
 The reusable core from `docs/architecture-v1.md` is implemented as a locally buildable pnpm monorepo: contracts (TypeBox + OpenAPI + fixtures), the server core (typed command bus with reservation-based idempotency and tombstones, real-Postgres migrations with two roles and SECURITY DEFINER fences, outbox with leases/DLQ/replay, jobs, health/ops, auth that fails closed, blob decoding under independent limits) with all thirteen feature folders, the node-only verifiers with a conformance suite, the web adapter (engine loop, storage tiers, boot machine, sync with client-minted commandIds and the beacon route, ratchet/reconcile, generations, restore gate, multi-tab leader, journal, clock, providers, React layer, model-based sync tests), the tooling (guards, lint rule, deploy-static/zip/check-health/preflight/new-server/new-feature/manifest-check), the static admin inspector on a separate origin, and the template idle game with Playwright acceptance on Chromium + WebKit.
 
-Section-by-section evidence lives in `docs/coverage-matrix.md`. External gates (things that need credentials, devices, or a production platform) are listed under "Gates" and were implemented as interface + mock + fail-closed + tests.
+Section-by-section evidence lives in `docs/coverage-matrix.md`. External gates (things that need credentials, devices, or a production platform) are listed under "Gates". Local mocks and Playwright runs are evidence for local contracts only; they are not evidence that the real Jest shell, SDK, Developer Console, Simulator, sandbox, or mobile devices accepted the game.
+
+## Jest conformance truth (reviewed 2026-08-20)
+
+The official documentation now supports self-hosted URL versions. The remaining hosting gate is
+not whether URL versions exist; it is registering this game's URL and verifying the real shell's
+iframe framing, CORS, storage partitioning, SDK initialization, and mobile behavior. Prefer one
+static game origin with `/v1` reverse-proxied on that origin. See [ADR-023](docs/adr/ADR-023-provider-neutral-static-hosting.md)
+and the [Developer Console launch runbook](docs/runbooks/jest-launch.md).
+
+The adapter, unit suite, and `jest-official-shape.spec.ts` exercise the current documented method
+and result shapes locally. They must not be reported as real Jest verification. Real-platform gates
+still include registration and stable guest→registered identity, SDK/runtime behavior,
+notifications/moderation, signed purchase/recovery fixtures, sandbox testing, Simulator
+self-review, and mobile soak.
 
 ## Branch and commits
 
@@ -20,29 +34,32 @@ Branch `game-foundation-v1`; `main` has no commits (this repository was empty be
 | 2 | server spine: bus, idempotency/tombstones, Postgres locks/migrations/roles, outbox DLQ+replay, jobs, limits, auth, health, Docker | done |
 | 3 | saves + lineage: append-only snapshots, dispositions, size/bomb guards, terminal quarantine reviews, generation-only rollback, restore/reattach/erasure/CAS, property + real-PG concurrency tests | done |
 | 4 | identity/purchases/grants: Jest + mock verifiers + conformance, fail-closed tokens, receipt ledgers, sandbox non-minting, real minting off (ADR-024), grants/codes/cohorts | done |
-| 5 | client adapter (`packages/client`) incl. model-based sync tests (560 tests, 0 counterexamples; audit fixes F1/F3/F8/F9) | done |
+| 5 | client adapter (`packages/client`) incl. model-based sync tests (568 unit + 2 model tests, 0 counterexamples; audit fixes F1/F3/F8/F9) | done |
 | 6 | features: achievements, leaderboards L1–2, inbox, announcements, telemetry, journal, liveops (flags/schedules/segments/content/kill switches/minBuild), admin + static inspector (separate origin, strict CSP), Lab QA | done |
 | 7 | template game + Playwright (Chromium + WebKit) + migration/restore/outbox-crash/receipt-replay tests + runbooks + tooling | done |
+| 8 | current Jest HTML5 remediation: official SDK mirror/bootstrap, stable registration, data/lifecycle/loading/analytics/entry, signed batch purchase recovery, sandbox provenance, catalog pricing, D1–D7 notifications, and launch runbook | done locally; real-platform gates remain |
 
 ## Commands and results
 
-Rerun from the repo root on 2026-08-18 after the audit fixes (macOS, Node 24.13.1, pnpm 10.30.1, Docker 29, `postgres:16-alpine` via `pnpm db:up`, `DATABASE_URL_TEST=postgres://postgres:postgres@localhost:55432/foundation_test`). Nothing below is carried over from an earlier run.
+Rerun from the repo root on 2026-08-20 after the Jest remediation (macOS, Node 24.13.1,
+pnpm 10.30.1). The PG suite used a disposable local Postgres cluster on port 55432 because a
+container runtime was unavailable. The cluster was removed after verification.
 
 | Command | Result |
 | --- | --- |
 | `pnpm install` | ok (lockfile committed; Node 24 / pnpm 10.30.1 pinned via `packageManager` + `engine-strict`); `@sentry/node` added to `packages/server` |
-| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | exit 0 — prettier clean; eslint 0 errors/0 warnings; tsc clean in every package; Vite builds `apps/template-game/dist` and `apps/server/admin-inspector/dist`; guards 6/6 PASS (mutation-command-id 43, sql-no-tenancy 226 files, bundle-browser-safe 4 bundle files, feature-shape 13, no-secrets 358 files, no-placeholders 317 files); per-package vitest: contracts 28, testkit 3, tooling 41, jest-verify 56, client 558 + model 2, server 44, app-server 21, template-game 33 |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 29 files, 784 tests passed |
-| `DATABASE_URL_TEST=… pnpm test:pg` (real postgres:16, migrations from empty incl. `0013_outbox_lease_token`, app role) | 7 files, 102 tests passed — `packages/server/test/pg/{bus,infra}.test.ts`, `apps/server/test/pg/{saves,lineage,money,features,audit}.test.ts` |
+| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | exit 0 — formatting clean; ESLint 0 errors/warnings; every package typechecks; both Vite builds pass; guards 6/6 PASS (44 mutations, 230 SQL-scanned files, 4 browser bundles, 13 features, 367 secret-scanned files, 326 placeholder-scanned files); package tests pass (contracts 32, testkit 3, tooling 41, jest-verify 59, client 568 + model 2, server 44, app-server 21, template 50) |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 33 files, 818 tests passed |
+| `DATABASE_URL_TEST=… pnpm test:pg` (real Postgres, migrations from empty incl. `0014_purchase_sandbox_provenance`, app role) | 7 files, 111 tests passed; the root script uses one worker because bootstrap roles are cluster-global |
 | `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples; the server-truth model now replays refused/quarantined writes with their original disposition) |
-| `pnpm test:e2e` (Playwright chromium + webkit iPhone 13 against a fresh lab API, iframe host, `vite preview`) | `26 passed (44.0s)` |
+| `pnpm test:e2e` (Playwright Chromium + WebKit iPhone 13 against a fresh lab API, local iframe host, `vite preview`, and local official-shape Jest fixture) | 28 passed (49.2 s) |
 | `git diff --check` | clean |
-| `git archive HEAD \| docker build -f apps/server/Dockerfile -` | image built from a clean checkout (admin inspector built in the builder stage); smoke-run against the local Postgres: `/health/ready` → 200 `status: ready`, inspector origin served with `default-src 'none'` CSP |
-| `DATABASE_URL=… pnpm migrate --up` / `--check packages/server/schema.sql --write` | 13 files applied, head `347d4c7da5c1f5ce`, `schema.sql` regenerated and committed |
+| Docker image build/smoke | not rerun on 2026-08-20 because Docker was unavailable; the prior 2026-08-18 checkpoint built from `git archive HEAD` and smoke-tested `/health/ready` + inspector CSP |
+| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` on a fresh database | 14 migrations applied, head `7ff022d400983b54`; `schema matches` |
 | `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)"; the detector itself is unit-tested (`test/openapi-diff.test.ts`) and CI runs it against the last tag once one exists |
 | Sentry / managed PITR / object storage / Jest platform calls | not run — external gates (below); the local paths (Sentry wiring with an injected transport, isolated-restore verification, erasure export/replay) are tested |
 
-Totals: 784 unit/contract + 2 model + 102 real-Postgres + 26 browser = 914 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Totals: 818 unit/contract + 2 model + 111 real-Postgres + 28 browser = 959 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
 
 ## Audit findings (2026-08-18) — all fixed with regression tests
 
@@ -65,14 +82,14 @@ Totals: 784 unit/contract + 2 model + 102 real-Postgres + 26 browser = 914 tests
 
 ## Coverage
 
-`docs/coverage-matrix.md` has 70 requirement rows: every locally runnable row is implemented with a named test; the rows carrying an external remainder are 1.7 (real minting switch, ADR-024), 1.16/8.4 (managed PITR/dumps), 6.3/9.4 (tag-based OpenAPI diff and per-release fixture recordings — no release exists), 8.2 (Sentry DSN + cron monitor), 9.6 (k6 on a deployed Lab), 10.3 (Jest URL-hosting confirmation). Nothing is marked done without a command in the table above.
+`docs/coverage-matrix.md` has 70 requirement rows: every locally runnable row is implemented with a named test; the rows carrying an external remainder are 1.7 (real minting switch and the owner-gated sandbox delivery decision, ADR-024), 1.16/8.4 (managed PITR/dumps), 6.3/9.4 (tag-based OpenAPI diff and per-release fixture recordings — no release exists), 8.2 (Sentry DSN + cron monitor), 9.6 (k6 on a deployed Lab), and 10.3 (self-hosted URL registration plus real shell/framing/CORS/storage verification). Nothing here claims those external gates passed.
 
 ## Gates (external; interface + mock + fail-closed + tests in place)
 
 | Gate | What is in the repo | What needs the outside world |
 | --- | --- | --- |
-| Jest URL-hosted production/review mode (§14) | provider-neutral hashed static deploy + zip fallback (ADR-023), `frame-ancestors` documented | confirmation with Jest; the literal game id/aud |
-| Jest sandbox receipt price shape (§14, ADR-024) | verifier + classification (paid/sandbox/unclassified/unsupported); `purchases.mintPremium = 'off'` default; tests for both modes | verify the receipt shape on Lab with real receipts, then flip the game config |
+| Jest self-hosted URL version and real shell (§14) | provider-neutral hashed static deploy + zip fallback (ADR-023), `frame-ancestors` documented, same-origin `/v1` preferred | register/preview/activate the URL; verify iframe framing, CORS, storage partitioning, SDK bootstrap, and mobile behavior in the hosted emulator/Simulator; obtain literal game id/aud |
+| Jest sandbox receipts and delivery policy (§14, ADR-024) | verifier/classification tracks signed `sandbox` before price; `purchases.mintPremium = 'off'`; current schema preserves `granted = 0`; local tests cover the invariant | run real sandbox purchase/recovery; owner must approve any future separation of test-item delivery from commercial accounting before schema/ledger changes |
 | Jest HS256 secret / player token | `createJestIdentityVerifier` (alg pinned, aud, iat, rotation) + conformance | `JEST_JWS_SECRETS` from the Developer Console |
 | Managed Postgres PITR + nightly dumps + restore drill | `live.integrity` job, `verifyIsolatedRestore`/`markRestoreVerified`, erasure export/replay (`apps/server/src/cli/dr.ts`), manifests, `manifest-check`, runbook | a managed database and a backup bucket (PITR/dump/R2 are external) |
 | Sentry (server) | real optional wiring (`observability/sentry.ts`: init, release/environment tags, request + command spans, send-time sampling, redaction; tested through an injected transport) | a DSN and a project; the per-game cron monitor |
@@ -97,9 +114,9 @@ See `README.md` ("Everyday commands"): `pnpm install`, `pnpm db:up`, `pnpm migra
 1. `packages/server/src/cqrs/bus.ts` — the middleware onion and reservation-based idempotency (ADR-026); its real-PG tests `packages/server/test/pg/bus.test.ts`.
 2. `packages/server/src/features/saves/placement.ts` + `packages/server/src/db/migrations/0011_privileges.sql` — the placement guard and the SECURITY DEFINER fences (`promote_snapshot`, `prune_save_blobs`, `erase_player`, `apply_retention`).
 3. `packages/client/src/sync` + the model-based tests — the client safety mechanism (ratchet/reconcile/generations vs a server-truth model).
-4. `apps/server/test/pg/*.test.ts` — 64+ route tests on real Postgres that double as the acceptance evidence for §4/§6/§7.
+4. `apps/server/test/pg/*.test.ts` and `packages/server/test/pg/*.test.ts` — 111 tests on real Postgres that double as the acceptance evidence for §4/§6/§7.
 5. `docs/adr/ADR-024-purchase-minting-gate.md` and `packages/server/src/features/purchases/server.ts` — how money is fenced until the receipt shape is verified.
 
 ## Best next action
 
-Take the stack to Lab (§12 P0 verifications): confirm with Jest that URL-hosted production/review mode is supported and obtain the literal game id/aud + `JEST_JWS_SECRETS`; run `pnpm foundation preflight`, `pnpm migrate --up`, start the image, `pnpm foundation check-health --assert page`; verify the sandbox receipt price shape with real receipts and, if it matches `purchase.price` (0 = sandbox, > 0 = paid), flip `purchases.mintPremium` to `'on'` in the game config (ADR-024). Then set `SENTRY_DSN` (the wiring is in place and tested), enable PITR on the managed database, and run the restore-drill runbook once with a second person (`dr verify-restore … --mark` is the only path that writes `restore_verified_at`).
+Take the stack to Lab (§12 P0 verifications): register/preview the self-hosted URL version, obtain the literal game id/aud + `JEST_JWS_SECRETS`, and verify the real shell using [the launch runbook](docs/runbooks/jest-launch.md); run `pnpm foundation preflight`, `pnpm migrate --up`, start the image, and `pnpm foundation check-health --assert page`. Run real sandbox login, notification, purchase, signed recovery, and completion checks. Do not infer sandbox status from price; do not enable `purchases.mintPremium` until real paid payload validation and owner approval. Then set `SENTRY_DSN` (the wiring is in place and tested), enable PITR on the managed database, and run the restore-drill runbook once with a second person (`dr verify-restore … --mark` is the only path that writes `restore_verified_at`).

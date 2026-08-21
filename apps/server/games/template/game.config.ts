@@ -49,7 +49,7 @@ export const templateGame: GameConfig = {
   maxProgressPerHour: 36_000, // 10 accepted actions/sec sustained
   journal: 'errors_only', // ADR-020
   knownSchemaVersions: [1, 2],
-  purchases: { mintPremium: 'off' }, // ADR-024: on only after the sandbox receipt shape is verified
+  purchases: { mintPremium: 'off' }, // ADR-024: owner gate + real paid/sandbox payload validation
   blobLimits: DEFAULT_BLOB_LIMITS,
   maxTokenAgeSec: 24 * 3600,
   content: { achievements, dailyRewards },
@@ -58,7 +58,8 @@ export const templateGame: GameConfig = {
       key: 'sale.summer',
       type: 'boolean',
       default: false,
-      description: 'Summer sale banner + 50% price display',
+      description:
+        'Summer event banner only; checkout price always comes from the platform catalog',
     },
     { key: 'idle.rate', type: 'number', default: 1, description: 'Idle production multiplier' },
     { key: 'ui.theme', type: 'string', default: 'classic' },
