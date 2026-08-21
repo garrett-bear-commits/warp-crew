@@ -7,7 +7,10 @@ import type {
   Player,
   ScheduleResult,
   StorageTier,
+  TabBus,
+  Timers,
 } from '@foundation/client';
+import { createBroadcastTabBus, createTabLease, realTimers } from '@foundation/client';
 
 export const RETENTION_IDENTIFIERS = [
   'template:return:d1',
@@ -97,6 +100,16 @@ export interface RetentionCoordinatorOptions {
   assetReference: string;
   /** Reads the live Web Locks election result; callers must reconcile when it changes. */
   isLeader(): boolean;
+  /**
+   * When false, every tab already believes it is leader (no Web Locks). Ignore `isLeader()` and
+   * elect a single writer over `tabBus`. Default true (trust the existing tab leader).
+   */
+  leaderAvailable?: boolean;
+  /** Injected bus for the no-Web-Locks fallback. `null` disables mutation in that mode. */
+  tabBus?: TabBus | null;
+  now?: () => number;
+  timers?: Timers;
+  ownerId?: string;
   /** Serializes notification SDK mutation across same-origin tabs. */
   mutationMutex?: RetentionMutationMutex;
   mark(): number;
@@ -105,6 +118,8 @@ export interface RetentionCoordinatorOptions {
 }
 
 export interface RetentionMutationMutex {
+  /** False when exclusive ownership cannot be established; the coordinator must not mutate. */
+  exclusive?: boolean;
   run<T>(fn: () => Promise<T>): Promise<T>;
 }
 
@@ -116,19 +131,63 @@ interface BrowserLocks {
   ): Promise<T>;
 }
 
+export interface RetentionMutexOptions {
+  locks?: BrowserLocks | null;
+  tabBus?: TabBus | null;
+  now?: () => number;
+  timers?: Timers;
+  ownerId?: string;
+}
+
 /**
- * A second, short-lived Web Lock for external notification mutation. Leadership decides who may
- * request work; this lock makes a stolen leader lock wait for an old non-cancellable SDK call so
- * the newly elected writer's replacement lands last. Without Web Locks, the client election is
- * already in its documented single-tab fallback mode.
+ * A second, short-lived exclusive section for external notification mutation. Leadership decides
+ * who may request work; this lock makes a stolen leader wait for an old non-cancellable SDK call
+ * so the newly elected writer's replacement lands last. Without Web Locks, a BroadcastChannel
+ * lease is used; if that is also unavailable, `exclusive` is false and callers must not mutate.
  */
-export function createRetentionMutationMutex(name: string): RetentionMutationMutex {
-  const locks = (globalThis as { navigator?: { locks?: BrowserLocks } }).navigator?.locks;
-  if (!locks) return { run: async <T>(fn: () => Promise<T>): Promise<T> => fn() };
-  return {
-    run: <T>(fn: () => Promise<T>): Promise<T> =>
-      locks.request(name, { mode: 'exclusive' }, () => fn()),
-  };
+export function createRetentionMutationMutex(
+  name: string,
+  options: RetentionMutexOptions = {},
+): RetentionMutationMutex {
+  const locks =
+    options.locks === undefined
+      ? ((globalThis as { navigator?: { locks?: BrowserLocks } }).navigator?.locks ?? null)
+      : options.locks;
+  if (locks)
+    return {
+      exclusive: true,
+      run: <T>(fn: () => Promise<T>): Promise<T> =>
+        locks.request(name, { mode: 'exclusive' }, () => fn()),
+    };
+  if (options.tabBus !== undefined || options.now) {
+    if (!options.tabBus || !options.now)
+      return {
+        exclusive: false,
+        run: async <T>(_fn: () => Promise<T>): Promise<T> => {
+          throw new Error('retention mutation disabled: exclusive ownership unavailable');
+        },
+      };
+    const lease = createTabLease({
+      name,
+      bus: options.tabBus,
+      now: options.now,
+      ...(options.timers ? { timers: options.timers } : {}),
+      ...(options.ownerId ? { ownerId: `${options.ownerId}:mut` } : {}),
+    });
+    return {
+      exclusive: true,
+      async run<T>(fn: () => Promise<T>): Promise<T> {
+        const held = await lease.acquire({ wait: true });
+        if (!held) throw new Error('retention mutation lease was not acquired');
+        try {
+          return await fn();
+        } finally {
+          lease.release();
+        }
+      },
+    };
+  }
+  return { exclusive: true, run: async <T>(fn: () => Promise<T>): Promise<T> => fn() };
 }
 
 export interface RetentionCoordinator {
@@ -156,10 +215,58 @@ export function createRetentionCoordinator(
   let observedPlayer: string | null = null;
   let observedLeader = false;
   let hiddenMark: number | null = null;
+  let lastRequest: RetentionCoordinatorRequest | null = null;
   let tail: Promise<void> = Promise.resolve();
+  let stopLead: (() => void) | undefined;
+  const fallback = options.leaderAvailable === false;
+  const fallbackNow = options.now;
+  const fallbackTimers = options.timers ?? realTimers();
+  const fallbackBus: TabBus | null | undefined = fallback
+    ? options.tabBus === undefined
+      ? createBroadcastTabBus(`foundation:${options.gameId}:retention`)
+      : options.tabBus
+    : undefined;
+  const makeLead = () =>
+    fallback && fallbackBus && fallbackNow
+      ? createTabLease({
+          name: `foundation:${options.gameId}:retention:lead`,
+          bus: fallbackBus,
+          now: fallbackNow,
+          timers: fallbackTimers,
+          ...(options.ownerId ? { ownerId: `${options.ownerId}:lead` } : {}),
+        })
+      : null;
+  let leadLease = makeLead();
   const mutationMutex =
     options.mutationMutex ??
-    createRetentionMutationMutex(`foundation:${options.gameId}:retention:notification-mutation`);
+    (fallback
+      ? createRetentionMutationMutex(
+          `foundation:${options.gameId}:retention:notification-mutation`,
+          {
+            tabBus: fallbackBus ?? null,
+            ...(fallbackNow ? { now: fallbackNow } : {}),
+            timers: fallbackTimers,
+            ...(options.ownerId ? { ownerId: options.ownerId } : {}),
+          },
+        )
+      : createRetentionMutationMutex(
+          `foundation:${options.gameId}:retention:notification-mutation`,
+        ));
+  const exclusive = mutationMutex.exclusive !== false && (!fallback || leadLease !== null);
+  const writer = (): boolean => (leadLease ? leadLease.isHeld() : options.isLeader());
+
+  const attachLead = (): void => {
+    stopLead?.();
+    if (!leadLease) leadLease = makeLead();
+    if (!leadLease) return;
+    stopLead = leadLease.onChange(() => {
+      if (!destroyed && lastRequest) reconcile(lastRequest);
+    });
+    void leadLease.acquire({ wait: true }).then(() => {
+      if (!destroyed && lastRequest) reconcile(lastRequest);
+    });
+  };
+  attachLead();
 
   const reset = (): void => {
     scheduled = false;
@@ -168,68 +275,74 @@ export function createRetentionCoordinator(
     hiddenMark = null;
   };
 
+  const reconcile = (request: RetentionCoordinatorRequest): void => {
+    lastRequest = request;
+    if (destroyed) return;
+    const player = request.player;
+    if (!request.booted || !player?.registered) {
+      ++epoch;
+      reset();
+      return;
+    }
+    const leader = exclusive && writer();
+    if (observedPlayer !== player.playerId || observedLeader !== leader) {
+      ++epoch;
+      scheduled = false;
+      observedPlayer = player.playerId;
+      observedLeader = leader;
+      hiddenMark = null;
+    }
+    // A follower must neither reserve copy nor touch notifications. Resetting its local marker
+    // makes a later "Play here" establish the plan under the new writer. Without exclusive
+    // ownership (no Web Locks and no BroadcastChannel) every tab stays a follower.
+    if (!leader) return;
+    if (!request.visible) {
+      if (hiddenMark === null) hiddenMark = options.mark();
+      return;
+    }
+    const hiddenMs = hiddenMark === null ? null : options.sinceMark(hiddenMark);
+    hiddenMark = null;
+    if (!shouldRefreshRetention(scheduled, hiddenMs)) return;
+
+    scheduled = true;
+    const requestEpoch = ++epoch;
+    const canContinue = (): boolean =>
+      !destroyed && epoch === requestEpoch && exclusive && writer();
+    const context = { progress: request.progress, playerId: player.playerId };
+    const run = async (): Promise<void> => {
+      let result: ScheduleResult | undefined;
+      await mutationMutex.run(async () => {
+        if (!canContinue()) return;
+        const returnOrdinal = claimRetentionOrdinal(
+          options.storage,
+          options.gameId,
+          context.playerId,
+        );
+        if (!canContinue()) return;
+        result = await refreshRetentionPlan(
+          options.notifications,
+          { playerId: context.playerId, registered: true },
+          options.buildVersion,
+          options.assetReference,
+          { progress: context.progress, returnOrdinal },
+          canContinue,
+        );
+      });
+      if (result && canContinue()) options.onResult?.(result);
+    };
+    // Keep the queue usable if an observer/storage implementation rejects unexpectedly.
+    tail = tail.then(run, run);
+  };
+
   return {
     activate() {
       if (!destroyed) return;
       destroyed = false;
       ++epoch;
       reset();
+      attachLead();
     },
-    reconcile(request) {
-      if (destroyed) return;
-      const player = request.player;
-      if (!request.booted || !player?.registered) {
-        ++epoch;
-        reset();
-        return;
-      }
-      const leader = options.isLeader();
-      if (observedPlayer !== player.playerId || observedLeader !== leader) {
-        ++epoch;
-        scheduled = false;
-        observedPlayer = player.playerId;
-        observedLeader = leader;
-        hiddenMark = null;
-      }
-      // A follower must neither reserve copy nor touch notifications. Resetting its local marker
-      // makes a later "Play here" establish the plan under the new writer.
-      if (!leader) return;
-      if (!request.visible) {
-        if (hiddenMark === null) hiddenMark = options.mark();
-        return;
-      }
-      const hiddenMs = hiddenMark === null ? null : options.sinceMark(hiddenMark);
-      hiddenMark = null;
-      if (!shouldRefreshRetention(scheduled, hiddenMs)) return;
-
-      scheduled = true;
-      const requestEpoch = ++epoch;
-      const canContinue = (): boolean => !destroyed && epoch === requestEpoch && options.isLeader();
-      const context = { progress: request.progress, playerId: player.playerId };
-      const run = async (): Promise<void> => {
-        let result: ScheduleResult | undefined;
-        await mutationMutex.run(async () => {
-          if (!canContinue()) return;
-          const returnOrdinal = claimRetentionOrdinal(
-            options.storage,
-            options.gameId,
-            context.playerId,
-          );
-          if (!canContinue()) return;
-          result = await refreshRetentionPlan(
-            options.notifications,
-            { playerId: context.playerId, registered: true },
-            options.buildVersion,
-            options.assetReference,
-            { progress: context.progress, returnOrdinal },
-            canContinue,
-          );
-        });
-        if (result && canContinue()) options.onResult?.(result);
-      };
-      // Keep the queue usable if an observer/storage implementation rejects unexpectedly.
-      tail = tail.then(run, run);
-    },
+    reconcile,
     async idle() {
       await tail;
     },
@@ -237,6 +350,10 @@ export function createRetentionCoordinator(
       destroyed = true;
       ++epoch;
       reset();
+      stopLead?.();
+      stopLead = undefined;
+      leadLease?.destroy();
+      leadLease = null;
     },
   };
 }

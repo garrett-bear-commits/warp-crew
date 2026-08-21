@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  createMemoryTabBus,
   createStorage,
   memoryStorage,
+  realTimers,
   type LadderItem,
   type NotificationsProvider,
   type Player,
@@ -443,6 +445,120 @@ describe('template Jest retention plan', () => {
 
     expect(completed).toEqual(['a', 'c']);
     expect(schedule).toHaveBeenCalledTimes(2);
+  });
+
+  it('two no-Web-Locks coordinators never mutate concurrently or reserve the same cursor', async () => {
+    const bus = createMemoryTabBus();
+    const now = (): number => Date.now();
+    const storage = createStorage({ localStorage: memoryStorage() });
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const unschedule = vi.fn(async () => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      inFlight--;
+    });
+    const schedule = vi.fn(async (items: LadderItem[]): Promise<ScheduleResult> => ({
+      scheduled: items.map((item) => item.id),
+      failed: [],
+    }));
+    const base = {
+      notifications: { eligible: () => true, unschedule, scheduleLadder: schedule },
+      storage,
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => true,
+      leaderAvailable: false as const,
+      tabBus: bus,
+      now,
+      timers: realTimers(),
+      mark: () => 0,
+      sinceMark: () => 0,
+    };
+    const tabA = createRetentionCoordinator({ ...base, ownerId: 'a' });
+    const tabB = createRetentionCoordinator({ ...base, ownerId: 'b' });
+    const request = { booted: true, player: registered, visible: true, progress: 0 };
+    tabA.reconcile(request);
+    tabB.reconcile(request);
+    await vi.waitFor(() => {
+      expect(schedule).toHaveBeenCalledTimes(1);
+    });
+    await Promise.all([tabA.idle(), tabB.idle()]);
+
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(storage.get('foundation:template:retention:v2:p1')).toBe('1');
+    expect(maxInFlight).toBe(1);
+    tabA.destroy();
+    tabB.destroy();
+  });
+
+  it('does not mutate when exclusive ownership cannot be established', async () => {
+    const notifications = fakeNotifications();
+    const storage = createStorage({ localStorage: memoryStorage() });
+    const coordinator = createRetentionCoordinator({
+      notifications: notifications.provider,
+      storage,
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => true,
+      leaderAvailable: false,
+      tabBus: null,
+      now: () => 0,
+      mark: () => 0,
+      sinceMark: () => 0,
+    });
+    coordinator.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    await coordinator.idle();
+    expect(notifications.unschedule).not.toHaveBeenCalled();
+    expect(notifications.schedule).not.toHaveBeenCalled();
+    expect(storage.get('foundation:template:retention:v2:p1')).toBeNull();
+  });
+
+  it('fallback waiter takes over after the holder is destroyed', async () => {
+    const bus = createMemoryTabBus();
+    const now = (): number => Date.now();
+    const storage = createStorage({ localStorage: memoryStorage() });
+    const schedule = vi.fn(async (items: LadderItem[]): Promise<ScheduleResult> => ({
+      scheduled: items.map((item) => item.id),
+      failed: [],
+    }));
+    const base = {
+      notifications: {
+        eligible: () => true,
+        unschedule: vi.fn(async () => undefined),
+        scheduleLadder: schedule,
+      },
+      storage,
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => true,
+      leaderAvailable: false as const,
+      tabBus: bus,
+      now,
+      timers: realTimers(),
+      mark: () => 0,
+      sinceMark: () => 0,
+    };
+    const tabA = createRetentionCoordinator({ ...base, ownerId: 'a' });
+    const tabB = createRetentionCoordinator({ ...base, ownerId: 'b' });
+    const request = { booted: true, player: registered, visible: true, progress: 0 };
+    tabA.reconcile(request);
+    tabB.reconcile(request);
+    await vi.waitFor(() => {
+      expect(schedule).toHaveBeenCalledTimes(1);
+    });
+
+    tabA.destroy();
+    await vi.waitFor(() => {
+      expect(schedule).toHaveBeenCalledTimes(2);
+    });
+    await tabB.idle();
+    expect(storage.get('foundation:template:retention:v2:p1')).toBe('2');
+    tabB.destroy();
   });
 });
 

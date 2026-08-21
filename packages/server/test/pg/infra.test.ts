@@ -11,6 +11,7 @@ import {
   listMigrations,
   schemaHead,
   repairChecksums,
+  migrationsBefore,
 } from '../../src/db/migrate.ts';
 import { setupPg, type PgHarness } from './helpers.ts';
 import { Outbox } from '../../src/outbox/index.ts';
@@ -19,11 +20,14 @@ import { createJobRunner } from '../../src/jobs/index.ts';
 import { createPgLimiter } from '../../src/limits/index.ts';
 import { mintGrant } from '../../src/rewards/mint.ts';
 
-function priorMigrationsDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'foundation-prior-migrations-'));
-  for (const migration of listMigrations().filter((m) => !m.name.startsWith('0015_')))
-    writeFileSync(join(dir, migration.name), migration.sql);
+function writeMigrationsDir(files: ReturnType<typeof listMigrations>): string {
+  const dir = mkdtempSync(join(tmpdir(), 'foundation-migrations-'));
+  for (const migration of files) writeFileSync(join(dir, migration.name), migration.sql);
   return dir;
+}
+
+function priorMigrationsDir(beforeOrdinal = 15): string {
+  return writeMigrationsDir(migrationsBefore(listMigrations(), beforeOrdinal));
 }
 
 describe('migrations from empty (§9): checksummed, locked, idempotent, boot check refuses drift', () => {
@@ -41,7 +45,13 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
       const sql = connect(t.url, { max: 1 });
       try {
         const st = await checkSchema(sql);
-        expect(st).toMatchObject({ ok: true, pending: [], mismatched: [] });
+        expect(st).toMatchObject({
+          ok: true,
+          state: 'match',
+          pending: [],
+          mismatched: [],
+          ahead: [],
+        });
         // tamper: pretend a file changed → boot check refuses
         await sql`UPDATE schema_migrations SET checksum = 'deadbeef' WHERE name LIKE '0003%'`;
         const bad = await checkSchema(sql);
@@ -147,7 +157,10 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
           VALUES ('purchase.recorded', 'legacy-buyer', ${sql.json({ grantKey: legacyKey })}, ${commandId})`;
 
         const migrated = await migrateUp(t.url);
-        expect(migrated.applied).toEqual(['0015_legacy_purchase_grant_keys.sql']);
+        expect(migrated.applied).toEqual([
+          '0015_legacy_purchase_grant_keys.sql',
+          '0016_validate_grant_key_length.sql',
+        ]);
         const keys = await sql<
           { purchase_key: string; grant_key: string; grant_id: string; alias_key: string }[]
         >`
@@ -238,6 +251,129 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
       }
     } finally {
       rmSync(priorDir, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
+  it('aborts the legacy purchase grant migration on a canonical key collision', async () => {
+    const t = await createTestDatabase('collision_legacy_purchase_grants');
+    const priorDir = priorMigrationsDir();
+    try {
+      await migrateUp(t.url, { dir: priorDir });
+      const sql = connect(t.url, { max: 1 });
+      try {
+        const providerToken = 'collision-provider-token-'.repeat(12);
+        const legacyKey = `purchase:${providerToken}`;
+        const canonicalKey = `purchase:${createHash('sha256').update(providerToken).digest('hex')}`;
+        await sql`
+          INSERT INTO grants (player_key, grant_key, source, rewards, reason, actor)
+          VALUES ('collision-buyer', ${canonicalKey}, 'purchase', '[]', 'existing', 'player')`;
+        await sql`
+          INSERT INTO grants (player_key, grant_key, source, rewards, reason, actor)
+          VALUES ('collision-buyer', ${legacyKey}, 'purchase', '[]', 'legacy', 'player')`;
+        await sql`
+          INSERT INTO purchase_transactions
+            (provider_token, player_key, sku, base_amount, granted, classification, created_at,
+             source, grant_key, sandbox)
+          VALUES
+            (${providerToken}, 'collision-buyer', 'gems_100', 100, 0, 'unclassified',
+             now(), 'live_receipt', ${legacyKey}, false)`;
+
+        await expect(migrateUp(t.url)).rejects.toThrow(/canonical grant key collision/);
+        const unchanged = await sql<{ grant_key: string; aliases: string | null }[]>`
+          SELECT grant_key, to_regclass('public.grant_key_aliases')::text AS aliases
+          FROM purchase_transactions WHERE provider_token = ${providerToken}`;
+        expect(unchanged).toEqual([{ grant_key: legacyKey, aliases: null }]);
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(priorDir, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
+  it('boot check: pending known files refuse; N-1 applied suffix boots; mismatch and over-ahead refuse', async () => {
+    const t = await createTestDatabase('schema_n1');
+    const priorDir = priorMigrationsDir(15);
+    try {
+      await migrateUp(t.url, { dir: priorDir });
+      const sql = connect(t.url, { max: 1 });
+      try {
+        const pending = await checkSchema(sql);
+        expect(pending.ok).toBe(false);
+        expect(pending.state).toBe('pending');
+        expect(pending.pending[0]).toMatch(/^0015_/);
+
+        await migrateUp(t.url);
+        const atHead = await checkSchema(sql);
+        expect(atHead).toMatchObject({ ok: true, state: 'match', pending: [], mismatched: [] });
+
+        const n1 = await checkSchema(sql, priorDir);
+        expect(n1.ok).toBe(true);
+        expect(n1.state).toBe('ahead');
+        expect(n1.ahead).toEqual([
+          '0015_legacy_purchase_grant_keys.sql',
+          '0016_validate_grant_key_length.sql',
+        ]);
+
+        await sql`UPDATE schema_migrations SET checksum = 'deadbeef' WHERE name LIKE '0003%'`;
+        const bad = await checkSchema(sql);
+        expect(bad.ok).toBe(false);
+        expect(bad.state).toBe('mismatched');
+        expect(bad.mismatched).toEqual(['0003_saves.sql']);
+        await repairChecksums(t.url);
+
+        await sql`
+          INSERT INTO schema_migrations (name, checksum)
+          VALUES ('0017_ghost.sql', 'x'), ('0018_ghost.sql', 'y'), ('0019_ghost.sql', 'z')`;
+        const over = await checkSchema(sql, priorDir);
+        expect(over.ok).toBe(false);
+        expect(over.state).toBe('incompatible');
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(priorDir, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
+  it('validates grant-key length without ACCESS EXCLUSIVE so concurrent DML is not blocked', async () => {
+    const t = await createTestDatabase('grant_key_validate_locks');
+    const through15 = priorMigrationsDir(16);
+    try {
+      await migrateUp(t.url, { dir: through15 });
+      const sql = connect(t.url, { max: 1 });
+      const blocker = connect(t.url, { max: 1 });
+      try {
+        const before = await sql<{ conname: string; convalidated: boolean }[]>`
+          SELECT conname, convalidated FROM pg_constraint
+          WHERE conname IN ('grants_grant_key_length', 'purchase_transactions_grant_key_length')
+          ORDER BY 1`;
+        expect(before).toEqual([
+          { conname: 'grants_grant_key_length', convalidated: false },
+          { conname: 'purchase_transactions_grant_key_length', convalidated: false },
+        ]);
+
+        let validated: Awaited<ReturnType<typeof migrateUp>> | undefined;
+        await blocker.begin(async (tx) => {
+          await tx`LOCK TABLE grants IN ROW EXCLUSIVE MODE`;
+          validated = await migrateUp(t.url, { lockTimeoutMs: 1000 });
+        });
+        expect(validated?.applied).toEqual(['0016_validate_grant_key_length.sql']);
+
+        const after = await sql<{ conname: string; convalidated: boolean }[]>`
+          SELECT conname, convalidated FROM pg_constraint
+          WHERE conname IN ('grants_grant_key_length', 'purchase_transactions_grant_key_length')
+          ORDER BY 1`;
+        expect(after.every((r) => r.convalidated)).toBe(true);
+      } finally {
+        await blocker.end({ timeout: 5 });
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(through15, { recursive: true, force: true });
       await t.drop();
     }
   });

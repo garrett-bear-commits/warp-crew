@@ -1,8 +1,8 @@
 # Migrations
 
-1. Add `packages/server/src/db/migrations/NNNN_<feature>_<what>.sql` (one tx per file; expand/contract; renames via views; N-1 compatible with the running image).
+1. Add `packages/server/src/db/migrations/NNNN_<feature>_<what>.sql` (one tx per file; expand/contract; renames via views; N-1 compatible with the running image). Split `ADD CONSTRAINT … NOT VALID` from `VALIDATE CONSTRAINT` so the table scan does not keep `ACCESS EXCLUSIVE`.
 2. Locally: `pnpm db:up && DATABASE_URL=postgres://postgres:postgres@localhost:55432/foundation_dev pnpm migrate --up`, then `pnpm migrate --check schema.sql --write` and review the diff of `schema.sql`.
 3. CI runs `pnpm test:pg` (migrations from empty on postgres:16).
-4. Release: run `migrate --up` as the migrator role BEFORE starting the new image (release command / pre-deploy step). The app refuses to serve when the head or checksums mismatch or files are pending (`/health/ready` → 503, boot throws).
+4. Release: run `migrate --up` as the migrator role BEFORE starting the new image (release command / pre-deploy step). The app boots when applied rows match this image, or when they are a contiguous next-ordinal suffix of at most two extra files (`SCHEMA_COMPAT_AHEAD`, the N-1 window for one expand+validate pair). Pending known files, checksum mismatches, a third extra file, or a non-contiguous unknown name refuse (`/health/ready` → 503, boot throws). `migrate --status` prints `state` (`match` / `ahead` / `pending` / `mismatched` / `incompatible`).
 5. `--repair`: only after a reviewed, no-op edit to an already-applied file (comment fix). Re-records checksums. Never use it to hide a real drift; write a new migration instead.
-6. Rollback: N-1 rule means the previous image runs against the new schema; roll the image back, keep the schema, write a follow-up contract migration.
+6. Rollback: N-1 means roll the **image** back and keep the new schema. The previous image must boot (`state=ahead`). Do not run `migrate --up` from the old image — it still refuses applied files that are missing on disk. Write a follow-up contract migration if the rolled-back image cannot live with the new columns/constraints.

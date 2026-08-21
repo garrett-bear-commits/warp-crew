@@ -31,9 +31,12 @@ async function installOfficialShapeFixture(page: Page, stablePlayerId: string): 
       playerId,
       registered: true,
     };
-    const mockReceipt = (purchases: Array<Record<string, unknown>>): string => {
+    const mockReceipt = (payload: {
+      purchase?: Record<string, unknown>;
+      purchases?: Array<Record<string, unknown>>;
+    }): string => {
       const bytes = new TextEncoder().encode(
-        JSON.stringify({ aud: 'template', sub: player.playerId, purchases }),
+        JSON.stringify({ aud: 'template', sub: player.playerId, ...payload }),
       );
       let binary = '';
       for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -69,16 +72,17 @@ async function installOfficialShapeFixture(page: Page, stablePlayerId: string): 
     const incompletePages = [
       {
         purchases: firstRecoveryPage,
-        purchasesSigned: mockReceipt(firstRecoveryPage),
+        purchasesSigned: mockReceipt({ purchases: firstRecoveryPage }),
         hasMore: true,
       },
       {
         purchases: secondRecoveryPage,
-        purchasesSigned: mockReceipt(secondRecoveryPage),
+        purchasesSigned: mockReceipt({ purchases: secondRecoveryPage }),
         hasMore: false,
       },
     ];
     let incompletePage = 0;
+    let checkoutSeq = 0;
     const record = (name: string, ...args: unknown[]): void => {
       calls.push({ name, args });
     };
@@ -197,19 +201,20 @@ async function installOfficialShapeFixture(page: Page, stablePlayerId: string): 
         },
         async beginPurchase(input: { productSku: string }): Promise<unknown> {
           record('payments.beginPurchase', input);
+          checkoutSeq += 1;
+          const purchase = {
+            purchaseToken: `official-shape-paid-${checkoutSeq}`,
+            productSku: input.productSku,
+            credits: 100,
+            createdAt: 1_724_160_000_002,
+            completedAt: null,
+            price: 0.99,
+            currency: 'USD',
+          };
           return {
             result: 'success',
-            purchase: {
-              purchaseToken: 'purchase-token-1',
-              productSku: input.productSku,
-              credits: 100,
-              createdAt: 1_724_160_000_002,
-              completedAt: null,
-              price: 0.99,
-              currency: 'USD',
-              sandbox: true,
-            },
-            purchaseSigned: 'local-purchase-jws-1',
+            purchase,
+            purchaseSigned: mockReceipt({ purchase }),
           };
         },
         async completePurchase(input: { purchaseToken: string }): Promise<unknown> {
@@ -413,7 +418,7 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
     fixture.resetIncompletePages();
     const products = await root.client.platform.payments.products();
     const begin = await root.client.platform.payments.begin('gems_100');
-    const completion = await root.client.platform.payments.complete('purchase-token-1');
+    const completion = await root.client.platform.payments.complete('direct-provider-token-1');
     const recovered: string[] = [];
     await root.client.platform.payments.recoverIncompleteBatch(async (batch: RecoveryBatch) => {
       recovered.push(`${batch.purchasesSigned}:${batch.hasMore}`);
@@ -428,11 +433,10 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
     price: 0.99,
     currency: 'USD',
   });
-  expect(paymentResult.begin).toEqual({
-    kind: 'success',
-    purchaseToken: 'purchase-token-1',
-    purchaseSigned: 'local-purchase-jws-1',
-  });
+  expect(paymentResult.begin.kind).toBe('success');
+  if (paymentResult.begin.kind !== 'success') throw new Error('expected successful begin');
+  expect(paymentResult.begin.purchaseToken).toBe('official-shape-paid-1');
+  expect(paymentResult.begin.purchaseSigned).toEqual(expect.stringMatching(/^mockreceipt\./));
   expect(paymentResult.completion).toEqual({ kind: 'success' });
   expect(paymentResult.recovered).toHaveLength(2);
   expect(paymentResult.recovered[0]).toMatch(/^mockreceipt\..+:true$/);
@@ -448,7 +452,7 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
     productSku: 'gems_100',
   });
   expect(allCalls.find((call) => call.name === 'payments.completePurchase')?.args[0]).toEqual({
-    purchaseToken: 'purchase-token-1',
+    purchaseToken: 'direct-provider-token-1',
   });
   expect(allCalls.some((call) => call.name === 'setLoadingProgress' && call.args[0] === 50)).toBe(
     true,
@@ -478,6 +482,22 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
       variant: 'b',
     },
   });
+
+  // Paid UI checkout: fresh preflight, one server-verified grant, provider complete exactly once.
+  await expect(page.getByTestId('buy-gems_100')).toBeEnabled();
+  await page.getByTestId('buy-gems_100').click();
+  await expect(page.getByTestId('purchase-outcome')).toContainText('completed (paid)');
+  await expect(page.getByTestId('gems')).toHaveText('200');
+  await expect(page.locator('[data-testid=purchase][data-class=paid]')).toHaveCount(1);
+  const afterPaidCheckout = await fixtureCalls(page);
+  const checkoutBegins = afterPaidCheckout.filter((call) => call.name === 'payments.beginPurchase');
+  const checkoutCompletes = afterPaidCheckout.filter(
+    (call) => call.name === 'payments.completePurchase',
+  );
+  expect(checkoutBegins).toHaveLength(1);
+  expect(checkoutCompletes).toEqual([
+    { name: 'payments.completePurchase', args: [{ purchaseToken: 'official-shape-paid-1' }] },
+  ]);
 
   // A previously healthy snapshot is not enough to open the provider sheet. The click path must
   // re-read server/live readiness and fail closed if that preflight becomes unavailable.

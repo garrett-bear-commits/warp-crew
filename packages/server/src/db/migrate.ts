@@ -1,6 +1,7 @@
 // Migrator (§4.2): run as a deployment step with the migrator role; one tx per file; SHA-256
-// checksums; pg_advisory_lock around the run; lock_timeout 3s; application boot only checks
-// schema head + checksums and refuses to serve on mismatch or pending files.
+// checksums; pg_advisory_lock around the run; lock_timeout 3s; application boot checks applied
+// rows against this image's files and refuses on pending known files, checksum mismatch, or an
+// applied suffix outside the N-1 window (SCHEMA_COMPAT_AHEAD).
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postgres, { type Sql } from 'postgres';
@@ -26,6 +27,81 @@ export function listMigrations(dir = MIGRATIONS_DIR): MigrationFile[] {
 /** Schema head = sha256 over "name:checksum" lines of all applied migrations. */
 export function schemaHead(files: Array<{ name: string; checksum: string }>): string {
   return sha256Hex(files.map((f) => `${f.name}:${f.checksum}`).join('\n'));
+}
+
+/** Leading `NNNN` of a migration file name. Null when the name is not `NNNN_*.sql`. */
+export function migrationOrdinal(name: string): number | null {
+  const m = /^(\d{4})_/.exec(name);
+  return m ? Number(m[1]) : null;
+}
+
+/** Files whose numeric prefix is strictly less than `ordinal`. Used to build pre-N fixtures. */
+export function migrationsBefore<T extends { name: string }>(
+  files: readonly T[],
+  ordinal: number,
+): T[] {
+  return files.filter((f) => {
+    const n = migrationOrdinal(f.name);
+    return n !== null && n < ordinal;
+  });
+}
+
+/**
+ * How many extra applied files a previous image may see and still boot. Two covers one
+ * expand + validate pair shipped in a single release (N-1 image rollback). A third extra
+ * file, a gap, or a non-next ordinal is incompatible.
+ */
+export const SCHEMA_COMPAT_AHEAD = 2;
+
+export type SchemaState =
+  'match' | 'pending' | 'mismatched' | 'ahead' | 'incompatible' | 'missing_table';
+
+export interface SchemaCompatibility {
+  state: Exclude<SchemaState, 'missing_table'>;
+  ok: boolean;
+  pending: string[];
+  mismatched: string[];
+  ahead: string[];
+}
+
+function isSupportedAhead(files: Array<{ name: string }>, ahead: string[]): boolean {
+  if (ahead.length === 0 || ahead.length > SCHEMA_COMPAT_AHEAD) return false;
+  const ordinals = files
+    .map((f) => migrationOrdinal(f.name))
+    .filter((n): n is number => n !== null);
+  const last = ordinals.length === 0 ? 0 : Math.max(...ordinals);
+  const extra = ahead.map(migrationOrdinal);
+  if (extra.some((n) => n === null)) return false;
+  const sorted = extra.filter((n): n is number => n !== null).sort((a, b) => a - b);
+  for (let i = 0; i < sorted.length; i++) if (sorted[i] !== last + i + 1) return false;
+  return true;
+}
+
+/**
+ * Boot compatibility of disk files vs applied rows. Pending known files and checksum
+ * mismatches always refuse. A contiguous next-ordinal suffix of length ≤ SCHEMA_COMPAT_AHEAD
+ * is the supported N-1 window (`ahead`, bootable). Anything else is `incompatible`.
+ */
+export function evaluateSchemaCompatibility(
+  files: Array<{ name: string; checksum: string }>,
+  applied: Array<{ name: string; checksum: string }>,
+): SchemaCompatibility {
+  const fileByName = new Map(files.map((f) => [f.name, f]));
+  const appliedNames = new Set(applied.map((a) => a.name));
+  const pending = files.filter((f) => !appliedNames.has(f.name)).map((f) => f.name);
+  const mismatched = applied
+    .filter((a) => {
+      const f = fileByName.get(a.name);
+      return f !== undefined && f.checksum !== a.checksum;
+    })
+    .map((a) => a.name);
+  const ahead = applied.filter((a) => !fileByName.has(a.name)).map((a) => a.name);
+  if (mismatched.length) return { state: 'mismatched', ok: false, pending, mismatched, ahead };
+  if (pending.length) return { state: 'pending', ok: false, pending, mismatched, ahead };
+  if (ahead.length === 0) return { state: 'match', ok: true, pending, mismatched, ahead };
+  if (isSupportedAhead(files, ahead))
+    return { state: 'ahead', ok: true, pending, mismatched, ahead };
+  return { state: 'incompatible', ok: false, pending, mismatched, ahead };
 }
 
 async function ensureTable(sql: Sql): Promise<void> {
@@ -101,14 +177,16 @@ export async function migrateUp(
 
 export interface SchemaStatus {
   ok: boolean;
+  state: SchemaState;
   head: string | null;
   expectedHead: string;
   pending: string[];
   mismatched: string[];
+  ahead: string[];
   missingTable: boolean;
 }
 
-/** Boot check: schema head + checksums; refuse to serve on mismatch or pending files. */
+/** Boot check: refuse on pending known files, checksum mismatch, or an unsupported applied suffix. */
 export async function checkSchema(sql: Sql, dir = MIGRATIONS_DIR): Promise<SchemaStatus> {
   const files = listMigrations(dir);
   const expectedHead = schemaHead(files);
@@ -118,27 +196,26 @@ export async function checkSchema(sql: Sql, dir = MIGRATIONS_DIR): Promise<Schem
   if (!exists[0]?.ok)
     return {
       ok: false,
+      state: 'missing_table',
       head: null,
       expectedHead,
       pending: files.map((f) => f.name),
       mismatched: [],
+      ahead: [],
       missingTable: true,
     };
   const rows = await sql<
     { name: string; checksum: string }[]
   >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
-  const done = new Map(rows.map((r) => [r.name, r.checksum]));
-  const pending = files.filter((f) => !done.has(f.name)).map((f) => f.name);
-  const mismatched = files
-    .filter((f) => done.has(f.name) && done.get(f.name) !== f.checksum)
-    .map((f) => f.name);
-  const head = schemaHead(rows);
+  const compat = evaluateSchemaCompatibility(files, rows);
   return {
-    ok: pending.length === 0 && mismatched.length === 0 && head === expectedHead,
-    head,
+    ok: compat.ok,
+    state: compat.state,
+    head: schemaHead(rows),
     expectedHead,
-    pending,
-    mismatched,
+    pending: compat.pending,
+    mismatched: compat.mismatched,
+    ahead: compat.ahead,
     missingTable: false,
   };
 }

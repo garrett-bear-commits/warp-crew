@@ -17,6 +17,7 @@ export * from './restore/gate.ts';
 export * from './restore/index.ts';
 export * from './generations.ts';
 export * from './tabs/leader.ts';
+export * from './tabs/lease.ts';
 export * from './journal/index.ts';
 export * from './identity/switch.ts';
 export * from './providers/types.ts';

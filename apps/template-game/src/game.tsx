@@ -3,7 +3,7 @@
 // reward primitive: claim on the server, then dispatch {type:'grant'} into the engine), boot-time
 // purchase adjustments (unconditional boot instructions, acked after apply), toasts.
 import type { Grant, GrantClaimResult, ConfigResponse } from '@foundation/contracts';
-import { mintId, type Clock, type GameClient } from '@foundation/client';
+import { mintId, realTimers, type Clock, type GameClient } from '@foundation/client';
 import { useVisibility } from '@foundation/client/react';
 import {
   createContext,
@@ -136,6 +136,9 @@ export function GameProvider(props: {
         buildVersion: cfg.buildVersion,
         assetReference: cfg.notificationAssetReference,
         isLeader: () => client.leader.isLeader(),
+        leaderAvailable: client.leader.available,
+        now: () => clock.now(),
+        timers: realTimers(),
         mark: () => clock.mark(),
         sinceMark: (mark) => clock.sinceMark(mark),
         onResult: (result) => {

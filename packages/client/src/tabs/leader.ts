@@ -1,7 +1,8 @@
 // Multi-tab leader election (§5.2 Multi-tab, §1 "Only the leader tab writes"). Web Locks: the
 // leader holds an exclusive lock for the page lifetime; followers are read-only with a "Play here"
-// takeover (`steal`). Fallback when the API is unavailable: this tab is the leader. The ratchet —
-// not the lock — is the safety mechanism, so a wrong answer here can never lose depth.
+// takeover (`steal`). Fallback when the API is unavailable: this tab is the leader (the ratchet —
+// not the lock — is the save-path safety mechanism). Retention mutation does not trust that
+// fallback; see `createTabLease` / template `createRetentionCoordinator`.
 
 export interface LockRequestOptions {
   mode?: 'exclusive' | 'shared';

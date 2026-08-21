@@ -57,7 +57,7 @@ something the architecture left implicit.
     D1–D7 plan; a hide/show shorter than five minutes does not reset it. Longer returns rotate a
     three-variant copy bank using progress buckets plus a versioned, per-player return cursor in
     the client storage tier, preventing both tab-switch resets and cold-launch restarts at variant A.
-12. **Retention notification mutation follows the existing tab leader.** The `GameProvider`
+12. **Retention notification mutation follows exclusive tab ownership.** The `GameProvider`
     observes Web Locks leadership and identity changes, then delegates to a per-tab coordinator.
     Followers do not reserve the return cursor or call notification unschedule/schedule. The
     coordinator keeps a per-tab queue, advancing its epoch on identity, leader, teardown, and
@@ -66,6 +66,10 @@ something the architecture left implicit.
     for a former leader's non-cancellable call and its replacement lands last. It re-checks the
     epoch and live leader result before each next mutation; a call already in flight may finish,
     but stale work cannot continue to another identifier or schedule an old identity's plan.
+    When `navigator.locks` is missing, a BroadcastChannel lease (heartbeat, TTL, deterministic
+    owner-id tie-break, steal, expiry takeover) elects a single writer and serializes mutation.
+    If that channel is also unavailable, retention mutation is skipped rather than racing. Do not
+    use a localStorage check-then-set lock.
 
 ## Consequences
 

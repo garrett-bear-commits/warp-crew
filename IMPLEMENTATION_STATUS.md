@@ -40,28 +40,43 @@ Branch `main`. The first reviewer-remediation set was committed as `f046d47` (`A
 | 8 | current Jest HTML5 remediation: official SDK mirror/bootstrap, stable registration, data/lifecycle/loading/analytics/entry, signed batch purchase recovery, sandbox provenance, catalog pricing, D1–D7 notifications, and launch runbook | done locally; real-platform gates remain |
 | 9 | reviewer remediation: handled eager SDK failure, post-init lifecycle subscriptions, canonical/deduplicated recovery reports, batch-receipt redaction, fail-closed checkout, family pause, hashed grant keys, and durable meaningful-return notification rotation | done locally; real-platform gates remain |
 | 10 | reviewer closure: fresh click-time checkout preflight, recovery-wide terminal states, concurrent credential refresh, leader/mutex-owned retention mutation, legacy grant-key migration/aliases, and clean schema snapshot generation | done locally; real-platform gates remain |
+| 11 | last-pass review of `c94bf5d`: N-1 boot window (ADR-033), `0015` NOT VALID + `0016` VALIDATE, BroadcastChannel retention lease when Web Locks are missing, numeric pre-N migration fixtures, official-shape paid UI checkout | unit/model/lint/typecheck/build/guards green; real-Postgres + Playwright not rerun in this environment (`shmget` EPERM, no container runtime) |
 
 ## Commands and results
 
-Rerun from the repo root on 2026-08-21 after the reviewer closure fixes (macOS, Node 24.13.1,
-pnpm 10.30.1). The PG suite used a disposable local Postgres cluster on port 55436 because a
-container runtime was unavailable. The cluster was removed after verification.
+Rerun from the repo root on 2026-08-21 after the last-pass fixes (macOS, Node 24.13.1,
+pnpm 10.30.1). Postgres could not start here (`shmget` / `shmat` EPERM); Docker was unavailable.
+Prior 2026-08-21 PG/e2e numbers were for `c94bf5d` (15 migrations) and are not reused as evidence
+for 16-file heads.
 
 | Command | Result |
 | --- | --- |
-| `pnpm install` | ok (lockfile committed; Node 24 / pnpm 10.30.1 pinned via `packageManager` + `engine-strict`); `@sentry/node` added to `packages/server` |
-| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | passed: formatting, lint, all 8 workspace typechecks, both production builds, 6 guards, 891 unit/contract tests, and 2 model tests |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 34 files, 891 tests passed |
-| `DATABASE_URL_TEST=… pnpm test:pg` (real Postgres, migrations from empty incl. `0015_legacy_purchase_grant_keys`, app role) | 7 files, 119 tests passed; the root script uses one worker because bootstrap roles are cluster-global |
-| `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples; the server-truth model now replays refused/quarantined writes with their original disposition) |
-| `pnpm test:e2e` (Playwright Chromium + WebKit iPhone 13 against a fresh lab API, local iframe host, `vite preview`, and local official-shape Jest fixture) | 28 passed (46.3 s) |
+| `pnpm fmt:check` | ok |
+| `pnpm lint` | ok |
+| `pnpm typecheck` | ok (all 8 workspace typechecks) |
+| `pnpm build` | ok (admin inspector + template game) |
+| `pnpm guards` | 6/6 PASS |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 36 files, 905 tests passed |
+| `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples) |
+| `DATABASE_URL_TEST=… pnpm test:pg` | not run — local `initdb`/`pg_ctl` failed (`could not create shared memory segment: Operation not permitted`); no container runtime |
+| `pnpm test:e2e` | not run — needs the PG lab API |
 | `git diff --check` | clean |
-| Docker image build/smoke | not rerun on 2026-08-20 because Docker was unavailable; the prior 2026-08-18 checkpoint built from `git archive HEAD` and smoke-tested `/health/ready` + inspector CSP |
-| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` on a fresh database | 15 migrations applied, head `8ec5e166389d9f2f`; `schema matches` |
-| `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)"; the detector itself is unit-tested (`test/openapi-diff.test.ts`) and CI runs it against the last tag once one exists |
-| Sentry / managed PITR / object storage / Jest platform calls | not run — external gates (below); the local paths (Sentry wiring with an injected transport, isolated-restore verification, erasure export/replay) are tested |
+| Docker image build/smoke | not rerun (Docker unavailable) |
+| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` | not run (no database). Disk now has 16 files (`0016_validate_grant_key_length.sql`); `describeSchema` is unchanged after VALIDATE |
+| `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)" |
+| Sentry / managed PITR / object storage / Jest platform calls | not run — external gates |
 
-Totals: 891 unit/contract + 2 model + 119 real-Postgres + 28 browser = 1,040 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Verified this session: 905 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+
+## Last-pass findings (2026-08-21) — implemented
+
+| # | Finding | Fix | Evidence |
+| --- | --- | --- | --- |
+| 1 | Previous image refused to boot after `0015` (exact head match) | `evaluateSchemaCompatibility`: pending/mismatch refuse; contiguous next-ordinal suffix of length ≤ 2 is `ahead` and bootable (ADR-033) | `packages/server/test/unit/migrate.test.ts`; `infra.test.ts` N-1 boot block |
+| 2 | `0015` held `ACCESS EXCLUSIVE` across rewrite + constraint scan | `0015` adds CHECKs `NOT VALID`; `0016` `VALIDATE CONSTRAINT` (SHARE UPDATE EXCLUSIVE) | `0015`/`0016` SQL; `infra.test.ts` VALIDATE under `ROW EXCLUSIVE` |
+| 3 | No-Web-Locks tabs all led and raced retention mutation | BroadcastChannel/`TabBus` lease (heartbeat, TTL, id tie-break, steal, abandon); mutation skipped if no exclusive primitive | `packages/client/test/unit/lease.test.ts`; `apps/template-game/test/unit/retention.test.ts` |
+| 4 | `priorMigrationsDir` excluded only `0015_` by name | `migrationsBefore` uses parsed `NNNN` prefix | `migrate.test.ts` synthetic `0014`/`0015`/`0016` |
+| 5 | Official-shape UI never completed a paid checkout | Fixture `beginPurchase` returns unique paid `mockreceipt.*`; Shop click asserts grant/gems/`completePurchase` once, then the failed-preflight case | `apps/template-game/e2e/jest-official-shape.spec.ts` |
 
 ## Audit findings (2026-08-18) — all fixed with regression tests
 
@@ -84,7 +99,7 @@ Totals: 891 unit/contract + 2 model + 119 real-Postgres + 28 browser = 1,040 tes
 
 ## Coverage
 
-`docs/coverage-matrix.md` has 70 requirement rows: every locally runnable row is implemented with a named test; the rows carrying an external remainder are 1.7 (real minting switch and the owner-gated sandbox delivery decision, ADR-024), 1.16/8.4 (managed PITR/dumps), 6.3/9.4 (tag-based OpenAPI diff and per-release fixture recordings — no release exists), 8.2 (Sentry DSN + cron monitor), 9.6 (k6 on a deployed Lab), and 10.3 (self-hosted URL registration plus real shell/framing/CORS/storage verification). Nothing here claims those external gates passed.
+`docs/coverage-matrix.md` has 70 requirement rows: every locally runnable row is implemented with a named test; the rows carrying an external remainder are 1.7 (real minting switch and the owner-gated sandbox delivery decision, ADR-024), 1.16/8.4 (managed PITR/dumps), 6.3/9.4 (tag-based OpenAPI diff and per-release fixture recordings — no release exists), 8.2 (Sentry DSN + cron monitor), 9.6 (k6 on a deployed Lab), and 10.3 (self-hosted URL registration plus real shell/framing/CORS/storage verification). Last-pass PG/lock-window and official-shape UI checkout tests are in the tree; they were not re-executed against Postgres/Playwright in this environment. Nothing here claims those external gates passed.
 
 ## Gates (external; interface + mock + fail-closed + tests in place)
 

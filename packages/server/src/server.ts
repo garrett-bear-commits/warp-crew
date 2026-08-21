@@ -210,7 +210,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
       const st = await checkSchema(db.sql);
       if (!st.ok)
         throw new Error(
-          `schema check failed: pending=[${st.pending.join(',')}] mismatched=[${st.mismatched.join(',')}] head=${st.head} expected=${st.expectedHead} — run migrate --up`,
+          `schema check failed: state=${st.state} pending=[${st.pending.join(',')}] mismatched=[${st.mismatched.join(',')}] ahead=[${st.ahead.join(',')}] head=${st.head} expected=${st.expectedHead} — run migrate --up`,
         );
     }
     // the scariest query runs at boot (§1): the anchor query over the whole table must plan/execute

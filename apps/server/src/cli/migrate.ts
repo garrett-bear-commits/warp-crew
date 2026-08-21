@@ -30,10 +30,12 @@ if (arg === '--up') {
     JSON.stringify(
       {
         ok: st.ok,
+        state: st.state,
         head: st.head?.slice(0, 16),
         expected: st.expectedHead.slice(0, 16),
         pending: st.pending,
         mismatched: st.mismatched,
+        ahead: st.ahead,
         files: listMigrations().length,
         diskHead: schemaHead(listMigrations()).slice(0, 16),
       },
