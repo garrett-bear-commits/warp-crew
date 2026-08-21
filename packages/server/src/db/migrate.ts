@@ -73,40 +73,82 @@ export function n1CompatLine(ordinal: number): string {
   return `-- foundation-n1-compatible-with-ordinal: ${ordinal}`;
 }
 
+const N1_MARKER_RE = /^-- foundation-n1-compatible-with-ordinal:\s*(\d+)\s*$/;
+
+function parseN1MarkerLine(line: string): number | null {
+  const m = N1_MARKER_RE.exec(line.trim());
+  return m ? Number(m[1]) : null;
+}
+
 export function n1MarkerOrdinals(sql: string): number[] {
   const out: number[] = [];
   for (const line of sql.split(/\r?\n/)) {
-    const m = /^-- foundation-n1-compatible-with-ordinal:\s*(\d+)\s*$/.exec(line.trim());
-    if (m) out.push(Number(m[1]));
+    const n = parseN1MarkerLine(line);
+    if (n !== null) out.push(n);
   }
   return out;
 }
 
+/** Marker is valid only as the first nonblank line. Body comments do not authorize. */
 export function n1CompatibleWithOrdinal(sql: string): number | null {
+  const lines = sql.split(/\r?\n/);
+  let firstNonblank: string | null = null;
+  for (const line of lines) {
+    if (line.trim() !== '') {
+      firstNonblank = line;
+      break;
+    }
+  }
   const marks = n1MarkerOrdinals(sql);
   if (marks.length === 0) return null;
+  const header = firstNonblank !== null ? parseN1MarkerLine(firstNonblank) : null;
+  if (header === null)
+    throw new Error('foundation-n1-compatible-with-ordinal must be the first nonblank line');
   if (marks.length > 1)
     throw new Error(
       `expected exactly one foundation-n1-compatible-with-ordinal marker, found ${marks.length}`,
     );
-  return marks[0]!;
+  return header;
 }
 
 export function isN1CompatibleSql(sql: string): boolean {
-  return n1MarkerOrdinals(sql).length === 1;
+  try {
+    return n1CompatibleWithOrdinal(sql) !== null;
+  } catch {
+    return false;
+  }
 }
 
 /** On-disk extra SQL must still declare exactly the stored parent ordinal. */
 export function requireMatchingN1Marker(sql: string, storedOrdinal: number): void {
-  const marks = n1MarkerOrdinals(sql);
-  if (marks.length !== 1)
+  const n = n1CompatibleWithOrdinal(sql);
+  if (n === null)
+    throw new Error('expected exactly one foundation-n1-compatible-with-ordinal marker, found 0');
+  if (n !== storedOrdinal)
     throw new Error(
-      `expected exactly one foundation-n1-compatible-with-ordinal marker, found ${marks.length}`,
+      `n1 marker ordinal ${n} does not match stored compatible_with_ordinal ${storedOrdinal}`,
     );
-  if (marks[0] !== storedOrdinal)
-    throw new Error(
-      `n1 marker ordinal ${marks[0]} does not match stored compatible_with_ordinal ${storedOrdinal}`,
-    );
+}
+
+/**
+ * --repair must not create N-1 authorization. An applied file that now has a header marker
+ * without a schema_n1_compat row is refused.
+ */
+export function assertRepairN1Consistency(
+  files: Array<{ name: string; sql: string }>,
+  appliedNames: Iterable<string>,
+  declaredExtraNames: Iterable<string>,
+): void {
+  const applied = new Set(appliedNames);
+  const declared = new Set(declaredExtraNames);
+  for (const f of files) {
+    if (!applied.has(f.name)) continue;
+    const ordinal = n1CompatibleWithOrdinal(f.sql);
+    if (ordinal !== null && !declared.has(f.name))
+      throw new Error(
+        `applied ${f.name} has an n1 marker but no schema_n1_compat row; refuse --repair`,
+      );
+  }
 }
 
 /** Unique ordinals that increase by exactly one. Duplicate or skipped NNNN prefixes fail. */
@@ -449,6 +491,11 @@ async function refreshN1Declarations(sql: Sql, files: MigrationFile[]): Promise<
     { extra_name: string; compatible_with_ordinal: number | null }[]
   >`SELECT extra_name, compatible_with_ordinal FROM schema_n1_compat`;
   const byName = new Map(files.map((f) => [f.name, f]));
+  assertRepairN1Consistency(
+    files,
+    applied.map((r) => r.name),
+    decls.map((d) => d.extra_name),
+  );
   for (const d of decls) {
     if (d.compatible_with_ordinal == null)
       throw new Error(

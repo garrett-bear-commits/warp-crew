@@ -363,6 +363,20 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     }
   });
 
+  it('--repair refuses an applied file that gained an n1 marker without a declaration', async () => {
+    const t = await createTestDatabase('repair_n1_gain');
+    const extraDir = writeMigrationsDir(listMigrations());
+    writeFileSync(join(extraDir, '0016_gain.sql'), 'SELECT 1;\n');
+    try {
+      await migrateUp(t.url, { dir: extraDir });
+      writeFileSync(join(extraDir, '0016_gain.sql'), `${n1CompatLine(15)}\nSELECT 1;\n`);
+      await expect(repairChecksums(t.url, extraDir)).rejects.toThrow(/no schema_n1_compat row/);
+    } finally {
+      rmSync(extraDir, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
   it('migrateUp refuses a gapped disk ordinal chain before running SQL', async () => {
     const t = await createTestDatabase('mig_gap');
     const gapDir = writeMigrationsDir(listMigrations());

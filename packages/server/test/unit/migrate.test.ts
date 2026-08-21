@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   appliedIsDiskPrefix,
+  assertRepairN1Consistency,
   evaluateSchemaCompatibility,
   exactHeadMatches,
   isN1CompatibleSql,
@@ -209,8 +210,19 @@ describe('evaluateSchemaCompatibility (declared N-1)', () => {
 describe('N-1 SQL marker', () => {
   it('parses an explicit compatible-with-ordinal and ignores a bare comment', () => {
     expect(n1CompatibleWithOrdinal(`${n1CompatLine(15)}\nSELECT 1;\n`)).toBe(15);
+    expect(n1CompatibleWithOrdinal(`\n\n${n1CompatLine(15)}\nSELECT 1;\n`)).toBe(15);
     expect(isN1CompatibleSql(`${n1CompatLine(15)}\nSELECT 1;\n`)).toBe(true);
     expect(isN1CompatibleSql('-- foundation-n1-compatible\nSELECT 1;\n')).toBe(false);
+  });
+
+  it('refuses a marker that is not the first nonblank line', () => {
+    expect(() => n1CompatibleWithOrdinal(`SELECT 1;\n${n1CompatLine(15)}\n`)).toThrow(
+      /first nonblank line/,
+    );
+    expect(() => n1CompatibleWithOrdinal(`DO $$\nBEGIN\n${n1CompatLine(15)}\nEND $$;\n`)).toThrow(
+      /first nonblank line/,
+    );
+    expect(isN1CompatibleSql(`SELECT 1;\n${n1CompatLine(15)}\n`)).toBe(false);
   });
 
   it('refuses duplicate or conflicting markers', () => {
@@ -229,6 +241,21 @@ describe('N-1 SQL marker', () => {
     expect(() => requireMatchingN1Marker(`${n1CompatLine(16)}\nSELECT 1;\n`, 15)).toThrow(
       /does not match stored/,
     );
+  });
+
+  it('assertRepairN1Consistency refuses an applied file that gained a marker without a declaration', () => {
+    const files = [{ name: '0016_n1.sql', sql: `${n1CompatLine(15)}\nSELECT 1;\n` }];
+    expect(() => assertRepairN1Consistency(files, ['0016_n1.sql'], [])).toThrow(
+      /no schema_n1_compat row/,
+    );
+    expect(() => assertRepairN1Consistency(files, ['0016_n1.sql'], ['0016_n1.sql'])).not.toThrow();
+    expect(() =>
+      assertRepairN1Consistency(
+        [{ name: '0003_saves.sql', sql: 'SELECT 1;\n' }],
+        ['0003_saves.sql'],
+        [],
+      ),
+    ).not.toThrow();
   });
 });
 
