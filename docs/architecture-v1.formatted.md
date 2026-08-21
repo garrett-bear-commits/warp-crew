@@ -203,11 +203,12 @@ identifiers in incident comments are scrubbed on the way in.
   `job_runs` table.
 - **Migrations**: run **as a deployment step with the `migrator` role** (`migrate --up` in the release
   command / Railway pre-deploy), one tx per file, SHA-256 checksums, `pg_advisory_lock` around the run,
-  `lock_timeout 3s`, N-1 compatibility rule (expand/contract, renames via views; previous image boots only against
-  extras declared in `schema_n1_compat` on a unique contiguous ordinal chain); **application boot checks** applied
-  rows against this image's files and refuses to serve on pending known files, checksum mismatch, undeclared extras,
-  or a gapped/duplicate ordinal chain; isolated restore requires exact head match; `--check` diffs a fresh DB against
-  `schema.sql`; `--repair` documented.
+  `lock_timeout 3s`, N-1 compatibility rule (expand/contract, renames via views; a previous image that already ships
+  this checker boots only against extras declared for its `expectedHead`, with extra checksums and result heads);
+  **application boot checks** applied rows against this image's files and refuses to serve on pending known files,
+  checksum mismatch, undeclared extras, a gapped/duplicate ordinal chain, or applied rows that are not a prefix of
+  disk files; isolated restore requires exact head match; `--check` diffs a fresh DB against `schema.sql`; `--repair`
+  documented.
 - **DB roles**: `migrator` (DDL, owns `SECURITY DEFINER` functions) and `app` with narrowly enumerated
   authority: INSERT/SELECT on ledgers and snapshots; UPDATE on `commands` (finalise the reserved row only —
   column-level grant on `status, result, duration_ms, trace_id`), on projection tables, on

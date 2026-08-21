@@ -59,7 +59,11 @@ export interface SchemaCompatibility {
 
 export interface SchemaN1Declaration {
   extraName: string;
+  extraChecksum: string;
   prefixHead: string;
+  resultHead: string;
+  /** Image expectedHead that may boot with this extra. Not a chain: N-2 extras do not qualify. */
+  compatibleWithHead: string;
 }
 
 /** Marker line a migration includes so migrateUp records it in schema_n1_compat. */
@@ -84,28 +88,73 @@ export function isUniqueContiguousChain(names: string[]): boolean {
   return true;
 }
 
-function declaredN1Chain(
+/**
+ * c94bf5d boot rule: applied set equals disk files and heads match. A parent image with this
+ * checker cannot consume extras; N-1 extras require a prior release that already shipped this
+ * file's evaluateSchemaCompatibility.
+ */
+export function exactHeadMatches(
+  files: Array<{ name: string; checksum: string }>,
+  applied: Array<{ name: string; checksum: string }>,
+): boolean {
+  return (
+    files.length === applied.length &&
+    files.every((f, i) => f.name === applied[i]?.name && f.checksum === applied[i]?.checksum) &&
+    schemaHead(files) === schemaHead(applied)
+  );
+}
+
+/** Applied rows must be files[0..applied.length) in order, checksums included. */
+export function appliedIsDiskPrefix(
+  files: Array<{ name: string; checksum: string }>,
+  applied: Array<{ name: string; checksum: string }>,
+): { ok: true } | { ok: false; reason: string } {
+  for (let i = 0; i < applied.length; i++) {
+    const f = files[i];
+    const a = applied[i]!;
+    if (!f) return { ok: false, reason: `migration ${a.name} is applied but missing on disk` };
+    if (f.name !== a.name)
+      return {
+        ok: false,
+        reason: `applied rows are not a prefix of disk files (expected ${f.name}, found ${a.name})`,
+      };
+    if (f.checksum !== a.checksum)
+      return {
+        ok: false,
+        reason: `checksum mismatch for ${a.name} (applied ${a.checksum.slice(0, 12)}, disk ${f.checksum.slice(0, 12)}); see --repair in docs/runbooks/migrations.md`,
+      };
+  }
+  return { ok: true };
+}
+
+function declaredN1ForImage(
   files: Array<{ name: string; checksum: string }>,
   applied: Array<{ name: string; checksum: string }>,
   declared: readonly SchemaN1Declaration[],
 ): boolean {
-  const decl = new Map(declared.map((d) => [d.extraName, d.prefixHead]));
+  const decl = new Map(declared.map((d) => [d.extraName, d]));
   const fileNames = new Set(files.map((f) => f.name));
+  const expectedHead = schemaHead(files);
   let running = applied.filter((a) => fileNames.has(a.name));
   const extras = applied.filter((a) => !fileNames.has(a.name));
   if (extras.length === 0) return false;
   for (const extra of extras) {
-    if (decl.get(extra.name) !== schemaHead(running)) return false;
+    const d = decl.get(extra.name);
+    if (!d) return false;
+    if (d.extraChecksum !== extra.checksum) return false;
+    if (d.compatibleWithHead !== expectedHead) return false;
+    if (d.prefixHead !== schemaHead(running)) return false;
     running = [...running, extra];
+    if (d.resultHead !== schemaHead(running)) return false;
   }
   return true;
 }
 
 /**
  * Boot compatibility of disk files vs applied rows. Pending known files and checksum
- * mismatches always refuse. `ahead` is bootable only when extras are a unique contiguous
- * chain recorded in schema_n1_compat with prefix_head equal to the running head. Skipped or
- * duplicate ordinals are incompatible even when names otherwise match.
+ * mismatches always refuse. `ahead` is bootable only when every extra is declared for this
+ * image's expectedHead (not a parent of a parent), extra checksums match, and ordinals are a
+ * unique contiguous chain.
  */
 export function evaluateSchemaCompatibility(
   files: Array<{ name: string; checksum: string }>,
@@ -134,7 +183,7 @@ export function evaluateSchemaCompatibility(
   if (pending.length) return refuse('pending');
   if (!isUniqueContiguousChain(applied.map((a) => a.name))) return refuse('incompatible');
   if (ahead.length === 0) return { state: 'match', ok: true, pending, mismatched, ahead };
-  if (declaredN1Chain(files, applied, declared))
+  if (declaredN1ForImage(files, applied, declared))
     return { state: 'ahead', ok: true, pending, mismatched, ahead };
   return refuse('incompatible');
 }
@@ -150,6 +199,13 @@ async function ensureTable(sql: Sql): Promise<void> {
     checksum TEXT NOT NULL,
     applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     duration_ms INTEGER
+  )`;
+  await sql`CREATE TABLE IF NOT EXISTS schema_n1_compat (
+    extra_name TEXT PRIMARY KEY,
+    extra_checksum TEXT NOT NULL,
+    prefix_head TEXT NOT NULL,
+    result_head TEXT NOT NULL,
+    compatible_with_head TEXT NOT NULL
   )`;
 }
 
@@ -179,26 +235,27 @@ export async function migrateUp(
       >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
       const done = new Map(rows.map((r) => [r.name, r.checksum]));
       const appliedSoFar: Array<{ name: string; checksum: string }> = [...rows];
-      // applied rows must be a prefix of files, with matching checksums
-      for (const r of rows) {
-        const f = files.find((x) => x.name === r.name);
-        if (!f) throw new Error(`migration ${r.name} is applied but missing on disk`);
-        if (f.checksum !== r.checksum)
-          throw new Error(
-            `checksum mismatch for ${r.name} (applied ${r.checksum.slice(0, 12)}, disk ${f.checksum.slice(0, 12)}); see --repair in docs/runbooks/migrations.md`,
-          );
-      }
+      const prefix = appliedIsDiskPrefix(files, rows);
+      if (!prefix.ok) throw new Error(prefix.reason);
+      let n1BatchParent: string | null = null;
       for (const f of files) {
         if (done.has(f.name)) {
           skipped.push(f.name);
+          n1BatchParent = null;
           continue;
         }
         const t0 = process.hrtime.bigint();
         const prefixHead = schemaHead(appliedSoFar);
+        const resultHead = schemaHead([...appliedSoFar, { name: f.name, checksum: f.checksum }]);
+        const n1 = isN1CompatibleSql(f.sql);
+        if (n1) n1BatchParent ??= prefixHead;
+        else n1BatchParent = null;
         await sql.begin(async (tx) => {
           await tx.unsafe(f.sql);
-          if (isN1CompatibleSql(f.sql))
-            await tx`INSERT INTO schema_n1_compat (extra_name, prefix_head) VALUES (${f.name}, ${prefixHead})`;
+          if (n1 && n1BatchParent)
+            await tx`INSERT INTO schema_n1_compat
+              (extra_name, extra_checksum, prefix_head, result_head, compatible_with_head)
+              VALUES (${f.name}, ${f.checksum}, ${prefixHead}, ${resultHead}, ${n1BatchParent})`;
           const ms = Number((process.hrtime.bigint() - t0) / 1_000_000n);
           await tx`INSERT INTO schema_migrations (name, checksum, duration_ms) VALUES (${f.name}, ${f.checksum}, ${ms})`;
         });
@@ -206,8 +263,9 @@ export async function migrateUp(
         applied.push(f.name);
         log(`applied ${f.name}`);
       }
-      // the app role reads schema_migrations at boot (head + checksum check)
+      // the app role reads schema_migrations + n1 declarations at boot
       await sql`GRANT SELECT ON schema_migrations TO foundation_app`;
+      await sql`GRANT SELECT ON schema_n1_compat TO foundation_app`;
       const all = await sql<
         { name: string; checksum: string }[]
       >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
@@ -272,9 +330,21 @@ async function loadN1Declarations(sql: Sql): Promise<SchemaN1Declaration[]> {
   >`SELECT to_regclass('public.schema_n1_compat') IS NOT NULL AS ok`;
   if (!exists[0]?.ok) return [];
   const rows = await sql<
-    { extra_name: string; prefix_head: string }[]
-  >`SELECT extra_name, prefix_head FROM schema_n1_compat`;
-  return rows.map((r) => ({ extraName: r.extra_name, prefixHead: r.prefix_head }));
+    {
+      extra_name: string;
+      extra_checksum: string;
+      prefix_head: string;
+      result_head: string;
+      compatible_with_head: string;
+    }[]
+  >`SELECT extra_name, extra_checksum, prefix_head, result_head, compatible_with_head FROM schema_n1_compat`;
+  return rows.map((r) => ({
+    extraName: r.extra_name,
+    extraChecksum: r.extra_checksum,
+    prefixHead: r.prefix_head,
+    resultHead: r.result_head,
+    compatibleWithHead: r.compatible_with_head,
+  }));
 }
 
 /** --repair: re-record checksums for applied migrations whose file changed (documented, ops-only). */
@@ -312,13 +382,18 @@ export async function describeSchema(sql: Sql): Promise<string> {
     }[]
   >`
     SELECT table_name, column_name, data_type, is_nullable, column_default FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name <> 'schema_migrations' ORDER BY table_name, ordinal_position`;
+    WHERE table_schema = 'public' AND table_name <> 'schema_migrations'
+      AND table_name <> 'schema_n1_compat'
+    ORDER BY table_name, ordinal_position`;
   const cons = await sql<{ conrelid: string; conname: string; def: string }[]>`
     SELECT conrelid::regclass::text AS conrelid, conname, pg_get_constraintdef(oid) AS def FROM pg_constraint
-    WHERE connamespace = 'public'::regnamespace ORDER BY 1, 2`;
+    WHERE connamespace = 'public'::regnamespace
+      AND conrelid::regclass::text <> 'schema_n1_compat'
+    ORDER BY 1, 2`;
   const idx = await sql<
     { indexname: string; indexdef: string }[]
-  >`SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY indexname`;
+  >`SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public'
+      AND tablename <> 'schema_n1_compat' ORDER BY indexname`;
   const fns = await sql<
     { proname: string; prosecdef: boolean }[]
   >`SELECT proname, prosecdef FROM pg_proc WHERE pronamespace = 'public'::regnamespace ORDER BY proname`;

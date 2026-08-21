@@ -82,7 +82,6 @@ async function installOfficialShapeFixture(page: Page, stablePlayerId: string): 
       },
     ];
     let incompletePage = 0;
-    let checkoutSeq = 0;
     const record = (name: string, ...args: unknown[]): void => {
       calls.push({ name, args });
     };
@@ -201,7 +200,9 @@ async function installOfficialShapeFixture(page: Page, stablePlayerId: string): 
         },
         async beginPurchase(input: { productSku: string }): Promise<unknown> {
           record('payments.beginPurchase', input);
-          checkoutSeq += 1;
+          const seqKey = `official-shape-checkout-seq:${player.playerId}`;
+          const checkoutSeq = Number(sessionStorage.getItem(seqKey) ?? '0') + 1;
+          sessionStorage.setItem(seqKey, String(checkoutSeq));
           const purchase = {
             purchaseToken: `official-shape-paid-${player.playerId}-${checkoutSeq}`,
             productSku: input.productSku,
@@ -500,7 +501,7 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
   expect(checkoutCompletes).toEqual([
     {
       name: 'payments.completePurchase',
-      args: [{ purchaseToken: `official-shape-paid-official-shape-${browserName}-1-1` }],
+      args: [{ purchaseToken: `official-shape-paid-official-shape-${browserName}-1-2` }],
     },
   ]);
 

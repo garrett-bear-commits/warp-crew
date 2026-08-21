@@ -12,6 +12,8 @@ import {
   schemaHead,
   repairChecksums,
   migrationsBefore,
+  N1_COMPAT_MARKER,
+  exactHeadMatches,
 } from '../../src/db/migrate.ts';
 import { setupPg, type PgHarness } from './helpers.ts';
 import { Outbox } from '../../src/outbox/index.ts';
@@ -157,10 +159,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
           VALUES ('purchase.recorded', 'legacy-buyer', ${sql.json({ grantKey: legacyKey })}, ${commandId})`;
 
         const migrated = await migrateUp(t.url);
-        expect(migrated.applied).toEqual([
-          '0015_legacy_purchase_grant_keys.sql',
-          '0016_validate_grant_key_length.sql',
-        ]);
+        expect(migrated.applied).toEqual(['0015_legacy_purchase_grant_keys.sql']);
         const keys = await sql<
           { purchase_key: string; grant_key: string; grant_id: string; alias_key: string }[]
         >`
@@ -293,26 +292,38 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     }
   });
 
-  it('boot check: pending known files refuse; declared N-1 extra boots; mismatch and undeclared extras refuse', async () => {
+  it('boot check: this image matches at 0015; a declared next extra is ahead here and exact-head-incompatible', async () => {
     const t = await createTestDatabase('schema_n1');
-    const priorDir = priorMigrationsDir(16);
+    const extraDir = writeMigrationsDir(listMigrations());
+    writeFileSync(join(extraDir, '0016_n1_probe.sql'), `${N1_COMPAT_MARKER}\nSELECT 1;\n`);
     try {
-      await migrateUp(t.url, { dir: priorDir });
+      await migrateUp(t.url);
       const sql = connect(t.url, { max: 1 });
       try {
-        const pending = await checkSchema(sql);
-        expect(pending.ok).toBe(false);
-        expect(pending.state).toBe('pending');
-        expect(pending.pending[0]).toMatch(/^0016_/);
-
-        await migrateUp(t.url);
         const atHead = await checkSchema(sql);
         expect(atHead).toMatchObject({ ok: true, state: 'match', pending: [], mismatched: [] });
+        expect(
+          exactHeadMatches(
+            listMigrations().map((m) => ({ name: m.name, checksum: m.checksum })),
+            await sql<
+              { name: string; checksum: string }[]
+            >`SELECT name, checksum FROM schema_migrations ORDER BY name`,
+          ),
+        ).toBe(true);
 
-        const n1 = await checkSchema(sql, priorDir);
+        await migrateUp(t.url, { dir: extraDir });
+        const n1 = await checkSchema(sql);
         expect(n1.ok).toBe(true);
         expect(n1.state).toBe('ahead');
-        expect(n1.ahead).toEqual(['0016_validate_grant_key_length.sql']);
+        expect(n1.ahead).toEqual(['0016_n1_probe.sql']);
+        expect(
+          exactHeadMatches(
+            listMigrations().map((m) => ({ name: m.name, checksum: m.checksum })),
+            await sql<
+              { name: string; checksum: string }[]
+            >`SELECT name, checksum FROM schema_migrations ORDER BY name`,
+          ),
+        ).toBe(false);
 
         await sql`UPDATE schema_migrations SET checksum = 'deadbeef' WHERE name LIKE '0003%'`;
         const bad = await checkSchema(sql);
@@ -321,54 +332,30 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         expect(bad.mismatched).toEqual(['0003_saves.sql']);
         await repairChecksums(t.url);
 
-        await sql`
-          INSERT INTO schema_migrations (name, checksum)
-          VALUES ('0017_ghost.sql', 'x'), ('0018_ghost.sql', 'y'), ('0019_ghost.sql', 'z')`;
-        const over = await checkSchema(sql, priorDir);
+        await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0017_ghost.sql', 'x')`;
+        const over = await checkSchema(sql);
         expect(over.ok).toBe(false);
         expect(over.state).toBe('incompatible');
       } finally {
         await sql.end({ timeout: 5 });
       }
     } finally {
-      rmSync(priorDir, { recursive: true, force: true });
+      rmSync(extraDir, { recursive: true, force: true });
       await t.drop();
     }
   });
 
-  it('applies 0016 while both ledgers hold ROW EXCLUSIVE (no ACCESS EXCLUSIVE scan)', async () => {
-    const t = await createTestDatabase('grant_key_validate_locks');
-    const through15 = priorMigrationsDir(16);
+  it('migrateUp refuses applied rows that are not a prefix of disk files', async () => {
+    const t = await createTestDatabase('mig_prefix');
+    const priorDir = priorMigrationsDir(15);
     try {
-      await migrateUp(t.url, { dir: through15 });
+      await migrateUp(t.url, { dir: priorDir });
       const sql = connect(t.url, { max: 1 });
-      const blocker = connect(t.url, { max: 1 });
-      try {
-        const before = await sql<{ conname: string; convalidated: boolean }[]>`
-          SELECT conname, convalidated FROM pg_constraint
-          WHERE conname IN ('grants_grant_key_length', 'purchase_transactions_grant_key_length')
-          ORDER BY 1`;
-        expect(before.every((r) => r.convalidated)).toBe(true);
-
-        let validated: Awaited<ReturnType<typeof migrateUp>> | undefined;
-        await blocker.begin(async (tx) => {
-          await tx`LOCK TABLE grants IN ROW EXCLUSIVE MODE`;
-          await tx`LOCK TABLE purchase_transactions IN ROW EXCLUSIVE MODE`;
-          validated = await migrateUp(t.url, { lockTimeoutMs: 1000 });
-        });
-        expect(validated?.applied).toEqual(['0016_validate_grant_key_length.sql']);
-
-        const after = await sql<{ conname: string; convalidated: boolean }[]>`
-          SELECT conname, convalidated FROM pg_constraint
-          WHERE conname IN ('grants_grant_key_length', 'purchase_transactions_grant_key_length')
-          ORDER BY 1`;
-        expect(after.every((r) => r.convalidated)).toBe(true);
-      } finally {
-        await blocker.end({ timeout: 5 });
-        await sql.end({ timeout: 5 });
-      }
+      await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0016_skip.sql', 'x')`;
+      await sql.end({ timeout: 5 });
+      await expect(migrateUp(t.url)).rejects.toThrow(/not a prefix/);
     } finally {
-      rmSync(through15, { recursive: true, force: true });
+      rmSync(priorDir, { recursive: true, force: true });
       await t.drop();
     }
   });

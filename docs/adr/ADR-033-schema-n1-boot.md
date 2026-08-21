@@ -1,32 +1,37 @@
-# ADR-033 Schema boot compatibility is a declared N-1 chain
+# ADR-033 Schema boot compatibility is a declared N-1 extra for one prior image
 
 Date: 2026-08-21. Status: accepted.
 
 ## Context
 
-`checkSchema` used to require `schemaHead(applied) === schemaHead(image files)`. After deploying a
-migration and rolling the image back, the previous image saw the extra applied row, computed a
-different head, and refused to boot — contradicting the N-1 rule in `docs/runbooks/migrations.md`.
-Ignoring arbitrary unknown ordinals would treat `0016_drop_everything` as bootable. Editing an
-already-committed migration file (`0015` in `c94bf5d`) also breaks checksum upgrade/rollback.
+`checkSchema` used to require `schemaHead(applied) === schemaHead(image files)`. Rolling the image
+back after a new migration then failed at boot. Declaring extras by ordinal, or chaining
+`prefix_head` through every extra, would let an image ending at `0015` run against N-2 schemas.
+`c94bf5d` still uses exact-head checking, so it cannot consume extras or a declaration table.
+Rewriting committed migration checksums (`0015`/`0016`) also breaks upgrade from a database that
+already applied an earlier unreleased commit.
 
 ## Decision
 
-1. Never rewrite an already-committed migration. Follow-ups append. `0015` remains the
-   `c94bf5d` bytes. `0016` validates the grant-key length CHECKs (no-op if already valid) and
-   creates `schema_n1_compat`.
-2. A migration opts into N-1 by including the line `-- foundation-n1-compatible`. `migrateUp`
-   then records `(extra_name, prefix_head)` where `prefix_head` is `schemaHead` of applied rows
-   before that file. The previous image reads that table at boot.
-3. Boot states: `match`, `pending`, `mismatched`, `ahead`, `incompatible`, `missing_table`.
-   `ahead` is bootable only when every extra applied name has a `schema_n1_compat` row whose
-   `prefix_head` equals the running head, and both disk files and applied names are a unique
-   contiguous ordinal chain (no skipped or duplicate `NNNN` prefixes).
-4. Isolated restore (`verifyIsolatedRestore`) requires `state === 'match'`, not merely `ok`.
-   `/health/ready` may be ready on `ahead` so a rolled-back image can serve.
+1. **Two-release rollout.** This image ships the N-1 checker and `schema_n1_compat` (created by
+   the migrator, like `schema_migrations`) with **no extra numbered migration**. Head stays the
+   `c94bf5d` 15-file head. A later release may add `-- foundation-n1-compatible` extras; *this*
+   image can boot against them. `c94bf5d` cannot. Unreleased databases that applied a rewritten
+   `0015`/`0016` are rebuilt from empty.
+2. Each declared extra stores `extra_checksum`, `prefix_head`, `result_head`, and
+   `compatible_with_head`. Boot `ahead` requires `compatible_with_head ===` this image's
+   `expectedHead` (one prior image, not a chain), extra checksums to match applied rows, and
+   `result_head` to match the running head after the extra. Consecutive n1 extras applied in one
+   `migrateUp` share the same `compatible_with_head` (one release).
+3. Disk files and applied names must be a unique contiguous ordinal chain. `migrateUp` requires
+   applied rows to be a prefix of disk files in order.
+4. Isolated restore requires `state === 'match'`. `/health/ready` may be ready on `ahead`.
+5. `0015`'s immediately-validated CHECKs still take `ACCESS EXCLUSIVE` for the table scan. That
+   lock window is not fixed; do not rewrite `0015`.
 
 ## Consequences
 
-A previous image whose files stop at `0015` boots against a database that has applied declared
-`0016`. An undeclared extra, a checksum rewrite of `0015`, or a gapped ordinal chain refuses.
-`migrate --up` from the old image still refuses applied files missing on disk.
+Upgrade `c94bf5d` → this image is a no-op migrator (same 0015 checksum). Rollback this image →
+`c94bf5d` works on the same schema. The first n1 extra is a *future* migration. Tests cover
+declared extras, N-2 refusal, checksum/result-head mismatches, prefix holes, and that
+`exactHeadMatches` (the `c94bf5d` rule) still refuses extras.

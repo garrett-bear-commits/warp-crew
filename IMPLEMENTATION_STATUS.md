@@ -40,14 +40,14 @@ Branch `main`. The first reviewer-remediation set was committed as `f046d47` (`A
 | 8 | current Jest HTML5 remediation: official SDK mirror/bootstrap, stable registration, data/lifecycle/loading/analytics/entry, signed batch purchase recovery, sandbox provenance, catalog pricing, D1–D7 notifications, and launch runbook | done locally; real-platform gates remain |
 | 9 | reviewer remediation: handled eager SDK failure, post-init lifecycle subscriptions, canonical/deduplicated recovery reports, batch-receipt redaction, fail-closed checkout, family pause, hashed grant keys, and durable meaningful-return notification rotation | done locally; real-platform gates remain |
 | 10 | reviewer closure: fresh click-time checkout preflight, recovery-wide terminal states, concurrent credential refresh, leader/mutex-owned retention mutation, legacy grant-key migration/aliases, and clean schema snapshot generation | done locally; real-platform gates remain |
-| 11 | last-pass review of `c94bf5d` plus follow-up: declared N-1 chain (ADR-033), `0015` restored byte-for-byte, `0016` VALIDATE + `schema_n1_compat`, retention fails closed without Web Locks, numeric pre-N fixtures, official-shape paid UI checkout with per-player tokens | unit/model/lint/typecheck/build/guards green; real-Postgres + Playwright not rerun in this environment (`shmget` EPERM, no container runtime) |
+| 11 | last-pass follow-up: N-1 checker ships with the 15-file `c94bf5d` head (two-release; no extra migration), declared extras bound to one image head + checksums, prefix enforcement, retention fail-closed, official-shape per-purchase seq | unit/model/lint/typecheck/build/guards green; real-Postgres + Playwright not rerun (`shmget` EPERM) |
 
 ## Commands and results
 
 Rerun from the repo root on 2026-08-21 after the last-pass fixes (macOS, Node 24.13.1,
 pnpm 10.30.1). Postgres could not start here (`shmget` / `shmat` EPERM); Docker was unavailable.
-Prior 2026-08-21 PG/e2e numbers were for `c94bf5d` (15 migrations) and are not reused as evidence
-for 16-file heads.
+Prior 2026-08-21 PG/e2e numbers were for `c94bf5d` (15 migrations). This image keeps that 15-file
+head. Unreleased DBs that applied a rewritten `0015`/`0016` are rebuilt from empty.
 
 | Command | Result |
 | --- | --- |
@@ -56,24 +56,24 @@ for 16-file heads.
 | `pnpm typecheck` | ok (all 8 workspace typechecks) |
 | `pnpm build` | ok (admin inspector + template game) |
 | `pnpm guards` | 6/6 PASS |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 904 tests passed |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 907 tests passed |
 | `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples) |
 | `DATABASE_URL_TEST=… pnpm test:pg` | not run — local `initdb`/`pg_ctl` failed (`could not create shared memory segment: Operation not permitted`); no container runtime |
 | `pnpm test:e2e` | not run — needs the PG lab API |
 | `git diff --check` | clean |
 | Docker image build/smoke | not rerun (Docker unavailable) |
-| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` | not run (no database). Disk has 16 files; `0015` matches `c94bf5d`; `0016` adds `schema_n1_compat` + VALIDATE |
+| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` | not run (no database). Disk has 15 files; `0015` matches `c94bf5d`; `schema_n1_compat` is migrator-owned and excluded from `describeSchema` |
 | `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)" |
 | Sentry / managed PITR / object storage / Jest platform calls | not run — external gates |
 
-Verified this session: 904 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Verified this session: 907 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
 
 ## Last-pass findings (2026-08-21) — implemented
 
 | # | Finding | Fix | Evidence |
 | --- | --- | --- | --- |
-| 1 | Previous image refused to boot after `0015` (exact head match) | Declared N-1 chain in `schema_n1_compat`; unique contiguous ordinals; previous image is through `0015` (ADR-033) | `packages/server/test/unit/migrate.test.ts`; `infra.test.ts` N-1 boot block |
-| 2 | `0015` held `ACCESS EXCLUSIVE` across rewrite + constraint scan | `0015` restored byte-for-byte from `c94bf5d`; `0016` VALIDATE (no-op if already valid) + `schema_n1_compat` | `0015`/`0016` SQL; `infra.test.ts` 0016 under ROW EXCLUSIVE on both ledgers |
+| 1 | Previous image refused to boot after `0015` (exact head match) | Two-release: this image ships the N-1 checker at the `c94bf5d` 15-file head. `c94bf5d` still exact-head (`exactHeadMatches`). Future extras declare `compatible_with_head` + checksums (ADR-033) | `packages/server/test/unit/migrate.test.ts`; `infra.test.ts` N-1 block |
+| 2 | `0015` held `ACCESS EXCLUSIVE` across rewrite + constraint scan | **Not fixed.** `0015` restored byte-for-byte; rewriting it would break checksum upgrade. The validating scan still takes `ACCESS EXCLUSIVE`. | `0015_legacy_purchase_grant_keys.sql:125`; this table |
 | 3 | No-Web-Locks tabs all led and raced retention mutation | Fail closed without Web Locks; same-tab `run()` queued | `apps/template-game/test/unit/retention.test.ts` |
 | 4 | `priorMigrationsDir` excluded only `0015_` by name | `migrationsBefore` uses parsed `NNNN` prefix | `migrate.test.ts` synthetic `0014`/`0015`/`0016` |
 | 5 | Official-shape UI never completed a paid checkout | Fixture `beginPurchase` returns unique paid `mockreceipt.*`; Shop click asserts grant/gems/`completePurchase` once, then the failed-preflight case | `apps/template-game/e2e/jest-official-shape.spec.ts` |
