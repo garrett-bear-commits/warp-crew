@@ -10,6 +10,7 @@ import {
   n1CompatLine,
   n1CompatibleWithOrdinal,
   n1DeclarationFromApplied,
+  requireMatchingN1Marker,
   schemaHead,
   schemaIsExactHead,
   type SchemaN1Declaration,
@@ -70,8 +71,11 @@ describe('appliedIsDiskPrefix', () => {
     expect(appliedIsDiskPrefix(files, files)).toEqual({ ok: true });
     expect(appliedIsDiskPrefix(files, [file('0014_a.sql'), file('0016_c.sql')]).ok).toBe(false);
     expect(
-      appliedIsDiskPrefix([file('0014_a.sql')], [file('0014_a.sql'), file('0015_b.sql')]).ok,
-    ).toBe(false);
+      appliedIsDiskPrefix([file('0014_a.sql')], [file('0014_a.sql'), file('0015_b.sql')]),
+    ).toEqual({
+      ok: false,
+      reason: expect.stringMatching(/missing on disk/),
+    });
   });
 });
 
@@ -192,6 +196,14 @@ describe('evaluateSchemaCompatibility (declared N-1)', () => {
       ]),
     ).toMatchObject({ state: 'incompatible', ok: false });
   });
+
+  it('a stored compatibleWithOrdinal that is not this image last ordinal refuses', () => {
+    expect(
+      evaluateSchemaCompatibility(image15, through16, [
+        { ...n1Decl(extra16, through15), compatibleWithOrdinal: 14 },
+      ]),
+    ).toMatchObject({ state: 'incompatible', ok: false });
+  });
 });
 
 describe('N-1 SQL marker', () => {
@@ -199,6 +211,24 @@ describe('N-1 SQL marker', () => {
     expect(n1CompatibleWithOrdinal(`${n1CompatLine(15)}\nSELECT 1;\n`)).toBe(15);
     expect(isN1CompatibleSql(`${n1CompatLine(15)}\nSELECT 1;\n`)).toBe(true);
     expect(isN1CompatibleSql('-- foundation-n1-compatible\nSELECT 1;\n')).toBe(false);
+  });
+
+  it('refuses duplicate or conflicting markers', () => {
+    expect(() =>
+      n1CompatibleWithOrdinal(`${n1CompatLine(15)}\n${n1CompatLine(15)}\nSELECT 1;\n`),
+    ).toThrow(/exactly one/);
+    expect(() =>
+      n1CompatibleWithOrdinal(`${n1CompatLine(15)}\n${n1CompatLine(16)}\nSELECT 1;\n`),
+    ).toThrow(/exactly one/);
+    expect(isN1CompatibleSql(`${n1CompatLine(15)}\n${n1CompatLine(16)}\nSELECT 1;\n`)).toBe(false);
+  });
+
+  it('requireMatchingN1Marker accepts one matching marker and refuses drift', () => {
+    requireMatchingN1Marker(`${n1CompatLine(15)}\nSELECT 1;\n`, 15);
+    expect(() => requireMatchingN1Marker('SELECT 1;\n', 15)).toThrow(/exactly one/);
+    expect(() => requireMatchingN1Marker(`${n1CompatLine(16)}\nSELECT 1;\n`, 15)).toThrow(
+      /does not match stored/,
+    );
   });
 });
 

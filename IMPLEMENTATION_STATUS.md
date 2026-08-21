@@ -56,7 +56,7 @@ head. Unreleased DBs that applied a rewritten `0015`/`0016` are rebuilt from emp
 | `pnpm typecheck` | ok (all 8 workspace typechecks) |
 | `pnpm build` | ok (admin inspector + template game) |
 | `pnpm guards` | 6/6 PASS |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 910 tests passed |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 913 tests passed |
 | `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples) |
 | `DATABASE_URL_TEST=… pnpm test:pg` | not run — local `initdb`/`pg_ctl` failed (`could not create shared memory segment: Operation not permitted`); no container runtime |
 | `pnpm test:e2e` | not run — needs the PG lab API |
@@ -66,7 +66,7 @@ head. Unreleased DBs that applied a rewritten `0015`/`0016` are rebuilt from emp
 | `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)" |
 | Sentry / managed PITR / object storage / Jest platform calls | not run — external gates |
 
-Verified this session: 910 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Verified this session: 913 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
 
 ## Last-pass findings (2026-08-21) — implemented
 

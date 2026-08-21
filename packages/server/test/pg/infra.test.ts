@@ -334,6 +334,10 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const afterRepair = await checkSchema(sql);
         expect(afterRepair).toMatchObject({ ok: true, state: 'ahead' });
 
+        writeFileSync(join(extraDir, '0016_n1_probe.sql'), `${n1CompatLine(14)}\nSELECT 1;\n`);
+        await expect(repairChecksums(t.url, extraDir)).rejects.toThrow(/does not match stored/);
+        expect(await checkSchema(sql)).toMatchObject({ ok: true, state: 'ahead' });
+
         writeFileSync(
           join(extraDir, '0016_n1_probe.sql'),
           `${n1CompatLine(15)}\nSELECT 1; -- repaired\n`,

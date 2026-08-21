@@ -73,16 +73,40 @@ export function n1CompatLine(ordinal: number): string {
   return `-- foundation-n1-compatible-with-ordinal: ${ordinal}`;
 }
 
-export function n1CompatibleWithOrdinal(sql: string): number | null {
+export function n1MarkerOrdinals(sql: string): number[] {
+  const out: number[] = [];
   for (const line of sql.split(/\r?\n/)) {
     const m = /^-- foundation-n1-compatible-with-ordinal:\s*(\d+)\s*$/.exec(line.trim());
-    if (m) return Number(m[1]);
+    if (m) out.push(Number(m[1]));
   }
-  return null;
+  return out;
+}
+
+export function n1CompatibleWithOrdinal(sql: string): number | null {
+  const marks = n1MarkerOrdinals(sql);
+  if (marks.length === 0) return null;
+  if (marks.length > 1)
+    throw new Error(
+      `expected exactly one foundation-n1-compatible-with-ordinal marker, found ${marks.length}`,
+    );
+  return marks[0]!;
 }
 
 export function isN1CompatibleSql(sql: string): boolean {
-  return n1CompatibleWithOrdinal(sql) !== null;
+  return n1MarkerOrdinals(sql).length === 1;
+}
+
+/** On-disk extra SQL must still declare exactly the stored parent ordinal. */
+export function requireMatchingN1Marker(sql: string, storedOrdinal: number): void {
+  const marks = n1MarkerOrdinals(sql);
+  if (marks.length !== 1)
+    throw new Error(
+      `expected exactly one foundation-n1-compatible-with-ordinal marker, found ${marks.length}`,
+    );
+  if (marks[0] !== storedOrdinal)
+    throw new Error(
+      `n1 marker ordinal ${marks[0]} does not match stored compatible_with_ordinal ${storedOrdinal}`,
+    );
 }
 
 /** Unique ordinals that increase by exactly one. Duplicate or skipped NNNN prefixes fail. */
@@ -171,6 +195,11 @@ export function n1DeclarationFromApplied(
   };
 }
 
+function imageHeadOrdinal(files: Array<{ name: string }>): number | null {
+  if (files.length === 0) return null;
+  return migrationOrdinal(files[files.length - 1]!.name);
+}
+
 function declaredN1ForImage(
   files: Array<{ name: string; checksum: string }>,
   applied: Array<{ name: string; checksum: string }>,
@@ -179,6 +208,8 @@ function declaredN1ForImage(
   const decl = new Map(declared.map((d) => [d.extraName, d]));
   const fileNames = new Set(files.map((f) => f.name));
   const expectedHead = schemaHead(files);
+  const headOrdinal = imageHeadOrdinal(files);
+  if (headOrdinal === null) return false;
   let running = applied.filter((a) => fileNames.has(a.name));
   const extras = applied.filter((a) => !fileNames.has(a.name));
   if (extras.length === 0) return false;
@@ -186,6 +217,7 @@ function declaredN1ForImage(
     const d = decl.get(extra.name);
     if (!d) return false;
     if (d.extraChecksum !== extra.checksum) return false;
+    if (d.compatibleWithOrdinal !== headOrdinal) return false;
     if (d.compatibleWithHead !== expectedHead) return false;
     if (d.prefixHead !== schemaHead(running)) return false;
     running = [...running, extra];
@@ -281,12 +313,12 @@ export async function migrateUp(
       >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
       const done = new Map(rows.map((r) => [r.name, r.checksum]));
       const appliedSoFar: Array<{ name: string; checksum: string }> = [...rows];
+      const prefix = appliedIsDiskPrefix(files, rows);
+      if (!prefix.ok) throw new Error(prefix.reason);
       if (!isUniqueContiguousChain(files.map((f) => f.name)))
         throw new Error('disk migration files are not a unique contiguous ordinal chain');
       if (!isUniqueContiguousChain(rows.map((r) => r.name)))
         throw new Error('applied migrations are not a unique contiguous ordinal chain');
-      const prefix = appliedIsDiskPrefix(files, rows);
-      if (!prefix.ok) throw new Error(prefix.reason);
       let preview = [...appliedSoFar];
       for (const f of files) {
         if (done.has(f.name)) continue;
@@ -405,7 +437,7 @@ async function loadN1Declarations(sql: Sql): Promise<SchemaN1Declaration[]> {
   }));
 }
 
-async function refreshN1Declarations(sql: Sql): Promise<void> {
+async function refreshN1Declarations(sql: Sql, files: MigrationFile[]): Promise<void> {
   const exists = await sql<
     { ok: boolean }[]
   >`SELECT to_regclass('public.schema_n1_compat') IS NOT NULL AS ok`;
@@ -416,12 +448,16 @@ async function refreshN1Declarations(sql: Sql): Promise<void> {
   const decls = await sql<
     { extra_name: string; compatible_with_ordinal: number | null }[]
   >`SELECT extra_name, compatible_with_ordinal FROM schema_n1_compat`;
+  const byName = new Map(files.map((f) => [f.name, f]));
   for (const d of decls) {
     if (d.compatible_with_ordinal == null)
       throw new Error(
         `schema_n1_compat ${d.extra_name} has no compatible_with_ordinal; refuse --repair`,
       );
-    const rec = n1DeclarationFromApplied(d.extra_name, applied, Number(d.compatible_with_ordinal));
+    const stored = Number(d.compatible_with_ordinal);
+    const onDisk = byName.get(d.extra_name);
+    if (onDisk) requireMatchingN1Marker(onDisk.sql, stored);
+    const rec = n1DeclarationFromApplied(d.extra_name, applied, stored);
     await sql`UPDATE schema_n1_compat SET
       extra_checksum = ${rec.extraChecksum},
       prefix_head = ${rec.prefixHead},
@@ -452,7 +488,7 @@ export async function repairChecksums(url: string, dir = MIGRATIONS_DIR): Promis
             repaired.push(r.name);
           }
         }
-        await refreshN1Declarations(sql);
+        await refreshN1Declarations(sql, files);
         await sql.unsafe('COMMIT');
         return repaired;
       } catch (err) {
