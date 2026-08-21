@@ -6,7 +6,7 @@ import { mintId, type Product } from '@foundation/client';
 import { useCallback, useState } from 'react';
 import { CATALOG } from '../config.ts';
 import { useGame } from '../game.tsx';
-import { verifyAndCompletePurchase } from '../purchases.ts';
+import { canBeginCheckout, verifyAndCompletePurchase } from '../purchases.ts';
 import { useFetched } from './useFetched.ts';
 
 export function formatProductPrice(product: Product): string | null {
@@ -44,9 +44,16 @@ export function Shop() {
   const bySku = new Map(products.map((product) => [product.sku, product]));
   const purchases: PurchaseRecord[] = mine?.purchases ?? [];
   const entitlement = mine?.entitlement ?? null;
-  const disabled = mine?.purchasesDisabled ?? false;
+  const purchaseCommandPaused =
+    live?.killSwitches.commands.includes('purchases.verify') === true ||
+    live?.killSwitches.commands.includes('purchases.verifyBatch') === true;
+  const checkoutReady = canBeginCheckout(mine, live !== null, purchaseCommandPaused);
 
   const buy = async (sku: string): Promise<void> => {
+    if (!checkoutReady) {
+      setOutcome('checkout is not currently available');
+      return;
+    }
     setBusy(true);
     try {
       let begin;
@@ -101,7 +108,13 @@ export function Shop() {
   return (
     <section className="panel" data-testid="shop">
       <h2>Shop</h2>
-      {disabled ? <p className="muted">Purchases are disabled for this account.</p> : null}
+      {mine === null || live === null ? (
+        <p className="muted">Checking purchase availability…</p>
+      ) : mine.purchasesDisabled ? (
+        <p className="muted">Purchases are disabled for this account.</p>
+      ) : !mine.checkoutEnabled || purchaseCommandPaused ? (
+        <p className="muted">Checkout is temporarily unavailable.</p>
+      ) : null}
       <ul className="list" data-testid="shop-list">
         {CATALOG.filter((c) => !paused.has(c.sku)).flatMap((c) => {
           const product = bySku.get(c.sku);
@@ -113,7 +126,7 @@ export function Shop() {
               <span data-testid={`price-${c.sku}`}>{price}</span>{' '}
               <button
                 data-testid={`buy-${c.sku}`}
-                disabled={busy || disabled}
+                disabled={busy || !checkoutReady}
                 onClick={() => void buy(c.sku)}
               >
                 Buy

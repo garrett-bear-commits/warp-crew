@@ -39,7 +39,7 @@ export interface SentryHandle {
 }
 
 const REDACT_KEYS =
-  /^(authorization|cookie|x-admin-secret|x-ops-secret|token|purchasesigned|secret|password)$/i;
+  /^(authorization|cookie|x-admin-secret|x-ops-secret|token|purchases?signed|secret|password)$/i;
 
 /** Redact key-like values and bearer tokens anywhere in an event (headers, extra, breadcrumbs, messages). */
 export function redactEvent<T>(event: T): T {

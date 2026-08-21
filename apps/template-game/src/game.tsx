@@ -20,7 +20,11 @@ import type { GameApi } from './api.ts';
 import type { GameConfig } from './config.ts';
 import type { TemplateAction, TemplateEffect, TemplateState } from './engine.ts';
 import { recoverPurchasesOnStartup } from './purchases.ts';
-import { refreshRetentionPlan } from './retention.ts';
+import {
+  claimRetentionOrdinal,
+  refreshRetentionPlan,
+  shouldRefreshRetention,
+} from './retention.ts';
 import { compareBuildVersions } from './versions.ts';
 
 export type TemplateClient = GameClient<TemplateState, TemplateAction, TemplateEffect>;
@@ -112,6 +116,10 @@ export function GameProvider(props: {
   const toastId = useRef(0);
   const visible = useVisibility();
   const registered = client.player?.registered === true;
+  const playerId = client.player?.playerId ?? null;
+  const retentionScheduled = useRef(false);
+  const retentionScheduledPlayer = useRef<string | null>(null);
+  const retentionHiddenMark = useRef<number | null>(null);
 
   const toast = useCallback((text: string) => {
     const id = ++toastId.current;
@@ -191,16 +199,40 @@ export function GameProvider(props: {
     [api],
   );
 
-  // Registered players get one deterministic D1-D7 rolling plan on startup and every return.
+  // Registered players get one deterministic D1-D7 rolling plan on startup and meaningful returns.
   // Guests schedule nothing; unsupported/moderated results remain observable but never block play.
   useEffect(() => {
-    if (!booted || !visible || !registered) return;
+    if (!booted || !registered || playerId === null) {
+      retentionScheduled.current = false;
+      retentionScheduledPlayer.current = null;
+      retentionHiddenMark.current = null;
+      return;
+    }
+    if (retentionScheduledPlayer.current !== playerId) {
+      retentionScheduled.current = false;
+      retentionScheduledPlayer.current = playerId;
+      retentionHiddenMark.current = null;
+    }
+    if (!visible) {
+      if (retentionHiddenMark.current === null) retentionHiddenMark.current = clock.mark();
+      return;
+    }
+    const hiddenMs =
+      retentionHiddenMark.current === null ? null : clock.sinceMark(retentionHiddenMark.current);
+    retentionHiddenMark.current = null;
+    if (!shouldRefreshRetention(retentionScheduled.current, hiddenMs)) return;
+    const returnOrdinal = claimRetentionOrdinal(client.storage, cfg.gameId, playerId);
+    retentionScheduled.current = true;
     let alive = true;
     void refreshRetentionPlan(
       client.platform.notifications,
-      client.player,
+      { playerId, registered: true },
       cfg.buildVersion,
       cfg.notificationAssetReference,
+      {
+        progress: client.state().counter,
+        returnOrdinal,
+      },
     ).then((result) => {
       if (!alive) return;
       client.platform.analytics.track('notification_plan_result', {
@@ -215,7 +247,17 @@ export function GameProvider(props: {
     return () => {
       alive = false;
     };
-  }, [booted, visible, registered, client, cfg.buildVersion, cfg.notificationAssetReference]);
+  }, [
+    booted,
+    visible,
+    registered,
+    playerId,
+    client,
+    clock,
+    cfg.gameId,
+    cfg.buildVersion,
+    cfg.notificationAssetReference,
+  ]);
 
   // Attribute notification entries through the official payload, with a strict allow-list so
   // arbitrary entry data (including names or message text) never enters analytics.
@@ -228,13 +270,19 @@ export function GameProvider(props: {
     const offset = entry.notification_offset;
     if (
       typeof template === 'string' &&
-      /^template_return_d[1-7]_v1$/.test(template) &&
+      /^template_return_d[1-7]_(?:v1|v2_[abc])$/.test(template) &&
       typeof offset === 'string' &&
       /^D[1-7]$/.test(offset)
     ) {
+      const variant = entry.variant;
+      const progressBucket = entry.progress_bucket;
       client.platform.analytics.track('notification_entry', {
         notification_template: template,
         notification_offset: offset,
+        ...(typeof variant === 'string' && /^[abc]$/.test(variant) ? { variant } : {}),
+        ...(typeof progressBucket === 'string' && /^\d{1,9}$/.test(progressBucket)
+          ? { progress_bucket: progressBucket }
+          : {}),
       });
     }
   }, [booted, client]);
@@ -283,7 +331,7 @@ export function GameProvider(props: {
         });
       if (recovery.pagesVerified > 0)
         toast(
-          `Purchase recovery: ${recovery.ready} ready, ${recovery.withheld} pending, ${recovery.rejected} rejected`,
+          `Purchase recovery: ${recovery.completed}/${recovery.ready} completed, ${recovery.withheld} pending, ${recovery.rejected} rejected`,
         );
 
       const mine = await api.purchases.mine();

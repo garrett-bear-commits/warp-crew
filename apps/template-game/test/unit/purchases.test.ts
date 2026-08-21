@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type {
   PaymentsProvider,
   PurchaseCompletionOutcome,
+  PurchaseRecoveryReport,
   RecoveryBatch,
 } from '@foundation/client';
 import type { PurchaseVerifyResult } from '@foundation/contracts';
 import {
+  canBeginCheckout,
   type DirectPurchaseApi,
   type RecoveryPurchaseApi,
   recoverPurchasesOnStartup,
@@ -29,6 +31,16 @@ const purchase = {
 };
 
 describe('template purchase coordination', () => {
+  it('keeps checkout fail-closed until server readiness and live config are known', () => {
+    const ready = { checkoutEnabled: true, purchasesDisabled: false };
+    expect(canBeginCheckout(null, true, false)).toBe(false);
+    expect(canBeginCheckout(ready, false, false)).toBe(false);
+    expect(canBeginCheckout({ ...ready, checkoutEnabled: false }, true, false)).toBe(false);
+    expect(canBeginCheckout({ ...ready, purchasesDisabled: true }, true, false)).toBe(false);
+    expect(canBeginCheckout(ready, true, true)).toBe(false);
+    expect(canBeginCheckout(ready, true, false)).toBe(true);
+  });
+
   it('formats only provider-supplied price and ISO currency', () => {
     expect(formatProductPrice({ sku: 's', title: 'Pack', price: 9.99, currency: 'USD' })).toMatch(
       /9\.99/,
@@ -115,8 +127,11 @@ describe('template purchase coordination', () => {
     };
     let ready: readonly string[] = [];
     const recoverIncompleteBatch = vi.fn(
-      async (grant: (page: RecoveryBatch) => Promise<readonly string[]>) => {
+      async (
+        grant: (page: RecoveryBatch) => Promise<readonly string[]>,
+      ): Promise<PurchaseRecoveryReport> => {
         ready = await grant(batch);
+        return recoveryReport({ completed: [...ready] });
       },
     );
     const verifyBatch: RecoveryPurchaseApi['verifyBatch'] = vi.fn(async () => ({
@@ -177,6 +192,10 @@ describe('template purchase coordination', () => {
       ready: 1,
       withheld: 1,
       rejected: 1,
+      recoveryOutcome: 'drained',
+      completed: 1,
+      completionRetryable: 0,
+      completionInvalid: 0,
       grantKeys: ['purchase:tok-1'],
       errors: [],
     });
@@ -185,12 +204,15 @@ describe('template purchase coordination', () => {
   it('leaves a recovery page untouched when server verification fails', async () => {
     let ready: readonly string[] = ['unexpected'];
     const recoverIncompleteBatch = vi.fn(
-      async (grant: (page: RecoveryBatch) => Promise<readonly string[]>) => {
+      async (
+        grant: (page: RecoveryBatch) => Promise<readonly string[]>,
+      ): Promise<PurchaseRecoveryReport> => {
         ready = await grant({
           purchases: [{ purchaseToken: 'tok', sku: 'gems_100' }],
           purchasesSigned: 'signed-page',
           hasMore: false,
         });
+        return recoveryReport();
       },
     );
     const result = await recoverPurchasesOnStartup(
@@ -209,6 +231,29 @@ describe('template purchase coordination', () => {
     expect(ready).toEqual([]);
     expect(result.errors).toEqual(['verify-batch: offline']);
   });
+
+  it('surfaces retryable and terminal provider completion failures', async () => {
+    const recoverIncompleteBatch = vi.fn(async (): Promise<PurchaseRecoveryReport> =>
+      recoveryReport({
+        retryable: [{ purchaseToken: 'retry', message: 'internal_error' }],
+        invalid: [{ purchaseToken: 'invalid', message: 'invalid_token' }],
+      }),
+    );
+
+    const result = await recoverPurchasesOnStartup(
+      { verifyBatch: vi.fn() },
+      paymentProvider({ recoverIncompleteBatch }),
+      () => 'command-batch',
+    );
+
+    expect(result).toMatchObject({
+      recoveryOutcome: 'drained',
+      completed: 0,
+      completionRetryable: 1,
+      completionInvalid: 1,
+      errors: ['completion: 1 retryable', 'completion: 1 invalid'],
+    });
+  });
 });
 
 function directApi(body: Omit<PurchaseVerifyResult, 'serverNow' | 'requestId'>): DirectPurchaseApi {
@@ -226,8 +271,19 @@ function paymentProvider(overrides: Partial<PaymentsProvider>): PaymentsProvider
     products: async () => [],
     begin: async () => ({ kind: 'cancel' }),
     complete: async () => ({ kind: 'success' }),
-    recoverIncompleteBatch: async () => {},
+    recoverIncompleteBatch: async () => recoveryReport(),
     recoverIncomplete: async () => {},
+    ...overrides,
+  };
+}
+
+function recoveryReport(overrides: Partial<PurchaseRecoveryReport> = {}): PurchaseRecoveryReport {
+  return {
+    outcome: 'drained',
+    completed: [],
+    retryable: [],
+    invalid: [],
+    pages: [],
     ...overrides,
   };
 }

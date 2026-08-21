@@ -96,6 +96,25 @@ describe('react shells (§5.3)', () => {
     m.unmount();
   });
 
+  it('RegistrationGate login does not submit an enclosing form', async () => {
+    const login = vi.fn(async () => {});
+    const submit = vi.fn((event: React.FormEvent) => event.preventDefault());
+    const m = mount(
+      <form onSubmit={submit}>
+        <RegistrationGate registered={false} onLogin={login}>
+          <b>registered content</b>
+        </RegistrationGate>
+      </form>,
+    );
+
+    const button = m.el.querySelector('.foundation-registration-login') as HTMLButtonElement;
+    await act(async () => button.click());
+
+    expect(login).toHaveBeenCalledTimes(1);
+    expect(submit).not.toHaveBeenCalled();
+    m.unmount();
+  });
+
   it('ErrorBoundary reports a game_error integrity event with breadcrumbs through the client and can reset', async () => {
     const w = makeWorld();
     const { client, platform } = w.newClient();

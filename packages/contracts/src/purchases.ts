@@ -1,6 +1,7 @@
 import { Type, type Static } from '@sinclair/typebox';
 import { EpochMs, Mutation, NonNegInt, Response, StringEnum } from './common.ts';
 import { PURCHASE_ADJUSTMENT_KINDS, PURCHASE_CLASSIFICATIONS } from './enums.ts';
+import { GrantKey } from './grants.ts';
 
 export const PurchaseClassificationSchema = StringEnum(PURCHASE_CLASSIFICATIONS);
 export const PurchaseAdjustmentKindSchema = StringEnum(PURCHASE_ADJUSTMENT_KINDS);
@@ -24,7 +25,7 @@ export const PurchaseRecord = Type.Object(
     /** Premium value granted (0 unless classification=paid and minting enabled). */
     granted: NonNegInt,
     /** Grant key created for this purchase, when a grant was minted. */
-    grantKey: Type.Optional(Type.String()),
+    grantKey: Type.Optional(GrantKey),
     price: Type.Optional(Type.Number()),
     currency: Type.Optional(Type.String()),
     /** Signed sandbox provenance; null only for legacy/imported rows where it was not retained. */
@@ -105,6 +106,8 @@ export const PurchasesMineResponse = Response(
     pendingAdjustments: Type.Array(PurchaseAdjustment),
     entitlement: NonNegInt,
     purchasesDisabled: Type.Boolean(),
+    /** This player may start checkout: delivery is ready and purchase verification is not paused. */
+    checkoutEnabled: Type.Boolean(),
   },
   { $id: 'PurchasesMineResponse' },
 );

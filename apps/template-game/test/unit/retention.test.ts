@@ -1,16 +1,31 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { LadderItem, NotificationsProvider, Player, ScheduleResult } from '@foundation/client';
+import {
+  createStorage,
+  memoryStorage,
+  type LadderItem,
+  type NotificationsProvider,
+  type Player,
+  type ScheduleResult,
+} from '@foundation/client';
 import {
   buildRetentionPlan,
+  claimRetentionOrdinal,
   refreshRetentionPlan,
+  shouldRefreshRetention,
   RETENTION_IDENTIFIERS,
+  RETENTION_RETURN_MIN_MS,
 } from '../../src/retention.ts';
 
 const registered: Player = { playerId: 'p1', registered: true };
 
 describe('template Jest retention plan', () => {
   it('builds one attributed, ASCII-safe notification for every day D1-D7', () => {
-    const plan = buildRetentionPlan('build-7', 'approved-return-asset');
+    const plan = buildRetentionPlan({
+      buildVersion: 'build-7',
+      assetReference: 'approved-return-asset',
+      progress: 42,
+      returnOrdinal: 0,
+    });
 
     expect(plan).toHaveLength(7);
     expect(plan.map((item) => item.scheduledInDays)).toEqual([1, 2, 3, 4, 5, 6, 7]);
@@ -23,9 +38,46 @@ describe('template Jest retention plan', () => {
       expect(item.entryPayload).toMatchObject({
         source: 'retention_notification',
         build_version: 'build-7',
-        plan_version: 'template_retention_v1',
+        plan_version: 'template_retention_v2',
+        progress_bucket: '1',
+        variant: expect.stringMatching(/^[abc]$/),
       });
     }
+  });
+
+  it('rotates copy and attribution across meaningful returns and progress buckets', () => {
+    const base = {
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      progress: 0,
+    };
+    const first = buildRetentionPlan({ ...base, returnOrdinal: 0 });
+    const returned = buildRetentionPlan({ ...base, returnOrdinal: 1 });
+    const progressed = buildRetentionPlan({ ...base, progress: 50, returnOrdinal: 1 });
+
+    expect(returned[0]!.body).not.toBe(first[0]!.body);
+    expect(returned[0]!.entryPayload?.notification_template).not.toBe(
+      first[0]!.entryPayload?.notification_template,
+    );
+    expect(progressed[0]!.body).not.toBe(returned[0]!.body);
+  });
+
+  it('refreshes initially and only after a meaningful hidden interval', () => {
+    expect(shouldRefreshRetention(false, null)).toBe(true);
+    expect(shouldRefreshRetention(true, RETENTION_RETURN_MIN_MS - 1)).toBe(false);
+    expect(shouldRefreshRetention(true, RETENTION_RETURN_MIN_MS)).toBe(true);
+  });
+
+  it('persists the copy cursor per player so cold launches rotate instead of restarting at A', () => {
+    const primary = memoryStorage();
+    const firstLaunch = createStorage({ localStorage: primary });
+    expect(claimRetentionOrdinal(firstLaunch, 'template', 'player-1')).toBe(0);
+
+    const coldLaunch = createStorage({ localStorage: primary });
+    expect(claimRetentionOrdinal(coldLaunch, 'template', 'player-1')).toBe(1);
+    expect(claimRetentionOrdinal(coldLaunch, 'template', 'player-1')).toBe(2);
+    expect(claimRetentionOrdinal(coldLaunch, 'template', 'player-1')).toBe(0);
+    expect(claimRetentionOrdinal(coldLaunch, 'template', 'player-2')).toBe(0);
   });
 
   it('schedules nothing for guests', async () => {
@@ -35,6 +87,7 @@ describe('template Jest retention plan', () => {
       { playerId: 'guest', registered: false },
       'build-7',
       'asset',
+      { progress: 0, returnOrdinal: 0 },
     );
 
     expect(result).toEqual({ scheduled: [], failed: [] });
@@ -49,6 +102,7 @@ describe('template Jest retention plan', () => {
       registered,
       'build-7',
       'asset',
+      { progress: 0, returnOrdinal: 0 },
     );
 
     expect(notifications.unschedule.mock.calls.map(([id]) => id)).toEqual(RETENTION_IDENTIFIERS);
@@ -68,7 +122,10 @@ describe('template Jest retention plan', () => {
     });
 
     await expect(
-      refreshRetentionPlan(notifications.provider, registered, 'build-7', 'asset'),
+      refreshRetentionPlan(notifications.provider, registered, 'build-7', 'asset', {
+        progress: 0,
+        returnOrdinal: 0,
+      }),
     ).resolves.toEqual({
       scheduled: [RETENTION_IDENTIFIERS[0]],
       failed: [

@@ -1,14 +1,35 @@
 // Purchase orchestration shared by live checkout and startup recovery. The server verifies signed
 // provider data and authors `completion`; the browser never infers safe completion from price,
 // classification, or an unsigned purchase object.
-import type { ApiResult, PaymentsProvider, PurchaseCompletionOutcome } from '@foundation/client';
+import type {
+  ApiResult,
+  PaymentsProvider,
+  PurchaseCompletionOutcome,
+  PurchaseRecoveryReport,
+} from '@foundation/client';
 import type {
   PurchaseBatchVerifyBody,
   PurchaseBatchVerifyResult,
   PurchaseRecord,
   PurchaseVerifyBody,
   PurchaseVerifyResult,
+  PurchasesMineResponse,
 } from '@foundation/contracts';
+
+type CheckoutReadiness = Pick<PurchasesMineResponse, 'checkoutEnabled' | 'purchasesDisabled'>;
+
+export function canBeginCheckout(
+  mine: CheckoutReadiness | null,
+  liveConfigLoaded: boolean,
+  purchaseCommandPaused: boolean,
+): boolean {
+  return (
+    mine?.checkoutEnabled === true &&
+    !mine.purchasesDisabled &&
+    liveConfigLoaded &&
+    !purchaseCommandPaused
+  );
+}
 
 export interface DirectPurchaseApi {
   verify(body: PurchaseVerifyBody): Promise<ApiResult<PurchaseVerifyResult>>;
@@ -69,6 +90,10 @@ export interface PurchaseRecoverySummary {
   ready: number;
   withheld: number;
   rejected: number;
+  recoveryOutcome: PurchaseRecoveryReport['outcome'] | 'failed';
+  completed: number;
+  completionRetryable: number;
+  completionInvalid: number;
   grantKeys: string[];
   errors: string[];
 }
@@ -84,13 +109,17 @@ export async function recoverPurchasesOnStartup(
     ready: 0,
     withheld: 0,
     rejected: 0,
+    recoveryOutcome: 'failed',
+    completed: 0,
+    completionRetryable: 0,
+    completionInvalid: 0,
     grantKeys: [],
     errors: [],
   };
   const grantKeys = new Set<string>();
 
   try {
-    await payments.recoverIncompleteBatch(async (page) => {
+    const recovery = await payments.recoverIncompleteBatch(async (page) => {
       const verified = await api.verifyBatch({
         commandId: commandId(),
         purchasesSigned: page.purchasesSigned,
@@ -126,6 +155,15 @@ export async function recoverPurchasesOnStartup(
       }
       return ready;
     });
+    summary.recoveryOutcome = recovery.outcome;
+    summary.completed = recovery.completed.length;
+    summary.completionRetryable = recovery.retryable.length;
+    summary.completionInvalid = recovery.invalid.length;
+    if (recovery.outcome !== 'drained') summary.errors.push(`recovery: ${recovery.outcome}`);
+    if (recovery.retryable.length)
+      summary.errors.push(`completion: ${recovery.retryable.length} retryable`);
+    if (recovery.invalid.length)
+      summary.errors.push(`completion: ${recovery.invalid.length} invalid`);
   } catch (error) {
     summary.errors.push(`recovery: ${error instanceof Error ? error.message : String(error)}`);
   }

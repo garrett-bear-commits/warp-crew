@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { setupHarness, saveBody, type Harness } from './harness.ts';
 
 let h: Harness;
@@ -143,6 +144,96 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
     });
     expect(mine.json().purchases).toMatchObject([{ sandbox: null }]);
   });
+  it('/purchases/mine exposes server-authored checkout readiness', async () => {
+    const gated = await h.inject({
+      method: 'GET',
+      url: '/v1/purchases/mine',
+      headers: h.playerHeaders('checkout-gated'),
+    });
+    expect(gated.json()).toMatchObject({ checkoutEnabled: false });
+
+    const h2 = await setupHarness({
+      prefix: 'checkout_ready',
+      game: { purchases: { mintPremium: 'on' } },
+    });
+    try {
+      const ready = await h2.inject({
+        method: 'GET',
+        url: '/v1/purchases/mine',
+        headers: h2.playerHeaders('checkout-ready'),
+      });
+      expect(ready.json()).toMatchObject({ checkoutEnabled: true });
+    } finally {
+      await h2.close();
+    }
+  });
+  it('the established purchases.verify switch pauses direct and batch verification as one family', async () => {
+    const h2 = await setupHarness({
+      prefix: 'purchase_family_pause',
+      game: { purchases: { mintPremium: 'on' } },
+    });
+    try {
+      const paused = await h2.inject({
+        method: 'POST',
+        url: '/admin/v1/liveops/kill-switches',
+        headers: h2.adminHeaders(),
+        payload: {
+          commandId: h2.uuid(),
+          target: 'command',
+          id: 'purchases.verify',
+          enabled: true,
+          reason: 'payment incident',
+        },
+      });
+      expect(paused.statusCode).toBe(200);
+
+      const direct = await h2.inject({
+        method: 'POST',
+        url: '/v1/purchases/verify',
+        headers: h2.playerHeaders('paused-buyer'),
+        payload: {
+          commandId: h2.uuid(),
+          purchaseSigned: h2.receipt({
+            playerKey: 'paused-buyer',
+            token: 'paused-direct',
+            sku: 'gems_100',
+            price: 4.99,
+            currency: 'USD',
+          }),
+        },
+      });
+      const batch = await h2.inject({
+        method: 'POST',
+        url: '/v1/purchases/verify-batch',
+        headers: h2.playerHeaders('paused-buyer'),
+        payload: {
+          commandId: h2.uuid(),
+          purchasesSigned: h2.receiptBatch({
+            playerKey: 'paused-buyer',
+            purchases: [
+              {
+                token: 'paused-batch',
+                sku: 'gems_100',
+                price: 4.99,
+                currency: 'USD',
+              },
+            ],
+          }),
+        },
+      });
+      expect(direct.statusCode).toBe(403);
+      expect(batch.statusCode).toBe(403);
+
+      const mine = await h2.inject({
+        method: 'GET',
+        url: '/v1/purchases/mine',
+        headers: h2.playerHeaders('paused-buyer'),
+      });
+      expect(mine.json()).toMatchObject({ checkoutEnabled: false });
+    } finally {
+      await h2.close();
+    }
+  });
   it('verifies a signed recovery batch atomically and returns one completion decision per token', async () => {
     const h2 = await setupHarness({
       prefix: 'purchase_batch',
@@ -192,6 +283,55 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       await h2.close();
     }
   });
+  it('leaves paid batch tokens unrecorded while still recording sandbox provenance under the owner gate', async () => {
+    const playerKey = 'gated-batch-buyer';
+    const recovered = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify-batch',
+      headers: h.playerHeaders(playerKey),
+      payload: {
+        commandId: h.uuid(),
+        purchasesSigned: h.receiptBatch({
+          playerKey,
+          purchases: [
+            { token: 'gated-paid', sku: 'gems_100', price: 4.99, currency: 'USD' },
+            {
+              token: 'gated-sandbox',
+              sku: 'gems_100',
+              price: 4.99,
+              currency: 'USD',
+              sandbox: true,
+            },
+          ],
+        }),
+      },
+    });
+    expect(recovered.json()).toMatchObject({
+      outcome: 'processed',
+      results: [
+        {
+          purchaseToken: 'gated-paid',
+          outcome: 'rejected',
+          reason: 'delivery_unavailable',
+          completion: 'withhold',
+        },
+        {
+          purchaseToken: 'gated-sandbox',
+          outcome: 'recorded',
+          completion: 'withhold',
+          purchase: { classification: 'sandbox', sandbox: true, granted: 0 },
+        },
+      ],
+    });
+    const mine = await h.inject({
+      method: 'GET',
+      url: '/v1/purchases/mine',
+      headers: h.playerHeaders(playerKey),
+    });
+    expect(mine.json().purchases).toMatchObject([
+      { sku: 'gems_100', classification: 'sandbox', sandbox: true, granted: 0 },
+    ]);
+  });
   it('deduplicates repeated tokens in one signed batch and preserves provider-token idempotency', async () => {
     const h2 = await setupHarness({
       prefix: 'purchase_batch_dup',
@@ -238,40 +378,53 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
   });
 
   it('returns per-token duplicate/recorded results for a mixed recovery page', async () => {
-    const playerKey = 'batch-mixed';
-    await post(playerKey, '/v1/purchases/verify', {
-      commandId: h.uuid(),
-      purchaseSigned: h.receipt({
-        playerKey,
-        token: 'mixed-existing',
-        sku: 'gems_100',
-        price: 4.99,
-        currency: 'USD',
-      }),
+    const h2 = await setupHarness({
+      prefix: 'purchase_batch_mixed',
+      game: { purchases: { mintPremium: 'on' } },
     });
+    try {
+      const playerKey = 'batch-mixed';
+      await h2.inject({
+        method: 'POST',
+        url: '/v1/purchases/verify',
+        headers: h2.playerHeaders(playerKey),
+        payload: {
+          commandId: h2.uuid(),
+          purchaseSigned: h2.receipt({
+            playerKey,
+            token: 'mixed-existing',
+            sku: 'gems_100',
+            price: 4.99,
+            currency: 'USD',
+          }),
+        },
+      });
 
-    const batch = await h.inject({
-      method: 'POST',
-      url: '/v1/purchases/verify-batch',
-      headers: h.playerHeaders(playerKey),
-      payload: {
-        commandId: h.uuid(),
-        purchasesSigned: h.receiptBatch({
-          playerKey,
-          purchases: [
-            { token: 'mixed-existing', sku: 'gems_100', price: 4.99, currency: 'USD' },
-            { token: 'mixed-new', sku: 'gems_550', price: 4.99, currency: 'USD' },
-          ],
-        }),
-      },
-    });
-    expect(batch.json()).toMatchObject({
-      outcome: 'processed',
-      results: [
-        { purchaseToken: 'mixed-existing', outcome: 'duplicate', completion: 'withhold' },
-        { purchaseToken: 'mixed-new', outcome: 'recorded', completion: 'withhold' },
-      ],
-    });
+      const batch = await h2.inject({
+        method: 'POST',
+        url: '/v1/purchases/verify-batch',
+        headers: h2.playerHeaders(playerKey),
+        payload: {
+          commandId: h2.uuid(),
+          purchasesSigned: h2.receiptBatch({
+            playerKey,
+            purchases: [
+              { token: 'mixed-existing', sku: 'gems_100', price: 4.99, currency: 'USD' },
+              { token: 'mixed-new', sku: 'gems_550', price: 4.99, currency: 'USD' },
+            ],
+          }),
+        },
+      });
+      expect(batch.json()).toMatchObject({
+        outcome: 'processed',
+        results: [
+          { purchaseToken: 'mixed-existing', outcome: 'duplicate', completion: 'ready' },
+          { purchaseToken: 'mixed-new', outcome: 'recorded', completion: 'ready' },
+        ],
+      });
+    } finally {
+      await h2.close();
+    }
   });
 
   it('sorts batch token locks so cross-player races cannot split ownership', async () => {
@@ -401,7 +554,7 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       await h.root`SELECT count(*)::int AS n FROM purchase_transactions WHERE provider_token = 'tok-race'`;
     expect(rows[0]!.n).toBe(1);
   });
-  it('paid receipt with mintPremium=off (default, ADR-024): classified paid, granted 0, no grant minted', async () => {
+  it('paid receipt with mintPremium=off stays unrecorded and recoverable', async () => {
     const r = await post('buyer', '/v1/purchases/verify', {
       commandId: h.uuid(),
       purchaseSigned: h.receipt({
@@ -413,14 +566,51 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       }),
     });
     expect(r.json()).toMatchObject({
-      outcome: 'recorded',
+      outcome: 'rejected',
+      reason: 'delivery_unavailable',
       completion: 'withhold',
-      purchase: { classification: 'paid', granted: 0 },
     });
-    expect(r.json().purchase.grantKey).toBeUndefined();
-    const grants =
-      await h.root`SELECT count(*)::int AS n FROM grants WHERE player_key = 'buyer' AND source = 'purchase'`;
-    expect(grants[0]!.n).toBe(0);
+    expect(r.json().purchase).toBeUndefined();
+    const rows = await h.root`
+      SELECT
+        (SELECT count(*)::int FROM purchase_transactions WHERE provider_token = 'tok-paid-1') AS transactions,
+        (SELECT count(*)::int FROM grants WHERE player_key = 'buyer' AND source = 'purchase') AS grants`;
+    expect(rows[0]).toMatchObject({ transactions: 0, grants: 0 });
+  });
+  it('withheld paid ledger rows do not consume the first delivered purchase multiplier', async () => {
+    const h2 = await setupHarness({
+      prefix: 'withheld_multiplier',
+      game: { purchases: { mintPremium: 'on' } },
+    });
+    try {
+      await h2.root`
+        INSERT INTO purchase_transactions
+          (provider_token, player_key, sku, pack_key, base_amount, granted, price, currency, sandbox, classification, created_at, source)
+        VALUES
+          ('withheld-paid-token', 'withheld-buyer', 'gems_100', 'handful', 100, 0, 4.99, 'USD', false, 'paid', now(), 'financials_import')`;
+      const delivered = await h2.inject({
+        method: 'POST',
+        url: '/v1/purchases/verify',
+        headers: h2.playerHeaders('withheld-buyer'),
+        payload: {
+          commandId: h2.uuid(),
+          purchaseSigned: h2.receipt({
+            playerKey: 'withheld-buyer',
+            token: 'first-delivered-token',
+            sku: 'gems_100',
+            price: 4.99,
+            currency: 'USD',
+          }),
+        },
+      });
+      expect(delivered.json()).toMatchObject({
+        outcome: 'recorded',
+        completion: 'ready',
+        purchase: { granted: 200 },
+      });
+    } finally {
+      await h2.close();
+    }
   });
   it('receipt without price → unclassified (never paid); unknown SKU → unsupported', async () => {
     const a = await post('buyer', '/v1/purchases/verify', {
@@ -485,7 +675,7 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       url: '/v1/purchases/mine',
       headers: h.playerHeaders('buyer'),
     });
-    expect(mine.json().purchases.length).toBe(4);
+    expect(mine.json().purchases.length).toBe(3);
     expect(mine.json().pendingAdjustments).toHaveLength(1);
     expect(mine.json().pendingAdjustments[0]).toMatchObject({
       kind: 'refund',
@@ -548,6 +738,8 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
   it('mintPremium=on mints a purchase grant with the first-purchase multiplier; entitlement flows into a restart', async () => {
     const h2 = await setupHarness({ prefix: 'mint', game: { purchases: { mintPremium: 'on' } } });
     try {
+      const firstGrantKey = `purchase:${createHash('sha256').update('tok-p1').digest('hex')}`;
+      const secondGrantKey = `purchase:${createHash('sha256').update('tok-p2').digest('hex')}`;
       const r = await h2.inject({
         method: 'POST',
         url: '/v1/purchases/verify',
@@ -566,7 +758,7 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       expect(r.json()).toMatchObject({
         outcome: 'recorded',
         completion: 'ready',
-        purchase: { classification: 'paid', granted: 200, grantKey: 'purchase:tok-p1' },
+        purchase: { classification: 'paid', granted: 200, grantKey: firstGrantKey },
       });
       const r2 = await h2.inject({
         method: 'POST',
@@ -594,12 +786,12 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
           .json()
           .grants.map((g: { grantKey: string }) => g.grantKey)
           .sort(),
-      ).toEqual(['purchase:tok-p1', 'purchase:tok-p2']);
+      ).toEqual([firstGrantKey, secondGrantKey].sort());
       const claim = await h2.inject({
         method: 'POST',
         url: '/v1/grants/claim',
         headers: h2.playerHeaders('payer'),
-        payload: { commandId: h2.uuid(), grantKey: 'purchase:tok-p1' },
+        payload: { commandId: h2.uuid(), grantKey: firstGrantKey },
       });
       expect(claim.json()).toMatchObject({
         outcome: 'claimed',
@@ -633,6 +825,46 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
         completion: 'withhold',
         purchase: { classification: 'sandbox', sandbox: true, granted: 0 },
       });
+    } finally {
+      await h2.close();
+    }
+  });
+  it('hashes a maximum-length provider token into a bounded claimable purchase grant key', async () => {
+    const h2 = await setupHarness({
+      prefix: 'purchase_grant_key',
+      game: { purchases: { mintPremium: 'on' } },
+    });
+    try {
+      const providerToken = 't'.repeat(2048);
+      const expectedGrantKey = `purchase:${createHash('sha256').update(providerToken).digest('hex')}`;
+      const verified = await h2.inject({
+        method: 'POST',
+        url: '/v1/purchases/verify',
+        headers: h2.playerHeaders('long-token-buyer'),
+        payload: {
+          commandId: h2.uuid(),
+          purchaseSigned: h2.receipt({
+            playerKey: 'long-token-buyer',
+            token: providerToken,
+            sku: 'gems_100',
+            price: 4.99,
+            currency: 'USD',
+          }),
+        },
+      });
+      expect(expectedGrantKey).toHaveLength(73);
+      expect(verified.json()).toMatchObject({
+        outcome: 'recorded',
+        completion: 'ready',
+        purchase: { grantKey: expectedGrantKey },
+      });
+      const claimed = await h2.inject({
+        method: 'POST',
+        url: '/v1/grants/claim',
+        headers: h2.playerHeaders('long-token-buyer'),
+        payload: { commandId: h2.uuid(), grantKey: expectedGrantKey },
+      });
+      expect(claimed.json()).toMatchObject({ outcome: 'claimed' });
     } finally {
       await h2.close();
     }

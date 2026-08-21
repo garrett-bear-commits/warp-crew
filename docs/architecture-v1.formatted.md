@@ -31,10 +31,11 @@ Each is a rule with an incident or a source behind it; each gets a test named af
    never open; alg pinned; `aud == GAME_ID` mandatory; `iat` window; secret rotation list; token age step-up
    for value commands.
 7. **Money is signed facts only.** Provider receipt is the sole input; provider-token idempotency; signed
-   `sandbox: true` is authoritative before price; the current schema keeps sandbox `granted = 0` pending
-   owner approval because Jest's official guidance recommends delivering test items while excluding them
-   from revenue; grant-before-confirm; per-pack promotions keyed by pack id; negative adjustments always
-   reference an admin action.
+   `sandbox: true` is authoritative before price; checkout fails closed while delivery is disabled; disabled
+   paid receipts remain provider-recoverable without creating ledger rows; bounded purchase grant keys hash
+   provider tokens; the current schema keeps sandbox `granted = 0` pending owner approval because Jest's
+   official guidance recommends delivering test items while excluding them from revenue; grant-before-confirm;
+   promotions count delivered packs only; negative adjustments always reference an admin action.
 8. **Client claims never mint premium value.** Everything the server reads out of a blob or a journal is a
    *claim*: rewards from claims are cosmetic/soft or budgeted; placements are provisional until reviewed.
 9. **Grants are the one reward primitive** — server-authored, idempotently claimable, auditable, retroactive.
@@ -421,11 +422,11 @@ hand-off) ships in the adapter.
   external monitor. PostHog via the platform for product analytics; SQL daily rollups (DAU, D1/D7/D30, payer
   conversion, claim rates) on the admin page if PostHog access lags.
 - **Sentry (server)** for errors, transactions (sampled 2–5 %, 100 % 5xx), release tagging, uptime on
-  `/health/ops?assert=page`, one cron monitor per game reading `job_runs`; `beforeSend` scrubs key-like path
-  segments and auth headers via the same redaction module as pino. Client Sentry off unless the platform confirms
-  a tunnel is acceptable; client errors go through `game_error` integrity events with breadcrumbs.
-- **Logs**: pino JSON, `requestId`/`commandId`/`gameId`, hashed player key, redaction list; refusals `warn`,
-  misconfiguration `error`.
+  `/health/ops?assert=page`, one cron monitor per game reading `job_runs`; `beforeSend` recursively scrubs auth,
+  direct `purchaseSigned`, and batch `purchasesSigned` values. Client Sentry off unless the platform confirms a
+  tunnel is acceptable; client errors go through `game_error` integrity events with breadcrumbs.
+- **Logs**: pino JSON, `requestId`/`commandId`/`gameId`, hashed player key, direct/batch signed-receipt redaction;
+  refusals `warn`, misconfiguration `error`.
 - **DR**: PITR on Lab + prod from day one (Railway pgBackRest, opt-in, not retroactive), nightly dump to R2,
   **weekly automated restore verify** writing `restore_verified_at` (ops reads it), erasure ledger mirrored to
   R2 and replayed after any restore, `docs/slo.md`: 99.5 %/30 d, p95 < 300 ms, zero acknowledged saves lost during normal
@@ -680,7 +681,7 @@ export interface IdentityClient /* browser, packages/client */ { ready(): Promis
   previousToken(): { playerId: string; token: string } | null; onIdentityChanged(cb: (prev: Player | null, next: Player) => void): () => void }
 export interface IdentityVerifier /* node, packages/jest-verify */ { verify(token: string, claimedKey: string, gameId: string, now: number): TokenResult }
 export interface PaymentsVerifier /* node, packages/jest-verify */ { verifyReceipt(jws: string, gameId: string): ReceiptResult }
-export interface PaymentsProvider { products(): Promise<Product[]>; begin(sku: string): Promise<PurchaseOutcome>; complete(token: string): Promise<PurchaseCompletionOutcome>; recoverIncompleteBatch(grant: GrantBatchFn): Promise<void> }
+export interface PaymentsProvider { products(): Promise<Product[]>; begin(sku: string): Promise<PurchaseOutcome>; complete(token: string): Promise<PurchaseCompletionOutcome>; recoverIncompleteBatch(grant: GrantBatchFn): Promise<PurchaseRecoveryReport> }
 export interface PlatformKV { set(key: string, value: string): void; delete(key: string): void; flush(): Promise<void>;
   readBreakGlass(key: string): Promise<string | null> }  // write-only mirror on the normal path; read only from the human-initiated recover flow
 export interface NotificationsProvider { eligible(): boolean; scheduleLadder(items: LadderItem[]): Promise<ScheduleResult>; unschedule(identifier: string): Promise<void> } // Jest implementation maps this seam to scheduleNotification/unscheduleNotification

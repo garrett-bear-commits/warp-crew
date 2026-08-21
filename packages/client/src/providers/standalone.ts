@@ -14,6 +14,8 @@ export interface StandaloneOptions {
   playerId: string;
   /** Provider-shaped token for playerId (QA-minted, or `mock.<playerId>.<iatMs>` against a mock verifier). */
   token: string;
+  /** Obtain a newly issued token after a server-requested credential step-up. */
+  refreshToken?: () => Promise<string | null>;
   registered?: boolean;
   displayName?: string;
   /** Optional token for a previous identity (identity-switch rehearsal); one use. */
@@ -30,6 +32,7 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
     ...(o.displayName ? { displayName: o.displayName } : {}),
   };
   let previous = o.previous ?? null;
+  let token = o.token;
   const kvStore = new Map<string, string>();
   let kvDirty = new Map<string, string | null>();
   const nav = (
@@ -52,8 +55,14 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
       isReady: () => true,
       getPlayer: () => player,
       login: async () => {},
-      refreshCredential: async () => o.token,
-      tokenFor: (id) => (id === o.playerId ? o.token : null),
+      async refreshCredential() {
+        if (!o.refreshToken) return null;
+        const fresh = await o.refreshToken();
+        if (!fresh || fresh === token) return null;
+        token = fresh;
+        return token;
+      },
+      tokenFor: (id) => (id === o.playerId ? token : null),
       previousToken() {
         const p = previous;
         previous = null;
@@ -84,7 +93,13 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
         message: 'purchases are unavailable on the standalone platform',
       }),
       complete: async () => ({ kind: 'invalid_token', message: 'purchases are unavailable' }),
-      recoverIncompleteBatch: async () => {},
+      recoverIncompleteBatch: async () => ({
+        outcome: 'drained',
+        completed: [],
+        retryable: [],
+        invalid: [],
+        pages: [],
+      }),
       recoverIncomplete: async () => {},
     },
     notifications: {

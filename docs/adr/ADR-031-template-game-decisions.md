@@ -53,6 +53,10 @@ something the architecture left implicit.
     for registration, `markFirstMilestone()` for launch, startup incomplete-purchase recovery,
     and official notification payloads. The template documentation and runbook link the official
     references and identify the remaining hosted emulator/Simulator and sandbox checks.
+11. **Retention plans refresh only on meaningful returns.** Initial registration/boot schedules a
+    D1–D7 plan; a hide/show shorter than five minutes does not reset it. Longer returns rotate a
+    three-variant copy bank using progress buckets plus a versioned, per-player return cursor in
+    the client storage tier, preventing both tab-switch resets and cold-launch restarts at variant A.
 
 ## Consequences
 

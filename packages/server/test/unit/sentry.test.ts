@@ -64,6 +64,30 @@ describe('Sentry wiring (audit F12): optional, redacted, spans', () => {
     });
     expect(e.breadcrumbs[0]!.message).toBe('x-player-key=[key]');
   });
+  it('redactEvent removes direct and batch signed receipts from nested common event shapes', () => {
+    const directSecret = 'direct-secret-jws';
+    const batchSecret = 'batch-secret-jws';
+    const event = redactEvent({
+      request: {
+        data: { purchaseSigned: directSecret, purchasesSigned: batchSecret },
+      },
+      extra: {
+        nested: { purchaseSigned: directSecret, purchasesSigned: batchSecret },
+      },
+      contexts: {
+        purchase: { purchaseSigned: directSecret, purchasesSigned: batchSecret },
+      },
+      breadcrumbs: [
+        { data: { purchaseSigned: directSecret, purchasesSigned: batchSecret, safe: 'visible' } },
+      ],
+    });
+
+    const serialized = JSON.stringify(event);
+    expect(serialized).not.toContain(directSecret);
+    expect(serialized).not.toContain(batchSecret);
+    expect(serialized).toContain('visible');
+    expect(serialized.match(/\[redacted\]/g)?.length).toBe(8);
+  });
   it('with a DSN: init with release/environment tags, beforeSend redaction, request + command spans become transactions', async () => {
     const { items, transport } = fakeTransport();
     const h = initSentry({

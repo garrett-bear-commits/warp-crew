@@ -61,12 +61,36 @@ export type RecoveryBatch = {
 /** Return only provider tokens durably recorded by the server; only those are completed. */
 export type GrantBatchFn = (batch: RecoveryBatch) => Promise<readonly string[]>;
 
+export interface PurchaseRecoveryFailure {
+  purchaseToken: string;
+  message: string;
+}
+
+export interface PurchaseRecoveryPageOutcome {
+  /** One-based fetch attempt for human-readable diagnostics. */
+  page: number;
+  purchaseTokens: string[];
+  hasMore: boolean;
+  completed: string[];
+  retryable: PurchaseRecoveryFailure[];
+  invalid: PurchaseRecoveryFailure[];
+}
+
+export interface PurchaseRecoveryReport {
+  /** Why page traversal stopped. */
+  outcome: 'drained' | 'repeated_page' | 'page_cap';
+  completed: string[];
+  retryable: PurchaseRecoveryFailure[];
+  invalid: PurchaseRecoveryFailure[];
+  pages: PurchaseRecoveryPageOutcome[];
+}
+
 /** Appendix: PaymentsProvider. */
 export interface PaymentsProvider {
   products(): Promise<Product[]>;
   begin(sku: string): Promise<PurchaseOutcome>;
   complete(token: string): Promise<PurchaseCompletionOutcome>;
-  recoverIncompleteBatch(grant: GrantBatchFn): Promise<void>;
+  recoverIncompleteBatch(grant: GrantBatchFn): Promise<PurchaseRecoveryReport>;
   recoverIncomplete(grant: GrantFn, onSigned?: (jws: string) => void): Promise<void>;
 }
 

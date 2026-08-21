@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ProviderPathologies as TestkitPathologies } from '@foundation/testkit';
 import { FakeClock } from '@foundation/testkit';
 import type { ProviderPathologies } from '../../src/providers/mock.ts';
@@ -69,6 +69,53 @@ function expectationsFor(p: ProviderPathologies): ConformanceExpectations {
   };
 }
 
+function validJestSdk(overrides: Partial<JestSdkLike> = {}): JestSdkLike {
+  const base: JestSdkLike = {
+    init: async () => {},
+    getPlayer: () => ({ playerId: 'p1', registered: true }),
+    getPlayerSigned: async () => ({
+      player: { playerId: 'p1', registered: true },
+      playerSigned: 'jws.p1',
+    }),
+    login: async () => {},
+    data: { set: () => {}, delete: () => {}, flush: async () => {}, get: () => undefined },
+    lifecycle: {
+      onHide: () => () => {},
+      onShow: () => () => {},
+      onExitRequested: () => () => {},
+    },
+    getEntryPayload: () => ({}),
+    captureEvent: () => {},
+    markFirstMilestone: () => {},
+    setLoadingProgress: () => {},
+    markGameLoaded: () => {},
+    notifications: { scheduleNotification: () => {}, unscheduleNotification: () => {} },
+    payments: {
+      getProducts: async () => [],
+      beginPurchase: async () => ({ result: 'cancel' }),
+      completePurchase: async () => ({ result: 'success' }),
+      getIncompletePurchases: async () => ({
+        purchases: [],
+        purchasesSigned: 'empty-page',
+        hasMore: false,
+      }),
+    },
+  };
+  return { ...base, ...overrides };
+}
+
+function incompletePurchase(purchaseToken: string, productSku: string) {
+  return {
+    purchaseToken,
+    productSku,
+    credits: 0,
+    createdAt: 1,
+    completedAt: null,
+    price: 0,
+    currency: 'USD',
+  };
+}
+
 describe('provider conformance — mock under every pathology', () => {
   for (const [name, pathologies] of PATHOLOGY_SETS) {
     describe(`mock[${name}]`, () => {
@@ -93,6 +140,11 @@ describe('provider conformance — mock under every pathology', () => {
       const cases = platformConformance(platform, exp, {
         wait: (ms) => timers.advance(ms),
         readyBudgetMs: 200,
+        lifecycle: {
+          hide: () => platform.controls.setVisible(false),
+          show: () => platform.controls.setVisible(true),
+          exit: () => platform.controls.firePageHide(),
+        },
       });
       for (const c of cases) it(c.name, async () => expect(await c.run()).toBe(true));
       it('storage pathologies drive the tier: blocked → memory, quota → degraded local', () => {
@@ -122,6 +174,22 @@ describe('provider conformance — mock under every pathology', () => {
     expect(p.identity.previousToken()?.token).toBe(mintMockToken('guest', 100));
     expect(p.identity.previousToken()).toBeNull();
     expect(p.identity.tokenFor('acct-1')).toBe(mintMockToken('acct-1', 150, true));
+  });
+  it('delivers mock hide, show, and exit events only to their own subscribers', () => {
+    const platform = createMockPlatform({}, { gameId: 'g' });
+    const events: string[] = [];
+    platform.lifecycle.onHide(() => events.push('hide'));
+    platform.lifecycle.onShow(() => events.push('show'));
+    platform.lifecycle.onExitRequested(() => {
+      events.push('exit');
+    });
+
+    platform.controls.setVisible(false);
+    expect(events).toEqual(['hide']);
+    platform.controls.setVisible(true);
+    expect(events).toEqual(['hide', 'show']);
+    platform.controls.firePageHide();
+    expect(events).toEqual(['hide', 'show', 'exit']);
   });
   it('mock tokens and receipts have the jest-verify mock shapes', () => {
     expect(mintMockToken('p', 5)).toBe('mock.p.5');
@@ -176,9 +244,156 @@ describe('provider conformance — standalone', () => {
     p.loading.markLoaded();
     expect(loaded).toBe(1);
   });
+
+  it('reports credential refresh unavailable instead of returning the same static token', async () => {
+    const platform = createStandalonePlatform({ playerId: 'qa', token: 'static-token' });
+
+    await expect(platform.identity.refreshCredential()).resolves.toBeNull();
+    expect(platform.identity.tokenFor('qa')).toBe('static-token');
+  });
+
+  it('adopts a genuinely fresh standalone token supplied by the QA host', async () => {
+    const refreshToken = vi.fn(async () => 'fresh-token');
+    const platform = createStandalonePlatform({
+      playerId: 'qa',
+      token: 'stale-token',
+      refreshToken,
+    });
+
+    await expect(platform.identity.refreshCredential()).resolves.toBe('fresh-token');
+    expect(refreshToken).toHaveBeenCalledTimes(1);
+    expect(platform.identity.tokenFor('qa')).toBe('fresh-token');
+  });
+
+  it('refuses a refresh supplier result that repeats the current standalone token', async () => {
+    const platform = createStandalonePlatform({
+      playerId: 'qa',
+      token: 'same-token',
+      refreshToken: async () => 'same-token',
+    });
+
+    await expect(platform.identity.refreshCredential()).resolves.toBeNull();
+    expect(platform.identity.tokenFor('qa')).toBe('same-token');
+  });
 });
 
 describe('jest platform — defensive SDK wrapper', () => {
+  it('keeps eager platform incompatibility handled until ready() observes the typed rejection', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      const platform = createJestPlatform({ sdk: null, errors: { report: () => {} } });
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      expect(unhandled).toEqual([]);
+      await expect(platform.identity.ready()).rejects.toMatchObject({
+        name: 'PlatformIncompatibleError',
+        missing: ['JestSDK'],
+      });
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
+
+  it('defers lifecycle registration until init succeeds, then delivers hide/show/exit in isolation', async () => {
+    let resolveInit!: () => void;
+    let initialized = false;
+    const registered = {
+      hide: new Set<() => void>(),
+      show: new Set<() => void>(),
+      exit: new Set<() => void | Promise<void>>(),
+    };
+    const requireReady = (): void => {
+      if (!initialized) throw new Error('lifecycle registered before init');
+    };
+    const sdk = validJestSdk({
+      init: () =>
+        new Promise<void>((resolve) => {
+          resolveInit = () => {
+            initialized = true;
+            resolve();
+          };
+        }),
+      lifecycle: {
+        onHide(cb) {
+          requireReady();
+          registered.hide.add(cb);
+          return () => registered.hide.delete(cb);
+        },
+        onShow(cb) {
+          requireReady();
+          registered.show.add(cb);
+          return () => registered.show.delete(cb);
+        },
+        onExitRequested(cb) {
+          requireReady();
+          registered.exit.add(cb);
+          return () => registered.exit.delete(cb);
+        },
+      },
+    });
+    const reports: string[] = [];
+    const platform = createJestPlatform({
+      sdk,
+      errors: { report: (event) => reports.push(event.message ?? event.kind) },
+    });
+    const events: string[] = [];
+
+    platform.lifecycle.onHide(() => events.push('hide'));
+    platform.lifecycle.onShow(() => events.push('show'));
+    platform.lifecycle.onExitRequested(() => {
+      events.push('exit');
+    });
+
+    expect(registered.hide.size + registered.show.size + registered.exit.size).toBe(0);
+    resolveInit();
+    await platform.identity.ready();
+    expect(reports).toEqual([]);
+    expect(registered.hide.size).toBe(1);
+    expect(registered.show.size).toBe(1);
+    expect(registered.exit.size).toBe(1);
+
+    for (const cb of registered.hide) cb();
+    expect(events).toEqual(['hide']);
+    for (const cb of registered.show) cb();
+    expect(events).toEqual(['hide', 'show']);
+    for (const cb of registered.exit) await cb();
+    expect(events).toEqual(['hide', 'show', 'exit']);
+  });
+
+  it('cancels a deferred lifecycle subscription before init without registering it later', async () => {
+    let resolveInit!: () => void;
+    let hideRegistrations = 0;
+    const sdk = validJestSdk({
+      init: () =>
+        new Promise<void>((resolve) => {
+          resolveInit = resolve;
+        }),
+      lifecycle: {
+        onHide: () => {
+          hideRegistrations++;
+          return () => {};
+        },
+        onShow: () => () => {},
+        onExitRequested: () => () => {},
+      },
+    });
+    const platform = createJestPlatform({ sdk });
+
+    const off = platform.lifecycle.onHide(() => {});
+    off();
+    off();
+    resolveInit();
+    await platform.identity.ready();
+    await Promise.resolve();
+
+    expect(hideRegistrations).toBe(0);
+  });
+
   it('login re-reads registration and credential while preserving the stable player id', async () => {
     let registered = false;
     let credential = 'guest-jws';
@@ -561,6 +776,27 @@ describe('jest platform — defensive SDK wrapper', () => {
     );
   });
 
+  it('reports and rejects a failed notification unschedule so planners can observe it', async () => {
+    const failure = new Error('moderation service unavailable');
+    const reported: string[] = [];
+    const sdk = validJestSdk({
+      notifications: {
+        scheduleNotification: () => {},
+        unscheduleNotification: () => {
+          throw failure;
+        },
+      },
+    });
+    const platform = createJestPlatform({
+      sdk,
+      errors: { report: (event) => reported.push(event.message ?? event.kind) },
+    });
+    await platform.identity.ready();
+
+    await expect(platform.notifications.unschedule('return-1')).rejects.toBe(failure);
+    expect(reported).toContain('Jest unscheduleNotification failed');
+  });
+
   it('recovers pages through signed batches and completes only tokens the batch verifier made durable', async () => {
     const completions: string[] = [];
     let page = 0;
@@ -620,5 +856,212 @@ describe('jest platform — defensive SDK wrapper', () => {
     });
     expect(batches).toEqual(['batch-1', 'batch-2']);
     expect(completions).toEqual(['a', 'c']);
+  });
+
+  it('continues through hasMore after a zero-completion page and returns page outcomes', async () => {
+    let page = 0;
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async () => ({ result: 'success' }),
+        getIncompletePurchases: async () =>
+          page++ === 0
+            ? {
+                purchases: [incompletePurchase('withheld', 'one')],
+                purchasesSigned: 'batch-withheld',
+                hasMore: true,
+              }
+            : {
+                purchases: [incompletePurchase('ready', 'two')],
+                purchasesSigned: 'batch-ready',
+                hasMore: false,
+              },
+      },
+    });
+    const platform = createJestPlatform({ sdk });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async (batch) =>
+      batch.purchasesSigned === 'batch-ready' ? ['ready'] : [],
+    );
+
+    expect(report).toEqual({
+      outcome: 'drained',
+      completed: ['ready'],
+      retryable: [],
+      invalid: [],
+      pages: [
+        {
+          page: 1,
+          purchaseTokens: ['withheld'],
+          hasMore: true,
+          completed: [],
+          retryable: [],
+          invalid: [],
+        },
+        {
+          page: 2,
+          purchaseTokens: ['ready'],
+          hasMore: false,
+          completed: ['ready'],
+          retryable: [],
+          invalid: [],
+        },
+      ],
+    });
+  });
+
+  it('reports retryable and invalid completion outcomes without hiding later token results', async () => {
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async ({ purchaseToken }) =>
+          purchaseToken === 'completed'
+            ? { result: 'success' }
+            : purchaseToken === 'retryable'
+              ? { result: 'error', error: 'internal_error' }
+              : { result: 'error', error: 'invalid_token' },
+        getIncompletePurchases: async () => ({
+          purchases: [
+            incompletePurchase('completed', 'one'),
+            incompletePurchase('retryable', 'two'),
+            incompletePurchase('invalid', 'three'),
+          ],
+          purchasesSigned: 'batch-outcomes',
+          hasMore: false,
+        }),
+      },
+    });
+    const platform = createJestPlatform({ sdk, errors: { report: () => {} } });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async (batch) =>
+      batch.purchases.map((purchase) => purchase.purchaseToken),
+    );
+
+    expect(report.outcome).toBe('drained');
+    expect(report.completed).toEqual(['completed']);
+    expect(report.retryable).toEqual([{ purchaseToken: 'retryable', message: 'internal_error' }]);
+    expect(report.invalid).toEqual([{ purchaseToken: 'invalid', message: 'invalid_token' }]);
+    expect(report.pages).toEqual([
+      expect.objectContaining({
+        completed: ['completed'],
+        retryable: [{ purchaseToken: 'retryable', message: 'internal_error' }],
+        invalid: [{ purchaseToken: 'invalid', message: 'invalid_token' }],
+      }),
+    ]);
+  });
+
+  it('deduplicates provider tokens before grant and completes each token at most once', async () => {
+    const completed: string[] = [];
+    const granted: Array<{ purchaseToken: string; sku: string }> = [];
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async ({ purchaseToken }) => {
+          completed.push(purchaseToken);
+          return { result: 'success' };
+        },
+        getIncompletePurchases: async () => ({
+          purchases: [
+            incompletePurchase('duplicate', 'first-sku'),
+            incompletePurchase('duplicate', 'conflicting-sku'),
+            incompletePurchase('unique', 'unique-sku'),
+          ],
+          purchasesSigned: 'batch-with-duplicate-token',
+          hasMore: false,
+        }),
+      },
+    });
+    const platform = createJestPlatform({ sdk });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async (batch) => {
+      granted.push(...batch.purchases);
+      return batch.purchases.map((purchase) => purchase.purchaseToken);
+    });
+
+    expect(granted).toEqual([
+      { purchaseToken: 'duplicate', sku: 'first-sku' },
+      { purchaseToken: 'unique', sku: 'unique-sku' },
+    ]);
+    expect(completed).toEqual(['duplicate', 'unique']);
+    expect(report.completed).toEqual(['duplicate', 'unique']);
+    expect(report.pages[0]?.purchaseTokens).toEqual(['duplicate', 'unique']);
+  });
+
+  it('stops a repeated canonical token set even when the JWS and token order change', async () => {
+    let calls = 0;
+    let grantedPages = 0;
+    const reported: string[] = [];
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async () => ({ result: 'success' }),
+        getIncompletePurchases: async () => {
+          calls++;
+          return {
+            purchases:
+              calls % 2 === 1
+                ? [incompletePurchase('blocked-b', 'two'), incompletePurchase('blocked-a', 'one')]
+                : [incompletePurchase('blocked-a', 'one'), incompletePurchase('blocked-b', 'two')],
+            purchasesSigned: `same-purchases-changing-claims-${calls}`,
+            hasMore: true,
+          };
+        },
+      },
+    });
+    const platform = createJestPlatform({
+      sdk,
+      errors: { report: (event) => reported.push(event.message ?? event.kind) },
+    });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async () => {
+      grantedPages++;
+      return [];
+    });
+
+    expect(report.outcome).toBe('repeated_page');
+    expect(report.pages).toHaveLength(1);
+    expect(calls).toBe(2);
+    expect(grantedPages).toBe(1);
+    expect(reported).toContain('Jest incomplete purchase page repeated');
+  });
+
+  it('caps unique recovery pages and exposes the cap outcome', async () => {
+    let calls = 0;
+    const reported: string[] = [];
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async () => ({ result: 'success' }),
+        getIncompletePurchases: async () => {
+          calls++;
+          return {
+            purchases: [incompletePurchase(`token-${calls}`, `sku-${calls}`)],
+            purchasesSigned: `page-${calls}`,
+            hasMore: true,
+          };
+        },
+      },
+    });
+    const platform = createJestPlatform({
+      sdk,
+      errors: { report: (event) => reported.push(event.message ?? event.kind) },
+    });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async () => []);
+
+    expect(report.outcome).toBe('page_cap');
+    expect(report.pages).toHaveLength(100);
+    expect(calls).toBe(100);
+    expect(reported).toContain('Jest incomplete purchase recovery page cap reached');
   });
 });

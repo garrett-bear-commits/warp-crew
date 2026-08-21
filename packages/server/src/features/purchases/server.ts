@@ -26,6 +26,7 @@ import type { CatalogPack } from '../../game/config.ts';
 import { mintGrant } from '../../rewards/mint.ts';
 import { actorLabel } from '../../cqrs/bus.ts';
 import { entitlementFor } from '../../game/facts.ts';
+import { sha256Hex } from '../../db/canonical.ts';
 
 type VerifyResult = Omit<PurchaseVerifyResult, 'serverNow' | 'requestId'>;
 type BatchVerifyResult = Omit<PurchaseBatchVerifyResult, 'serverNow' | 'requestId'>;
@@ -37,6 +38,15 @@ export type Classified =
   | { kind: Exclude<PurchaseClassification, 'unsupported'>; pack: CatalogPack };
 
 const VALID_CURRENCIES = new Set(Intl.supportedValuesOf('currency'));
+const PURCHASE_VERIFY_SWITCH = 'purchases.verify';
+const PURCHASE_VERIFY_BATCH_SWITCH = 'purchases.verifyBatch';
+
+function purchaseVerificationPaused(ctx: AppContext): boolean {
+  return (
+    ctx.liveops.killSwitch('command', PURCHASE_VERIFY_SWITCH) ||
+    ctx.liveops.killSwitch('command', PURCHASE_VERIFY_BATCH_SWITCH)
+  );
+}
 
 /** Only signed facts classify money. Unknown products stay unsupported; sandbox provenance beats price. */
 export function classifyReceipt(r: VerifiedReceipt, catalog: readonly CatalogPack[]): Classified {
@@ -214,16 +224,23 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
       };
 
     const c = classifyReceipt(r, game.catalog);
+    if (c.kind === 'paid' && game.purchases.mintPremium === 'off')
+      return {
+        purchaseToken: r.purchaseToken,
+        outcome: 'rejected',
+        reason: 'delivery_unavailable',
+        completion: 'withhold',
+      };
     let granted = 0;
     let grantKey: string | null = null;
     if (c.kind !== 'unsupported') {
       const prev = await t<
         { n: number }[]
-      >`SELECT count(*)::int AS n FROM purchase_transactions WHERE player_key = ${playerKey} AND pack_key = ${c.pack.packKey} AND classification = 'paid'`;
+      >`SELECT count(*)::int AS n FROM purchase_transactions WHERE player_key = ${playerKey} AND pack_key = ${c.pack.packKey} AND classification = 'paid' AND grant_key IS NOT NULL`;
       granted = grantedAmount(c, (prev[0]?.n ?? 0) > 0, game.purchases.mintPremium);
     }
     if (granted > 0) {
-      grantKey = `purchase:${r.purchaseToken}`;
+      grantKey = `purchase:${sha256Hex(r.purchaseToken)}`;
       await mintGrant(t, {
         playerKey,
         grantKey,
@@ -375,20 +392,15 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
     app,
     ctx,
     'purchases.verify',
-    async ({ body, exec }) => {
-      if (ctx.liveops.killSwitch('command', 'purchases.verify'))
-        throw new AppError('forbidden', 'purchases are switched off');
-      return bus.execute(PurchasesVerify, { commandId: body.commandId, payload: body }, exec!);
-    },
+    async ({ body, exec }) =>
+      bus.execute(PurchasesVerify, { commandId: body.commandId, payload: body }, exec!),
   );
   route<
     typeof PurchaseBatchVerifyBody,
     typeof import('@foundation/contracts').PurchaseBatchVerifyResult
-  >(app, ctx, 'purchases.verifyBatch', async ({ body, exec }) => {
-    if (ctx.liveops.killSwitch('command', 'purchases.verifyBatch'))
-      throw new AppError('forbidden', 'purchases are switched off');
-    return bus.execute(PurchasesVerifyBatch, { commandId: body.commandId, payload: body }, exec!);
-  });
+  >(app, ctx, 'purchases.verifyBatch', async ({ body, exec }) =>
+    bus.execute(PurchasesVerifyBatch, { commandId: body.commandId, payload: body }, exec!),
+  );
   route<typeof AdjustmentsAckBody, typeof import('@foundation/contracts').AdjustmentsAckResult>(
     app,
     ctx,
@@ -412,6 +424,8 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
         pendingAdjustments: await listAdjustments(sql, playerKey, true),
         entitlement: await entitlementFor(sql, playerKey),
         purchasesDisabled: disabled,
+        checkoutEnabled:
+          !disabled && game.purchases.mintPremium === 'on' && !purchaseVerificationPaused(ctx),
       };
       return out;
     },

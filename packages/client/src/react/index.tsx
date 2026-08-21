@@ -245,6 +245,7 @@ export function RegistrationGate(props: {
       {props.prompt ?? <p>Sign in to use this feature.</p>}
       {props.onLogin ? (
         <button
+          type="button"
           className="foundation-registration-login"
           disabled={busy}
           onClick={() => void login()}

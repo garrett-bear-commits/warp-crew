@@ -2796,6 +2796,8 @@
                         },
                         "granted": {},
                         "grantKey": {
+                          "minLength": 1,
+                          "maxLength": 200,
                           "type": "string"
                         },
                         "price": {
@@ -3065,6 +3067,8 @@
                               },
                               "granted": {},
                               "grantKey": {
+                                "minLength": 1,
+                                "maxLength": 200,
                                 "type": "string"
                               },
                               "price": {
@@ -3237,6 +3241,7 @@
                     "pendingAdjustments",
                     "entitlement",
                     "purchasesDisabled",
+                    "checkoutEnabled",
                     "serverNow",
                     "requestId"
                   ],
@@ -3288,6 +3293,8 @@
                           },
                           "granted": {},
                           "grantKey": {
+                            "minLength": 1,
+                            "maxLength": 200,
                             "type": "string"
                           },
                           "price": {
@@ -3376,6 +3383,9 @@
                     },
                     "entitlement": {},
                     "purchasesDisabled": {
+                      "type": "boolean"
+                    },
+                    "checkoutEnabled": {
                       "type": "boolean"
                     },
                     "serverNow": {},

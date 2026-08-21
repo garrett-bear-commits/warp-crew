@@ -62,7 +62,13 @@ const config: ServerConfig = {
 validateConfig(config);
 const log = createLogger(config.logLevel);
 const db = createDb(config.databaseUrl, { max: 8, applicationName: 'e2e' });
-const server = await createServer({ config, game: templateGame, policy: templatePolicy, log, db });
+// Browser acceptance deliberately enables delivery while all mock receipts remain signed sandbox
+// purchases. Production template config stays fail-closed until the owner gate is opened.
+const e2eGame = {
+  ...templateGame,
+  purchases: { mintPremium: 'on' as const },
+};
+const server = await createServer({ config, game: e2eGame, policy: templatePolicy, log, db });
 await server.start();
 console.log(`E2E_API_READY port=${port} db=${test.name}`);
 const stop = async () => {

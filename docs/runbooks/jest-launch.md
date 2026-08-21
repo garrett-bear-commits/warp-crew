@@ -45,10 +45,16 @@ Official references reviewed 2026-08-20: [HTML5 SDK](https://docs.jest.com/sdk/h
       `captureEvent()` emits non-PII stable names, and `markFirstMilestone()` is called.
 - [ ] Confirm registered users receive the planned notification schedule. Every notification has
       valid one-of `scheduledAt`/`scheduledInDays`, identifier, body, CTA, attribution payload,
-      and an approved asset. Test stale-identifier replacement on return. Do not promise exact
+      and an approved asset. Test stale-identifier replacement after a meaningful return, verify a
+      short tab switch does not reset the plan, and confirm the versioned per-player cursor rotates
+      D1 copy/attribution after both a meaningful return and a cold relaunch. Do not promise exact
       delivery time; Jest may deliver at most one notification per user/day.
 - [ ] Create a sandbox user and test login, guest→registered continuity, notifications, catalog
       display, purchase, crash/restart recovery, `hasMore` paging, and completion.
+- [ ] Keep production `purchases.mintPremium=off` until paid payload validation and owner approval;
+      the server must report `checkoutEnabled=false` and the UI must remain disabled. For a
+      controlled sandbox-only Lab exercise, temporarily enable delivery on the isolated Lab server,
+      verify that signed `sandbox:true` still grants zero, then turn the gate back off.
 - [ ] Treat signed `sandbox: true` as authoritative before price. Current repository policy keeps
       sandbox `granted = 0`; do not change that constraint without owner approval. Official Jest
       guidance recommends delivering sandbox test items while excluding them from revenue and

@@ -93,6 +93,22 @@ describe('route registry invariants', () => {
     ).properties.purchase;
     expect(purchase.required).toContain('sandbox');
   });
+
+  it('requires server-authored checkout readiness on the purchases read model', () => {
+    const schema = ROUTE_BY_ID.get('purchases.mine')!.response as unknown as {
+      required?: string[];
+    };
+    expect(schema.required).toContain('checkoutEnabled');
+  });
+
+  it('bounds purchase grant keys to the claim contract limit', () => {
+    const grantKey = (
+      ROUTE_BY_ID.get('purchases.verify')!.response as unknown as {
+        properties: { purchase: { properties: { grantKey: { maxLength?: number } } } };
+      }
+    ).properties.purchase.properties.grantKey;
+    expect(grantKey.maxLength).toBe(200);
+  });
 });
 
 describe('fixtures validate against schemas (both sides share them)', () => {

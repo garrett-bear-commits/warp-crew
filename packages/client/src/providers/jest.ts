@@ -20,6 +20,8 @@ import {
   type Product,
   type PurchaseCompletionOutcome,
   type PurchaseOutcome,
+  type PurchaseRecoveryPageOutcome,
+  type PurchaseRecoveryReport,
   type RecoveryBatch,
   type ScheduleResult,
 } from './types.ts';
@@ -255,6 +257,10 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
     await reread();
     ready = true;
   })();
+  // Construction starts SDK initialization immediately so the host can begin work before the game
+  // client reaches identity.ready(). Mark the shared promise handled now; ready() still returns the
+  // original promise and therefore preserves the typed rejection for its caller.
+  void boot.catch(() => undefined);
   const identity: IdentityClient = {
     ready: () => boot,
     isReady: () => ready,
@@ -287,12 +293,22 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
     key: keyof JestSdkLike['lifecycle'],
     cb: () => void | Promise<void>,
   ): (() => void) => {
-    try {
-      return safeOff((sdk!.lifecycle![key] as (c: typeof cb) => () => void)(cb));
-    } catch {
-      report(`Jest lifecycle ${key} failed`);
-      return () => {};
-    }
+    let cancelled = false;
+    let registeredOff: () => void = () => {};
+    const register = (): void => {
+      if (cancelled) return;
+      try {
+        registeredOff = safeOff((sdk!.lifecycle![key] as (c: typeof cb) => () => void)(cb));
+      } catch {
+        report(`Jest lifecycle ${key} failed`);
+      }
+    };
+    if (ready) register();
+    else void boot.then(register, () => undefined);
+    return safeOff(() => {
+      cancelled = true;
+      registeredOff();
+    });
   };
   let platformVisible = documentLifecycle().visible();
   const onHide = (cb: () => void): (() => void) =>
@@ -324,7 +340,14 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
   };
   const recoverBatch = async (
     grant: (batch: RecoveryBatch) => Promise<readonly string[]>,
-  ): Promise<void> => {
+  ): Promise<PurchaseRecoveryReport> => {
+    const recovery: PurchaseRecoveryReport = {
+      outcome: 'page_cap',
+      completed: [],
+      retryable: [],
+      invalid: [],
+      pages: [],
+    };
     const seen = new Set<string>();
     for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
       const page = await (
@@ -338,32 +361,63 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
         typeof page.hasMore !== 'boolean'
       )
         throw fail(['payments.getIncompletePurchases() result']);
-      const purchases: IncompletePurchase[] = [];
+      const purchasesByToken = new Map<string, IncompletePurchase>();
       for (const p of page.purchases) {
         if (!p || typeof p.purchaseToken !== 'string' || typeof p.productSku !== 'string')
           throw fail(['payments.getIncompletePurchases().purchases']);
-        purchases.push({ purchaseToken: p.purchaseToken, sku: p.productSku });
+        if (!purchasesByToken.has(p.purchaseToken))
+          purchasesByToken.set(p.purchaseToken, {
+            purchaseToken: p.purchaseToken,
+            sku: p.productSku,
+          });
       }
-      const fingerprint = `${page.purchasesSigned}:${purchases.map((p) => p.purchaseToken).join(',')}`;
+      const purchases = [...purchasesByToken.values()];
+      const fingerprint = JSON.stringify(
+        [...new Set(purchases.map((purchase) => purchase.purchaseToken))].sort(),
+      );
       if (seen.has(fingerprint)) {
         report('Jest incomplete purchase page repeated');
-        return;
+        recovery.outcome = 'repeated_page';
+        return recovery;
       }
       seen.add(fingerprint);
       const requested = new Set(
         await grant({ purchases, purchasesSigned: page.purchasesSigned, hasMore: page.hasMore }),
       );
-      let progressed = false;
+      const pageOutcome: PurchaseRecoveryPageOutcome = {
+        page: pageNumber + 1,
+        purchaseTokens: purchases.map((purchase) => purchase.purchaseToken),
+        hasMore: page.hasMore,
+        completed: [],
+        retryable: [],
+        invalid: [],
+      };
       for (const p of purchases)
         if (requested.has(p.purchaseToken)) {
           const outcome = await complete(p.purchaseToken);
-          if (outcome.kind === 'success') progressed = true;
-          else if (outcome.kind === 'retryable_error') return;
-          else report('Jest purchase completion returned invalid_token');
+          if (outcome.kind === 'success') {
+            recovery.completed.push(p.purchaseToken);
+            pageOutcome.completed.push(p.purchaseToken);
+          } else {
+            const failure = { purchaseToken: p.purchaseToken, message: outcome.message };
+            if (outcome.kind === 'retryable_error') {
+              recovery.retryable.push(failure);
+              pageOutcome.retryable.push(failure);
+            } else {
+              recovery.invalid.push(failure);
+              pageOutcome.invalid.push(failure);
+              report('Jest purchase completion returned invalid_token');
+            }
+          }
         }
-      if (!page.hasMore || !progressed) return;
+      recovery.pages.push(pageOutcome);
+      if (!page.hasMore) {
+        recovery.outcome = 'drained';
+        return recovery;
+      }
     }
     report('Jest incomplete purchase recovery page cap reached');
+    return recovery;
   };
   return {
     name: 'jest',
@@ -493,8 +547,9 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
             sdk!.notifications!
               .unscheduleNotification as JestSdkLike['notifications']['unscheduleNotification']
           )({ identifier: id });
-        } catch {
+        } catch (error) {
           report('Jest unscheduleNotification failed');
+          throw error;
         }
       },
     },

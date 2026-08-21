@@ -7,7 +7,7 @@ import { E2E_JEST_GAME_PORT } from './const.ts';
 const JEST_GAME = `http://localhost:${E2E_JEST_GAME_PORT}`;
 
 /** Install a local official-shape SDK before the app module can run. */
-async function installOfficialShapeFixture(page: Page): Promise<void> {
+async function installOfficialShapeFixture(page: Page, stablePlayerId: string): Promise<void> {
   await page.route('https://cdn.jest.com/sdk/latest/jestsdk.js', (route) =>
     route.fulfill({
       status: 200,
@@ -15,7 +15,7 @@ async function installOfficialShapeFixture(page: Page): Promise<void> {
       body: '/* local official-shape fixture; no real Jest SDK */',
     }),
   );
-  await page.addInitScript(() => {
+  await page.addInitScript((playerId) => {
     type Call = { name: string; args: unknown[] };
     type Listener = () => void | Promise<void>;
     type Player = { playerId: string; registered: boolean };
@@ -26,7 +26,9 @@ async function installOfficialShapeFixture(page: Page): Promise<void> {
     const exiting = new Set<Listener>();
     const data = new Map<string, string>();
     const player: Player = {
-      playerId: `official-shape-${crypto.randomUUID()}`,
+      // Jest player ids are stable across launches; the fixture must preserve that invariant so
+      // cold-launch behavior can exercise per-player local state.
+      playerId,
       registered: true,
     };
     const mockReceipt = (purchases: Array<Record<string, unknown>>): string => {
@@ -243,7 +245,7 @@ async function installOfficialShapeFixture(page: Page): Promise<void> {
         incompletePage = 0;
       },
     };
-  });
+  }, stablePlayerId);
 }
 
 type FixtureCall = { name: string; args: unknown[] };
@@ -258,8 +260,9 @@ async function fixtureCalls(page: Page): Promise<FixtureCall[]> {
 
 test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, notifications, payments', async ({
   page,
+  browserName,
 }) => {
-  await installOfficialShapeFixture(page);
+  await installOfficialShapeFixture(page, `official-shape-${browserName}-1`);
   await page.goto(`${JEST_GAME}/?platform=jest`);
   await expect(page.getByTestId('app')).toHaveAttribute('data-booted', '1', { timeout: 30_000 });
   await expect
@@ -298,10 +301,12 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
       ctaText: 'Keep building',
       entryPayload: {
         source: 'retention_notification',
-        notification_template: `template_return_d${i + 1}_v1`,
+        notification_template: `template_return_d${i + 1}_v2_a`,
         notification_offset: `D${i + 1}`,
-        plan_version: 'template_retention_v1',
+        plan_version: 'template_retention_v2',
         build_version: '1.0.0-dev',
+        progress_bucket: '0',
+        variant: 'a',
       },
     });
   }
@@ -386,6 +391,13 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
   expect(lifecycleCalls.some((call) => call.name === 'lifecycle.onHide.unsubscribe')).toBe(true);
   expect(lifecycleCalls.some((call) => call.name === 'lifecycle.onShow')).toBe(true);
   expect(lifecycleCalls.some((call) => call.name === 'lifecycle.onExitRequested')).toBe(true);
+  // A quick shell hide/show is not a meaningful return and must not reset the D1-D7 ladder.
+  expect(
+    lifecycleCalls.filter((call) => call.name === 'notifications.scheduleNotification'),
+  ).toHaveLength(7);
+  expect(
+    lifecycleCalls.filter((call) => call.name === 'notifications.unscheduleNotification'),
+  ).toHaveLength(7);
 
   // Exercise the provider boundary directly with official products, purchase unions, and two
   // paged recovery responses. This remains local/mock evidence; no real payment is attempted.
@@ -443,4 +455,27 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
   );
   expect(allCalls.findIndex((call) => call.name === 'init')).toBe(0);
   expect(allCalls.slice(1).every((call) => call.name !== 'init')).toBe(true);
+
+  await page.reload();
+  await expect(page.getByTestId('app')).toHaveAttribute('data-booted', '1', { timeout: 30_000 });
+  await expect
+    .poll(
+      async () =>
+        (await fixtureCalls(page)).filter(
+          (call) => call.name === 'notifications.scheduleNotification',
+        ).length,
+      { timeout: 15_000 },
+    )
+    .toBe(7);
+  const coldLaunchSchedule = (await fixtureCalls(page))
+    .filter((call) => call.name === 'notifications.scheduleNotification')
+    .map((call) => call.args[0] as Record<string, unknown>);
+  expect(coldLaunchSchedule[0]).toMatchObject({
+    body: 'There is more progress ready to unlock.',
+    entryPayload: {
+      notification_template: 'template_return_d1_v2_b',
+      plan_version: 'template_retention_v2',
+      variant: 'b',
+    },
+  });
 });

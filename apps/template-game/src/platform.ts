@@ -26,6 +26,11 @@ export function createPlatform(cfg: GameConfig, clock: Clock): PlatformAdapter {
         playerId: cfg.playerId,
         token: cfg.token ?? mintMockToken(cfg.playerId, clock.now(), cfg.registered),
         registered: cfg.registered,
+        ...(cfg.token === null
+          ? {
+              refreshToken: async () => mintMockToken(cfg.playerId, clock.now(), cfg.registered),
+            }
+          : {}),
       });
     case 'mock': {
       const mock = createMockPlatform(

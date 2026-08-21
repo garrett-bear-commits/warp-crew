@@ -4,7 +4,7 @@ import { ROUTES } from '@foundation/contracts/routes';
 
 let h: Harness;
 beforeAll(async () => {
-  h = await setupHarness({ prefix: 'feat' });
+  h = await setupHarness({ prefix: 'feat', game: { purchases: { mintPremium: 'on' } } });
 });
 afterAll(async () => h?.close());
 

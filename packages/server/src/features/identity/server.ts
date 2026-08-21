@@ -7,6 +7,7 @@ import type { ExecCtx } from '../../cqrs/define.ts';
 import { AppError } from '../../errors.ts';
 
 const SEEN_THROTTLE_MS = 60_000;
+const PURCHASE_VERIFICATION_COMMANDS = ['purchases.verify', 'purchases.verifyBatch'] as const;
 export const ENTRY_PAYLOAD_ALLOWLIST = ['ref', 'campaign', 'source', 'entry'] as const;
 
 export function allowlistEntryPayload(raw: unknown): Record<string, string> | null {
@@ -68,9 +69,16 @@ export function registerIdentity(_app: FastifyInstance, ctx: AppContext): void {
 
   // Middleware guard: player_flags + kill switches per command (§7 middleware consults player_flags).
   const guard = async (def: { type: string }, exec: ExecCtx) => {
-    if (ctx.liveops.killSwitch('command', def.type))
+    const isPurchaseVerification =
+      def.type === 'purchases.verify' || def.type === 'purchases.verifyBatch';
+    const killSwitch = isPurchaseVerification
+      ? (PURCHASE_VERIFICATION_COMMANDS.find((id) => ctx.liveops.killSwitch('command', id)) ?? null)
+      : ctx.liveops.killSwitch('command', def.type)
+        ? def.type
+        : null;
+    if (killSwitch)
       throw new AppError('forbidden', `command ${def.type} is switched off`, {
-        killSwitch: def.type,
+        killSwitch,
       });
     if (exec.actor.kind !== 'player' || !exec.playerKey) return;
     if (

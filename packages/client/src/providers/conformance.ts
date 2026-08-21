@@ -29,6 +29,8 @@ export interface ConformanceHarness {
   wait(ms: number): Promise<void>;
   /** Budget for ready() before we call it "never". */
   readyBudgetMs?: number;
+  /** Optional controls let the shared suite verify lifecycle delivery, isolation, and teardown. */
+  lifecycle?: { hide(): void; show(): void; exit(): void };
 }
 
 const settle = <T>(
@@ -189,6 +191,23 @@ export function platformConformance(
       },
     },
     {
+      name: 'payments.recoverIncompleteBatch() returns an observable completion report',
+      run: async () => {
+        const r = await settle(
+          payments.recoverIncompleteBatch(async (batch) =>
+            batch.purchases.map((purchase) => purchase.purchaseToken),
+          ),
+        );
+        return (
+          r.ok &&
+          r.value.outcome === 'drained' &&
+          r.value.completed.length === expect.incompletePurchases &&
+          r.value.retryable.length === 0 &&
+          r.value.invalid.length === 0
+        );
+      },
+    },
+    {
       name: 'kv.set/delete never throw synchronously',
       run: async () => {
         try {
@@ -299,6 +318,37 @@ export function platformConformance(
         a();
         b();
         return true;
+      },
+    },
+    {
+      name: 'lifecycle hide/show/exit delivery is isolated and unsubscribable',
+      run: async () => {
+        if (!harness.lifecycle) return true;
+        const events: string[] = [];
+        const hideOff = platform.lifecycle.onHide(() => {
+          events.push('hide');
+        });
+        const showOff = platform.lifecycle.onShow(() => {
+          events.push('show');
+        });
+        const exitOff = platform.lifecycle.onExitRequested(() => {
+          events.push('exit');
+        });
+
+        harness.lifecycle.hide();
+        if (events.join(',') !== 'hide' || platform.lifecycle.visible()) return false;
+        harness.lifecycle.show();
+        if (events.join(',') !== 'hide,show' || !platform.lifecycle.visible()) return false;
+        harness.lifecycle.exit();
+        if (events.join(',') !== 'hide,show,exit') return false;
+
+        hideOff();
+        showOff();
+        exitOff();
+        harness.lifecycle.hide();
+        harness.lifecycle.show();
+        harness.lifecycle.exit();
+        return events.join(',') === 'hide,show,exit';
       },
     },
     {

@@ -265,8 +265,28 @@ export function createMockPlatform(
           hasMore: false,
         }),
       );
+      const completedTokens: string[] = [];
       for (const purchase of purchases)
-        if (tokens.has(purchase.purchaseToken)) completed.push(purchase.purchaseToken);
+        if (tokens.has(purchase.purchaseToken)) {
+          completed.push(purchase.purchaseToken);
+          completedTokens.push(purchase.purchaseToken);
+        }
+      return {
+        outcome: 'drained' as const,
+        completed: completedTokens,
+        retryable: [],
+        invalid: [],
+        pages: [
+          {
+            page: 1,
+            purchaseTokens: purchases.map((purchase) => purchase.purchaseToken),
+            hasMore: false,
+            completed: completedTokens,
+            retryable: [],
+            invalid: [],
+          },
+        ],
+      };
     },
     async recoverIncomplete(
       grant: (p: {
@@ -318,6 +338,8 @@ export function createMockPlatform(
   let visible = opts.initiallyVisible ?? true;
   const visSubs = new Set<(v: boolean) => void>();
   const hideSubs = new Set<() => void>();
+  const showSubs = new Set<() => void>();
+  const exitSubs = new Set<() => void>();
   const lifecycle: LifecycleProvider = {
     visible: () => visible,
     onHide(cb) {
@@ -325,18 +347,15 @@ export function createMockPlatform(
       return () => hideSubs.delete(cb);
     },
     onShow(cb) {
-      const wrapped = (v: boolean): void => {
-        if (v) cb();
-      };
-      visSubs.add(wrapped);
-      return () => visSubs.delete(wrapped);
+      showSubs.add(cb);
+      return () => showSubs.delete(cb);
     },
     onExitRequested(cb) {
       const wrapped = (): void => {
         void cb();
       };
-      hideSubs.add(wrapped);
-      return () => hideSubs.delete(wrapped);
+      exitSubs.add(wrapped);
+      return () => exitSubs.delete(wrapped);
     },
     onVisibilityChange(cb) {
       visSubs.add(cb);
@@ -345,9 +364,9 @@ export function createMockPlatform(
       };
     },
     onPageHide(cb) {
-      hideSubs.add(cb);
+      exitSubs.add(cb);
       return () => {
-        hideSubs.delete(cb);
+        exitSubs.delete(cb);
       };
     },
   };
@@ -422,10 +441,11 @@ export function createMockPlatform(
       setVisible(v) {
         if (v === visible) return;
         visible = v;
+        for (const cb of v ? showSubs : hideSubs) cb();
         for (const cb of visSubs) cb(v);
       },
       firePageHide() {
-        for (const cb of hideSubs) cb();
+        for (const cb of exitSubs) cb();
       },
       kvStore,
       reported: () => [...errors.drain()],
