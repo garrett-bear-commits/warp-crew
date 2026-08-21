@@ -49,8 +49,16 @@ Official references reviewed 2026-08-20: [HTML5 SDK](https://docs.jest.com/sdk/h
       short tab switch does not reset the plan, and confirm the versioned per-player cursor rotates
       D1 copy/attribution after both a meaningful return and a cold relaunch. Do not promise exact
       delivery time; Jest may deliver at most one notification per user/day.
+- [ ] With the same registered account in two tabs, confirm only **Playing here** mutates the
+      retention plan or reserves its copy cursor. During a `Play here` handoff, the former leader
+      may finish its already-started SDK call, but the new leader must wait and then replace it;
+      the old plan must never land after the new leader's plan. After it becomes leader, the new
+      tab may establish the current plan.
 - [ ] Create a sandbox user and test login, guest→registered continuity, notifications, catalog
       display, purchase, crash/restart recovery, `hasMore` paging, and completion.
+- [ ] From an initially enabled Shop, fail or block the next authenticated `/config` and
+      `/purchases/mine` preflight and confirm Buy never opens the Jest checkout sheet. Repeat with
+      maintenance, min-build, command, SKU, and account purchase controls enabled.
 - [ ] Keep production `purchases.mintPremium=off` until paid payload validation and owner approval;
       the server must report `checkoutEnabled=false` and the UI must remain disabled. For a
       controlled sandbox-only Lab exercise, temporarily enable delivery on the isolated Lab server,

@@ -82,6 +82,165 @@ export interface RetentionPlanInput {
   returnOrdinal: number;
 }
 
+export interface RetentionCoordinatorRequest {
+  booted: boolean;
+  player: Player | null;
+  visible: boolean;
+  progress: number;
+}
+
+export interface RetentionCoordinatorOptions {
+  notifications: NotificationsProvider;
+  storage: Pick<StorageTier, 'get' | 'set'>;
+  gameId: string;
+  buildVersion: string;
+  assetReference: string;
+  /** Reads the live Web Locks election result; callers must reconcile when it changes. */
+  isLeader(): boolean;
+  /** Serializes notification SDK mutation across same-origin tabs. */
+  mutationMutex?: RetentionMutationMutex;
+  mark(): number;
+  sinceMark(mark: number): number;
+  onResult?(result: ScheduleResult): void;
+}
+
+export interface RetentionMutationMutex {
+  run<T>(fn: () => Promise<T>): Promise<T>;
+}
+
+interface BrowserLocks {
+  request<T>(
+    name: string,
+    options: { mode: 'exclusive' },
+    callback: (lock: unknown) => Promise<T> | T,
+  ): Promise<T>;
+}
+
+/**
+ * A second, short-lived Web Lock for external notification mutation. Leadership decides who may
+ * request work; this lock makes a stolen leader lock wait for an old non-cancellable SDK call so
+ * the newly elected writer's replacement lands last. Without Web Locks, the client election is
+ * already in its documented single-tab fallback mode.
+ */
+export function createRetentionMutationMutex(name: string): RetentionMutationMutex {
+  const locks = (globalThis as { navigator?: { locks?: BrowserLocks } }).navigator?.locks;
+  if (!locks) return { run: async <T>(fn: () => Promise<T>): Promise<T> => fn() };
+  return {
+    run: <T>(fn: () => Promise<T>): Promise<T> =>
+      locks.request(name, { mode: 'exclusive' }, () => fn()),
+  };
+}
+
+export interface RetentionCoordinator {
+  /** React Strict Mode may replay effect cleanup/setup with the same memoized coordinator. */
+  activate(): void;
+  /** Update lifecycle/identity state. Only the elected leader can reserve or mutate a plan. */
+  reconcile(request: RetentionCoordinatorRequest): void;
+  /** Resolves after all work accepted before this call has settled; useful for deterministic tests. */
+  idle(): Promise<void>;
+  /** Invalidates queued and future continuations. In-flight SDK calls cannot be cancelled. */
+  destroy(): void;
+}
+
+/**
+ * Serializes rolling-plan replacement for one tab. Each lifecycle, identity, or leader change
+ * advances an epoch; after every non-cancellable SDK await, stale epochs stop before the next
+ * mutation. The cursor is therefore reserved only by the current leader's accepted request.
+ */
+export function createRetentionCoordinator(
+  options: RetentionCoordinatorOptions,
+): RetentionCoordinator {
+  let destroyed = false;
+  let epoch = 0;
+  let scheduled = false;
+  let observedPlayer: string | null = null;
+  let observedLeader = false;
+  let hiddenMark: number | null = null;
+  let tail: Promise<void> = Promise.resolve();
+  const mutationMutex =
+    options.mutationMutex ??
+    createRetentionMutationMutex(`foundation:${options.gameId}:retention:notification-mutation`);
+
+  const reset = (): void => {
+    scheduled = false;
+    observedPlayer = null;
+    observedLeader = false;
+    hiddenMark = null;
+  };
+
+  return {
+    activate() {
+      if (!destroyed) return;
+      destroyed = false;
+      ++epoch;
+      reset();
+    },
+    reconcile(request) {
+      if (destroyed) return;
+      const player = request.player;
+      if (!request.booted || !player?.registered) {
+        ++epoch;
+        reset();
+        return;
+      }
+      const leader = options.isLeader();
+      if (observedPlayer !== player.playerId || observedLeader !== leader) {
+        ++epoch;
+        scheduled = false;
+        observedPlayer = player.playerId;
+        observedLeader = leader;
+        hiddenMark = null;
+      }
+      // A follower must neither reserve copy nor touch notifications. Resetting its local marker
+      // makes a later "Play here" establish the plan under the new writer.
+      if (!leader) return;
+      if (!request.visible) {
+        if (hiddenMark === null) hiddenMark = options.mark();
+        return;
+      }
+      const hiddenMs = hiddenMark === null ? null : options.sinceMark(hiddenMark);
+      hiddenMark = null;
+      if (!shouldRefreshRetention(scheduled, hiddenMs)) return;
+
+      scheduled = true;
+      const requestEpoch = ++epoch;
+      const canContinue = (): boolean => !destroyed && epoch === requestEpoch && options.isLeader();
+      const context = { progress: request.progress, playerId: player.playerId };
+      const run = async (): Promise<void> => {
+        let result: ScheduleResult | undefined;
+        await mutationMutex.run(async () => {
+          if (!canContinue()) return;
+          const returnOrdinal = claimRetentionOrdinal(
+            options.storage,
+            options.gameId,
+            context.playerId,
+          );
+          if (!canContinue()) return;
+          result = await refreshRetentionPlan(
+            options.notifications,
+            { playerId: context.playerId, registered: true },
+            options.buildVersion,
+            options.assetReference,
+            { progress: context.progress, returnOrdinal },
+            canContinue,
+          );
+        });
+        if (result && canContinue()) options.onResult?.(result);
+      };
+      // Keep the queue usable if an observer/storage implementation rejects unexpectedly.
+      tail = tail.then(run, run);
+    },
+    async idle() {
+      await tail;
+    },
+    destroy() {
+      destroyed = true;
+      ++epoch;
+      reset();
+    },
+  };
+}
+
 export function shouldRefreshRetention(
   alreadyScheduled: boolean,
   hiddenMs: number | null,
@@ -124,11 +283,13 @@ export async function refreshRetentionPlan(
   buildVersion: string,
   assetReference: string,
   context: Pick<RetentionPlanInput, 'progress' | 'returnOrdinal'>,
+  shouldContinue: () => boolean = () => true,
 ): Promise<ScheduleResult> {
-  if (!player?.registered) return { scheduled: [], failed: [] };
+  if (!player?.registered || !shouldContinue()) return { scheduled: [], failed: [] };
 
   const failed: ScheduleResult['failed'] = [];
   for (const id of RETENTION_IDENTIFIERS) {
+    if (!shouldContinue()) return { scheduled: [], failed };
     try {
       await notifications.unschedule(id);
     } catch (error) {
@@ -139,6 +300,7 @@ export async function refreshRetentionPlan(
     }
   }
 
+  if (!shouldContinue()) return { scheduled: [], failed };
   try {
     const scheduled = await notifications.scheduleLadder(
       buildRetentionPlan({ buildVersion, assetReference, ...context }),

@@ -265,6 +265,33 @@ describe('provider conformance — standalone', () => {
     expect(platform.identity.tokenFor('qa')).toBe('fresh-token');
   });
 
+  it('shares an in-flight standalone refresh so concurrent stale requests all retry', async () => {
+    let resolveFresh!: (token: string) => void;
+    const firstFresh = new Promise<string>((resolve) => {
+      resolveFresh = resolve;
+    });
+    const refreshToken = vi
+      .fn<() => Promise<string>>()
+      .mockImplementationOnce(() => firstFresh)
+      .mockResolvedValue('fresh-token');
+    const platform = createStandalonePlatform({
+      playerId: 'qa',
+      token: 'stale-token',
+      refreshToken,
+    });
+
+    const concurrent = [
+      platform.identity.refreshCredential(),
+      platform.identity.refreshCredential(),
+    ];
+    resolveFresh('fresh-token');
+
+    await expect(Promise.all(concurrent)).resolves.toEqual(['fresh-token', 'fresh-token']);
+    expect(refreshToken).toHaveBeenCalledTimes(1);
+    await expect(platform.identity.refreshCredential()).resolves.toBeNull();
+    expect(refreshToken).toHaveBeenCalledTimes(2);
+  });
+
   it('refuses a refresh supplier result that repeats the current standalone token', async () => {
     const platform = createStandalonePlatform({
       playerId: 'qa',
@@ -991,6 +1018,203 @@ describe('jest platform — defensive SDK wrapper', () => {
     expect(completed).toEqual(['duplicate', 'unique']);
     expect(report.completed).toEqual(['duplicate', 'unique']);
     expect(report.pages[0]?.purchaseTokens).toEqual(['duplicate', 'unique']);
+  });
+
+  it('deduplicates overlapping recovery pages so completed tokens have one terminal outcome', async () => {
+    const completed: string[] = [];
+    const attempts = new Map<string, number>();
+    const granted: string[][] = [];
+    let page = 0;
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async ({ purchaseToken }) => {
+          completed.push(purchaseToken);
+          const attempt = (attempts.get(purchaseToken) ?? 0) + 1;
+          attempts.set(purchaseToken, attempt);
+          return purchaseToken === 'shared' && attempt > 1
+            ? { result: 'error', error: 'invalid_token' }
+            : { result: 'success' };
+        },
+        getIncompletePurchases: async () =>
+          page++ === 0
+            ? {
+                purchases: [
+                  incompletePurchase('shared', 'one'),
+                  incompletePurchase('first', 'two'),
+                ],
+                purchasesSigned: 'batch-one',
+                hasMore: true,
+              }
+            : {
+                purchases: [
+                  incompletePurchase('shared', 'one'),
+                  incompletePurchase('second', 'three'),
+                ],
+                purchasesSigned: 'batch-two',
+                hasMore: false,
+              },
+      },
+    });
+    const platform = createJestPlatform({ sdk });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async (batch) => {
+      granted.push(batch.purchases.map((purchase) => purchase.purchaseToken));
+      return batch.purchases.map((purchase) => purchase.purchaseToken);
+    });
+
+    expect(granted).toEqual([
+      ['shared', 'first'],
+      ['shared', 'second'],
+    ]);
+    expect(completed).toEqual(['shared', 'first', 'second']);
+    expect(report.completed).toEqual(['shared', 'first', 'second']);
+    expect(report.invalid).toEqual([]);
+    expect(report.pages.map((outcome) => outcome.purchaseTokens)).toEqual([
+      ['shared', 'first'],
+      ['shared', 'second'],
+    ]);
+  });
+
+  it('retries a token on a later overlapping page after a retryable completion failure', async () => {
+    const completed: string[] = [];
+    let page = 0;
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async ({ purchaseToken }) => {
+          completed.push(purchaseToken);
+          return completed.length === 1
+            ? { result: 'error', error: 'internal_error' }
+            : { result: 'success' };
+        },
+        getIncompletePurchases: async () =>
+          page++ === 0
+            ? {
+                purchases: [incompletePurchase('retryable', 'one')],
+                purchasesSigned: 'batch-one',
+                hasMore: true,
+              }
+            : {
+                purchases: [
+                  incompletePurchase('retryable', 'one'),
+                  incompletePurchase('later', 'two'),
+                ],
+                purchasesSigned: 'batch-two',
+                hasMore: false,
+              },
+      },
+    });
+    const platform = createJestPlatform({ sdk });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async (batch) =>
+      batch.purchases.map((purchase) => purchase.purchaseToken),
+    );
+
+    expect(completed).toEqual(['retryable', 'retryable', 'later']);
+    expect(report.retryable).toEqual([]);
+    expect(report.completed).toEqual(['retryable', 'later']);
+    expect(report.pages[0]?.retryable).toEqual([
+      { purchaseToken: 'retryable', message: 'internal_error' },
+    ]);
+  });
+
+  it('reports a repeatedly retryable overlapping token once in aggregate recovery state', async () => {
+    let page = 0;
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async ({ purchaseToken }) =>
+          purchaseToken === 'still-retryable'
+            ? { result: 'error', error: 'internal_error' }
+            : { result: 'success' },
+        getIncompletePurchases: async () =>
+          page++ === 0
+            ? {
+                purchases: [incompletePurchase('still-retryable', 'one')],
+                purchasesSigned: 'batch-one',
+                hasMore: true,
+              }
+            : {
+                purchases: [
+                  incompletePurchase('still-retryable', 'one'),
+                  incompletePurchase('later', 'two'),
+                ],
+                purchasesSigned: 'batch-two',
+                hasMore: false,
+              },
+      },
+    });
+    const platform = createJestPlatform({ sdk });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async (batch) =>
+      batch.purchases.map((purchase) => purchase.purchaseToken),
+    );
+
+    expect(report.retryable).toEqual([
+      { purchaseToken: 'still-retryable', message: 'internal_error' },
+    ]);
+    expect(report.pages.map((outcome) => outcome.retryable)).toEqual([
+      [{ purchaseToken: 'still-retryable', message: 'internal_error' }],
+      [{ purchaseToken: 'still-retryable', message: 'internal_error' }],
+    ]);
+  });
+
+  it('keeps only the invalid terminal outcome when a retryable overlapping token later becomes invalid', async () => {
+    let page = 0;
+    const sdk = validJestSdk({
+      payments: {
+        getProducts: async () => [],
+        beginPurchase: async () => ({ result: 'cancel' }),
+        completePurchase: async ({ purchaseToken }) =>
+          purchaseToken === 'eventual-invalid'
+            ? page === 1
+              ? { result: 'error', error: 'internal_error' }
+              : { result: 'error', error: 'invalid_token' }
+            : { result: 'success' },
+        getIncompletePurchases: async () => {
+          page++;
+          return {
+            purchases:
+              page === 1
+                ? [incompletePurchase('eventual-invalid', 'one')]
+                : [
+                    incompletePurchase('eventual-invalid', 'one'),
+                    incompletePurchase('later', 'two'),
+                  ],
+            purchasesSigned: `batch-${page}`,
+            hasMore: page === 1,
+          };
+        },
+      },
+    });
+    const platform = createJestPlatform({ sdk, errors: { report: () => {} } });
+    await platform.identity.ready();
+
+    const report = await platform.payments.recoverIncompleteBatch(async (batch) =>
+      batch.purchases.map((purchase) => purchase.purchaseToken),
+    );
+
+    expect(report.retryable).toEqual([]);
+    expect(report.invalid).toEqual([
+      { purchaseToken: 'eventual-invalid', message: 'invalid_token' },
+    ]);
+    expect(report.pages.map((outcome) => outcome.purchaseTokens)).toEqual([
+      ['eventual-invalid'],
+      ['eventual-invalid', 'later'],
+    ]);
+    expect(report.pages[0]?.retryable).toEqual([
+      { purchaseToken: 'eventual-invalid', message: 'internal_error' },
+    ]);
+    expect(report.pages[1]?.invalid).toEqual([
+      { purchaseToken: 'eventual-invalid', message: 'invalid_token' },
+    ]);
   });
 
   it('stops a repeated canonical token set even when the JWS and token order change', async () => {

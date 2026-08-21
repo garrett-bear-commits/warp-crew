@@ -57,6 +57,15 @@ something the architecture left implicit.
     D1–D7 plan; a hide/show shorter than five minutes does not reset it. Longer returns rotate a
     three-variant copy bank using progress buckets plus a versioned, per-player return cursor in
     the client storage tier, preventing both tab-switch resets and cold-launch restarts at variant A.
+12. **Retention notification mutation follows the existing tab leader.** The `GameProvider`
+    observes Web Locks leadership and identity changes, then delegates to a per-tab coordinator.
+    Followers do not reserve the return cursor or call notification unschedule/schedule. The
+    coordinator keeps a per-tab queue, advancing its epoch on identity, leader, teardown, and
+    superseding meaningful-refresh changes (a short hide/show does not abandon a valid plan).
+    A second same-origin Web Lock covers the actual SDK mutation, so a newly elected leader waits
+    for a former leader's non-cancellable call and its replacement lands last. It re-checks the
+    epoch and live leader result before each next mutation; a call already in flight may finish,
+    but stale work cannot continue to another identifier or schedule an old identity's plan.
 
 ## Consequences
 
@@ -67,6 +76,10 @@ something the architecture left implicit.
 - `pnpm -F @foundation/template-game test:e2e` builds with `VITE_API_URL=http://127.0.0.1:8090`
   and runs the local Playwright suite against mock/local infrastructure; it is not real Jest
   evidence. The API needs `DATABASE_URL_TEST` (or testcontainers).
+- Retention is a leader-owned external mutation just like saves. Hosted evidence must include a
+  two-tab handoff while notification operations are pending; verify the former leader's in-flight
+  call settles before the new leader replaces it, and the follower does not reserve a copy variant
+  before it becomes leader.
 
 ## Current Jest references (reviewed 2026-08-20)
 

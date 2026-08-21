@@ -20,6 +20,7 @@ import {
   type Product,
   type PurchaseCompletionOutcome,
   type PurchaseOutcome,
+  type PurchaseRecoveryFailure,
   type PurchaseRecoveryPageOutcome,
   type PurchaseRecoveryReport,
   type RecoveryBatch,
@@ -349,6 +350,18 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
       pages: [],
     };
     const seen = new Set<string>();
+    // A page cursor can overlap without being an exact repeated page. Once a token has a terminal
+    // completion verdict, do not complete it again during this recovery traversal. Full signed
+    // pages still go to grant and remain in page outcomes so their evidence stays verifiable.
+    // Retryable completion failures deliberately remain eligible when the token reappears.
+    const terminal = new Set<string>();
+    const retryableByToken = new Map<string, PurchaseRecoveryFailure>();
+    const invalidByToken = new Map<string, PurchaseRecoveryFailure>();
+    const finish = (): PurchaseRecoveryReport => {
+      recovery.retryable = [...retryableByToken.values()];
+      recovery.invalid = [...invalidByToken.values()];
+      return recovery;
+    };
     for (let pageNumber = 0; pageNumber < 100; pageNumber++) {
       const page = await (
         sdk!.payments!.getIncompletePurchases as JestSdkLike['payments']['getIncompletePurchases']
@@ -371,16 +384,17 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
             sku: p.productSku,
           });
       }
-      const purchases = [...purchasesByToken.values()];
+      const pagePurchases = [...purchasesByToken.values()];
       const fingerprint = JSON.stringify(
-        [...new Set(purchases.map((purchase) => purchase.purchaseToken))].sort(),
+        [...new Set(pagePurchases.map((purchase) => purchase.purchaseToken))].sort(),
       );
       if (seen.has(fingerprint)) {
         report('Jest incomplete purchase page repeated');
         recovery.outcome = 'repeated_page';
-        return recovery;
+        return finish();
       }
       seen.add(fingerprint);
+      const purchases = pagePurchases;
       const requested = new Set(
         await grant({ purchases, purchasesSigned: page.purchasesSigned, hasMore: page.hasMore }),
       );
@@ -393,19 +407,23 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
         invalid: [],
       };
       for (const p of purchases)
-        if (requested.has(p.purchaseToken)) {
+        if (requested.has(p.purchaseToken) && !terminal.has(p.purchaseToken)) {
           const outcome = await complete(p.purchaseToken);
           if (outcome.kind === 'success') {
             recovery.completed.push(p.purchaseToken);
             pageOutcome.completed.push(p.purchaseToken);
+            terminal.add(p.purchaseToken);
+            retryableByToken.delete(p.purchaseToken);
           } else {
             const failure = { purchaseToken: p.purchaseToken, message: outcome.message };
             if (outcome.kind === 'retryable_error') {
-              recovery.retryable.push(failure);
               pageOutcome.retryable.push(failure);
+              retryableByToken.set(p.purchaseToken, failure);
             } else {
-              recovery.invalid.push(failure);
               pageOutcome.invalid.push(failure);
+              terminal.add(p.purchaseToken);
+              retryableByToken.delete(p.purchaseToken);
+              invalidByToken.set(p.purchaseToken, failure);
               report('Jest purchase completion returned invalid_token');
             }
           }
@@ -413,11 +431,11 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
       recovery.pages.push(pageOutcome);
       if (!page.hasMore) {
         recovery.outcome = 'drained';
-        return recovery;
+        return finish();
       }
     }
     report('Jest incomplete purchase recovery page cap reached');
-    return recovery;
+    return finish();
   };
   return {
     name: 'jest',

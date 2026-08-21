@@ -2796,9 +2796,19 @@
                         },
                         "granted": {},
                         "grantKey": {
-                          "minLength": 1,
-                          "maxLength": 200,
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "type": "string"
+                            },
+                            {
+                              "minLength": 201,
+                              "maxLength": 2057,
+                              "pattern": "^purchase:",
+                              "type": "string"
+                            }
+                          ]
                         },
                         "price": {
                           "type": "number"
@@ -3067,9 +3077,19 @@
                               },
                               "granted": {},
                               "grantKey": {
-                                "minLength": 1,
-                                "maxLength": 200,
-                                "type": "string"
+                                "anyOf": [
+                                  {
+                                    "minLength": 1,
+                                    "maxLength": 200,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "minLength": 201,
+                                    "maxLength": 2057,
+                                    "pattern": "^purchase:",
+                                    "type": "string"
+                                  }
+                                ]
                               },
                               "price": {
                                 "type": "number"
@@ -3293,9 +3313,19 @@
                           },
                           "granted": {},
                           "grantKey": {
-                            "minLength": 1,
-                            "maxLength": 200,
-                            "type": "string"
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "maxLength": 200,
+                                "type": "string"
+                              },
+                              {
+                                "minLength": 201,
+                                "maxLength": 2057,
+                                "pattern": "^purchase:",
+                                "type": "string"
+                              }
+                            ]
                           },
                           "price": {
                             "type": "number"
@@ -3639,9 +3669,19 @@
                         ],
                         "properties": {
                           "grantKey": {
-                            "minLength": 1,
-                            "maxLength": 200,
-                            "type": "string"
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "maxLength": 200,
+                                "type": "string"
+                              },
+                              {
+                                "minLength": 201,
+                                "maxLength": 2057,
+                                "pattern": "^purchase:",
+                                "type": "string"
+                              }
+                            ]
                           },
                           "source": {
                             "anyOf": [
@@ -3931,9 +3971,19 @@
                       ],
                       "properties": {
                         "grantKey": {
-                          "minLength": 1,
-                          "maxLength": 200,
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "type": "string"
+                            },
+                            {
+                              "minLength": 201,
+                              "maxLength": 2057,
+                              "pattern": "^purchase:",
+                              "type": "string"
+                            }
+                          ]
                         },
                         "source": {
                           "anyOf": [
@@ -4178,9 +4228,19 @@
                     "type": "string"
                   },
                   "grantKey": {
-                    "minLength": 1,
-                    "maxLength": 200,
-                    "type": "string"
+                    "anyOf": [
+                      {
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "type": "string"
+                      },
+                      {
+                        "minLength": 201,
+                        "maxLength": 2057,
+                        "pattern": "^purchase:",
+                        "type": "string"
+                      }
+                    ]
                   }
                 }
               }
@@ -4224,9 +4284,19 @@
                         ],
                         "properties": {
                           "grantKey": {
-                            "minLength": 1,
-                            "maxLength": 200,
-                            "type": "string"
+                            "anyOf": [
+                              {
+                                "minLength": 1,
+                                "maxLength": 200,
+                                "type": "string"
+                              },
+                              {
+                                "minLength": 201,
+                                "maxLength": 2057,
+                                "pattern": "^purchase:",
+                                "type": "string"
+                              }
+                            ]
                           },
                           "outcome": {
                             "anyOf": [
@@ -4354,9 +4424,19 @@
                     "maxItems": 50,
                     "type": "array",
                     "items": {
-                      "minLength": 1,
-                      "maxLength": 200,
-                      "type": "string"
+                      "anyOf": [
+                        {
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "type": "string"
+                        },
+                        {
+                          "minLength": 201,
+                          "maxLength": 2057,
+                          "pattern": "^purchase:",
+                          "type": "string"
+                        }
+                      ]
                     }
                   }
                 }
@@ -4434,9 +4514,19 @@
                       ],
                       "properties": {
                         "grantKey": {
-                          "minLength": 1,
-                          "maxLength": 200,
-                          "type": "string"
+                          "anyOf": [
+                            {
+                              "minLength": 1,
+                              "maxLength": 200,
+                              "type": "string"
+                            },
+                            {
+                              "minLength": 201,
+                              "maxLength": 2057,
+                              "pattern": "^purchase:",
+                              "type": "string"
+                            }
+                          ]
                         },
                         "source": {
                           "anyOf": [

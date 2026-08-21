@@ -8,6 +8,7 @@ import type {
   PurchaseRecoveryReport,
 } from '@foundation/client';
 import type {
+  ConfigResponse,
   PurchaseBatchVerifyBody,
   PurchaseBatchVerifyResult,
   PurchaseRecord,
@@ -15,6 +16,7 @@ import type {
   PurchaseVerifyResult,
   PurchasesMineResponse,
 } from '@foundation/contracts';
+import { compareBuildVersions } from './versions.ts';
 
 type CheckoutReadiness = Pick<PurchasesMineResponse, 'checkoutEnabled' | 'purchasesDisabled'>;
 
@@ -29,6 +31,38 @@ export function canBeginCheckout(
     liveConfigLoaded &&
     !purchaseCommandPaused
   );
+}
+
+export interface CheckoutReadinessApi {
+  purchases: {
+    mine(): Promise<ApiResult<PurchasesMineResponse>>;
+  };
+  liveops: {
+    config(authed?: boolean): Promise<ApiResult<ConfigResponse>>;
+  };
+}
+
+/** Re-read every server-authored checkout control immediately before opening the provider sheet. */
+export async function isCheckoutReadyNow(
+  api: CheckoutReadinessApi,
+  sku: string,
+  buildVersion: string,
+): Promise<boolean> {
+  try {
+    const [mine, live] = await Promise.all([api.purchases.mine(), api.liveops.config(true)]);
+    if (!mine.ok || !live.ok) return false;
+    const purchaseCommandPaused =
+      live.body.killSwitches.commands.includes('purchases.verify') ||
+      live.body.killSwitches.commands.includes('purchases.verifyBatch');
+    return (
+      canBeginCheckout(mine.body, true, purchaseCommandPaused) &&
+      !live.body.maintenance &&
+      !live.body.killSwitches.skus.includes(sku) &&
+      compareBuildVersions(buildVersion, live.body.minBuildVersion) >= 0
+    );
+  } catch {
+    return false;
+  }
 }
 
 export interface DirectPurchaseApi {

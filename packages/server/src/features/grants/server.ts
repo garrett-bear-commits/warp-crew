@@ -145,7 +145,13 @@ async function claimOne(
   frozen: boolean,
 ): Promise<{ outcome: ClaimResult['outcome']; grant?: Grant }> {
   const rows = await tx.unsafe<GrantRowLite[]>(
-    `SELECT ${GRANT_COLS} FROM grants g WHERE g.player_key = $1 AND g.grant_key = $2`,
+    `SELECT ${GRANT_COLS}
+     FROM grants g
+     WHERE g.player_key = $1
+       AND (g.grant_key = $2 OR EXISTS (
+         SELECT 1 FROM grant_key_aliases a
+         WHERE a.player_key = g.player_key AND a.alias_key = $2 AND a.grant_id = g.id
+       ))`,
     [playerKey, grantKey],
   );
   const g = rows[0];
@@ -184,7 +190,9 @@ export function registerGrants(app: FastifyInstance, ctx: AppContext): void {
       await ctx.outbox.emit(t, {
         kind: 'grant.claimed',
         playerKey: exec.playerKey!,
-        payload: { grantKey: input.grantKey },
+        // Always emit the canonical key. The read-only alias table retains legacy lookup evidence
+        // without propagating a raw provider token into new operational events.
+        payload: { grantKey: r.grant!.grantKey },
         commandId: input.commandId,
       });
     return { outcome: r.outcome, duplicate: false, ...(r.grant ? { grant: r.grant } : {}) };
@@ -201,7 +209,7 @@ export function registerGrants(app: FastifyInstance, ctx: AppContext): void {
         await ctx.outbox.emit(t, {
           kind: 'grant.claimed',
           playerKey: exec.playerKey!,
-          payload: { grantKey: k },
+          payload: { grantKey: r.grant!.grantKey },
           commandId: input.commandId,
         });
     }

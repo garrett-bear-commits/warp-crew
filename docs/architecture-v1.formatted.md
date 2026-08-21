@@ -157,8 +157,9 @@ identifiers in incident comments are scrubbed on the way in.
   `duplicate` + the original `seq` instead of colliding with the snapshot constraint. Test: "offline > 7 days,
   retry old commandId → duplicate, no 500".
 - **Ledgers are the event history** (no generic event store): `save_snapshots`, `generations`,
-  `purchase_transactions`, `purchase_adjustments`, `grants`/`grant_claims`, `leaderboard_submissions`,
-  `journal_entries`, `commands`, `integrity_events`. The inspector timeline is a `UNION` view.
+  `purchase_transactions`, `purchase_adjustments`, `grants`/`grant_claims`, `grant_key_aliases`
+  (migration-owned legacy purchase compatibility), `leaderboard_submissions`, `journal_entries`,
+  `commands`, `integrity_events`. The inspector timeline is a `UNION` view.
   `rebuild-projection <name>` exists for every projection that is a pure function of ledgers (overview,
   entitlements, entries, achievement_progress).
 - **Outbox** is the only fan-out: rows written in the originating tx; delivery state is **per consumer**
@@ -223,7 +224,7 @@ Each feature = folder with `register(app, ctx)`, `contract`/`server`/`client` en
 | **saves** | `save_snapshots` (+ `save_blobs`), placement guard, deepest anchor, retention, history, blob-by-seq, admin restore via lineage, `schema_downgrade` + `progress_jump` flags | ADR-006 |
 | **lineage** | `generations` (restart / admin_restore / player_restore / reattach / erased), CAS by `expectedGeneration`, business key `restartId`, entitlement only for `kind='restart'` | ADR-006 |
 | **purchases** | receipt verify (provider), `purchase_transactions`, `purchase_adjustments` (±), classification, per-pack promotions, `/purchases/mine`, Financials import (dry-run, reclassify), `player_flags` consumers | ADR-007 |
-| **grants** | `grants` + `grant_claims`, typed reward payload union, caps, batch claim, `reason`/`ticket_ref`, `mintForCohort` (dry-run count), codes/campaigns | ADR-008 |
+| **grants** | `grants` + `grant_claims` + read-only legacy purchase-key aliases, typed reward payload union, caps, batch claim, `reason`/`ticket_ref`, `mintForCohort` (dry-run count), codes/campaigns | ADR-008 |
 | **achievements / quests** | one server evaluator over ledgers + `summary` + journal events; definitions as **published content documents**; criteria sources tagged `server_fact` vs `client_claim`; `achievement_progress` projection (rebuildable); client runs the same evaluator for preview | ADR-008, ADR-012 |
 | **leaderboards** | seasons on the schedule primitive, `rules_version` pin, `run_id` idempotency, `leaderboards.start` stamps `started_at`, `visibility` enum + quarantine, verification levels (1 sanity, 2 duration+summary bounds, 3 replay = interface only), placements minted provisional, moderated names | |
 | **inbox** | support letters (append-only, may reference a grant), announcements (schedule + segment), server-side read/claimed state, feedback with status | |
@@ -253,7 +254,7 @@ commands(scope_key, command_id, type, actor, request_hash, status, result, trace
 command_tombstones(scope_key, command_id, type, request_hash, outcome_ref)
 save_reviews(player_key, save_id UNIQUE, action promote|reject, actor, rule_version, reason, previous_anchor_seq, at)   -- terminal: one review per save, never revised
 outbox · outbox_deliveries(outbox_id, consumer, state, attempts, lease_until, last_error, delivered_at) · outbox_dead_letters
-purchase_transactions · purchase_adjustments · grants · grant_claims · codes · code_campaigns
+purchase_transactions · purchase_adjustments · grants · grant_claims · grant_key_aliases · codes · code_campaigns
 leaderboard_seasons · leaderboard_submissions · leaderboard_entries · leaderboard_placements · display_names
 support_messages · announcements · announcement_reads · feedback
 config_flags · content_versions · schedules · segments · player_flags

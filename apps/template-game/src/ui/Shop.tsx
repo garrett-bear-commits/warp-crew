@@ -6,7 +6,7 @@ import { mintId, type Product } from '@foundation/client';
 import { useCallback, useState } from 'react';
 import { CATALOG } from '../config.ts';
 import { useGame } from '../game.tsx';
-import { canBeginCheckout, verifyAndCompletePurchase } from '../purchases.ts';
+import { canBeginCheckout, isCheckoutReadyNow, verifyAndCompletePurchase } from '../purchases.ts';
 import { useFetched } from './useFetched.ts';
 
 export function formatProductPrice(product: Product): string | null {
@@ -30,7 +30,7 @@ export function formatProductPrice(product: Product): string | null {
 
 export function Shop() {
   const g = useGame();
-  const { api, client, live, serverRev } = g;
+  const { api, cfg, client, live, liveError, serverRev, updateRequired } = g;
   const [outcome, setOutcome] = useState<string>('');
   const [busy, setBusy] = useState(false);
   const fetchMine = useCallback(async (): Promise<PurchasesMineResponse | null> => {
@@ -47,7 +47,9 @@ export function Shop() {
   const purchaseCommandPaused =
     live?.killSwitches.commands.includes('purchases.verify') === true ||
     live?.killSwitches.commands.includes('purchases.verifyBatch') === true;
-  const checkoutReady = canBeginCheckout(mine, live !== null, purchaseCommandPaused);
+  const liveCheckoutReady =
+    live !== null && liveError === null && !live.maintenance && !updateRequired;
+  const checkoutReady = canBeginCheckout(mine, liveCheckoutReady, purchaseCommandPaused);
 
   const buy = async (sku: string): Promise<void> => {
     if (!checkoutReady) {
@@ -56,6 +58,10 @@ export function Shop() {
     }
     setBusy(true);
     try {
+      if (!(await isCheckoutReadyNow(api, sku, cfg.buildVersion))) {
+        setOutcome('checkout is not currently available');
+        return;
+      }
       let begin;
       try {
         begin = await client.platform.payments.begin(sku);
@@ -112,7 +118,7 @@ export function Shop() {
         <p className="muted">Checking purchase availability…</p>
       ) : mine.purchasesDisabled ? (
         <p className="muted">Purchases are disabled for this account.</p>
-      ) : !mine.checkoutEnabled || purchaseCommandPaused ? (
+      ) : !mine.checkoutEnabled || !liveCheckoutReady || purchaseCommandPaused ? (
         <p className="muted">Checkout is temporarily unavailable.</p>
       ) : null}
       <ul className="list" data-testid="shop-list">
@@ -125,6 +131,7 @@ export function Shop() {
               <b>{product.title}</b> — {c.amount} gems —{' '}
               <span data-testid={`price-${c.sku}`}>{price}</span>{' '}
               <button
+                type="button"
                 data-testid={`buy-${c.sku}`}
                 disabled={busy || !checkoutReady}
                 onClick={() => void buy(c.sku)}

@@ -33,6 +33,7 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
   };
   let previous = o.previous ?? null;
   let token = o.token;
+  let refreshInFlight: Promise<string | null> | null = null;
   const kvStore = new Map<string, string>();
   let kvDirty = new Map<string, string | null>();
   const nav = (
@@ -57,10 +58,20 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
       login: async () => {},
       async refreshCredential() {
         if (!o.refreshToken) return null;
-        const fresh = await o.refreshToken();
-        if (!fresh || fresh === token) return null;
-        token = fresh;
-        return token;
+        if (!refreshInFlight) {
+          const staleToken = token;
+          refreshInFlight = o
+            .refreshToken()
+            .then((fresh) => {
+              if (!fresh || fresh === staleToken) return null;
+              token = fresh;
+              return token;
+            })
+            .finally(() => {
+              refreshInFlight = null;
+            });
+        }
+        return refreshInFlight;
       },
       tokenFor: (id) => (id === o.playerId ? token : null),
       previousToken() {

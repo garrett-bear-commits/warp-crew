@@ -194,7 +194,7 @@ export async function describeSchema(sql: Sql): Promise<string> {
   const lines: string[] = [];
   for (const c of cols)
     lines.push(
-      `col ${c.table_name}.${c.column_name} ${c.data_type} ${c.is_nullable} ${c.column_default ?? ''}`,
+      `col ${c.table_name}.${c.column_name} ${c.data_type} ${c.is_nullable} ${c.column_default ?? ''}`.trimEnd(),
     );
   for (const c of cons) lines.push(`con ${c.conrelid}.${c.conname} ${c.def}`);
   for (const i of idx) lines.push(`idx ${i.indexname} ${i.indexdef}`);

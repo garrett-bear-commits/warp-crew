@@ -10,6 +10,7 @@ import {
 import {
   buildRetentionPlan,
   claimRetentionOrdinal,
+  createRetentionCoordinator,
   refreshRetentionPlan,
   shouldRefreshRetention,
   RETENTION_IDENTIFIERS,
@@ -134,6 +135,315 @@ describe('template Jest retention plan', () => {
       ],
     });
   });
+
+  it('leaves notification mutation and the copy cursor to the elected leader', async () => {
+    const notifications = fakeNotifications();
+    const storage = createStorage({ localStorage: memoryStorage() });
+    let leader = false;
+    const coordinator = createRetentionCoordinator({
+      notifications: notifications.provider,
+      storage,
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => leader,
+      mark: () => 0,
+      sinceMark: () => 0,
+    });
+
+    coordinator.reconcile({
+      booted: true,
+      player: registered,
+      visible: true,
+      progress: 0,
+    });
+    await coordinator.idle();
+
+    expect(notifications.unschedule).not.toHaveBeenCalled();
+    expect(notifications.schedule).not.toHaveBeenCalled();
+    expect(storage.get('foundation:template:retention:v2:p1')).toBeNull();
+
+    leader = true;
+    coordinator.reconcile({
+      booted: true,
+      player: registered,
+      visible: true,
+      progress: 0,
+    });
+    await coordinator.idle();
+
+    expect(notifications.unschedule).toHaveBeenCalledTimes(7);
+    expect(notifications.schedule).toHaveBeenCalledTimes(1);
+    expect(storage.get('foundation:template:retention:v2:p1')).toBe('1');
+  });
+
+  it('serializes an identity change so stale account A cannot schedule after account B', async () => {
+    const storage = createStorage({ localStorage: memoryStorage() });
+    let releaseFirstUnschedule: (() => void) | undefined;
+    let firstUnscheduleStarted: (() => void) | undefined;
+    const firstUnschedule = new Promise<void>((resolve) => {
+      releaseFirstUnschedule = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      firstUnscheduleStarted = resolve;
+    });
+    const unschedule = vi.fn(async (id: string) => {
+      if (id === RETENTION_IDENTIFIERS[0]) {
+        firstUnscheduleStarted?.();
+        await firstUnschedule;
+      }
+    });
+    const schedule = vi.fn(async (items: LadderItem[]): Promise<ScheduleResult> => ({
+      scheduled: items.map((item) => item.id),
+      failed: [],
+    }));
+    const coordinator = createRetentionCoordinator({
+      notifications: { eligible: () => true, unschedule, scheduleLadder: schedule },
+      storage,
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => true,
+      mark: () => 0,
+      sinceMark: () => 0,
+    });
+
+    coordinator.reconcile({
+      booted: true,
+      player: { playerId: 'account-a', registered: true },
+      visible: true,
+      progress: 0,
+    });
+    await firstStarted;
+    coordinator.reconcile({
+      booted: true,
+      player: { playerId: 'account-b', registered: true },
+      visible: true,
+      progress: 50,
+    });
+    releaseFirstUnschedule?.();
+    await coordinator.idle();
+
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(schedule.mock.calls[0]![0][0]!.entryPayload).toMatchObject({
+      progress_bucket: '2',
+      variant: 'c',
+    });
+    expect(storage.get('foundation:template:retention:v2:account-a')).toBe('1');
+    expect(storage.get('foundation:template:retention:v2:account-b')).toBe('1');
+  });
+
+  it('lets only the new leader finish a delayed two-tab plan replacement', async () => {
+    const storage = createStorage({ localStorage: memoryStorage() });
+    let aLeads = true;
+    let bLeads = false;
+    let holdFirst = true;
+    let releaseFirstUnschedule: (() => void) | undefined;
+    let firstUnscheduleStarted: (() => void) | undefined;
+    const firstUnschedule = new Promise<void>((resolve) => {
+      releaseFirstUnschedule = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      firstUnscheduleStarted = resolve;
+    });
+    const unschedule = vi.fn(async (id: string) => {
+      if (id === RETENTION_IDENTIFIERS[0] && holdFirst) {
+        holdFirst = false;
+        firstUnscheduleStarted?.();
+        await firstUnschedule;
+      }
+    });
+    const schedule = vi.fn(async (items: LadderItem[]): Promise<ScheduleResult> => ({
+      scheduled: items.map((item) => item.id),
+      failed: [],
+    }));
+    const base = {
+      notifications: { eligible: () => true, unschedule, scheduleLadder: schedule },
+      storage,
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      mark: () => 0,
+      sinceMark: () => 0,
+    };
+    const tabA = createRetentionCoordinator({ ...base, isLeader: () => aLeads });
+    const tabB = createRetentionCoordinator({ ...base, isLeader: () => bLeads });
+
+    tabA.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    tabB.reconcile({ booted: true, player: registered, visible: true, progress: 25 });
+    await firstStarted;
+
+    aLeads = false;
+    bLeads = true;
+    tabA.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    tabB.reconcile({ booted: true, player: registered, visible: true, progress: 25 });
+    releaseFirstUnschedule?.();
+    await Promise.all([tabA.idle(), tabB.idle()]);
+
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(schedule.mock.calls[0]![0][0]!.entryPayload).toMatchObject({
+      progress_bucket: '1',
+      variant: 'c',
+    });
+    expect(unschedule).toHaveBeenCalledTimes(8);
+  });
+
+  it('stops after an in-flight SDK call when the provider is destroyed', async () => {
+    let releaseFirstUnschedule: (() => void) | undefined;
+    let firstUnscheduleStarted: (() => void) | undefined;
+    const firstUnschedule = new Promise<void>((resolve) => {
+      releaseFirstUnschedule = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      firstUnscheduleStarted = resolve;
+    });
+    const unschedule = vi.fn(async (id: string) => {
+      if (id === RETENTION_IDENTIFIERS[0]) {
+        firstUnscheduleStarted?.();
+        await firstUnschedule;
+      }
+    });
+    const schedule = vi.fn(async (items: LadderItem[]): Promise<ScheduleResult> => ({
+      scheduled: items.map((item) => item.id),
+      failed: [],
+    }));
+    const coordinator = createRetentionCoordinator({
+      notifications: { eligible: () => true, unschedule, scheduleLadder: schedule },
+      storage: createStorage({ localStorage: memoryStorage() }),
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => true,
+      mark: () => 0,
+      sinceMark: () => 0,
+    });
+
+    coordinator.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    await firstStarted;
+    coordinator.destroy();
+    releaseFirstUnschedule?.();
+    await coordinator.idle();
+
+    expect(unschedule).toHaveBeenCalledTimes(1);
+    expect(schedule).not.toHaveBeenCalled();
+  });
+
+  it('reactivates cleanly after React Strict Mode replays effect cleanup and setup', async () => {
+    const notifications = fakeNotifications();
+    const coordinator = createRetentionCoordinator({
+      notifications: notifications.provider,
+      storage: createStorage({ localStorage: memoryStorage() }),
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => true,
+      mark: () => 0,
+      sinceMark: () => 0,
+    });
+
+    coordinator.destroy();
+    coordinator.activate();
+    coordinator.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    await coordinator.idle();
+
+    expect(notifications.unschedule).toHaveBeenCalledTimes(7);
+    expect(notifications.schedule).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not abandon a startup replacement on a short hide/show', async () => {
+    let releaseFirstUnschedule: (() => void) | undefined;
+    let firstUnscheduleStarted: (() => void) | undefined;
+    const firstUnschedule = new Promise<void>((resolve) => {
+      releaseFirstUnschedule = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      firstUnscheduleStarted = resolve;
+    });
+    const unschedule = vi.fn(async (id: string) => {
+      if (id === RETENTION_IDENTIFIERS[0]) {
+        firstUnscheduleStarted?.();
+        await firstUnschedule;
+      }
+    });
+    const schedule = vi.fn(async (items: LadderItem[]): Promise<ScheduleResult> => ({
+      scheduled: items.map((item) => item.id),
+      failed: [],
+    }));
+    const coordinator = createRetentionCoordinator({
+      notifications: { eligible: () => true, unschedule, scheduleLadder: schedule },
+      storage: createStorage({ localStorage: memoryStorage() }),
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      isLeader: () => true,
+      mark: () => 1,
+      sinceMark: () => 1,
+    });
+
+    coordinator.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    await firstStarted;
+    coordinator.reconcile({ booted: true, player: registered, visible: false, progress: 0 });
+    coordinator.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    releaseFirstUnschedule?.();
+    await coordinator.idle();
+
+    expect(unschedule).toHaveBeenCalledTimes(7);
+    expect(schedule).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for a former leader's delayed bulk schedule before the new leader replaces it", async () => {
+    const storage = createStorage({ localStorage: memoryStorage() });
+    const mutationMutex = fakeMutationMutex();
+    let aLeads = true;
+    let bLeads = false;
+    let releaseFirstSchedule: (() => void) | undefined;
+    let firstScheduleStarted: (() => void) | undefined;
+    const firstSchedule = new Promise<void>((resolve) => {
+      releaseFirstSchedule = resolve;
+    });
+    const firstStarted = new Promise<void>((resolve) => {
+      firstScheduleStarted = resolve;
+    });
+    const completed: string[] = [];
+    let scheduleCalls = 0;
+    const schedule = vi.fn(async (items: LadderItem[]): Promise<ScheduleResult> => {
+      const variant = String(items[0]!.entryPayload?.variant);
+      if (++scheduleCalls === 1) {
+        firstScheduleStarted?.();
+        await firstSchedule;
+      }
+      completed.push(variant);
+      return { scheduled: items.map((item) => item.id), failed: [] };
+    });
+    const base = {
+      notifications: {
+        eligible: () => true,
+        unschedule: vi.fn(async () => undefined),
+        scheduleLadder: schedule,
+      },
+      storage,
+      gameId: 'template',
+      buildVersion: 'build-7',
+      assetReference: 'asset',
+      mutationMutex,
+      mark: () => 0,
+      sinceMark: () => 0,
+    };
+    const tabA = createRetentionCoordinator({ ...base, isLeader: () => aLeads });
+    const tabB = createRetentionCoordinator({ ...base, isLeader: () => bLeads });
+
+    tabA.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    await firstStarted;
+    aLeads = false;
+    bLeads = true;
+    tabA.reconcile({ booted: true, player: registered, visible: true, progress: 0 });
+    tabB.reconcile({ booted: true, player: registered, visible: true, progress: 25 });
+    releaseFirstSchedule?.();
+    await Promise.all([tabA.idle(), tabB.idle()]);
+
+    expect(completed).toEqual(['a', 'c']);
+    expect(schedule).toHaveBeenCalledTimes(2);
+  });
 });
 
 function fakeNotifications(options: { failUnschedule?: string } = {}) {
@@ -152,4 +462,23 @@ function fakeNotifications(options: { failUnschedule?: string } = {}) {
     scheduleLadder: schedule,
   };
   return { provider, order, unschedule, schedule };
+}
+
+function fakeMutationMutex() {
+  let tail = Promise.resolve();
+  return {
+    async run<T>(fn: () => Promise<T>): Promise<T> {
+      const before = tail;
+      let release: (() => void) | undefined;
+      tail = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await before;
+      try {
+        return await fn();
+      } finally {
+        release?.();
+      }
+    },
+  };
 }

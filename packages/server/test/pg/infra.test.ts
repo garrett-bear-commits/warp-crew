@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createTestDatabase, connect } from '@foundation/testkit/pg';
 import {
   migrateUp,
@@ -15,6 +18,13 @@ import { fixedClock } from '../../src/clock/index.ts';
 import { createJobRunner } from '../../src/jobs/index.ts';
 import { createPgLimiter } from '../../src/limits/index.ts';
 import { mintGrant } from '../../src/rewards/mint.ts';
+
+function priorMigrationsDir(): string {
+  const dir = mkdtempSync(join(tmpdir(), 'foundation-prior-migrations-'));
+  for (const migration of listMigrations().filter((m) => !m.name.startsWith('0015_')))
+    writeFileSync(join(dir, migration.name), migration.sql);
+  return dir;
+}
 
 describe('migrations from empty (§9): checksummed, locked, idempotent, boot check refuses drift', () => {
   it('applies every file once, records checksums, second run is a no-op, head is stable, roles + fences exist', async () => {
@@ -46,6 +56,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const d1 = await describeSchema(sql);
         const d2 = await describeSchema(sql);
         expect(d1).toBe(d2);
+        expect(d1).not.toMatch(/[\t ]+$/m);
         expect(d1).toMatch(/fn prune_save_blobs secdef=true/);
         expect(d1).toMatch(/fn erase_player secdef=true/);
         expect(d1).toMatch(/trg save_snapshots.save_snapshots_fence/);
@@ -70,6 +81,163 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
       await sql.end({ timeout: 5 });
       await expect(migrateUp(t.url)).rejects.toThrow(/missing on disk/);
     } finally {
+      await t.drop();
+    }
+  });
+
+  it('canonicalises legacy purchase grant keys without losing claims, references, or audit keys', async () => {
+    const t = await createTestDatabase('legacy_purchase_grants');
+    const priorDir = priorMigrationsDir();
+    try {
+      await migrateUp(t.url, { dir: priorDir });
+      const sql = connect(t.url, { max: 1 });
+      try {
+        const providerToken = 'legacy-provider-token-'.repeat(14);
+        const legacyKey = `purchase:${providerToken}`;
+        const canonicalKey = `purchase:${createHash('sha256').update(providerToken).digest('hex')}`;
+        const commandId = randomUUID();
+        const grant = await sql<{ id: string }[]>`
+          INSERT INTO grants
+            (player_key, grant_key, source, rewards, premium_amount, reason, actor, command_id)
+          VALUES
+            ('legacy-buyer', ${legacyKey}, 'purchase', '[{"kind":"premium_currency","amount":100}]', 100, 'legacy purchase', 'player', ${commandId})
+          RETURNING id`;
+        await sql`
+          INSERT INTO purchase_transactions
+            (provider_token, player_key, sku, pack_key, base_amount, granted, price, currency,
+             classification, created_at, completed_at, source, command_id, grant_key, sandbox)
+          VALUES
+            (${providerToken}, 'legacy-buyer', 'gems_100', 'handful', 100, 100, 4.99, 'USD',
+             'paid', now(), now(), 'live_receipt', ${commandId}, ${legacyKey}, false)`;
+        await sql`
+          INSERT INTO grant_claims (grant_id, player_key, command_id)
+          VALUES (${grant[0]!.id}, 'legacy-buyer', ${randomUUID()})`;
+        await sql`
+          INSERT INTO support_messages
+            (player_key, title, body, grant_key, reason, actor, command_id)
+          VALUES
+            ('legacy-buyer', 'Purchase', 'Recovered', ${legacyKey}, 'legacy', 'support', ${randomUUID()})`;
+        await sql`
+          INSERT INTO announcements
+            (announcement_id, title, body, starts_at, grant_key, actor, reason)
+          VALUES ('legacy-purchase', 'Purchase', 'Recovered', now(), ${legacyKey}, 'support', 'legacy')`;
+        await sql`
+          INSERT INTO achievement_progress
+            (player_key, achievement_id, content_version, unlocked, grant_key, progress)
+          VALUES ('legacy-buyer', 'legacy-achievement', 1, true, ${legacyKey}, '{}')`;
+        await sql`
+          INSERT INTO achievement_unlocks
+            (player_key, achievement_id, content_version, grant_key, command_id)
+          VALUES ('legacy-buyer', 'legacy-achievement', 1, ${legacyKey}, ${randomUUID()})`;
+        await sql`
+          INSERT INTO daily_claims (player_key, day, ladder_day, grant_key, command_id)
+          VALUES ('legacy-buyer', current_date, 1, ${legacyKey}, ${randomUUID()})`;
+        await sql`
+          INSERT INTO leaderboard_placements
+            (receipt_id, board_key, season_key, player_key, rank, score, state, grant_key)
+          VALUES ('legacy-placement', 'board', 'season', 'legacy-buyer', 1, 10, 'confirmed', ${legacyKey})`;
+        await sql`
+          INSERT INTO commands
+            (scope_key, command_id, type, actor, request_hash, status, result, retention)
+          VALUES
+            ('legacy-buyer', ${randomUUID()}, 'purchases.verify', 'player', 'hash', 'done',
+             ${sql.json({ purchase: { grantKey: legacyKey } })}, '90d')`;
+        await sql`
+          INSERT INTO outbox (kind, player_key, payload, command_id)
+          VALUES ('purchase.recorded', 'legacy-buyer', ${sql.json({ grantKey: legacyKey })}, ${commandId})`;
+
+        const migrated = await migrateUp(t.url);
+        expect(migrated.applied).toEqual(['0015_legacy_purchase_grant_keys.sql']);
+        const keys = await sql<
+          { purchase_key: string; grant_key: string; grant_id: string; alias_key: string }[]
+        >`
+          SELECT p.grant_key AS purchase_key, g.grant_key, g.id AS grant_id, a.alias_key
+          FROM purchase_transactions p
+          JOIN grants g ON g.player_key = p.player_key AND g.grant_key = p.grant_key
+          JOIN grant_key_aliases a ON a.grant_id = g.id
+          WHERE p.provider_token = ${providerToken}`;
+        expect(keys).toEqual([
+          {
+            purchase_key: canonicalKey,
+            grant_key: canonicalKey,
+            grant_id: grant[0]!.id,
+            alias_key: legacyKey,
+          },
+        ]);
+        const claim = await sql<{ grant_id: string }[]>`
+          SELECT grant_id FROM grant_claims WHERE player_key = 'legacy-buyer'`;
+        expect(claim).toEqual([{ grant_id: grant[0]!.id }]);
+        const refs = await sql<
+          {
+            support: string;
+            announcement: string;
+            progress: string;
+            unlock: string;
+            daily: string;
+            placement: string;
+          }[]
+        >`
+          SELECT
+            (SELECT grant_key FROM support_messages WHERE player_key = 'legacy-buyer') AS support,
+            (SELECT grant_key FROM announcements WHERE announcement_id = 'legacy-purchase') AS announcement,
+            (SELECT grant_key FROM achievement_progress WHERE player_key = 'legacy-buyer') AS progress,
+            (SELECT grant_key FROM achievement_unlocks WHERE player_key = 'legacy-buyer') AS unlock,
+            (SELECT grant_key FROM daily_claims WHERE player_key = 'legacy-buyer') AS daily,
+            (SELECT grant_key FROM leaderboard_placements WHERE receipt_id = 'legacy-placement') AS placement`;
+        expect(refs[0]).toEqual({
+          support: canonicalKey,
+          announcement: canonicalKey,
+          progress: canonicalKey,
+          unlock: canonicalKey,
+          daily: canonicalKey,
+          placement: canonicalKey,
+        });
+        const audit = await sql<{ command_key: string; outbox_key: string }[]>`
+          SELECT
+            (SELECT result #>> '{purchase,grantKey}' FROM commands WHERE request_hash = 'hash') AS command_key,
+            (SELECT payload ->> 'grantKey' FROM outbox WHERE kind = 'purchase.recorded') AS outbox_key`;
+        expect(audit).toEqual([{ command_key: legacyKey, outbox_key: legacyKey }]);
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(priorDir, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
+  it('aborts the legacy purchase grant migration atomically when historical keys disagree', async () => {
+    const t = await createTestDatabase('invalid_legacy_purchase_grants');
+    const priorDir = priorMigrationsDir();
+    try {
+      await migrateUp(t.url, { dir: priorDir });
+      const sql = connect(t.url, { max: 1 });
+      try {
+        const providerToken = 'provider-token-'.repeat(20);
+        const inconsistentKey = `purchase:${'different-token-'.repeat(20)}`;
+        await sql`
+          INSERT INTO grants (player_key, grant_key, source, rewards, reason, actor)
+          VALUES ('invalid-legacy-buyer', ${inconsistentKey}, 'purchase', '[]', 'legacy', 'player')`;
+        await sql`
+          INSERT INTO purchase_transactions
+            (provider_token, player_key, sku, base_amount, granted, classification, created_at,
+             source, grant_key, sandbox)
+          VALUES
+            (${providerToken}, 'invalid-legacy-buyer', 'gems_100', 100, 0, 'unclassified',
+             now(), 'live_receipt', ${inconsistentKey}, false)`;
+
+        await expect(migrateUp(t.url)).rejects.toThrow(
+          /long transaction key does not match provider token/,
+        );
+        const unchanged = await sql<{ grant_key: string; aliases: string | null }[]>`
+          SELECT grant_key, to_regclass('public.grant_key_aliases')::text AS aliases
+          FROM purchase_transactions WHERE provider_token = ${providerToken}`;
+        expect(unchanged).toEqual([{ grant_key: inconsistentKey, aliases: null }]);
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(priorDir, { recursive: true, force: true });
       await t.drop();
     }
   });

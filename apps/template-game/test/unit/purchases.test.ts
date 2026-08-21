@@ -1,13 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
 import type {
+  ApiResult,
   PaymentsProvider,
   PurchaseCompletionOutcome,
   PurchaseRecoveryReport,
   RecoveryBatch,
 } from '@foundation/client';
-import type { PurchaseVerifyResult } from '@foundation/contracts';
+import type {
+  ConfigResponse,
+  PurchaseVerifyResult,
+  PurchasesMineResponse,
+} from '@foundation/contracts';
 import {
   canBeginCheckout,
+  isCheckoutReadyNow,
   type DirectPurchaseApi,
   type RecoveryPurchaseApi,
   recoverPurchasesOnStartup,
@@ -39,6 +45,111 @@ describe('template purchase coordination', () => {
     expect(canBeginCheckout({ ...ready, purchasesDisabled: true }, true, false)).toBe(false);
     expect(canBeginCheckout(ready, true, true)).toBe(false);
     expect(canBeginCheckout(ready, true, false)).toBe(true);
+  });
+
+  it('revalidates server and live readiness immediately before opening checkout', async () => {
+    let mineResult: ApiResult<PurchasesMineResponse> = {
+      ok: true as const,
+      status: 200,
+      body: {
+        purchases: [],
+        pendingAdjustments: [],
+        entitlement: 0,
+        purchasesDisabled: false,
+        checkoutEnabled: true,
+        serverNow: 1,
+        requestId: 'mine',
+      },
+    };
+    const mine = vi.fn(async (): Promise<ApiResult<PurchasesMineResponse>> => mineResult);
+    const configBody: ConfigResponse = {
+      gameId: 'template',
+      env: 'lab' as const,
+      contractVersion: '1',
+      minBuildVersion: '1.0.0',
+      maintenance: false,
+      killSwitches: { skus: [], commands: [] },
+      contentVersions: [],
+      schedules: [],
+      serverNow: 1,
+      requestId: 'config',
+    };
+    let configResult: ApiResult<ConfigResponse> = {
+      ok: true,
+      status: 200,
+      body: configBody,
+    };
+    const config = vi.fn(async (): Promise<ApiResult<ConfigResponse>> => configResult);
+    const api = { purchases: { mine }, liveops: { config } };
+
+    await expect(isCheckoutReadyNow(api, 'gems_100', '1.0.0')).resolves.toBe(true);
+    expect(mine).toHaveBeenCalledTimes(1);
+    expect(config).toHaveBeenCalledWith(true);
+
+    configResult = {
+      ok: false,
+      status: 0,
+      error: null,
+      networkError: 'offline',
+    };
+    await expect(isCheckoutReadyNow(api, 'gems_100', '1.0.0')).resolves.toBe(false);
+
+    configResult = { ok: true, status: 200, body: configBody };
+    mineResult = {
+      ok: false,
+      status: 503,
+      error: null,
+    };
+    await expect(isCheckoutReadyNow(api, 'gems_100', '1.0.0')).resolves.toBe(false);
+  });
+
+  it('refuses checkout preflight for maintenance, build, command, and SKU controls', async () => {
+    const mine = async () => ({
+      ok: true as const,
+      status: 200,
+      body: {
+        purchases: [],
+        pendingAdjustments: [],
+        entitlement: 0,
+        purchasesDisabled: false,
+        checkoutEnabled: true,
+        serverNow: 1,
+        requestId: 'mine',
+      },
+    });
+    const base = {
+      gameId: 'template',
+      env: 'lab' as const,
+      contractVersion: '1',
+      minBuildVersion: '1.0.0',
+      maintenance: false,
+      killSwitches: { skus: [] as string[], commands: [] as string[] },
+      contentVersions: [],
+      schedules: [],
+      serverNow: 1,
+      requestId: 'config',
+    };
+    const readiness = (body: typeof base) =>
+      isCheckoutReadyNow(
+        {
+          purchases: { mine },
+          liveops: { config: async () => ({ ok: true as const, status: 200, body }) },
+        },
+        'gems_100',
+        '1.0.0',
+      );
+
+    await expect(readiness({ ...base, maintenance: true })).resolves.toBe(false);
+    await expect(readiness({ ...base, minBuildVersion: '2.0.0' })).resolves.toBe(false);
+    await expect(
+      readiness({
+        ...base,
+        killSwitches: { skus: [], commands: ['purchases.verify'] },
+      }),
+    ).resolves.toBe(false);
+    await expect(
+      readiness({ ...base, killSwitches: { skus: ['gems_100'], commands: [] } }),
+    ).resolves.toBe(false);
   });
 
   it('formats only provider-supplied price and ISO currency', () => {

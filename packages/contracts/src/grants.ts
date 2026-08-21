@@ -35,9 +35,22 @@ export type GrantReward = Static<typeof GrantReward>;
 
 export const GrantKey = Type.String({ minLength: 1, maxLength: 200 });
 
+/**
+ * Older servers derived purchase grant keys by prefixing the provider token directly. Current
+ * writes use purchase:<sha256(providerToken)>, but response and claim paths remain compatible
+ * with the legacy form while migrations canonicalise stored rows. Minting inputs still use the
+ * bounded GrantKey above.
+ */
+export const LegacyPurchaseGrantKey = Type.String({
+  minLength: 201,
+  maxLength: 2057,
+  pattern: '^purchase:',
+});
+export const GrantReferenceKey = Type.Union([GrantKey, LegacyPurchaseGrantKey]);
+
 export const Grant = Type.Object(
   {
-    grantKey: GrantKey,
+    grantKey: GrantReferenceKey,
     source: GrantSourceSchema,
     rewards: Type.Array(GrantReward, { maxItems: 20 }),
     reason: Type.String(),
@@ -60,7 +73,7 @@ export const GrantsPendingResponse = Response(
 export type GrantsPendingResponse = Static<typeof GrantsPendingResponse>;
 
 /** POST /v1/grants/claim {commandId, grantKey} (same payload on repeat) */
-export const GrantClaimBody = Mutation({ grantKey: GrantKey }, { $id: 'GrantClaimBody' });
+export const GrantClaimBody = Mutation({ grantKey: GrantReferenceKey }, { $id: 'GrantClaimBody' });
 export type GrantClaimBody = Static<typeof GrantClaimBody>;
 
 export const GrantClaimResult = Response(
@@ -75,7 +88,7 @@ export type GrantClaimResult = Static<typeof GrantClaimResult>;
 
 /** POST /v1/grants/claim-batch {commandId, grantKeys[]} */
 export const GrantClaimBatchBody = Mutation(
-  { grantKeys: Type.Array(GrantKey, { minItems: 1, maxItems: 50 }) },
+  { grantKeys: Type.Array(GrantReferenceKey, { minItems: 1, maxItems: 50 }) },
   { $id: 'GrantClaimBatchBody' },
 );
 export type GrantClaimBatchBody = Static<typeof GrantClaimBatchBody>;
@@ -84,7 +97,7 @@ export const GrantClaimBatchResult = Response(
   {
     results: Type.Array(
       Type.Object({
-        grantKey: GrantKey,
+        grantKey: GrantReferenceKey,
         outcome: StringEnum([
           'claimed',
           'already_claimed',

@@ -1,7 +1,7 @@
 import { Type, type Static } from '@sinclair/typebox';
 import { EpochMs, Mutation, NonNegInt, Response, StringEnum } from './common.ts';
 import { PURCHASE_ADJUSTMENT_KINDS, PURCHASE_CLASSIFICATIONS } from './enums.ts';
-import { GrantKey } from './grants.ts';
+import { GrantReferenceKey } from './grants.ts';
 
 export const PurchaseClassificationSchema = StringEnum(PURCHASE_CLASSIFICATIONS);
 export const PurchaseAdjustmentKindSchema = StringEnum(PURCHASE_ADJUSTMENT_KINDS);
@@ -25,7 +25,7 @@ export const PurchaseRecord = Type.Object(
     /** Premium value granted (0 unless classification=paid and minting enabled). */
     granted: NonNegInt,
     /** Grant key created for this purchase, when a grant was minted. */
-    grantKey: Type.Optional(GrantKey),
+    grantKey: Type.Optional(GrantReferenceKey),
     price: Type.Optional(Type.Number()),
     currency: Type.Optional(Type.String()),
     /** Signed sandbox provenance; null only for legacy/imported rows where it was not retained. */

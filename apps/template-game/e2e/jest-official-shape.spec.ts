@@ -478,4 +478,22 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
       variant: 'b',
     },
   });
+
+  // A previously healthy snapshot is not enough to open the provider sheet. The click path must
+  // re-read server/live readiness and fail closed if that preflight becomes unavailable.
+  const beginCallsBeforeFailedPreflight = (await fixtureCalls(page)).filter(
+    (call) => call.name === 'payments.beginPurchase',
+  ).length;
+  await expect(page.getByTestId('buy-gems_100')).toBeEnabled();
+  await page.route('**/v1/config', (route) => route.abort('failed'));
+  await page.getByTestId('buy-gems_100').click();
+  await expect(page.getByTestId('purchase-outcome')).toHaveText(
+    'checkout is not currently available',
+  );
+  expect(
+    (await fixtureCalls(page)).filter((call) => call.name === 'payments.beginPurchase'),
+  ).toHaveLength(beginCallsBeforeFailedPreflight);
+  await page.getByTestId('config-refresh').click();
+  await expect(page.getByTestId('diag-config-error')).not.toHaveText('—');
+  await expect(page.getByTestId('buy-gems_100')).toBeDisabled();
 });

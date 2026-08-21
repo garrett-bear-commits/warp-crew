@@ -52,7 +52,13 @@ if (arg === '--up') {
     writeFileSync(file, desc);
     console.log(`wrote ${file}`);
   } else {
-    const expected = readFileSync(file, 'utf8');
+    // Older snapshots contain harmless trailing spaces from nullable columns without defaults.
+    // New descriptions are clean; normalize the reviewed legacy file during comparison so a
+    // migration check remains structural rather than whitespace-sensitive.
+    const expected = readFileSync(file, 'utf8')
+      .split('\n')
+      .map((line) => line.trimEnd())
+      .join('\n');
     if (expected !== desc) {
       console.error(
         `schema drift: ${file} differs from the database (run --check --write after a reviewed migration)`,

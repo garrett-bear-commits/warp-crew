@@ -869,6 +869,66 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       await h2.close();
     }
   });
+
+  it('returns a migrated purchase key and claims it through its legacy purchase alias', async () => {
+    const providerToken = 'legacy-api-provider-token-'.repeat(12);
+    const legacyKey = `purchase:${providerToken}`;
+    const canonicalKey = `purchase:${createHash('sha256').update(providerToken).digest('hex')}`;
+    const purchaseCommandId = h.uuid();
+    const grant = await h.root<{ id: string }[]>`
+      INSERT INTO grants
+        (player_key, grant_key, source, rewards, premium_amount, reason, actor, command_id)
+      VALUES
+        ('legacy-api-buyer', ${canonicalKey}, 'purchase',
+         '[{"kind":"premium_currency","amount":100}]', 100, 'legacy purchase', 'player',
+         ${purchaseCommandId})
+      RETURNING id`;
+    await h.root`
+      INSERT INTO purchase_transactions
+        (provider_token, player_key, sku, pack_key, base_amount, granted, price, currency,
+         classification, created_at, completed_at, source, command_id, grant_key, sandbox)
+      VALUES
+        (${providerToken}, 'legacy-api-buyer', 'gems_100', 'handful', 100, 100, 4.99, 'USD',
+         'paid', now(), now(), 'live_receipt', ${purchaseCommandId}, ${canonicalKey}, false)`;
+    await h.root`
+      INSERT INTO grant_key_aliases (player_key, alias_key, grant_id, reason)
+      VALUES ('legacy-api-buyer', ${legacyKey}, ${grant[0]!.id}, 'legacy_purchase_provider_token')`;
+
+    const mine = await h.inject({
+      method: 'GET',
+      url: '/v1/purchases/mine',
+      headers: h.playerHeaders('legacy-api-buyer'),
+    });
+    expect(mine.json()).toMatchObject({ purchases: [{ grantKey: canonicalKey }] });
+
+    const claimed = await post('legacy-api-buyer', '/v1/grants/claim', {
+      commandId: h.uuid(),
+      grantKey: legacyKey,
+    });
+    expect(claimed.statusCode).toBe(200);
+    expect(claimed.json()).toMatchObject({
+      outcome: 'claimed',
+      duplicate: false,
+      grant: { grantKey: canonicalKey },
+    });
+    const canonicalRetry = await post('legacy-api-buyer', '/v1/grants/claim', {
+      commandId: h.uuid(),
+      grantKey: canonicalKey,
+    });
+    expect(canonicalRetry.json()).toMatchObject({
+      outcome: 'already_claimed',
+      grant: { grantKey: canonicalKey },
+    });
+    const claims = await h.root<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM grant_claims WHERE grant_id = ${grant[0]!.id}`;
+    expect(claims[0]!.n).toBe(1);
+    const claimedEvent = await h.root<{ payload: Record<string, unknown> }[]>`
+      SELECT payload FROM outbox
+      WHERE kind = 'grant.claimed' AND player_key = 'legacy-api-buyer'
+      ORDER BY id DESC LIMIT 1`;
+    expect(claimedEvent[0]?.payload).toEqual({ grantKey: canonicalKey });
+    expect(JSON.stringify(claimedEvent[0]?.payload)).not.toContain(legacyKey);
+  });
 });
 
 describe('grants: the one reward primitive (ADR-008)', () => {

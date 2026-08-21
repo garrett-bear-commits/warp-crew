@@ -20,11 +20,7 @@ import type { GameApi } from './api.ts';
 import type { GameConfig } from './config.ts';
 import type { TemplateAction, TemplateEffect, TemplateState } from './engine.ts';
 import { recoverPurchasesOnStartup } from './purchases.ts';
-import {
-  claimRetentionOrdinal,
-  refreshRetentionPlan,
-  shouldRefreshRetention,
-} from './retention.ts';
+import { createRetentionCoordinator } from './retention.ts';
 import { compareBuildVersions } from './versions.ts';
 
 export type TemplateClient = GameClient<TemplateState, TemplateAction, TemplateEffect>;
@@ -115,11 +111,46 @@ export function GameProvider(props: {
   );
   const toastId = useRef(0);
   const visible = useVisibility();
-  const registered = client.player?.registered === true;
-  const playerId = client.player?.playerId ?? null;
-  const retentionScheduled = useRef(false);
-  const retentionScheduledPlayer = useRef<string | null>(null);
-  const retentionHiddenMark = useRef<number | null>(null);
+  const retentionPlayer = useSyncExternalStore(
+    useCallback(
+      (cb: () => void) =>
+        client.onEvent((event) => {
+          if (event.type === 'identity_switch') cb();
+        }),
+      [client],
+    ),
+    useCallback(() => client.player, [client]),
+    () => null,
+  );
+  const retentionLeader = useSyncExternalStore(
+    useCallback((cb: () => void) => client.leader.onChange(() => cb()), [client]),
+    useCallback(() => client.leader.isLeader(), [client]),
+    () => false,
+  );
+  const retention = useMemo(
+    () =>
+      createRetentionCoordinator({
+        notifications: client.platform.notifications,
+        storage: client.storage,
+        gameId: cfg.gameId,
+        buildVersion: cfg.buildVersion,
+        assetReference: cfg.notificationAssetReference,
+        isLeader: () => client.leader.isLeader(),
+        mark: () => clock.mark(),
+        sinceMark: (mark) => clock.sinceMark(mark),
+        onResult: (result) => {
+          client.platform.analytics.track('notification_plan_result', {
+            scheduled: result.scheduled.length,
+            failed: result.failed.length,
+          });
+          if (result.failed.length)
+            client.reportError(new Error('notification plan partially failed'), {
+              failed: result.failed.length,
+            });
+        },
+      }),
+    [cfg.buildVersion, cfg.gameId, cfg.notificationAssetReference, client, clock],
+  );
 
   const toast = useCallback((text: string) => {
     const id = ++toastId.current;
@@ -199,65 +230,20 @@ export function GameProvider(props: {
     [api],
   );
 
-  // Registered players get one deterministic D1-D7 rolling plan on startup and meaningful returns.
-  // Guests schedule nothing; unsupported/moderated results remain observable but never block play.
+  // A coordinator owns this tab's plan. It serializes lifecycle/identity work and fences every
+  // non-cancellable SDK await by epoch + the existing Web Locks leader result.
   useEffect(() => {
-    if (!booted || !registered || playerId === null) {
-      retentionScheduled.current = false;
-      retentionScheduledPlayer.current = null;
-      retentionHiddenMark.current = null;
-      return;
-    }
-    if (retentionScheduledPlayer.current !== playerId) {
-      retentionScheduled.current = false;
-      retentionScheduledPlayer.current = playerId;
-      retentionHiddenMark.current = null;
-    }
-    if (!visible) {
-      if (retentionHiddenMark.current === null) retentionHiddenMark.current = clock.mark();
-      return;
-    }
-    const hiddenMs =
-      retentionHiddenMark.current === null ? null : clock.sinceMark(retentionHiddenMark.current);
-    retentionHiddenMark.current = null;
-    if (!shouldRefreshRetention(retentionScheduled.current, hiddenMs)) return;
-    const returnOrdinal = claimRetentionOrdinal(client.storage, cfg.gameId, playerId);
-    retentionScheduled.current = true;
-    let alive = true;
-    void refreshRetentionPlan(
-      client.platform.notifications,
-      { playerId, registered: true },
-      cfg.buildVersion,
-      cfg.notificationAssetReference,
-      {
-        progress: client.state().counter,
-        returnOrdinal,
-      },
-    ).then((result) => {
-      if (!alive) return;
-      client.platform.analytics.track('notification_plan_result', {
-        scheduled: result.scheduled.length,
-        failed: result.failed.length,
-      });
-      if (result.failed.length)
-        client.reportError(new Error('notification plan partially failed'), {
-          failed: result.failed.length,
-        });
+    retention.activate();
+    return () => retention.destroy();
+  }, [retention]);
+  useEffect(() => {
+    retention.reconcile({
+      booted,
+      player: retentionPlayer,
+      visible,
+      progress: client.state().counter,
     });
-    return () => {
-      alive = false;
-    };
-  }, [
-    booted,
-    visible,
-    registered,
-    playerId,
-    client,
-    clock,
-    cfg.gameId,
-    cfg.buildVersion,
-    cfg.notificationAssetReference,
-  ]);
+  }, [booted, visible, client, retention, retentionPlayer, retentionLeader]);
 
   // Attribute notification entries through the official payload, with a strict allow-list so
   // arbitrary entry data (including names or message text) never enters analytics.

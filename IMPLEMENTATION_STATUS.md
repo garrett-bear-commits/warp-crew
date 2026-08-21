@@ -24,7 +24,7 @@ self-review, and mobile soak.
 
 ## Branch and commits
 
-Branch `main`; committed through `f01bf78` (`Align foundation with current Jest HTML5 SDK`), with the reviewer-remediation changes described here still uncommitted. The historical `game-foundation-v1` branch currently points at the same commit. No tags exist. Checkpoint history is available through `git log --oneline` (CP1 → CP7, the audit-fix commits, then Jest conformance remediation).
+Branch `main`. The first reviewer-remediation set was committed as `f046d47` (`Address Jest integration review findings`); the historical `game-foundation-v1` branch remains at `f01bf78`. No tags exist. Use `git log --oneline` and `git status --short` for the current committed and working state rather than duplicating a moving head here.
 
 ## Checkpoints
 
@@ -34,33 +34,34 @@ Branch `main`; committed through `f01bf78` (`Align foundation with current Jest 
 | 2 | server spine: bus, idempotency/tombstones, Postgres locks/migrations/roles, outbox DLQ+replay, jobs, limits, auth, health, Docker | done |
 | 3 | saves + lineage: append-only snapshots, dispositions, size/bomb guards, terminal quarantine reviews, generation-only rollback, restore/reattach/erasure/CAS, property + real-PG concurrency tests | done |
 | 4 | identity/purchases/grants: Jest + mock verifiers + conformance, fail-closed tokens, receipt ledgers, sandbox non-minting, real minting off (ADR-024), grants/codes/cohorts | done |
-| 5 | client adapter (`packages/client`) incl. model-based sync tests (618 unit + 2 model tests, 0 counterexamples; audit fixes F1/F3/F8/F9) | done |
+| 5 | client adapter (`packages/client`) incl. model-based sync tests (623 unit + 2 model tests, 0 counterexamples; audit fixes F1/F3/F8/F9) | done |
 | 6 | features: achievements, leaderboards L1–2, inbox, announcements, telemetry, journal, liveops (flags/schedules/segments/content/kill switches/minBuild), admin + static inspector (separate origin, strict CSP), Lab QA | done |
 | 7 | template game + Playwright (Chromium + WebKit) + migration/restore/outbox-crash/receipt-replay tests + runbooks + tooling | done |
 | 8 | current Jest HTML5 remediation: official SDK mirror/bootstrap, stable registration, data/lifecycle/loading/analytics/entry, signed batch purchase recovery, sandbox provenance, catalog pricing, D1–D7 notifications, and launch runbook | done locally; real-platform gates remain |
 | 9 | reviewer remediation: handled eager SDK failure, post-init lifecycle subscriptions, canonical/deduplicated recovery reports, batch-receipt redaction, fail-closed checkout, family pause, hashed grant keys, and durable meaningful-return notification rotation | done locally; real-platform gates remain |
+| 10 | reviewer closure: fresh click-time checkout preflight, recovery-wide terminal states, concurrent credential refresh, leader/mutex-owned retention mutation, legacy grant-key migration/aliases, and clean schema snapshot generation | done locally; real-platform gates remain |
 
 ## Commands and results
 
-Rerun from the repo root on 2026-08-21 after the reviewer remediation (macOS, Node 24.13.1,
-pnpm 10.30.1). The PG suite used a disposable local Postgres cluster on port 55432 because a
+Rerun from the repo root on 2026-08-21 after the reviewer closure fixes (macOS, Node 24.13.1,
+pnpm 10.30.1). The PG suite used a disposable local Postgres cluster on port 55436 because a
 container runtime was unavailable. The cluster was removed after verification.
 
 | Command | Result |
 | --- | --- |
 | `pnpm install` | ok (lockfile committed; Node 24 / pnpm 10.30.1 pinned via `packageManager` + `engine-strict`); `@sentry/node` added to `packages/server` |
-| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | passed: formatting, lint, all 8 workspace typechecks, both production builds, 6 guards, 877 unit/contract tests, and 2 model tests |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 34 files, 877 tests passed |
-| `DATABASE_URL_TEST=… pnpm test:pg` (real Postgres, migrations from empty incl. `0014_purchase_sandbox_provenance`, app role) | 7 files, 116 tests passed; the root script uses one worker because bootstrap roles are cluster-global |
+| `pnpm check` = `fmt:check && lint && typecheck && build && guards && test` | passed: formatting, lint, all 8 workspace typechecks, both production builds, 6 guards, 891 unit/contract tests, and 2 model tests |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 34 files, 891 tests passed |
+| `DATABASE_URL_TEST=… pnpm test:pg` (real Postgres, migrations from empty incl. `0015_legacy_purchase_grant_keys`, app role) | 7 files, 119 tests passed; the root script uses one worker because bootstrap roles are cluster-global |
 | `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples; the server-truth model now replays refused/quarantined writes with their original disposition) |
-| `pnpm test:e2e` (Playwright Chromium + WebKit iPhone 13 against a fresh lab API, local iframe host, `vite preview`, and local official-shape Jest fixture) | 28 passed (46.8 s) |
+| `pnpm test:e2e` (Playwright Chromium + WebKit iPhone 13 against a fresh lab API, local iframe host, `vite preview`, and local official-shape Jest fixture) | 28 passed (46.3 s) |
 | `git diff --check` | clean |
 | Docker image build/smoke | not rerun on 2026-08-20 because Docker was unavailable; the prior 2026-08-18 checkpoint built from `git archive HEAD` and smoke-tested `/health/ready` + inspector CSP |
-| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` on a fresh database | 14 migrations applied, head `7ff022d400983b54`; `schema matches` |
+| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` on a fresh database | 15 migrations applied, head `8ec5e166389d9f2f`; `schema matches` |
 | `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)"; the detector itself is unit-tested (`test/openapi-diff.test.ts`) and CI runs it against the last tag once one exists |
 | Sentry / managed PITR / object storage / Jest platform calls | not run — external gates (below); the local paths (Sentry wiring with an injected transport, isolated-restore verification, erasure export/replay) are tested |
 
-Totals: 877 unit/contract + 2 model + 116 real-Postgres + 28 browser = 1,023 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Totals: 891 unit/contract + 2 model + 119 real-Postgres + 28 browser = 1,040 tests, all passing; 0 skipped; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
 
 ## Audit findings (2026-08-18) — all fixed with regression tests
 
@@ -115,7 +116,7 @@ See `README.md` ("Everyday commands"): `pnpm install`, `pnpm db:up`, `pnpm migra
 1. `packages/server/src/cqrs/bus.ts` — the middleware onion and reservation-based idempotency (ADR-026); its real-PG tests `packages/server/test/pg/bus.test.ts`.
 2. `packages/server/src/features/saves/placement.ts` + `packages/server/src/db/migrations/0011_privileges.sql` — the placement guard and the SECURITY DEFINER fences (`promote_snapshot`, `prune_save_blobs`, `erase_player`, `apply_retention`).
 3. `packages/client/src/sync` + the model-based tests — the client safety mechanism (ratchet/reconcile/generations vs a server-truth model).
-4. `apps/server/test/pg/*.test.ts` and `packages/server/test/pg/*.test.ts` — 116 tests on real Postgres that double as the acceptance evidence for §4/§6/§7.
+4. `apps/server/test/pg/*.test.ts` and `packages/server/test/pg/*.test.ts` — 119 tests on real Postgres that double as the acceptance evidence for §4/§6/§7.
 5. `docs/adr/ADR-024-purchase-minting-gate.md` and `packages/server/src/features/purchases/server.ts` — how money is fenced until the receipt shape is verified.
 
 ## Best next action

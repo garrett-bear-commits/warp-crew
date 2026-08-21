@@ -101,13 +101,52 @@ describe('route registry invariants', () => {
     expect(schema.required).toContain('checkoutEnabled');
   });
 
-  it('bounds purchase grant keys to the claim contract limit', () => {
-    const grantKey = (
-      ROUTE_BY_ID.get('purchases.verify')!.response as unknown as {
-        properties: { purchase: { properties: { grantKey: { maxLength?: number } } } };
-      }
-    ).properties.purchase.properties.grantKey;
-    expect(grantKey.maxLength).toBe(200);
+  it('keeps new grant keys bounded while legacy purchase keys remain response/claim compatible', () => {
+    const legacyPurchaseKey = `purchase:${'t'.repeat(256)}`;
+    const oversizedAdminKey = `admin:${'t'.repeat(256)}`;
+    const purchase = {
+      id: 1,
+      sku: 'gems_100',
+      classification: 'paid',
+      granted: 100,
+      grantKey: legacyPurchaseKey,
+      sandbox: null,
+      createdAt: 1,
+      completedAt: 2,
+      recordedAt: 3,
+    };
+
+    expect(
+      check(ROUTE_BY_ID.get('purchases.verify')!.response, {
+        purchaseToken: 'legacy-token',
+        outcome: 'duplicate',
+        purchase,
+        completion: 'ready',
+        serverNow: 4,
+        requestId: 'request-1',
+      }),
+    ).toBe(true);
+    expect(
+      check(ROUTE_BY_ID.get('grants.claim')!.body!, {
+        commandId: saveWriteBody.commandId,
+        grantKey: legacyPurchaseKey,
+      }),
+    ).toBe(true);
+    expect(
+      check(ROUTE_BY_ID.get('grants.claim')!.body!, {
+        commandId: saveWriteBody.commandId,
+        grantKey: oversizedAdminKey,
+      }),
+    ).toBe(false);
+    expect(
+      check(ROUTE_BY_ID.get('admin.grant')!.body!, {
+        commandId: saveWriteBody.commandId,
+        playerKey: 'player-1',
+        grantKey: oversizedAdminKey,
+        rewards: [],
+        reason: 'must stay bounded',
+      }),
+    ).toBe(false);
   });
 });
 

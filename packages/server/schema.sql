@@ -151,6 +151,11 @@ col grant_claims.grant_id bigint NO
 col grant_claims.player_key text NO 
 col grant_claims.command_id uuid NO 
 col grant_claims.claimed_at timestamp with time zone NO now()
+col grant_key_aliases.player_key text NO
+col grant_key_aliases.alias_key text NO
+col grant_key_aliases.grant_id bigint NO
+col grant_key_aliases.reason text NO
+col grant_key_aliases.created_at timestamp with time zone NO now()
 col grants.id bigint NO nextval('grants_id_seq'::regclass)
 col grants.player_key text NO 
 col grants.grant_key text NO 
@@ -482,6 +487,12 @@ con generations.generations_kind_check CHECK ((kind = ANY (ARRAY['initial'::text
 con generations.generations_pkey PRIMARY KEY (player_key, generation)
 con grant_claims.grant_claims_grant_id_fkey FOREIGN KEY (grant_id) REFERENCES grants(id)
 con grant_claims.grant_claims_pkey PRIMARY KEY (grant_id)
+con grant_key_aliases.grant_key_aliases_alias_key_check CHECK (((char_length(alias_key) > 200) AND (alias_key ~~ 'purchase:%'::text)))
+con grant_key_aliases.grant_key_aliases_grant_id_alias_key_key UNIQUE (grant_id, alias_key)
+con grant_key_aliases.grant_key_aliases_grant_id_fkey FOREIGN KEY (grant_id) REFERENCES grants(id)
+con grant_key_aliases.grant_key_aliases_pkey PRIMARY KEY (player_key, alias_key)
+con grant_key_aliases.grant_key_aliases_reason_check CHECK ((reason = 'legacy_purchase_provider_token'::text))
+con grants.grants_grant_key_length CHECK ((char_length(grant_key) <= 200))
 con grants.grants_pkey PRIMARY KEY (id)
 con grants.grants_player_key_grant_key_key UNIQUE (player_key, grant_key)
 con grants.grants_premium_amount_check CHECK ((premium_amount >= 0))
@@ -533,6 +544,7 @@ con purchase_adjustments.purchase_adjustments_transaction_id_fkey FOREIGN KEY (t
 con purchase_transactions.purchase_transactions_base_amount_check CHECK ((base_amount >= 0))
 con purchase_transactions.purchase_transactions_check CHECK (((classification = 'paid'::text) OR (granted = 0)))
 con purchase_transactions.purchase_transactions_classification_check CHECK ((classification = ANY (ARRAY['paid'::text, 'sandbox'::text, 'unclassified'::text, 'unsupported'::text])))
+con purchase_transactions.purchase_transactions_grant_key_length CHECK (((grant_key IS NULL) OR (char_length(grant_key) <= 200)))
 con purchase_transactions.purchase_transactions_granted_check CHECK ((granted >= 0))
 con purchase_transactions.purchase_transactions_pkey PRIMARY KEY (id)
 con purchase_transactions.purchase_transactions_provider_token_key UNIQUE (provider_token)
@@ -593,6 +605,9 @@ idx feedback_pkey CREATE UNIQUE INDEX feedback_pkey ON public.feedback USING btr
 idx generations_pkey CREATE UNIQUE INDEX generations_pkey ON public.generations USING btree (player_key, generation)
 idx generations_restart_id CREATE UNIQUE INDEX generations_restart_id ON public.generations USING btree (player_key, restart_id) WHERE (restart_id IS NOT NULL)
 idx grant_claims_pkey CREATE UNIQUE INDEX grant_claims_pkey ON public.grant_claims USING btree (grant_id)
+idx grant_key_aliases_grant CREATE INDEX grant_key_aliases_grant ON public.grant_key_aliases USING btree (grant_id)
+idx grant_key_aliases_grant_id_alias_key_key CREATE UNIQUE INDEX grant_key_aliases_grant_id_alias_key_key ON public.grant_key_aliases USING btree (grant_id, alias_key)
+idx grant_key_aliases_pkey CREATE UNIQUE INDEX grant_key_aliases_pkey ON public.grant_key_aliases USING btree (player_key, alias_key)
 idx grants_pkey CREATE UNIQUE INDEX grants_pkey ON public.grants USING btree (id)
 idx grants_player_created CREATE INDEX grants_player_created ON public.grants USING btree (player_key, created_at)
 idx grants_player_key_grant_key_key CREATE UNIQUE INDEX grants_player_key_grant_key_key ON public.grants USING btree (player_key, grant_key)
