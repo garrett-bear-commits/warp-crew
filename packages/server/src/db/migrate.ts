@@ -64,13 +64,25 @@ export interface SchemaN1Declaration {
   resultHead: string;
   /** Image expectedHead that may boot with this extra. Not a chain: N-2 extras do not qualify. */
   compatibleWithHead: string;
+  /** Last ordinal of that image; durable, not inferred from a migrateUp batch. */
+  compatibleWithOrdinal: number;
 }
 
-/** Marker line a migration includes so migrateUp records it in schema_n1_compat. */
-export const N1_COMPAT_MARKER = '-- foundation-n1-compatible';
+/** `-- foundation-n1-compatible-with-ordinal: 15` */
+export function n1CompatLine(ordinal: number): string {
+  return `-- foundation-n1-compatible-with-ordinal: ${ordinal}`;
+}
+
+export function n1CompatibleWithOrdinal(sql: string): number | null {
+  for (const line of sql.split(/\r?\n/)) {
+    const m = /^-- foundation-n1-compatible-with-ordinal:\s*(\d+)\s*$/.exec(line.trim());
+    if (m) return Number(m[1]);
+  }
+  return null;
+}
 
 export function isN1CompatibleSql(sql: string): boolean {
-  return sql.split(/\r?\n/).some((line) => line.trim() === N1_COMPAT_MARKER);
+  return n1CompatibleWithOrdinal(sql) !== null;
 }
 
 /** Unique ordinals that increase by exactly one. Duplicate or skipped NNNN prefixes fail. */
@@ -125,6 +137,38 @@ export function appliedIsDiskPrefix(
       };
   }
   return { ok: true };
+}
+
+/** Build a declaration from applied rows (extra included) and an explicit parent-image ordinal. */
+export function n1DeclarationFromApplied(
+  extraName: string,
+  applied: Array<{ name: string; checksum: string }>,
+  compatibleWithOrdinal: number,
+): SchemaN1Declaration {
+  const idx = applied.findIndex((r) => r.name === extraName);
+  if (idx < 0) throw new Error(`n1 extra ${extraName} is not in applied rows`);
+  const extraOrd = migrationOrdinal(extraName);
+  if (extraOrd === null || extraOrd <= compatibleWithOrdinal)
+    throw new Error(
+      `n1 extra ${extraName} must come after compatible-with-ordinal ${compatibleWithOrdinal}`,
+    );
+  const parent = applied.filter((r) => {
+    const n = migrationOrdinal(r.name);
+    return n !== null && n <= compatibleWithOrdinal;
+  });
+  const parentLast = parent.length ? migrationOrdinal(parent[parent.length - 1]!.name) : null;
+  if (parentLast !== compatibleWithOrdinal)
+    throw new Error(`n1 parent ordinal ${compatibleWithOrdinal} is not applied`);
+  const prefix = applied.slice(0, idx);
+  const result = applied.slice(0, idx + 1);
+  return {
+    extraName,
+    extraChecksum: applied[idx]!.checksum,
+    prefixHead: schemaHead(prefix),
+    resultHead: schemaHead(result),
+    compatibleWithHead: schemaHead(parent),
+    compatibleWithOrdinal,
+  };
 }
 
 function declaredN1ForImage(
@@ -205,8 +249,10 @@ async function ensureTable(sql: Sql): Promise<void> {
     extra_checksum TEXT NOT NULL,
     prefix_head TEXT NOT NULL,
     result_head TEXT NOT NULL,
-    compatible_with_head TEXT NOT NULL
+    compatible_with_head TEXT NOT NULL,
+    compatible_with_ordinal INTEGER NOT NULL
   )`;
+  await sql`ALTER TABLE schema_n1_compat ADD COLUMN IF NOT EXISTS compatible_with_ordinal INTEGER`;
 }
 
 export interface MigrateResult {
@@ -235,27 +281,37 @@ export async function migrateUp(
       >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
       const done = new Map(rows.map((r) => [r.name, r.checksum]));
       const appliedSoFar: Array<{ name: string; checksum: string }> = [...rows];
+      if (!isUniqueContiguousChain(files.map((f) => f.name)))
+        throw new Error('disk migration files are not a unique contiguous ordinal chain');
+      if (!isUniqueContiguousChain(rows.map((r) => r.name)))
+        throw new Error('applied migrations are not a unique contiguous ordinal chain');
       const prefix = appliedIsDiskPrefix(files, rows);
       if (!prefix.ok) throw new Error(prefix.reason);
-      let n1BatchParent: string | null = null;
+      let preview = [...appliedSoFar];
+      for (const f of files) {
+        if (done.has(f.name)) continue;
+        preview = [...preview, { name: f.name, checksum: f.checksum }];
+        const parentOrdinal = n1CompatibleWithOrdinal(f.sql);
+        if (parentOrdinal !== null) n1DeclarationFromApplied(f.name, preview, parentOrdinal);
+      }
       for (const f of files) {
         if (done.has(f.name)) {
           skipped.push(f.name);
-          n1BatchParent = null;
           continue;
         }
         const t0 = process.hrtime.bigint();
-        const prefixHead = schemaHead(appliedSoFar);
-        const resultHead = schemaHead([...appliedSoFar, { name: f.name, checksum: f.checksum }]);
-        const n1 = isN1CompatibleSql(f.sql);
-        if (n1) n1BatchParent ??= prefixHead;
-        else n1BatchParent = null;
+        const parentOrdinal = n1CompatibleWithOrdinal(f.sql);
+        const nextApplied = [...appliedSoFar, { name: f.name, checksum: f.checksum }];
+        const n1 =
+          parentOrdinal !== null
+            ? n1DeclarationFromApplied(f.name, nextApplied, parentOrdinal)
+            : null;
         await sql.begin(async (tx) => {
           await tx.unsafe(f.sql);
-          if (n1 && n1BatchParent)
+          if (n1)
             await tx`INSERT INTO schema_n1_compat
-              (extra_name, extra_checksum, prefix_head, result_head, compatible_with_head)
-              VALUES (${f.name}, ${f.checksum}, ${prefixHead}, ${resultHead}, ${n1BatchParent})`;
+              (extra_name, extra_checksum, prefix_head, result_head, compatible_with_head, compatible_with_ordinal)
+              VALUES (${n1.extraName}, ${n1.extraChecksum}, ${n1.prefixHead}, ${n1.resultHead}, ${n1.compatibleWithHead}, ${n1.compatibleWithOrdinal})`;
           const ms = Number((process.hrtime.bigint() - t0) / 1_000_000n);
           await tx`INSERT INTO schema_migrations (name, checksum, duration_ms) VALUES (${f.name}, ${f.checksum}, ${ms})`;
         });
@@ -336,35 +392,76 @@ async function loadN1Declarations(sql: Sql): Promise<SchemaN1Declaration[]> {
       prefix_head: string;
       result_head: string;
       compatible_with_head: string;
+      compatible_with_ordinal: number;
     }[]
-  >`SELECT extra_name, extra_checksum, prefix_head, result_head, compatible_with_head FROM schema_n1_compat`;
+  >`SELECT extra_name, extra_checksum, prefix_head, result_head, compatible_with_head, compatible_with_ordinal FROM schema_n1_compat`;
   return rows.map((r) => ({
     extraName: r.extra_name,
     extraChecksum: r.extra_checksum,
     prefixHead: r.prefix_head,
     resultHead: r.result_head,
     compatibleWithHead: r.compatible_with_head,
+    compatibleWithOrdinal: Number(r.compatible_with_ordinal),
   }));
+}
+
+async function refreshN1Declarations(sql: Sql): Promise<void> {
+  const exists = await sql<
+    { ok: boolean }[]
+  >`SELECT to_regclass('public.schema_n1_compat') IS NOT NULL AS ok`;
+  if (!exists[0]?.ok) return;
+  const applied = await sql<
+    { name: string; checksum: string }[]
+  >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
+  const decls = await sql<
+    { extra_name: string; compatible_with_ordinal: number | null }[]
+  >`SELECT extra_name, compatible_with_ordinal FROM schema_n1_compat`;
+  for (const d of decls) {
+    if (d.compatible_with_ordinal == null)
+      throw new Error(
+        `schema_n1_compat ${d.extra_name} has no compatible_with_ordinal; refuse --repair`,
+      );
+    const rec = n1DeclarationFromApplied(d.extra_name, applied, Number(d.compatible_with_ordinal));
+    await sql`UPDATE schema_n1_compat SET
+      extra_checksum = ${rec.extraChecksum},
+      prefix_head = ${rec.prefixHead},
+      result_head = ${rec.resultHead},
+      compatible_with_head = ${rec.compatibleWithHead}
+      WHERE extra_name = ${rec.extraName}`;
+  }
 }
 
 /** --repair: re-record checksums for applied migrations whose file changed (documented, ops-only). */
 export async function repairChecksums(url: string, dir = MIGRATIONS_DIR): Promise<string[]> {
   const sql = postgres(url, { max: 1, onnotice: () => {} });
   try {
-    await ensureTable(sql);
-    const files = listMigrations(dir);
-    const rows = await sql<
-      { name: string; checksum: string }[]
-    >`SELECT name, checksum FROM schema_migrations`;
-    const repaired: string[] = [];
-    for (const r of rows) {
-      const f = files.find((x) => x.name === r.name);
-      if (f && f.checksum !== r.checksum) {
-        await sql`UPDATE schema_migrations SET checksum = ${f.checksum} WHERE name = ${r.name}`;
-        repaired.push(r.name);
+    await sql`SELECT pg_advisory_lock(4, 1)`;
+    try {
+      await ensureTable(sql);
+      await sql.unsafe('BEGIN');
+      try {
+        const files = listMigrations(dir);
+        const rows = await sql<
+          { name: string; checksum: string }[]
+        >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
+        const repaired: string[] = [];
+        for (const r of rows) {
+          const f = files.find((x) => x.name === r.name);
+          if (f && f.checksum !== r.checksum) {
+            await sql`UPDATE schema_migrations SET checksum = ${f.checksum} WHERE name = ${r.name}`;
+            repaired.push(r.name);
+          }
+        }
+        await refreshN1Declarations(sql);
+        await sql.unsafe('COMMIT');
+        return repaired;
+      } catch (err) {
+        await sql.unsafe('ROLLBACK');
+        throw err;
       }
+    } finally {
+      await sql`SELECT pg_advisory_unlock(4, 1)`;
     }
-    return repaired;
   } finally {
     await sql.end({ timeout: 5 });
   }

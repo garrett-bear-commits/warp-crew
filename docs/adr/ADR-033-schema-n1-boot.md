@@ -15,16 +15,18 @@ already applied an earlier unreleased commit.
 
 1. **Two-release rollout.** This image ships the N-1 checker and `schema_n1_compat` (created by
    the migrator, like `schema_migrations`) with **no extra numbered migration**. Head stays the
-   `c94bf5d` 15-file head. A later release may add `-- foundation-n1-compatible` extras; *this*
+   `c94bf5d` 15-file head. A later release may add `-- foundation-n1-compatible-with-ordinal` extras; *this*
    image can boot against them. `c94bf5d` cannot. Unreleased databases that applied a rewritten
    `0015`/`0016` are rebuilt from empty.
-2. Each declared extra stores `extra_checksum`, `prefix_head`, `result_head`, and
-   `compatible_with_head`. Boot `ahead` requires `compatible_with_head ===` this image's
-   `expectedHead` (one prior image, not a chain), extra checksums to match applied rows, and
-   `result_head` to match the running head after the extra. Consecutive n1 extras applied in one
-   `migrateUp` share the same `compatible_with_head` (one release).
-3. Disk files and applied names must be a unique contiguous ordinal chain. `migrateUp` requires
-   applied rows to be a prefix of disk files in order.
+2. Each extra declares `-- foundation-n1-compatible-with-ordinal: N` in SQL (the last ordinal of
+   the prior image). `migrateUp` stores `extra_checksum`, `prefix_head`, `result_head`,
+   `compatible_with_head`, and `compatible_with_ordinal`. Boot `ahead` requires
+   `compatible_with_head ===` this image's `expectedHead`. Same-release extras all name the same
+   parent ordinal, even if applied in separate `migrateUp` runs. A later extra named for ordinal
+   16 is N-2 relative to an image ending at 15.
+3. Disk files and applied names must be a unique contiguous ordinal chain, checked **before**
+   any apply SQL. `migrateUp` also requires applied rows to be a prefix of disk files in order.
+   `--repair` recomputes n1 declaration heads from the stored parent ordinal in the same transaction as checksum updates.
 4. Isolated restore requires `state === 'match'`. `/health/ready` may be ready on `ahead`.
 5. `0015`'s immediately-validated CHECKs still take `ACCESS EXCLUSIVE` for the table scan. That
    lock window is not fixed; do not rewrite `0015`.

@@ -7,7 +7,9 @@ import {
   isUniqueContiguousChain,
   migrationOrdinal,
   migrationsBefore,
-  N1_COMPAT_MARKER,
+  n1CompatLine,
+  n1CompatibleWithOrdinal,
+  n1DeclarationFromApplied,
   schemaHead,
   schemaIsExactHead,
   type SchemaN1Declaration,
@@ -30,6 +32,7 @@ function n1Decl(
     prefixHead: schemaHead(prefix),
     resultHead: schemaHead(result),
     compatibleWithHead: schemaHead(compatibleWith),
+    compatibleWithOrdinal: migrationOrdinal(compatibleWith[compatibleWith.length - 1]!.name)!,
   };
 }
 
@@ -192,10 +195,38 @@ describe('evaluateSchemaCompatibility (declared N-1)', () => {
 });
 
 describe('N-1 SQL marker', () => {
-  it('detects the exact comment line', () => {
-    expect(isN1CompatibleSql(`${N1_COMPAT_MARKER}\nALTER TABLE t VALIDATE CONSTRAINT c;\n`)).toBe(
-      true,
+  it('parses an explicit compatible-with-ordinal and ignores a bare comment', () => {
+    expect(n1CompatibleWithOrdinal(`${n1CompatLine(15)}\nSELECT 1;\n`)).toBe(15);
+    expect(isN1CompatibleSql(`${n1CompatLine(15)}\nSELECT 1;\n`)).toBe(true);
+    expect(isN1CompatibleSql('-- foundation-n1-compatible\nSELECT 1;\n')).toBe(false);
+  });
+});
+
+describe('n1DeclarationFromApplied', () => {
+  const through15 = [file('0013_a.sql'), file('0014_b.sql'), file('0015_c.sql')];
+  const extra16 = file('0016_n1.sql');
+  const extra17 = file('0017_n1.sql');
+
+  it('same parent ordinal on a later extra still targets the 0015 image after 0016 is applied', () => {
+    const d16 = n1DeclarationFromApplied(extra16.name, [...through15, extra16], 15);
+    const d17 = n1DeclarationFromApplied(extra17.name, [...through15, extra16, extra17], 15);
+    expect(d16.compatibleWithHead).toBe(schemaHead(through15));
+    expect(d17.compatibleWithHead).toBe(schemaHead(through15));
+    expect(d16.compatibleWithHead).toBe(d17.compatibleWithHead);
+  });
+
+  it('a later extra declared for ordinal 16 is N-2 relative to 0015', () => {
+    const d17 = n1DeclarationFromApplied(extra17.name, [...through15, extra16, extra17], 16);
+    expect(d17.compatibleWithHead).toBe(schemaHead([...through15, extra16]));
+    expect(d17.compatibleWithHead).not.toBe(schemaHead(through15));
+  });
+
+  it('refuses a parent ordinal that is not applied or that is not before the extra', () => {
+    expect(() => n1DeclarationFromApplied(extra16.name, [...through15, extra16], 12)).toThrow(
+      /not applied/,
     );
-    expect(isN1CompatibleSql('-- not a compat marker\nSELECT 1;\n')).toBe(false);
+    expect(() => n1DeclarationFromApplied(extra16.name, [...through15, extra16], 16)).toThrow(
+      /must come after/,
+    );
   });
 });

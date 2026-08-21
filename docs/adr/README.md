@@ -22,4 +22,4 @@ Format: Context → Decision → Consequences. All dated 2026-08-17 unless state
 | [ADR-030](ADR-030-tooling-and-inspector-decisions.md) | Content-addressed static releases; inspector retry keeps commandId on network/5xx only |
 | [ADR-031](ADR-031-template-game-decisions.md) | Template game: policy unwraps the codec envelope, `state.v` derived, integer clock, isPaused idle, proactive update banner, e2e via admin API |
 | [ADR-032](ADR-032-audit-fixes.md) | Decisions taken while fixing the v1 audit findings (replay semantics, TLS, lease tokens, DR markers, Sentry sampling, business-key locks) |
-| [ADR-033](ADR-033-schema-n1-boot.md) | Schema boot compatibility is an explicit N-1 applied-suffix window |
+| [ADR-033](ADR-033-schema-n1-boot.md) | Schema boot compatibility is a declared N-1 extra for one prior image |

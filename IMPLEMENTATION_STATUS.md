@@ -56,7 +56,7 @@ head. Unreleased DBs that applied a rewritten `0015`/`0016` are rebuilt from emp
 | `pnpm typecheck` | ok (all 8 workspace typechecks) |
 | `pnpm build` | ok (admin inspector + template game) |
 | `pnpm guards` | 6/6 PASS |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 907 tests passed |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 910 tests passed |
 | `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples) |
 | `DATABASE_URL_TEST=… pnpm test:pg` | not run — local `initdb`/`pg_ctl` failed (`could not create shared memory segment: Operation not permitted`); no container runtime |
 | `pnpm test:e2e` | not run — needs the PG lab API |
@@ -66,13 +66,13 @@ head. Unreleased DBs that applied a rewritten `0015`/`0016` are rebuilt from emp
 | `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)" |
 | Sentry / managed PITR / object storage / Jest platform calls | not run — external gates |
 
-Verified this session: 907 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Verified this session: 910 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
 
 ## Last-pass findings (2026-08-21) — implemented
 
 | # | Finding | Fix | Evidence |
 | --- | --- | --- | --- |
-| 1 | Previous image refused to boot after `0015` (exact head match) | Two-release: this image ships the N-1 checker at the `c94bf5d` 15-file head. `c94bf5d` still exact-head (`exactHeadMatches`). Future extras declare `compatible_with_head` + checksums (ADR-033) | `packages/server/test/unit/migrate.test.ts`; `infra.test.ts` N-1 block |
+| 1 | Previous image refused to boot after `0015` (exact head match) | Two-release: this image ships the N-1 checker at the `c94bf5d` 15-file head. `c94bf5d` still exact-head (`exactHeadMatches`). Future extras declare `-- foundation-n1-compatible-with-ordinal: N` (not a `migrateUp` batch) | `packages/server/test/unit/migrate.test.ts`; `infra.test.ts` N-1 block |
 | 2 | `0015` held `ACCESS EXCLUSIVE` across rewrite + constraint scan | **Not fixed.** `0015` restored byte-for-byte; rewriting it would break checksum upgrade. The validating scan still takes `ACCESS EXCLUSIVE`. | `0015_legacy_purchase_grant_keys.sql:125`; this table |
 | 3 | No-Web-Locks tabs all led and raced retention mutation | Fail closed without Web Locks; same-tab `run()` queued | `apps/template-game/test/unit/retention.test.ts` |
 | 4 | `priorMigrationsDir` excluded only `0015_` by name | `migrationsBefore` uses parsed `NNNN` prefix | `migrate.test.ts` synthetic `0014`/`0015`/`0016` |

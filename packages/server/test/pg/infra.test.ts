@@ -12,7 +12,7 @@ import {
   schemaHead,
   repairChecksums,
   migrationsBefore,
-  N1_COMPAT_MARKER,
+  n1CompatLine,
   exactHeadMatches,
 } from '../../src/db/migrate.ts';
 import { setupPg, type PgHarness } from './helpers.ts';
@@ -295,7 +295,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
   it('boot check: this image matches at 0015; a declared next extra is ahead here and exact-head-incompatible', async () => {
     const t = await createTestDatabase('schema_n1');
     const extraDir = writeMigrationsDir(listMigrations());
-    writeFileSync(join(extraDir, '0016_n1_probe.sql'), `${N1_COMPAT_MARKER}\nSELECT 1;\n`);
+    writeFileSync(join(extraDir, '0016_n1_probe.sql'), `${n1CompatLine(15)}\nSELECT 1;\n`);
     try {
       await migrateUp(t.url);
       const sql = connect(t.url, { max: 1 });
@@ -331,6 +331,20 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         expect(bad.state).toBe('mismatched');
         expect(bad.mismatched).toEqual(['0003_saves.sql']);
         await repairChecksums(t.url);
+        const afterRepair = await checkSchema(sql);
+        expect(afterRepair).toMatchObject({ ok: true, state: 'ahead' });
+
+        writeFileSync(
+          join(extraDir, '0016_n1_probe.sql'),
+          `${n1CompatLine(15)}\nSELECT 1; -- repaired\n`,
+        );
+        await repairChecksums(t.url, extraDir);
+        const afterExtraRepair = await checkSchema(sql);
+        expect(afterExtraRepair).toMatchObject({
+          ok: true,
+          state: 'ahead',
+          ahead: ['0016_n1_probe.sql'],
+        });
 
         await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0017_ghost.sql', 'x')`;
         const over = await checkSchema(sql);
@@ -345,13 +359,34 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     }
   });
 
+  it('migrateUp refuses a gapped disk ordinal chain before running SQL', async () => {
+    const t = await createTestDatabase('mig_gap');
+    const gapDir = writeMigrationsDir(listMigrations());
+    try {
+      await migrateUp(t.url, { dir: gapDir });
+      writeFileSync(join(gapDir, '0017_gap.sql'), 'SELECT 1;\n');
+      await expect(migrateUp(t.url, { dir: gapDir })).rejects.toThrow(/contiguous ordinal chain/);
+      const sql = connect(t.url, { max: 1 });
+      try {
+        const extra = await sql<{ n: number }[]>`
+          SELECT count(*)::int AS n FROM schema_migrations WHERE name = '0017_gap.sql'`;
+        expect(extra[0]!.n).toBe(0);
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(gapDir, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
   it('migrateUp refuses applied rows that are not a prefix of disk files', async () => {
     const t = await createTestDatabase('mig_prefix');
     const priorDir = priorMigrationsDir(15);
     try {
       await migrateUp(t.url, { dir: priorDir });
       const sql = connect(t.url, { max: 1 });
-      await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0016_skip.sql', 'x')`;
+      await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0015_wrong.sql', 'x')`;
       await sql.end({ timeout: 5 });
       await expect(migrateUp(t.url)).rejects.toThrow(/not a prefix/);
     } finally {
