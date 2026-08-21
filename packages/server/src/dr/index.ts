@@ -10,7 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import postgres from 'postgres';
 import type { Q } from '../db/index.ts';
-import { checkSchema } from '../db/migrate.ts';
+import { checkSchema, schemaIsExactHead } from '../db/migrate.ts';
 import { sha256Hex } from '../db/canonical.ts';
 
 export interface BackupManifest {
@@ -109,9 +109,10 @@ export async function verifyIsolatedRestore(
   const sql = postgres(input.restoredUrl, { max: 1, onnotice: () => {} });
   try {
     const st = await checkSchema(sql);
-    if (!st.ok)
+    const atExactHead = schemaIsExactHead(st);
+    if (!atExactHead)
       problems.push(
-        `restored schema not at head: pending=[${st.pending.join(',')}] mismatched=[${st.mismatched.join(',')}]`,
+        `restored schema not at exact head: state=${st.state} pending=[${st.pending.join(',')}] mismatched=[${st.mismatched.join(',')}] ahead=[${st.ahead.join(',')}]`,
       );
     if (input.manifest.schemaHead && st.head && input.manifest.schemaHead !== st.head)
       problems.push(
@@ -144,7 +145,7 @@ export async function verifyIsolatedRestore(
       ok: problems.length === 0,
       checks: {
         manifestMatchesDestination,
-        schemaAtHead: st.ok,
+        schemaAtHead: atExactHead,
         schemaHead: st.head,
         blobsSampled: rows.length,
         blobsOk,

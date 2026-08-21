@@ -1,4 +1,4 @@
-# ADR-033 Schema boot compatibility is an explicit N-1 applied-suffix window
+# ADR-033 Schema boot compatibility is a declared N-1 chain
 
 Date: 2026-08-21. Status: accepted.
 
@@ -7,21 +7,26 @@ Date: 2026-08-21. Status: accepted.
 `checkSchema` used to require `schemaHead(applied) === schemaHead(image files)`. After deploying a
 migration and rolling the image back, the previous image saw the extra applied row, computed a
 different head, and refused to boot — contradicting the N-1 rule in `docs/runbooks/migrations.md`.
-Ignoring arbitrary unknown migrations would hide gaps and forks.
+Ignoring arbitrary unknown ordinals would treat `0016_drop_everything` as bootable. Editing an
+already-committed migration file (`0015` in `c94bf5d`) also breaks checksum upgrade/rollback.
 
 ## Decision
 
-Boot evaluates disk files vs applied rows into distinct states: `match`, `pending`, `mismatched`,
-`ahead`, `incompatible`, `missing_table`. Pending known files and checksum mismatches always
-refuse. `ahead` is bootable only when the extra applied names are a contiguous next-ordinal suffix
-of length ≤ `SCHEMA_COMPAT_AHEAD` (2), so one expand + validate pair in a single release remains
-N-1 compatible. A third extra file, a skipped ordinal, or an unknown name that is not the next
-prefix is `incompatible`. `migrate --up` still refuses applied files missing on disk — rollback
-keeps the schema and does not re-run the old migrator.
+1. Never rewrite an already-committed migration. Follow-ups append. `0015` remains the
+   `c94bf5d` bytes. `0016` validates the grant-key length CHECKs (no-op if already valid) and
+   creates `schema_n1_compat`.
+2. A migration opts into N-1 by including the line `-- foundation-n1-compatible`. `migrateUp`
+   then records `(extra_name, prefix_head)` where `prefix_head` is `schemaHead` of applied rows
+   before that file. The previous image reads that table at boot.
+3. Boot states: `match`, `pending`, `mismatched`, `ahead`, `incompatible`, `missing_table`.
+   `ahead` is bootable only when every extra applied name has a `schema_n1_compat` row whose
+   `prefix_head` equals the running head, and both disk files and applied names are a unique
+   contiguous ordinal chain (no skipped or duplicate `NNNN` prefixes).
+4. Isolated restore (`verifyIsolatedRestore`) requires `state === 'match'`, not merely `ok`.
+   `/health/ready` may be ready on `ahead` so a rolled-back image can serve.
 
 ## Consequences
 
-`/health/ready` `migrationsAtHead` means "compatible with this image", not "heads are identical".
-`migrate --status` reports `state` and `ahead`. Tests cover current-image pending `0015`, current
-head match, previous-image directory through `0014` against schema through `0016`, checksum
-mismatch, and an over-long suffix.
+A previous image whose files stop at `0015` boots against a database that has applied declared
+`0016`. An undeclared extra, a checksum rewrite of `0015`, or a gapped ordinal chain refuses.
+`migrate --up` from the old image still refuses applied files missing on disk.

@@ -2,7 +2,7 @@
 // leader holds an exclusive lock for the page lifetime; followers are read-only with a "Play here"
 // takeover (`steal`). Fallback when the API is unavailable: this tab is the leader (the ratchet —
 // not the lock — is the save-path safety mechanism). Retention mutation does not trust that
-// fallback; see `createTabLease` / template `createRetentionCoordinator`.
+// fallback; without Web Locks it fails closed.
 
 export interface LockRequestOptions {
   mode?: 'exclusive' | 'shared';

@@ -66,10 +66,10 @@ something the architecture left implicit.
     for a former leader's non-cancellable call and its replacement lands last. It re-checks the
     epoch and live leader result before each next mutation; a call already in flight may finish,
     but stale work cannot continue to another identifier or schedule an old identity's plan.
-    When `navigator.locks` is missing, a BroadcastChannel lease (heartbeat, TTL, deterministic
-    owner-id tie-break, steal, expiry takeover) elects a single writer and serializes mutation.
-    If that channel is also unavailable, retention mutation is skipped rather than racing. Do not
-    use a localStorage check-then-set lock.
+    When `navigator.locks` is missing, retention mutation is skipped (fail closed). BroadcastChannel
+    is not an atomic arbiter: delayed delivery can elect two holders. Do not use a localStorage
+    check-then-set lock. Same-tab overlapping `run()` calls are queued for the whole critical
+    section.
 
 ## Consequences
 

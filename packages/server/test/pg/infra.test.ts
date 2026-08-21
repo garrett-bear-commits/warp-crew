@@ -293,9 +293,9 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     }
   });
 
-  it('boot check: pending known files refuse; N-1 applied suffix boots; mismatch and over-ahead refuse', async () => {
+  it('boot check: pending known files refuse; declared N-1 extra boots; mismatch and undeclared extras refuse', async () => {
     const t = await createTestDatabase('schema_n1');
-    const priorDir = priorMigrationsDir(15);
+    const priorDir = priorMigrationsDir(16);
     try {
       await migrateUp(t.url, { dir: priorDir });
       const sql = connect(t.url, { max: 1 });
@@ -303,7 +303,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const pending = await checkSchema(sql);
         expect(pending.ok).toBe(false);
         expect(pending.state).toBe('pending');
-        expect(pending.pending[0]).toMatch(/^0015_/);
+        expect(pending.pending[0]).toMatch(/^0016_/);
 
         await migrateUp(t.url);
         const atHead = await checkSchema(sql);
@@ -312,10 +312,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const n1 = await checkSchema(sql, priorDir);
         expect(n1.ok).toBe(true);
         expect(n1.state).toBe('ahead');
-        expect(n1.ahead).toEqual([
-          '0015_legacy_purchase_grant_keys.sql',
-          '0016_validate_grant_key_length.sql',
-        ]);
+        expect(n1.ahead).toEqual(['0016_validate_grant_key_length.sql']);
 
         await sql`UPDATE schema_migrations SET checksum = 'deadbeef' WHERE name LIKE '0003%'`;
         const bad = await checkSchema(sql);
@@ -339,7 +336,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     }
   });
 
-  it('validates grant-key length without ACCESS EXCLUSIVE so concurrent DML is not blocked', async () => {
+  it('applies 0016 while both ledgers hold ROW EXCLUSIVE (no ACCESS EXCLUSIVE scan)', async () => {
     const t = await createTestDatabase('grant_key_validate_locks');
     const through15 = priorMigrationsDir(16);
     try {
@@ -351,14 +348,12 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
           SELECT conname, convalidated FROM pg_constraint
           WHERE conname IN ('grants_grant_key_length', 'purchase_transactions_grant_key_length')
           ORDER BY 1`;
-        expect(before).toEqual([
-          { conname: 'grants_grant_key_length', convalidated: false },
-          { conname: 'purchase_transactions_grant_key_length', convalidated: false },
-        ]);
+        expect(before.every((r) => r.convalidated)).toBe(true);
 
         let validated: Awaited<ReturnType<typeof migrateUp>> | undefined;
         await blocker.begin(async (tx) => {
           await tx`LOCK TABLE grants IN ROW EXCLUSIVE MODE`;
+          await tx`LOCK TABLE purchase_transactions IN ROW EXCLUSIVE MODE`;
           validated = await migrateUp(t.url, { lockTimeoutMs: 1000 });
         });
         expect(validated?.applied).toEqual(['0016_validate_grant_key_length.sql']);

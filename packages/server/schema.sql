@@ -427,6 +427,8 @@ col schedules.version integer NO 1
 col schedules.actor text NO 
 col schedules.reason text NO 
 col schedules.updated_at timestamp with time zone NO now()
+col schema_n1_compat.extra_name text NO
+col schema_n1_compat.prefix_head text NO
 col segments.segment_id text NO 
 col segments.predicate jsonb NO 
 col segments.version integer NO 1
@@ -570,6 +572,7 @@ con save_snapshots.save_snapshots_reason_check CHECK ((reason = ANY (ARRAY['auto
 con save_snapshots.save_snapshots_source_check CHECK ((source = ANY (ARRAY['client'::text, 'beacon'::text, 'restore'::text, 'admin'::text, 'qa_import'::text, 'reattach'::text])))
 con schedules.schedules_pkey PRIMARY KEY (schedule_id)
 con schema_migrations.schema_migrations_pkey PRIMARY KEY (name)
+con schema_n1_compat.schema_n1_compat_pkey PRIMARY KEY (extra_name)
 con segments.segments_pkey PRIMARY KEY (segment_id)
 con support_message_reads.support_message_reads_message_id_fkey FOREIGN KEY (message_id) REFERENCES support_messages(id)
 con support_message_reads.support_message_reads_pkey PRIMARY KEY (player_key, message_id)
@@ -667,6 +670,7 @@ idx save_snapshots_player_key_seq_key CREATE UNIQUE INDEX save_snapshots_player_
 idx save_snapshots_received CREATE INDEX save_snapshots_received ON public.save_snapshots USING btree (received_at)
 idx schedules_pkey CREATE UNIQUE INDEX schedules_pkey ON public.schedules USING btree (schedule_id)
 idx schema_migrations_pkey CREATE UNIQUE INDEX schema_migrations_pkey ON public.schema_migrations USING btree (name)
+idx schema_n1_compat_pkey CREATE UNIQUE INDEX schema_n1_compat_pkey ON public.schema_n1_compat USING btree (extra_name)
 idx segments_pkey CREATE UNIQUE INDEX segments_pkey ON public.segments USING btree (segment_id)
 idx support_message_reads_pkey CREATE UNIQUE INDEX support_message_reads_pkey ON public.support_message_reads USING btree (player_key, message_id)
 idx support_messages_command_id_key CREATE UNIQUE INDEX support_messages_command_id_key ON public.support_messages USING btree (command_id)

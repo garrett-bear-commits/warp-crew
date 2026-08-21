@@ -203,7 +203,7 @@ async function installOfficialShapeFixture(page: Page, stablePlayerId: string): 
           record('payments.beginPurchase', input);
           checkoutSeq += 1;
           const purchase = {
-            purchaseToken: `official-shape-paid-${checkoutSeq}`,
+            purchaseToken: `official-shape-paid-${player.playerId}-${checkoutSeq}`,
             productSku: input.productSku,
             credits: 100,
             createdAt: 1_724_160_000_002,
@@ -435,7 +435,9 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
   });
   expect(paymentResult.begin.kind).toBe('success');
   if (paymentResult.begin.kind !== 'success') throw new Error('expected successful begin');
-  expect(paymentResult.begin.purchaseToken).toBe('official-shape-paid-1');
+  expect(paymentResult.begin.purchaseToken).toBe(
+    `official-shape-paid-official-shape-${browserName}-1-1`,
+  );
   expect(paymentResult.begin.purchaseSigned).toEqual(expect.stringMatching(/^mockreceipt\./));
   expect(paymentResult.completion).toEqual({ kind: 'success' });
   expect(paymentResult.recovered).toHaveLength(2);
@@ -496,7 +498,10 @@ test('LOCAL MOCK EVIDENCE: Jest official-shape launch, lifecycle, analytics, not
   );
   expect(checkoutBegins).toHaveLength(1);
   expect(checkoutCompletes).toEqual([
-    { name: 'payments.completePurchase', args: [{ purchaseToken: 'official-shape-paid-1' }] },
+    {
+      name: 'payments.completePurchase',
+      args: [{ purchaseToken: `official-shape-paid-official-shape-${browserName}-1-1` }],
+    },
   ]);
 
   // A previously healthy snapshot is not enough to open the provider sheet. The click path must

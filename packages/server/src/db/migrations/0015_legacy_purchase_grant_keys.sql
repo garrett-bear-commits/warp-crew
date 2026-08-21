@@ -122,13 +122,11 @@ SET grant_key = m.canonical_key
 FROM legacy_purchase_grant_key_map m
 WHERE r.grant_key = m.legacy_key;
 
--- NOT VALID: catalog change only. The table scan runs in 0016 under SHARE UPDATE EXCLUSIVE so
--- this transaction does not hold ACCESS EXCLUSIVE across the rewrite + validation scan.
 ALTER TABLE grants
-  ADD CONSTRAINT grants_grant_key_length CHECK (char_length(grant_key) <= 200) NOT VALID;
+  ADD CONSTRAINT grants_grant_key_length CHECK (char_length(grant_key) <= 200);
 ALTER TABLE purchase_transactions
   ADD CONSTRAINT purchase_transactions_grant_key_length
-  CHECK (grant_key IS NULL OR char_length(grant_key) <= 200) NOT VALID;
+  CHECK (grant_key IS NULL OR char_length(grant_key) <= 200);
 
 -- Aliases are migration-owned compatibility facts. The application resolves but never mutates
 -- them; current minting remains idempotent on the canonical (player_key, grant_key) key.

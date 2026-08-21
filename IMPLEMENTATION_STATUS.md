@@ -40,7 +40,7 @@ Branch `main`. The first reviewer-remediation set was committed as `f046d47` (`A
 | 8 | current Jest HTML5 remediation: official SDK mirror/bootstrap, stable registration, data/lifecycle/loading/analytics/entry, signed batch purchase recovery, sandbox provenance, catalog pricing, D1–D7 notifications, and launch runbook | done locally; real-platform gates remain |
 | 9 | reviewer remediation: handled eager SDK failure, post-init lifecycle subscriptions, canonical/deduplicated recovery reports, batch-receipt redaction, fail-closed checkout, family pause, hashed grant keys, and durable meaningful-return notification rotation | done locally; real-platform gates remain |
 | 10 | reviewer closure: fresh click-time checkout preflight, recovery-wide terminal states, concurrent credential refresh, leader/mutex-owned retention mutation, legacy grant-key migration/aliases, and clean schema snapshot generation | done locally; real-platform gates remain |
-| 11 | last-pass review of `c94bf5d`: N-1 boot window (ADR-033), `0015` NOT VALID + `0016` VALIDATE, BroadcastChannel retention lease when Web Locks are missing, numeric pre-N migration fixtures, official-shape paid UI checkout | unit/model/lint/typecheck/build/guards green; real-Postgres + Playwright not rerun in this environment (`shmget` EPERM, no container runtime) |
+| 11 | last-pass review of `c94bf5d` plus follow-up: declared N-1 chain (ADR-033), `0015` restored byte-for-byte, `0016` VALIDATE + `schema_n1_compat`, retention fails closed without Web Locks, numeric pre-N fixtures, official-shape paid UI checkout with per-player tokens | unit/model/lint/typecheck/build/guards green; real-Postgres + Playwright not rerun in this environment (`shmget` EPERM, no container runtime) |
 
 ## Commands and results
 
@@ -56,25 +56,25 @@ for 16-file heads.
 | `pnpm typecheck` | ok (all 8 workspace typechecks) |
 | `pnpm build` | ok (admin inspector + template game) |
 | `pnpm guards` | 6/6 PASS |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 36 files, 905 tests passed |
+| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 904 tests passed |
 | `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples) |
 | `DATABASE_URL_TEST=… pnpm test:pg` | not run — local `initdb`/`pg_ctl` failed (`could not create shared memory segment: Operation not permitted`); no container runtime |
 | `pnpm test:e2e` | not run — needs the PG lab API |
 | `git diff --check` | clean |
 | Docker image build/smoke | not rerun (Docker unavailable) |
-| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` | not run (no database). Disk now has 16 files (`0016_validate_grant_key_length.sql`); `describeSchema` is unchanged after VALIDATE |
+| `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` | not run (no database). Disk has 16 files; `0015` matches `c94bf5d`; `0016` adds `schema_n1_compat` + VALIDATE |
 | `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)" |
 | Sentry / managed PITR / object storage / Jest platform calls | not run — external gates |
 
-Verified this session: 905 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Verified this session: 904 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
 
 ## Last-pass findings (2026-08-21) — implemented
 
 | # | Finding | Fix | Evidence |
 | --- | --- | --- | --- |
-| 1 | Previous image refused to boot after `0015` (exact head match) | `evaluateSchemaCompatibility`: pending/mismatch refuse; contiguous next-ordinal suffix of length ≤ 2 is `ahead` and bootable (ADR-033) | `packages/server/test/unit/migrate.test.ts`; `infra.test.ts` N-1 boot block |
-| 2 | `0015` held `ACCESS EXCLUSIVE` across rewrite + constraint scan | `0015` adds CHECKs `NOT VALID`; `0016` `VALIDATE CONSTRAINT` (SHARE UPDATE EXCLUSIVE) | `0015`/`0016` SQL; `infra.test.ts` VALIDATE under `ROW EXCLUSIVE` |
-| 3 | No-Web-Locks tabs all led and raced retention mutation | BroadcastChannel/`TabBus` lease (heartbeat, TTL, id tie-break, steal, abandon); mutation skipped if no exclusive primitive | `packages/client/test/unit/lease.test.ts`; `apps/template-game/test/unit/retention.test.ts` |
+| 1 | Previous image refused to boot after `0015` (exact head match) | Declared N-1 chain in `schema_n1_compat`; unique contiguous ordinals; previous image is through `0015` (ADR-033) | `packages/server/test/unit/migrate.test.ts`; `infra.test.ts` N-1 boot block |
+| 2 | `0015` held `ACCESS EXCLUSIVE` across rewrite + constraint scan | `0015` restored byte-for-byte from `c94bf5d`; `0016` VALIDATE (no-op if already valid) + `schema_n1_compat` | `0015`/`0016` SQL; `infra.test.ts` 0016 under ROW EXCLUSIVE on both ledgers |
+| 3 | No-Web-Locks tabs all led and raced retention mutation | Fail closed without Web Locks; same-tab `run()` queued | `apps/template-game/test/unit/retention.test.ts` |
 | 4 | `priorMigrationsDir` excluded only `0015_` by name | `migrationsBefore` uses parsed `NNNN` prefix | `migrate.test.ts` synthetic `0014`/`0015`/`0016` |
 | 5 | Official-shape UI never completed a paid checkout | Fixture `beginPurchase` returns unique paid `mockreceipt.*`; Shop click asserts grant/gems/`completePurchase` once, then the failed-preflight case | `apps/template-game/e2e/jest-official-shape.spec.ts` |
 
@@ -131,7 +131,7 @@ See `README.md` ("Everyday commands"): `pnpm install`, `pnpm db:up`, `pnpm migra
 1. `packages/server/src/cqrs/bus.ts` — the middleware onion and reservation-based idempotency (ADR-026); its real-PG tests `packages/server/test/pg/bus.test.ts`.
 2. `packages/server/src/features/saves/placement.ts` + `packages/server/src/db/migrations/0011_privileges.sql` — the placement guard and the SECURITY DEFINER fences (`promote_snapshot`, `prune_save_blobs`, `erase_player`, `apply_retention`).
 3. `packages/client/src/sync` + the model-based tests — the client safety mechanism (ratchet/reconcile/generations vs a server-truth model).
-4. `apps/server/test/pg/*.test.ts` and `packages/server/test/pg/*.test.ts` — 119 tests on real Postgres that double as the acceptance evidence for §4/§6/§7.
+4. `apps/server/test/pg/*.test.ts` and `packages/server/test/pg/*.test.ts` — 122 tests on real Postgres that double as the acceptance evidence for §4/§6/§7. These were not re-executed in this environment.
 5. `docs/adr/ADR-024-purchase-minting-gate.md` and `packages/server/src/features/purchases/server.ts` — how money is fenced until the receipt shape is verified.
 
 ## Best next action

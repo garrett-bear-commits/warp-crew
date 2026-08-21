@@ -1,7 +1,7 @@
 // Migrator (§4.2): run as a deployment step with the migrator role; one tx per file; SHA-256
 // checksums; pg_advisory_lock around the run; lock_timeout 3s; application boot checks applied
-// rows against this image's files and refuses on pending known files, checksum mismatch, or an
-// applied suffix outside the N-1 window (SCHEMA_COMPAT_AHEAD).
+// rows against this image's files and refuses on pending known files, checksum mismatch, a broken
+// ordinal chain, or extras that are not a declared N-1 chain in schema_n1_compat.
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import postgres, { type Sql } from 'postgres';
@@ -46,13 +46,6 @@ export function migrationsBefore<T extends { name: string }>(
   });
 }
 
-/**
- * How many extra applied files a previous image may see and still boot. Two covers one
- * expand + validate pair shipped in a single release (N-1 image rollback). A third extra
- * file, a gap, or a non-next ordinal is incompatible.
- */
-export const SCHEMA_COMPAT_AHEAD = 2;
-
 export type SchemaState =
   'match' | 'pending' | 'mismatched' | 'ahead' | 'incompatible' | 'missing_table';
 
@@ -64,27 +57,60 @@ export interface SchemaCompatibility {
   ahead: string[];
 }
 
-function isSupportedAhead(files: Array<{ name: string }>, ahead: string[]): boolean {
-  if (ahead.length === 0 || ahead.length > SCHEMA_COMPAT_AHEAD) return false;
-  const ordinals = files
-    .map((f) => migrationOrdinal(f.name))
-    .filter((n): n is number => n !== null);
-  const last = ordinals.length === 0 ? 0 : Math.max(...ordinals);
-  const extra = ahead.map(migrationOrdinal);
-  if (extra.some((n) => n === null)) return false;
-  const sorted = extra.filter((n): n is number => n !== null).sort((a, b) => a - b);
-  for (let i = 0; i < sorted.length; i++) if (sorted[i] !== last + i + 1) return false;
+export interface SchemaN1Declaration {
+  extraName: string;
+  prefixHead: string;
+}
+
+/** Marker line a migration includes so migrateUp records it in schema_n1_compat. */
+export const N1_COMPAT_MARKER = '-- foundation-n1-compatible';
+
+export function isN1CompatibleSql(sql: string): boolean {
+  return sql.split(/\r?\n/).some((line) => line.trim() === N1_COMPAT_MARKER);
+}
+
+/** Unique ordinals that increase by exactly one. Duplicate or skipped NNNN prefixes fail. */
+export function isUniqueContiguousChain(names: string[]): boolean {
+  if (names.length === 0) return true;
+  const parsed = names.map((name) => ({ name, n: migrationOrdinal(name) }));
+  if (parsed.some((p) => p.n === null)) return false;
+  const nums = parsed.map((p) => p.n as number);
+  if (new Set(nums).size !== nums.length) return false;
+  const sorted = [...parsed].sort(
+    (a, b) => (a.n as number) - (b.n as number) || a.name.localeCompare(b.name),
+  );
+  for (let i = 1; i < sorted.length; i++)
+    if ((sorted[i]!.n as number) !== (sorted[i - 1]!.n as number) + 1) return false;
+  return true;
+}
+
+function declaredN1Chain(
+  files: Array<{ name: string; checksum: string }>,
+  applied: Array<{ name: string; checksum: string }>,
+  declared: readonly SchemaN1Declaration[],
+): boolean {
+  const decl = new Map(declared.map((d) => [d.extraName, d.prefixHead]));
+  const fileNames = new Set(files.map((f) => f.name));
+  let running = applied.filter((a) => fileNames.has(a.name));
+  const extras = applied.filter((a) => !fileNames.has(a.name));
+  if (extras.length === 0) return false;
+  for (const extra of extras) {
+    if (decl.get(extra.name) !== schemaHead(running)) return false;
+    running = [...running, extra];
+  }
   return true;
 }
 
 /**
  * Boot compatibility of disk files vs applied rows. Pending known files and checksum
- * mismatches always refuse. A contiguous next-ordinal suffix of length ≤ SCHEMA_COMPAT_AHEAD
- * is the supported N-1 window (`ahead`, bootable). Anything else is `incompatible`.
+ * mismatches always refuse. `ahead` is bootable only when extras are a unique contiguous
+ * chain recorded in schema_n1_compat with prefix_head equal to the running head. Skipped or
+ * duplicate ordinals are incompatible even when names otherwise match.
  */
 export function evaluateSchemaCompatibility(
   files: Array<{ name: string; checksum: string }>,
   applied: Array<{ name: string; checksum: string }>,
+  declared: readonly SchemaN1Declaration[] = [],
 ): SchemaCompatibility {
   const fileByName = new Map(files.map((f) => [f.name, f]));
   const appliedNames = new Set(applied.map((a) => a.name));
@@ -96,12 +122,26 @@ export function evaluateSchemaCompatibility(
     })
     .map((a) => a.name);
   const ahead = applied.filter((a) => !fileByName.has(a.name)).map((a) => a.name);
-  if (mismatched.length) return { state: 'mismatched', ok: false, pending, mismatched, ahead };
-  if (pending.length) return { state: 'pending', ok: false, pending, mismatched, ahead };
+  const refuse = (state: 'mismatched' | 'pending' | 'incompatible'): SchemaCompatibility => ({
+    state,
+    ok: false,
+    pending,
+    mismatched,
+    ahead,
+  });
+  if (!isUniqueContiguousChain(files.map((f) => f.name))) return refuse('incompatible');
+  if (mismatched.length) return refuse('mismatched');
+  if (pending.length) return refuse('pending');
+  if (!isUniqueContiguousChain(applied.map((a) => a.name))) return refuse('incompatible');
   if (ahead.length === 0) return { state: 'match', ok: true, pending, mismatched, ahead };
-  if (isSupportedAhead(files, ahead))
+  if (declaredN1Chain(files, applied, declared))
     return { state: 'ahead', ok: true, pending, mismatched, ahead };
-  return { state: 'incompatible', ok: false, pending, mismatched, ahead };
+  return refuse('incompatible');
+}
+
+/** Isolated restore / DR: the restored copy must be this image's exact head, not merely bootable. */
+export function schemaIsExactHead(st: { ok: boolean; state: SchemaState }): boolean {
+  return st.ok && st.state === 'match';
 }
 
 async function ensureTable(sql: Sql): Promise<void> {
@@ -138,6 +178,7 @@ export async function migrateUp(
         { name: string; checksum: string }[]
       >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
       const done = new Map(rows.map((r) => [r.name, r.checksum]));
+      const appliedSoFar: Array<{ name: string; checksum: string }> = [...rows];
       // applied rows must be a prefix of files, with matching checksums
       for (const r of rows) {
         const f = files.find((x) => x.name === r.name);
@@ -153,11 +194,15 @@ export async function migrateUp(
           continue;
         }
         const t0 = process.hrtime.bigint();
+        const prefixHead = schemaHead(appliedSoFar);
         await sql.begin(async (tx) => {
           await tx.unsafe(f.sql);
+          if (isN1CompatibleSql(f.sql))
+            await tx`INSERT INTO schema_n1_compat (extra_name, prefix_head) VALUES (${f.name}, ${prefixHead})`;
           const ms = Number((process.hrtime.bigint() - t0) / 1_000_000n);
           await tx`INSERT INTO schema_migrations (name, checksum, duration_ms) VALUES (${f.name}, ${f.checksum}, ${ms})`;
         });
+        appliedSoFar.push({ name: f.name, checksum: f.checksum });
         applied.push(f.name);
         log(`applied ${f.name}`);
       }
@@ -207,7 +252,8 @@ export async function checkSchema(sql: Sql, dir = MIGRATIONS_DIR): Promise<Schem
   const rows = await sql<
     { name: string; checksum: string }[]
   >`SELECT name, checksum FROM schema_migrations ORDER BY name`;
-  const compat = evaluateSchemaCompatibility(files, rows);
+  const declared = await loadN1Declarations(sql);
+  const compat = evaluateSchemaCompatibility(files, rows, declared);
   return {
     ok: compat.ok,
     state: compat.state,
@@ -218,6 +264,17 @@ export async function checkSchema(sql: Sql, dir = MIGRATIONS_DIR): Promise<Schem
     ahead: compat.ahead,
     missingTable: false,
   };
+}
+
+async function loadN1Declarations(sql: Sql): Promise<SchemaN1Declaration[]> {
+  const exists = await sql<
+    { ok: boolean }[]
+  >`SELECT to_regclass('public.schema_n1_compat') IS NOT NULL AS ok`;
+  if (!exists[0]?.ok) return [];
+  const rows = await sql<
+    { extra_name: string; prefix_head: string }[]
+  >`SELECT extra_name, prefix_head FROM schema_n1_compat`;
+  return rows.map((r) => ({ extraName: r.extra_name, prefixHead: r.prefix_head }));
 }
 
 /** --repair: re-record checksums for applied migrations whose file changed (documented, ops-only). */

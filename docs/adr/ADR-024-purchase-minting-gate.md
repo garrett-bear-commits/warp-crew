@@ -35,14 +35,14 @@ after real Lab validation and owner approval), a non-sandbox paid classification
 separate delivery/commercial-value model.
 
 Legacy builds that used `purchase:<providerToken>` are migrated only when the transaction key,
-provider token, player, and purchase grant agree. Migration `0015` rewrites the relational
-references to the bounded hash key without replacing the grant row (so `grant_claims.grant_id`
-remains stable), records the old key in `grant_key_aliases`, and adds the length CHECKs
-`NOT VALID`. Migration `0016` validates those constraints in a second transaction so the table
-scan does not keep `ACCESS EXCLUSIVE` from the rewrite. Claim endpoints resolve the alias;
-historical command results and outbox payloads stay byte-for-byte audit evidence and the response
-contract explicitly permits those legacy replay references. An inconsistent row or hash collision
-aborts `0015` instead of guessing.
+provider token, player, and purchase grant agree. Migration `0015` (byte-stable since `c94bf5d`)
+rewrites the relational references to the bounded hash key without replacing the grant row (so
+`grant_claims.grant_id` remains stable), records the old key in `grant_key_aliases`, and adds the
+length CHECKs. Migration `0016` validates those constraints (a no-op when `0015` already validated
+them) and records itself in `schema_n1_compat` so a `c94bf5d` image can boot N-1. Claim endpoints
+resolve the alias; historical command results and outbox payloads stay byte-for-byte audit evidence
+and the response contract explicitly permits those legacy replay references. An inconsistent row
+or hash collision aborts `0015` instead of guessing.
 
 ## Consequences
 No premium value can be minted from an unverified assumption about the provider. Turning minting
