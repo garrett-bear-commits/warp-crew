@@ -10,6 +10,8 @@ export interface AdminCreds {
 
 export interface Connection extends AdminCreds {
   origin: string;
+  /** Absolute browser URL for the game client; held in memory with the credentials. */
+  clientUrl?: string;
 }
 
 export type AdminResult<T> =

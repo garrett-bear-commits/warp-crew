@@ -14,6 +14,8 @@ operations invariants.
    can change live.
 5. [Testing and releasing](testing-and-release.md) — prove a game integration before Lab and production.
 6. [Admin inspector](admin-inspector.md) — operate players and the supported live controls safely.
+7. [Disposable save sessions](disposable-save-sessions.md) — reproduce a retained player state without writing
+   to the player or operator.
 
 ## Source-of-truth order
 

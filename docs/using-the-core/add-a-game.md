@@ -52,6 +52,7 @@ Create `apps/<id>/` using `apps/template-game` as a reference. Replace, rather t
 - `config.ts` — build/platform inputs and public game identifiers;
 - `game.tsx` — grant and purchase-adjustment mapping;
 - panels and API clients for enabled features;
+- an early disposable-session bootstrap using the core helper, with server-backed panels omitted in that mode;
 - corpus fixtures, engine conformance tests, and browser flows.
 
 The template renders every acceptance feature unconditionally. A production game should import and render only

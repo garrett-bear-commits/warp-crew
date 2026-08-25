@@ -34,6 +34,14 @@ import {
   table,
   text,
 } from './render.ts';
+import {
+  buildIncognitoTarget,
+  createIncognitoSessionId,
+  incognitoSnapshot,
+  isIncognitoFailed,
+  isIncognitoLoaded,
+  isIncognitoReady,
+} from './incognito.ts';
 
 // ─── DOM lookups ───────────────────────────────────────────────────
 
@@ -53,6 +61,7 @@ const blobEl = byId<HTMLDivElement>('blob');
 const actionsEl = byId<HTMLDivElement>('actions');
 const deadLettersEl = byId<HTMLDivElement>('dead-letters');
 const deadLettersForm = byId<HTMLFormElement>('dead-letters-form');
+const incognitoForm = byId<HTMLFormElement>('incognito-form');
 
 type ViewName = 'setup' | 'support' | 'liveops' | 'safety' | 'audit';
 
@@ -114,14 +123,26 @@ connectForm.addEventListener('submit', (ev) => {
   ev.preventDefault();
   const fd = new FormData(connectForm);
   const origin = normalizeOrigin(String(fd.get('origin') ?? ''));
+  const clientUrl = String(fd.get('clientUrl') ?? '').trim();
   const keyId = String(fd.get('keyId') ?? '').trim();
   const secret = String(fd.get('secret') ?? '');
-  if (!origin || !keyId || !secret) {
-    setStatus('Origin, key id and secret are all required.', 'err');
+  const clientTarget = buildIncognitoTarget(
+    clientUrl,
+    '00000000-0000-4000-8000-000000000000',
+    globalThis.location.origin,
+  );
+  if (!origin || !clientTarget || !keyId || !secret) {
+    setStatus(
+      'API origin, HTTPS game client URL (or localhost HTTP), key id and secret are required.',
+      'err',
+    );
     return;
   }
-  connection = { origin, keyId, secret };
-  setStatus(`Using key "${keyId}" against ${origin}. Credentials are held in memory only.`, 'ok');
+  connection = { origin, clientUrl, keyId, secret };
+  setStatus(
+    `API ${origin} · disposable snapshots open only at ${clientTarget.origin} · key "${keyId}" is held in memory only.`,
+    'ok',
+  );
   setView('support');
 });
 
@@ -363,9 +384,7 @@ function renderTimeline(items: TimelineItem[]): void {
 
 async function viewBlob(playerKey: string, seq: number): Promise<void> {
   replace(blobEl, [text('p', `Loading blob seq ${seq}…`, 'hint')]);
-  const res = await api.get<SaveBlobResponse>(
-    `/admin/v1/players/${encodeURIComponent(playerKey)}/saves/${seq}/blob`,
-  );
+  const res = await fetchSaveBlob(playerKey, seq);
   if (!res.ok) {
     replace(blobEl, [text('p', describeFailure(res), 'result err')]);
     return;
@@ -387,6 +406,15 @@ async function viewBlob(playerKey: string, seq: number): Promise<void> {
       text('p', `Could not decode as JSON (${decoded.reason}); raw text below.`, 'hint'),
       text('pre', blob, 'raw'),
     ]);
+}
+
+async function fetchSaveBlob(
+  playerKey: string,
+  seq: number,
+): Promise<AdminResult<SaveBlobResponse>> {
+  return api.get<SaveBlobResponse>(
+    `/admin/v1/players/${encodeURIComponent(playerKey)}/saves/${seq}/blob`,
+  );
 }
 
 async function decodeBlob(
@@ -435,10 +463,14 @@ function renderSaves(playerKey: string, items: SnapshotMeta[]): void {
         {
           header: 'blob',
           cell: (s) => {
-            if (!s.hasBlob) return 'none';
-            const b = el('button', { type: 'button', class: 'small' }, ['View']);
-            b.addEventListener('click', () => void viewBlob(playerKey, s.seq));
-            return b;
+            if (!s.hasBlob) return 'none (pruned)';
+            const view = el('button', { type: 'button', class: 'small' }, ['View']);
+            view.addEventListener('click', () => void viewBlob(playerKey, s.seq));
+            const play = el('button', { type: 'button', class: 'small button-secondary' }, [
+              'Play incognito',
+            ]);
+            play.addEventListener('click', () => void launchIncognito(playerKey, s.seq));
+            return [view, ' ', play];
           },
         },
       ],
@@ -453,6 +485,131 @@ lookupForm.addEventListener('submit', (ev) => {
   const playerKey = String(new FormData(lookupForm).get('playerKey') ?? '').trim();
   if (!playerKey) return;
   void loadPlayer(playerKey);
+});
+
+const INCOGNITO_TIMEOUT_MS = 30_000;
+
+/**
+ * Open a snapshot-seeded game window. The popup is opened before the first await so browsers do
+ * not classify it as a popup-blocked background window. Credentials stay in the admin closure;
+ * the snapshot is sent only after the child proves its exact origin and session ID.
+ */
+async function launchIncognito(playerKey: string, seq: number, out?: HTMLElement): Promise<void> {
+  if (!connected()) {
+    if (out) showResult(out, 'err', 'Not connected.');
+    return;
+  }
+  const c = connection;
+  if (!c) return;
+  const adminOrigin = globalThis.location.origin;
+  const sessionId = createIncognitoSessionId();
+  if (!sessionId) {
+    const message = 'Secure randomness is unavailable; refusing to open a snapshot session.';
+    setStatus(message, 'err');
+    if (out) showResult(out, 'err', message);
+    return;
+  }
+  const target = buildIncognitoTarget(c.clientUrl ?? '', sessionId, adminOrigin);
+  if (!target) {
+    const message =
+      'Use HTTPS for the inspector and game client (localhost HTTP is allowed for development).';
+    setStatus(message, 'err');
+    if (out) showResult(out, 'err', message);
+    return;
+  }
+
+  let popup: Window | null = null;
+  let phase: 'waiting' | 'fetching' | 'sent' | 'done' | 'failed' = 'waiting';
+  const timeout: { handle?: ReturnType<typeof setTimeout> } = {};
+  const finish = (message: string, tone: 'ok' | 'err', close = false): void => {
+    if (phase === 'done' || phase === 'failed') return;
+    phase = tone === 'ok' ? 'done' : 'failed';
+    globalThis.removeEventListener('message', onMessage);
+    if (timeout.handle !== undefined) globalThis.clearTimeout(timeout.handle);
+    if (close) popup?.close();
+    setStatus(message, tone);
+    if (out) showResult(out, tone, message);
+  };
+  const onMessage = (event: MessageEvent<unknown>): void => {
+    if (!popup || event.source !== popup || event.origin !== target.origin) return;
+    if (isIncognitoFailed(event.data, sessionId)) {
+      finish(
+        'The game rejected the disposable snapshot. Check the game window for details.',
+        'err',
+      );
+      return;
+    }
+    if (isIncognitoLoaded(event.data, sessionId)) {
+      finish(`Incognito session loaded · player ${playerKey} · seq ${seq}`, 'ok');
+      return;
+    }
+    if (!isIncognitoReady(event.data, sessionId) || phase !== 'waiting') return;
+    phase = 'fetching';
+    void (async () => {
+      const res = await fetchSaveBlob(playerKey, seq);
+      if (!res.ok) {
+        const message =
+          res.status === 404
+            ? `Save seq ${seq} is unavailable (the retained blob may have been pruned).`
+            : `Could not load save seq ${seq}: ${describeFailure(res)}`;
+        finish(message, 'err', true);
+        return;
+      }
+      if (phase !== 'fetching') return;
+      if (!popup || popup.closed) {
+        finish('The incognito window closed before its snapshot could be sent.', 'err');
+        return;
+      }
+      if (res.body.seq !== seq || res.body.enc !== 'json') {
+        finish(
+          'The save endpoint returned an unexpected snapshot identity or encoding.',
+          'err',
+          true,
+        );
+        return;
+      }
+      try {
+        popup.postMessage(
+          incognitoSnapshot(
+            sessionId,
+            playerKey,
+            res.body.seq,
+            res.body.generation,
+            res.body.enc,
+            res.body.blob,
+          ),
+          target.origin,
+        );
+        phase = 'sent';
+      } catch {
+        finish('The incognito window closed before its snapshot could be sent.', 'err', true);
+      }
+    })();
+  };
+
+  globalThis.addEventListener('message', onMessage);
+  popup = globalThis.open(target.url, '_blank', 'popup,width=1200,height=900');
+  if (!popup) {
+    finish('Popup blocked. Allow popups for the inspector, then try again.', 'err');
+    return;
+  }
+  timeout.handle = globalThis.setTimeout(() => {
+    finish('Incognito session timed out before the game confirmed it was loaded.', 'err', true);
+  }, INCOGNITO_TIMEOUT_MS);
+}
+
+incognitoForm.addEventListener('submit', (ev) => {
+  ev.preventDefault();
+  const out = incognitoForm.querySelector('output.result') as HTMLElement;
+  const fd = new FormData(incognitoForm);
+  const playerKey = String(fd.get('playerKey') ?? '').trim();
+  const rawSeq = String(fd.get('seq') ?? '').trim();
+  const seq = Number(rawSeq);
+  if (!playerKey || !Number.isSafeInteger(seq) || seq < 0) {
+    showResult(out, 'err', 'Player key and a non-negative integer save sequence are required.');
+    return;
+  }
+  void launchIncognito(playerKey, seq, out);
 });
 
 async function loadPlayer(playerKey: string): Promise<void> {

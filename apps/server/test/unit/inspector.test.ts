@@ -16,6 +16,15 @@ import {
   decodeBase64Prefix,
 } from '../../admin-inspector/src/render.ts';
 import { adminClient, describeFailure, normalizeOrigin } from '../../admin-inspector/src/api.ts';
+import {
+  buildIncognitoTarget,
+  createIncognitoSessionId,
+  incognitoSnapshot,
+  INCOGNITO_PROTOCOL,
+  isIncognitoFailed,
+  isIncognitoLoaded,
+  isIncognitoReady,
+} from '../../admin-inspector/src/incognito.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const inspectorDir = resolve(here, '..', '..', 'admin-inspector');
@@ -39,6 +48,9 @@ describe('inspector source hygiene', () => {
     }
     expect(html.match(/data-view-panel=/g)).toHaveLength(5);
     expect(html).toContain('aria-current="page"');
+    expect(html).toContain('name="clientUrl"');
+    expect(html).toContain('id="incognito-form"');
+    expect(html).toContain('Open incognito session');
   });
 
   it('never parses HTML strings (no innerHTML/outerHTML/insertAdjacentHTML/document.write)', () => {
@@ -57,7 +69,7 @@ describe('inspector source hygiene', () => {
   });
 
   it('has no external URLs other than the default local origin', () => {
-    const allowed = new Set(['http://localhost:8080']);
+    const allowed = new Set(['http://localhost:8080', 'http://localhost:5173']);
     for (const { path, src } of sourceFiles()) {
       const urls = src.match(/https?:\/\/[^\s"'`)<>]+/g) ?? [];
       for (const u of urls) expect(allowed.has(u), `${path} references ${u}`).toBe(true);
@@ -252,6 +264,80 @@ describe('admin api client', () => {
       }),
     ).toBe('HTTP 403 forbidden: scope [abc]');
     expect(normalizeOrigin(' http://localhost:8080/// ')).toBe('http://localhost:8080');
+  });
+});
+
+describe('incognito takeover protocol', () => {
+  const sessionId = '00000000-0000-4000-8000-000000000000';
+
+  it('adds only a session and exact admin origin to the game URL', () => {
+    const target = buildIncognitoTarget(
+      'http://localhost:5173/game?build=qa#tab=overview',
+      sessionId,
+      'http://localhost:8080',
+    );
+    expect(target).not.toBeNull();
+    const parsed = new URL(target!.url);
+    expect(target!.origin).toBe('http://localhost:5173');
+    expect(parsed.pathname).toBe('/game');
+    expect(parsed.searchParams.get('build')).toBe('qa');
+    const fragment = new URLSearchParams(parsed.hash.slice(1));
+    expect(fragment.get('tab')).toBeNull();
+    expect(fragment.get('foundationIncognito')).toBe(sessionId);
+    expect(fragment.get('foundationAdminOrigin')).toBe('http://localhost:8080');
+    expect(parsed.search).not.toContain('secret');
+    expect(parsed.search).not.toContain('blob');
+  });
+
+  it('rejects unsafe targets and validates source messages by session', () => {
+    expect(
+      buildIncognitoTarget('javascript:alert(1)', sessionId, 'http://localhost:8080'),
+    ).toBeNull();
+    expect(buildIncognitoTarget('http://localhost:5173', '', 'http://localhost:8080')).toBeNull();
+    expect(buildIncognitoTarget('http://localhost:5173', sessionId, 'null')).toBeNull();
+    expect(
+      buildIncognitoTarget('https://game.example', sessionId, 'http://operator.example'),
+    ).toBeNull();
+    expect(
+      buildIncognitoTarget('http://game.example', sessionId, 'http://localhost:8080'),
+    ).toBeNull();
+    expect(
+      buildIncognitoTarget('https://user:secret@game.example', sessionId, 'http://localhost:8080'),
+    ).toBeNull();
+    expect(
+      isIncognitoReady({ protocol: INCOGNITO_PROTOCOL, kind: 'ready', sessionId: 's' }, 's'),
+    ).toBe(true);
+    expect(
+      isIncognitoReady({ protocol: INCOGNITO_PROTOCOL, kind: 'ready', sessionId: 'other' }, 's'),
+    ).toBe(false);
+    expect(
+      isIncognitoLoaded({ protocol: INCOGNITO_PROTOCOL, kind: 'loaded', sessionId: 's' }, 's'),
+    ).toBe(true);
+    expect(
+      isIncognitoLoaded({ protocol: INCOGNITO_PROTOCOL, kind: 'ready', sessionId: 's' }, 's'),
+    ).toBe(false);
+    expect(
+      isIncognitoFailed({ protocol: INCOGNITO_PROTOCOL, kind: 'failed', sessionId: 's' }, 's'),
+    ).toBe(true);
+  });
+
+  it('mints a cryptographically sourced session id and fails closed without crypto', () => {
+    const generated = createIncognitoSessionId();
+    expect(generated).toMatch(/^[A-Za-z0-9][A-Za-z0-9._-]{15,95}$/);
+    expect(createIncognitoSessionId(null)).toBeNull();
+  });
+
+  it('constructs a complete snapshot message for postMessage only', () => {
+    expect(incognitoSnapshot('s', 'player-1', 7, 2, 'json', '{"coins":3}')).toEqual({
+      protocol: INCOGNITO_PROTOCOL,
+      kind: 'snapshot',
+      sessionId: 's',
+      playerKey: 'player-1',
+      seq: 7,
+      generation: 2,
+      enc: 'json',
+      blob: '{"coins":3}',
+    });
   });
 });
 

@@ -1,7 +1,8 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { IdleCivProvider } from '../../src/StoreProvider.tsx';
+import { IncognitoBanner } from '../../src/ui/App.tsx';
 import { Hud } from '../../src/ui/Hud.tsx';
 import { Overlays } from '../../src/ui/Overlays.tsx';
 import { Workforce } from '../../src/ui/Workforce.tsx';
@@ -50,5 +51,32 @@ describe('portrait UI', () => {
     expect(host.querySelector('[data-testid="overlay-kit"]')).toBeNull();
     expect(host.textContent).toContain('Woven Baskets');
     expect(host.querySelector('[data-testid="fund-hut"]')).toBeTruthy();
+  });
+
+  it('keeps the disposable-session warning and discard action visible', () => {
+    host = document.createElement('div');
+    document.body.append(host);
+    const onDiscard = vi.fn();
+    root = createRoot(host);
+    act(() => {
+      root!.render(
+        <IncognitoBanner
+          details={{
+            playerKey: 'player-42',
+            seq: 27,
+            generation: 4,
+            onDiscard,
+          }}
+        />,
+      );
+    });
+    const banner = host.querySelector('[data-testid="incognito-banner"]');
+    expect(banner?.textContent).toContain('Disposable player snapshot');
+    expect(banner?.textContent).toContain('player-42 · save #27 · generation 4');
+    expect(banner?.textContent).toContain('Nothing here can be saved');
+    act(() => {
+      (banner!.querySelector('button') as HTMLButtonElement).click();
+    });
+    expect(onDiscard).toHaveBeenCalledOnce();
   });
 });

@@ -8,6 +8,7 @@ export * from './engine/contract.ts';
 export * from './engine/loop.ts';
 export * from './clock/index.ts';
 export * from './storage/index.ts';
+export * from './incognito/session.ts';
 export * from './sync/verdicts.ts';
 export * from './sync/ratchet.ts';
 export * from './sync/reconcile.ts';

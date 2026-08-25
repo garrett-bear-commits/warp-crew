@@ -6,7 +6,14 @@ import { Hud } from './Hud.tsx';
 import { Overlays } from './Overlays.tsx';
 import { Workforce } from './Workforce.tsx';
 
-export function App() {
+export interface IncognitoBannerDetails {
+  playerKey: string;
+  seq: number;
+  generation: number;
+  onDiscard(): void;
+}
+
+export function App(props: { incognito?: IncognitoBannerDetails }) {
   const booted = useIdleCiv((s) => s.booted);
   const overlay = useIdleCiv((s) => s.overlay);
   return (
@@ -16,6 +23,7 @@ export function App() {
       data-booted={booted ? '1' : '0'}
       data-overlay={overlay}
     >
+      {props.incognito ? <IncognitoBanner details={props.incognito} /> : null}
       <LoadingGate ready={booted} fallback={<BootScreen />}>
         <Hud />
         <CityCanvas />
@@ -24,6 +32,24 @@ export function App() {
         <Toasts />
       </LoadingGate>
     </div>
+  );
+}
+
+export function IncognitoBanner(props: { details: IncognitoBannerDetails }) {
+  const { details } = props;
+  return (
+    <aside className="incognito-banner" data-testid="incognito-banner" role="status">
+      <div>
+        <strong>Disposable player snapshot</strong>
+        <span>
+          Player {details.playerKey} · save #{details.seq} · generation {details.generation}
+        </span>
+        <small>Nothing here can be saved. Closing this window discards every change.</small>
+      </div>
+      <button type="button" onClick={details.onDiscard}>
+        Discard &amp; close
+      </button>
+    </aside>
   );
 }
 

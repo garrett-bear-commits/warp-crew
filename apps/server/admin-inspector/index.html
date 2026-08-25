@@ -66,6 +66,14 @@
                 <input name="origin" type="url" value="http://localhost:8080" required />
                 <small>Use the game API origin, not the inspector origin.</small>
               </label>
+              <label>
+                Game client URL
+                <input name="clientUrl" type="url" value="http://localhost:5173" required />
+                <small
+                  >HTTPS required (localhost HTTP is allowed). Snapshot data is sent only after a
+                  verified handshake.</small
+                >
+              </label>
               <div class="field-row">
                 <label>
                   Admin key ID
@@ -362,8 +370,29 @@
           </div>
 
           <div class="warning-banner">
-            These operations are durable and audited. A backwards move always opens a new
-            generation.
+            Disposable play is isolated and discarded. Restore and review actions are durable and
+            audited; a backwards move always opens a new generation.
+          </div>
+
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <span>Disposable investigation</span>
+                <h3>Play a retained save incognito</h3>
+              </div>
+              <p>
+                Starts from one retained blob. Every change is discarded when the game window
+                closes.
+              </p>
+            </div>
+            <form id="incognito-form" autocomplete="off">
+              <div class="field-row">
+                <label>Player key <input name="playerKey" data-player required /></label>
+                <label>Save sequence <input name="seq" type="number" min="0" required /></label>
+              </div>
+              <button type="submit">Open incognito session</button>
+              <output class="result" aria-live="polite"></output>
+            </form>
           </div>
 
           <div class="panel action-panel danger-panel">

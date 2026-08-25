@@ -1,6 +1,6 @@
 # Implementation status — Game Foundation v1
 
-_Updated 2026-08-21 on branch `main`. Every current claim below names the command that produced it; nothing here is inferred._
+_Updated 2026-08-26 on branch `main`. Every current claim below names the command that produced it; nothing here is inferred._
 
 ## Summary
 
@@ -41,32 +41,52 @@ Branch `main`. The first reviewer-remediation set was committed as `f046d47` (`A
 | 9 | reviewer remediation: handled eager SDK failure, post-init lifecycle subscriptions, canonical/deduplicated recovery reports, batch-receipt redaction, fail-closed checkout, family pause, hashed grant keys, and durable meaningful-return notification rotation | done locally; real-platform gates remain |
 | 10 | reviewer closure: fresh click-time checkout preflight, recovery-wide terminal states, concurrent credential refresh, leader/mutex-owned retention mutation, legacy grant-key migration/aliases, and clean schema snapshot generation | done locally; real-platform gates remain |
 | 11 | last-pass follow-up: N-1 checker ships with the 15-file `c94bf5d` head (two-release; no extra migration), declared extras bound to one image head + checksums, prefix enforcement, retention fail-closed, official-shape per-purchase seq | unit/model/lint/typecheck/build/guards green; real-Postgres + Playwright not rerun (`shmget` EPERM) |
+| 12 | adopter guides, idle-civ integration, task-based admin redesign, and disposable retained-save sessions (memory-only, no-network, discard-only) | focused client/idle/inspector tests + typechecks + builds green; full check recorded below |
 
 ## Commands and results
 
-Rerun from the repo root on 2026-08-21 after the last-pass fixes (macOS, Node 24.13.1,
-pnpm 10.30.1). Postgres could not start here (`shmget` / `shmat` EPERM); Docker was unavailable.
+Rerun from the repo root on 2026-08-26 after the disposable-session work (macOS, Node 24.19.0,
+pnpm 10.30.1). Postgres was not needed for this browser/client-only addition. The last attempted
+database run in this environment could not start (`shmget` / `shmat` EPERM); Docker was unavailable.
 Prior 2026-08-21 PG/e2e numbers were for `c94bf5d` (15 migrations). This image keeps that 15-file
 head. Unreleased DBs that applied a rewritten `0015`/`0016` are rebuilt from empty.
 
 | Command | Result |
 | --- | --- |
+| `pnpm check` | exit 0: format, lint, all workspace typechecks, builds, guards, and tests |
 | `pnpm fmt:check` | ok |
 | `pnpm lint` | ok |
-| `pnpm typecheck` | ok (all 8 workspace typechecks) |
-| `pnpm build` | ok (admin inspector + template game) |
-| `pnpm guards` | 6/6 PASS |
-| `pnpm test:unit` (root runner, `*:unit` + `*:contract`) | 35 files, 915 tests passed |
-| `pnpm test:model` | 1 file, 2 tests passed (400 + 120 fast-check runs, 0 counterexamples) |
+| `pnpm typecheck` | ok (all 9 participating workspace projects) |
+| `pnpm build` | ok (admin inspector + template game + idle-civ) |
+| `pnpm guards` | 6/6 PASS (426 files in no-secrets scan) |
+| recursive `pnpm test` inside `pnpm check` | 940 tests passed across contracts, tooling, testkit, client, verifiers, server, inspector, template game, and idle-civ; includes 2 model tests |
 | `DATABASE_URL_TEST=… pnpm test:pg` | not run — local `initdb`/`pg_ctl` failed (`could not create shared memory segment: Operation not permitted`); no container runtime |
 | `pnpm test:e2e` | not run — needs the PG lab API |
+| local browser disposable-session check | inspector → exact-origin popup handshake → retained blob → idle-civ loaded acknowledgement; one API request (the admin blob GET), zero game API requests; desktop + 390×844 layouts inspected |
 | `git diff --check` | clean |
 | Docker image build/smoke | not rerun (Docker unavailable) |
 | `DATABASE_URL=… pnpm migrate --up` then `pnpm migrate --check packages/server/schema.sql` | not run (no database). Disk has 15 files; `0015` matches `c94bf5d`; `schema_n1_compat` is migrator-owned and excluded from `describeSchema` |
 | `pnpm -F @foundation/contracts openapi:diff` | "no released tag exists yet — nothing to diff against (unavailable, not passed)" |
 | Sentry / managed PITR / object storage / Jest platform calls | not run — external gates |
 
-Verified this session: 915 unit/contract + 2 model. Real-Postgres and Playwright remain to rerun with a working cluster. 0 skipped in the suites that ran; no to-do/fix-me markers or placeholder text (guarded by `no-placeholders`).
+Verified this session: 940 tests in `pnpm check`, including 2 model tests. Real-Postgres and the existing
+template-game Playwright suite were not rerun because this addition changes no server contract, route, schema,
+or template game. The admin-to-idle-civ popup flow was exercised in a local browser harness. No to-do/fix-me
+markers or placeholder text were accepted (guarded by `no-placeholders`).
+
+## Disposable retained-save sessions (2026-08-26)
+
+- The inspector can launch from a save-history row or an exact player/sequence form. A pruned blob fails with
+  a clear unavailable result.
+- The fragment carries only a secure random session ID and exact inspector origin. The snapshot transfers only
+  after exact source, origin, protocol, and session validation; credentials never leave the inspector.
+- Idle-civ branches before normal storage, provider, and API construction. It uses a synthetic identity,
+  memory-only slot, codec migration, disabled sync/KV/journal/beacon/persistence/tabs, fail-closed fetch, and a
+  persistent discard banner.
+- `packages/client/test/unit/incognito-session.test.ts`, `apps/idle-civ/test/unit/incognito.test.ts`, idle UI
+  tests, and inspector tests cover protocol rejection, size bounds, state separation, zero network/durable
+  writes, and operator feedback. ADR-034 and `docs/using-the-core/disposable-save-sessions.md` define the adopter
+  contract and the retained-blob/RNG limits.
 
 ## Last-pass findings (2026-08-21) — implemented
 
