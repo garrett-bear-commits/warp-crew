@@ -74,6 +74,7 @@ export default tseslint.config(
     files: [
       'packages/client/src/**',
       'apps/template-game/src/**',
+      'apps/idle-civ/src/**',
       'apps/server/admin-inspector/src/**',
       'packages/server/src/features/*/client.ts',
       'packages/server/src/features/*/contract.ts',

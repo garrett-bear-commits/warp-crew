@@ -1,0 +1,6 @@
+{
+  "kind": "online",
+  "configVersion": "economy-smoke-v0.2.0",
+  "saveVersion": 1,
+  "note": "Same elapsed time as the offline fixture, advanced through engine.step rather than onGap."
+}

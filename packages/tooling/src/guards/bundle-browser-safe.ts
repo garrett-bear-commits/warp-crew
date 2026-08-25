@@ -4,7 +4,11 @@ import { relative, resolve } from 'node:path';
 import { repoRoot, walk, read } from '../paths.ts';
 import type { GuardResult } from './run-all.ts';
 
-const BUNDLE_DIRS = ['apps/template-game/dist', 'apps/server/admin-inspector/dist'];
+const BUNDLE_DIRS = [
+  'apps/template-game/dist',
+  'apps/server/admin-inspector/dist',
+  'apps/idle-civ/dist',
+];
 
 const MARKERS: Array<[RegExp, string]> = [
   [/TypeBox\.Kind/, 'TypeBox runtime symbol'],
