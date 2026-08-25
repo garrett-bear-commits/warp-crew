@@ -31,6 +31,16 @@ function sourceFiles(): Array<{ path: string; src: string }> {
 }
 
 describe('inspector source hygiene', () => {
+  it('organizes operator work into focused task workspaces', () => {
+    const html = readFileSync(resolve(inspectorDir, 'index.html'), 'utf8');
+    for (const view of ['setup', 'support', 'liveops', 'safety', 'audit']) {
+      expect(html).toContain(`data-view="${view}"`);
+      expect(html).toContain(`data-view-panel="${view}"`);
+    }
+    expect(html.match(/data-view-panel=/g)).toHaveLength(5);
+    expect(html).toContain('aria-current="page"');
+  });
+
   it('never parses HTML strings (no innerHTML/outerHTML/insertAdjacentHTML/document.write)', () => {
     for (const { path, src } of sourceFiles()) {
       for (const bad of ['innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write']) {
@@ -276,6 +286,10 @@ describe('built index.html (CSP shape)', () => {
     const refs = [...html.matchAll(/\s(?:src|href)=["']([^"']+)["']/gi)].map((m) => m[1]!);
     expect(refs.length).toBeGreaterThan(0);
     for (const r of refs) {
+      if (r.startsWith('#')) {
+        expect(html, `missing anchor target ${r}`).toContain(`id="${r.slice(1)}"`);
+        continue;
+      }
       expect(/^https?:|^\/\//i.test(r), `absolute URL ${r}`).toBe(false);
       expect(r.startsWith('./') || !r.startsWith('/'), `root-absolute URL ${r}`).toBe(true);
       expect(existsSync(resolve(distDir, r)), `${r} missing from dist`).toBe(true);

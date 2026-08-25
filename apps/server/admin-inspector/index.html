@@ -4,240 +4,448 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="referrer" content="no-referrer" />
-    <title>Foundation admin inspector</title>
+    <title>Foundation operator console</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="top">
-      <h1>Admin inspector</h1>
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">GF</div>
+      <div class="brand-copy">
+        <p>Game Foundation</p>
+        <h1>Operator console</h1>
+      </div>
       <p id="status" class="status" aria-live="polite">Not connected.</p>
     </header>
 
-    <main>
-      <section class="card" id="connect">
-        <h2>Connection</h2>
-        <form id="connect-form" autocomplete="off">
-          <label>
-            API origin
-            <input name="origin" type="url" value="http://localhost:8080" required />
-          </label>
-          <label>
-            Admin key id
-            <input name="keyId" type="text" autocomplete="off" required />
-          </label>
-          <label>
-            Admin secret
-            <input name="secret" type="password" autocomplete="off" required />
-          </label>
-          <p class="hint">Credentials stay in this tab's memory only. Reload forgets them.</p>
-          <div class="row">
-            <button type="submit">Use these credentials</button>
-            <button type="button" id="forget">Forget</button>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Operator workspaces">
+        <nav class="workspace-nav">
+          <button type="button" class="nav-item" data-view="setup" aria-current="page">
+            <span class="nav-index">01</span>
+            <span><b>Setup</b><small>Connection and credentials</small></span>
+          </button>
+          <button type="button" class="nav-item" data-view="support">
+            <span class="nav-index">02</span>
+            <span><b>Player support</b><small>Inspect, message and compensate</small></span>
+          </button>
+          <button type="button" class="nav-item" data-view="liveops">
+            <span class="nav-index">03</span>
+            <span><b>Live operations</b><small>Flags, content and cohorts</small></span>
+          </button>
+          <button type="button" class="nav-item" data-view="safety">
+            <span class="nav-index">04</span>
+            <span><b>Save safety</b><small>Restore and quarantine review</small></span>
+          </button>
+          <button type="button" class="nav-item" data-view="audit">
+            <span class="nav-index">05</span>
+            <span><b>Audit and recovery</b><small>Actions and dead letters</small></span>
+          </button>
+        </nav>
+
+        <div class="sidebar-note">
+          <strong>Operate deliberately</strong>
+          <span>Use scoped keys, dry-run broad actions, and keep a ticket reference.</span>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <section class="workspace-view" data-view-panel="setup" id="setup">
+          <div class="view-heading">
+            <div>
+              <p class="eyebrow">Start here</p>
+              <h2>Connect to a game environment</h2>
+              <p>Credentials stay in memory and disappear when this tab closes.</p>
+            </div>
+            <span class="scope-chip">No credentials stored</span>
           </div>
-        </form>
-      </section>
 
-      <section class="card" id="player">
-        <h2>Player</h2>
-        <form id="lookup-form" autocomplete="off">
-          <label>
-            Player key
-            <input name="playerKey" type="text" required />
-          </label>
-          <div class="row">
-            <button type="submit">Load</button>
+          <div class="panel connection-panel">
+            <form id="connect-form" autocomplete="off">
+              <label>
+                API origin
+                <input name="origin" type="url" value="http://localhost:8080" required />
+                <small>Use the game API origin, not the inspector origin.</small>
+              </label>
+              <div class="field-row">
+                <label>
+                  Admin key ID
+                  <input name="keyId" type="text" autocomplete="off" required />
+                </label>
+                <label>
+                  Admin secret
+                  <input name="secret" type="password" autocomplete="off" required />
+                </label>
+              </div>
+              <div class="form-actions">
+                <button type="submit">Connect</button>
+                <button type="button" class="button-secondary" id="forget">
+                  Forget credentials
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-        <div id="overview" class="block"></div>
-        <details open>
-          <summary>Timeline</summary>
-          <div id="timeline" class="scroll"></div>
-        </details>
-        <details open>
-          <summary>Save history</summary>
-          <div id="saves" class="scroll"></div>
-        </details>
-        <details open>
-          <summary>Blob viewer</summary>
-          <div id="blob" class="block"></div>
-        </details>
-      </section>
 
-      <section class="card" id="writes">
-        <h2>Write actions</h2>
+          <div class="onboarding-grid">
+            <article class="mini-card">
+              <span>Read</span>
+              <h3>Inspect before writing</h3>
+              <p>Load the player timeline and current generation before support or restore work.</p>
+            </article>
+            <article class="mini-card">
+              <span>Scope</span>
+              <h3>Use the narrowest key</h3>
+              <p>Routine support keys should not carry publish, restore, or erase authority.</p>
+            </article>
+            <article class="mini-card">
+              <span>Verify</span>
+              <h3>Confirm every mutation</h3>
+              <p>Use the response request ID and audit log to verify ambiguous operations.</p>
+            </article>
+          </div>
+        </section>
 
-        <details>
-          <summary>Send letter</summary>
-          <form id="letter-form" data-path="/admin/v1/letters" autocomplete="off">
-            <label>Player key <input name="playerKey" data-player required /></label>
-            <label>Title <input name="title" required maxlength="200" /></label>
-            <label>Body <textarea name="body" required maxlength="4000" rows="4"></textarea></label>
-            <label>Grant key (optional) <input name="grantKey" maxlength="200" /></label>
-            <label>Ticket ref (optional) <input name="ticketRef" maxlength="128" /></label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <div class="row"><button type="submit">Send letter</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
+        <section class="workspace-view" data-view-panel="support" id="support" hidden>
+          <div class="view-heading">
+            <div>
+              <p class="eyebrow">Player support</p>
+              <h2>Understand the player, then act</h2>
+              <p>Overview, history and the common support actions live together.</p>
+            </div>
+            <span class="scope-chip">read · support · grant</span>
+          </div>
 
-        <details>
-          <summary>Mint grant</summary>
-          <form id="grant-form" data-path="/admin/v1/grants" autocomplete="off">
-            <label>Player key <input name="playerKey" data-player required /></label>
-            <label
-              >Grant key (business key) <input name="grantKey" required maxlength="200"
-            /></label>
-            <label>
-              Rewards (JSON array)
-              <textarea name="rewards" required rows="3" data-json></textarea>
-            </label>
-            <label>Title (optional) <input name="title" maxlength="200" /></label>
-            <label
-              >Body (optional) <textarea name="body" maxlength="2000" rows="2"></textarea>
-            </label>
-            <label>Ticket ref (optional) <input name="ticketRef" maxlength="128" /></label>
-            <label
-              >Expires at, epoch ms (optional) <input name="expiresAt" type="number" min="0"
-            /></label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <div class="row"><button type="submit">Mint grant</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
+          <div class="panel player-panel" id="player">
+            <form id="lookup-form" class="lookup-bar" autocomplete="off">
+              <label>
+                Player key
+                <input name="playerKey" type="text" placeholder="Player ID" required />
+              </label>
+              <button type="submit">Load player</button>
+            </form>
+            <div id="overview" class="block empty-state">
+              Load a player to see their current state.
+            </div>
 
-        <details>
-          <summary>Cohort grant</summary>
-          <form id="cohort-form" data-path="/admin/v1/grants/cohort" autocomplete="off">
-            <label>Grant key prefix <input name="grantKeyPrefix" required maxlength="120" /></label>
-            <label>
-              Segment predicate (JSON)
-              <textarea name="predicate" required rows="3" data-json></textarea>
-            </label>
-            <label>
-              Rewards (JSON array)
-              <textarea name="rewards" required rows="3" data-json></textarea>
-            </label>
-            <label>Title (optional) <input name="title" maxlength="200" /></label>
-            <label
-              >Body (optional) <textarea name="body" maxlength="2000" rows="2"></textarea>
-            </label>
-            <label>Ticket ref (optional) <input name="ticketRef" maxlength="128" /></label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <label class="check"
-              ><input name="dryRun" type="checkbox" checked /> Dry run (count only)</label
-            >
-            <div class="row"><button type="submit">Run cohort grant</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
+            <div class="data-tabs">
+              <details open>
+                <summary>Timeline</summary>
+                <div id="timeline" class="scroll"></div>
+              </details>
+              <details>
+                <summary>Save history</summary>
+                <div id="saves" class="scroll"></div>
+              </details>
+              <details>
+                <summary>Blob viewer</summary>
+                <div id="blob" class="block"></div>
+              </details>
+            </div>
+          </div>
 
-        <details>
-          <summary>Publish flag</summary>
-          <form id="flag-form" data-path="/admin/v1/liveops/flags" autocomplete="off">
-            <label>Flag key <input name="key" required maxlength="64" /></label>
-            <label class="check"><input name="enabled" type="checkbox" checked /> Enabled</label>
-            <label
-              >Value (true/false, number, or text) <input name="value" required maxlength="256"
-            /></label>
-            <label
-              >Rollout percent
-              <input name="rolloutPercent" type="number" min="0" max="100" value="100" required
-            /></label>
-            <label>Segment id (optional) <input name="segmentId" /></label>
-            <label class="check"><input name="shadow" type="checkbox" /> Shadow mode</label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <div class="row"><button type="submit">Publish flag</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
+          <div class="panel action-panel">
+            <div class="panel-heading">
+              <div>
+                <span>Support actions</span>
+                <h3>Help this player</h3>
+              </div>
+              <p>Player fields fill automatically after lookup.</p>
+            </div>
+            <div class="action-grid">
+              <details>
+                <summary>Send a letter</summary>
+                <form id="letter-form" data-path="/admin/v1/letters" autocomplete="off">
+                  <label>Player key <input name="playerKey" data-player required /></label>
+                  <label>Title <input name="title" required maxlength="200" /></label>
+                  <label
+                    >Body <textarea name="body" required maxlength="4000" rows="4"></textarea>
+                  </label>
+                  <label
+                    >Grant key <input name="grantKey" maxlength="200" placeholder="Optional"
+                  /></label>
+                  <label
+                    >Ticket reference
+                    <input name="ticketRef" maxlength="128" placeholder="Optional"
+                  /></label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <button type="submit">Send letter</button>
+                  <output class="result"></output>
+                </form>
+              </details>
 
-        <details>
-          <summary>Publish content</summary>
-          <form id="content-form" data-path="/admin/v1/liveops/content" autocomplete="off">
-            <label
-              >Kind
-              <select name="kind" id="content-kind" required></select
-            ></label>
-            <label
-              >Env
-              <select name="env" id="content-env" required></select
-            ></label>
-            <label>
-              Document (JSON)
-              <textarea name="document" required rows="6" data-json></textarea>
-            </label>
-            <label>Min build version (optional) <input name="minBuildVersion" /></label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <div class="row"><button type="submit">Publish content</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
+              <details>
+                <summary>Mint a grant</summary>
+                <form id="grant-form" data-path="/admin/v1/grants" autocomplete="off">
+                  <label>Player key <input name="playerKey" data-player required /></label>
+                  <label
+                    >Grant business key <input name="grantKey" required maxlength="200"
+                  /></label>
+                  <label
+                    >Rewards JSON <textarea name="rewards" required rows="3" data-json></textarea>
+                  </label>
+                  <label>Title <input name="title" maxlength="200" placeholder="Optional" /></label>
+                  <label
+                    >Body
+                    <textarea
+                      name="body"
+                      maxlength="2000"
+                      rows="2"
+                      placeholder="Optional"
+                    ></textarea>
+                  </label>
+                  <label
+                    >Ticket reference
+                    <input name="ticketRef" maxlength="128" placeholder="Optional"
+                  /></label>
+                  <label
+                    >Expires at
+                    <input name="expiresAt" type="number" min="0" placeholder="Epoch ms, optional"
+                  /></label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <button type="submit">Mint grant</button>
+                  <output class="result"></output>
+                </form>
+              </details>
 
-        <details>
-          <summary>Restore to seq</summary>
-          <form id="restore-form" data-path="/admin/v1/players/restore" autocomplete="off">
-            <label>Player key <input name="playerKey" data-player required /></label>
-            <label>Seq <input name="seq" type="number" min="0" required /></label>
-            <label
-              >Expected generation <input name="expectedGeneration" type="number" min="0" required
-            /></label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <div class="row"><button type="submit">Restore (new generation)</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
+              <details>
+                <summary>Set a player flag</summary>
+                <form id="player-flag-form" data-path="/admin/v1/players/flags" autocomplete="off">
+                  <label>Player key <input name="playerKey" data-player required /></label>
+                  <label
+                    >Flag
+                    <select name="flag" id="player-flag-kind" required></select
+                  ></label>
+                  <label class="check"
+                    ><input name="enabled" type="checkbox" checked /> Enabled</label
+                  >
+                  <label
+                    >Until
+                    <input name="until" type="number" min="0" placeholder="Epoch ms, optional"
+                  /></label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <button type="submit">Set player flag</button>
+                  <output class="result"></output>
+                </form>
+              </details>
+            </div>
+          </div>
+        </section>
 
-        <details>
-          <summary>Save review (promote / reject)</summary>
-          <form id="review-form" data-path="/admin/v1/saves/reviews" autocomplete="off">
-            <label>Player key <input name="playerKey" data-player required /></label>
-            <label>Seq <input name="seq" type="number" min="0" required /></label>
-            <label>
-              Action
-              <select name="action" required>
-                <option value="promote">promote</option>
-                <option value="reject">reject</option>
-              </select>
-            </label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <div class="row"><button type="submit">Submit review</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
+        <section class="workspace-view" data-view-panel="liveops" id="liveops" hidden>
+          <div class="view-heading">
+            <div>
+              <p class="eyebrow">Live operations</p>
+              <h2>Change live behavior with guardrails</h2>
+              <p>
+                Use Lab, shadow mode, small rollouts, and dry-runs before broad production changes.
+              </p>
+            </div>
+            <span class="scope-chip">publish · grant</span>
+          </div>
 
-        <details>
-          <summary>Player flag</summary>
-          <form id="player-flag-form" data-path="/admin/v1/players/flags" autocomplete="off">
-            <label>Player key <input name="playerKey" data-player required /></label>
-            <label
-              >Flag
-              <select name="flag" id="player-flag-kind" required></select
-            ></label>
-            <label class="check"><input name="enabled" type="checkbox" checked /> Enabled</label>
-            <label>Until, epoch ms (optional) <input name="until" type="number" min="0" /></label>
-            <label>Reason <input name="reason" required maxlength="512" /></label>
-            <div class="row"><button type="submit">Set flag</button></div>
-            <output class="result"></output>
-          </form>
-        </details>
-      </section>
+          <div class="panel action-panel">
+            <div class="panel-heading">
+              <div>
+                <span>Publish</span>
+                <h3>Configuration and content</h3>
+              </div>
+              <p>Raw JSON remains available for developer-operated content.</p>
+            </div>
+            <div class="action-grid">
+              <details open>
+                <summary>Publish a flag</summary>
+                <form id="flag-form" data-path="/admin/v1/liveops/flags" autocomplete="off">
+                  <label>Flag key <input name="key" required maxlength="64" /></label>
+                  <label class="check"
+                    ><input name="enabled" type="checkbox" checked /> Enabled</label
+                  >
+                  <label
+                    >Value
+                    <input
+                      name="value"
+                      required
+                      maxlength="256"
+                      placeholder="Boolean, number or text"
+                  /></label>
+                  <label
+                    >Rollout percent
+                    <input
+                      name="rolloutPercent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      value="100"
+                      required
+                  /></label>
+                  <label>Segment ID <input name="segmentId" placeholder="Optional" /></label>
+                  <label class="check"><input name="shadow" type="checkbox" /> Shadow mode</label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <button type="submit">Publish flag</button>
+                  <output class="result"></output>
+                </form>
+              </details>
 
-      <section class="card" id="ops">
-        <h2>Admin actions</h2>
-        <div class="row"><button type="button" id="load-actions">Load admin actions</button></div>
-        <div id="actions" class="scroll"></div>
-      </section>
+              <details>
+                <summary>Publish content</summary>
+                <form id="content-form" data-path="/admin/v1/liveops/content" autocomplete="off">
+                  <div class="field-row">
+                    <label
+                      >Kind
+                      <select name="kind" id="content-kind" required></select
+                    ></label>
+                    <label
+                      >Environment
+                      <select name="env" id="content-env" required></select
+                    ></label>
+                  </div>
+                  <label
+                    >Document JSON <textarea name="document" required rows="8" data-json></textarea>
+                  </label>
+                  <label
+                    >Minimum build <input name="minBuildVersion" placeholder="Optional"
+                  /></label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <button type="submit">Publish content</button>
+                  <output class="result"></output>
+                </form>
+              </details>
 
-      <section class="card" id="outbox">
-        <h2>Outbox dead letters</h2>
-        <form id="dead-letters-form" autocomplete="off">
-          <label>Replay reason <input name="reason" maxlength="512" /></label>
-          <div class="row"><button type="submit">Load dead letters</button></div>
-          <output class="result"></output>
-        </form>
-        <div id="dead-letters" class="scroll"></div>
-      </section>
-    </main>
+              <details>
+                <summary>Compensate a cohort</summary>
+                <form id="cohort-form" data-path="/admin/v1/grants/cohort" autocomplete="off">
+                  <label
+                    >Grant key prefix <input name="grantKeyPrefix" required maxlength="120"
+                  /></label>
+                  <label
+                    >Segment predicate JSON
+                    <textarea name="predicate" required rows="4" data-json></textarea>
+                  </label>
+                  <label
+                    >Rewards JSON <textarea name="rewards" required rows="3" data-json></textarea>
+                  </label>
+                  <label>Title <input name="title" maxlength="200" placeholder="Optional" /></label>
+                  <label
+                    >Body
+                    <textarea
+                      name="body"
+                      maxlength="2000"
+                      rows="2"
+                      placeholder="Optional"
+                    ></textarea>
+                  </label>
+                  <label
+                    >Ticket reference
+                    <input name="ticketRef" maxlength="128" placeholder="Optional"
+                  /></label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <label class="check"
+                    ><input name="dryRun" type="checkbox" checked /> Dry run first</label
+                  >
+                  <button type="submit">Run cohort grant</button>
+                  <output class="result"></output>
+                </form>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <section class="workspace-view" data-view-panel="safety" id="safety" hidden>
+          <div class="view-heading danger-heading">
+            <div>
+              <p class="eyebrow">Save safety</p>
+              <h2>Move state only with explicit intent</h2>
+              <p>
+                Review the current generation and history before changing the player's authoritative
+                state.
+              </p>
+            </div>
+            <span class="scope-chip danger-chip">restore</span>
+          </div>
+
+          <div class="warning-banner">
+            These operations are durable and audited. A backwards move always opens a new
+            generation.
+          </div>
+
+          <div class="panel action-panel danger-panel">
+            <div class="action-grid two-up">
+              <details open>
+                <summary>Restore to a save sequence</summary>
+                <form id="restore-form" data-path="/admin/v1/players/restore" autocomplete="off">
+                  <label>Player key <input name="playerKey" data-player required /></label>
+                  <label>Save sequence <input name="seq" type="number" min="0" required /></label>
+                  <label
+                    >Expected generation
+                    <input name="expectedGeneration" type="number" min="0" required
+                  /></label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <button type="submit" class="button-danger">Restore into a new generation</button>
+                  <output class="result"></output>
+                </form>
+              </details>
+
+              <details>
+                <summary>Review a quarantined save</summary>
+                <form id="review-form" data-path="/admin/v1/saves/reviews" autocomplete="off">
+                  <label>Player key <input name="playerKey" data-player required /></label>
+                  <label>Save sequence <input name="seq" type="number" min="0" required /></label>
+                  <label>
+                    Decision
+                    <select name="action" required>
+                      <option value="promote">Promote</option>
+                      <option value="reject">Reject</option>
+                    </select>
+                  </label>
+                  <label>Reason <input name="reason" required maxlength="512" /></label>
+                  <button type="submit" class="button-danger">Submit final review</button>
+                  <output class="result"></output>
+                </form>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <section class="workspace-view" data-view-panel="audit" id="audit" hidden>
+          <div class="view-heading">
+            <div>
+              <p class="eyebrow">Audit and recovery</p>
+              <h2>Trace operator actions and recover fan-out</h2>
+              <p>Use request and command IDs to connect support work with durable server facts.</p>
+            </div>
+            <span class="scope-chip">read · support</span>
+          </div>
+
+          <div class="audit-grid">
+            <section class="panel" id="ops">
+              <div class="panel-heading">
+                <div>
+                  <span>Audit trail</span>
+                  <h3>Admin actions</h3>
+                </div>
+                <button type="button" class="button-secondary" id="load-actions">Refresh</button>
+              </div>
+              <div id="actions" class="scroll empty-table"></div>
+            </section>
+
+            <section class="panel" id="outbox">
+              <div class="panel-heading">
+                <div>
+                  <span>Recovery queue</span>
+                  <h3>Outbox dead letters</h3>
+                </div>
+              </div>
+              <form id="dead-letters-form" class="inline-form" autocomplete="off">
+                <label
+                  >Replay reason <input name="reason" maxlength="512" placeholder="Optional note"
+                /></label>
+                <button type="submit">Load dead letters</button>
+                <output class="result"></output>
+              </form>
+              <div id="dead-letters" class="scroll empty-table"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
 
     <script type="module" src="./src/main.ts"></script>
   </body>

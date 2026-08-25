@@ -6,6 +6,20 @@ The reusable core (server + web adapter + contracts + tooling) described in
 [`docs/coverage-matrix.md`](docs/coverage-matrix.md), decisions: [`docs/adr/`](docs/adr/README.md),
 operations: [`docs/runbooks/`](docs/runbooks/README.md).
 
+## Use the core
+
+Start with [`docs/using-the-core/`](docs/using-the-core/README.md) when adopting the foundation:
+
+- [Intended use and boundaries](docs/using-the-core/intended-use.md)
+- [Add a game](docs/using-the-core/add-a-game.md)
+- [Add a feature or capability](docs/using-the-core/add-a-feature.md)
+- [Balancing and live operations](docs/using-the-core/balancing-and-liveops.md)
+- [Testing and releasing](docs/using-the-core/testing-and-release.md)
+- [Admin inspector](docs/using-the-core/admin-inspector.md)
+
+These guides describe the supported extension seams. The architecture remains authoritative when a guide and
+an ADR differ.
+
 ## Layout
 
 ```

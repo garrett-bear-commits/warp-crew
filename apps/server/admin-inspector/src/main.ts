@@ -54,6 +54,45 @@ const actionsEl = byId<HTMLDivElement>('actions');
 const deadLettersEl = byId<HTMLDivElement>('dead-letters');
 const deadLettersForm = byId<HTMLFormElement>('dead-letters-form');
 
+type ViewName = 'setup' | 'support' | 'liveops' | 'safety' | 'audit';
+
+const navItems = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-view]'));
+const viewPanels = Array.from(document.querySelectorAll<HTMLElement>('[data-view-panel]'));
+const viewAliases: Record<string, ViewName> = {
+  setup: 'setup',
+  connect: 'setup',
+  support: 'support',
+  player: 'support',
+  liveops: 'liveops',
+  writes: 'support',
+  safety: 'safety',
+  audit: 'audit',
+  ops: 'audit',
+  outbox: 'audit',
+};
+
+function viewFromHash(): ViewName {
+  return viewAliases[globalThis.location.hash.slice(1)] ?? 'setup';
+}
+
+function setView(view: ViewName, updateHash = true): void {
+  for (const panel of viewPanels) panel.hidden = panel.dataset.viewPanel !== view;
+  for (const item of navItems) {
+    const selected = item.dataset.view === view;
+    if (selected) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
+  }
+  if (updateHash && globalThis.location.hash !== `#${view}`)
+    globalThis.history.replaceState(null, '', `#${view}`);
+  const workspace = document.querySelector<HTMLElement>('.workspace');
+  workspace?.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+for (const item of navItems)
+  item.addEventListener('click', () => setView(item.dataset.view as ViewName));
+globalThis.addEventListener('hashchange', () => setView(viewFromHash(), false));
+setView(viewFromHash(), false);
+
 // ─── Connection (memory only) ──────────────────────────────────────
 
 let connection: Connection | null = null;
@@ -67,6 +106,7 @@ function setStatus(msg: string, tone: 'ok' | 'err' | '' = ''): void {
 function connected(): boolean {
   if (connection) return true;
   setStatus('Enter the API origin and admin credentials first.', 'err');
+  setView('setup');
   return false;
 }
 
@@ -82,12 +122,14 @@ connectForm.addEventListener('submit', (ev) => {
   }
   connection = { origin, keyId, secret };
   setStatus(`Using key "${keyId}" against ${origin}. Credentials are held in memory only.`, 'ok');
+  setView('support');
 });
 
 byId<HTMLButtonElement>('forget').addEventListener('click', () => {
   connection = null;
   connectForm.reset();
   setStatus('Credentials forgotten.', '');
+  setView('setup');
 });
 
 // ─── Result reporting ──────────────────────────────────────────────
