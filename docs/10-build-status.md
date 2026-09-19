@@ -25,3 +25,9 @@
 - [ ] Login streak
 - [ ] Content: more mercs/nodes
 - [ ] Reskin art (later)
+
+
+## 2026-09-18
+- Mockup-aligned UI (SHIP/CREW/MISSIONS/SHOP/LOG)
+- Expeditions **15 minutes** for testing
+- Force-push package prepared for GitHub main

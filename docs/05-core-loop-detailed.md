@@ -4,7 +4,7 @@
 1. Claim offline fuel + expedition results  
 2. Read bridge status (fuel, crew, story)  
 3. Travel (1 fuel typical): trade / combat / story / salvage  
-4. Optional: launch or check expedition (crew lock, 2–8h)  
+4. Optional: launch or check expedition (crew lock, 15m test / 6h launch)  
 5. Crew bay (level with medals) / gacha / ship slots  
 6. Leave; Jest notifies on fuel full / expedition done  
 

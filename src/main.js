@@ -11,21 +11,42 @@ import {
   resolveExpedition,
 } from './systems/expedition.js';
 import { crewPower } from './systems/combat.js';
-import { NODES } from './data/sectors.js';
-import { renderBridge } from './ui/bridge.js';
+import { renderApp } from './ui/bridge.js';
 import { MEDAL_LEVEL_COST } from './data/crewRoster.js';
 
 const app = document.getElementById('app');
 const log = [];
 let player = null;
+let tab = 'ship';
 
 function pushLog(msg) {
   log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
-  while (log.length > 40) log.shift();
+  while (log.length > 50) log.shift();
 }
 
 function persist() {
   writeSave(player);
+}
+
+function tryResolveExpedition() {
+  if (!player.activeExpedition) return;
+  const res = resolveExpedition(player.activeExpedition);
+  if (!res.ready) return false;
+  player = {
+    ...player,
+    wallet: grant(player.wallet, res.rewards),
+    activeExpedition: null,
+    crew: player.crew.map((c) =>
+      res.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c
+    ),
+    stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1 },
+  };
+  pushLog(
+    res.success
+      ? `Expedition success! +${res.rewards.credits}cr +${res.rewards.medals} medals +${res.rewards.reputation} rep`
+      : `Expedition failed. Recovered +${res.rewards.credits}cr`
+  );
+  return true;
 }
 
 function boot() {
@@ -35,112 +56,67 @@ function boot() {
     pushLog('Welcome back, Captain.');
   } else {
     player = createNewPlayer({ captainName: 'Captain' });
-    pushLog('New career started aboard the Sparrow.');
-    pushLog('Tutorial: claim fuel, travel Dust Lane, hire a third merc when you can.');
+    pushLog('Career start aboard Sparrow.');
+    pushLog('15-minute test expeditions active. Claim fuel, run missions, hire mercs.');
   }
-  // Auto-claim fuel on boot
   const claimed = claimFuelRegen(player);
   player = claimed.player;
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
-  // Resolve expedition if ready
-  if (player.activeExpedition) {
-    const res = resolveExpedition(player.activeExpedition);
-    if (res.ready) {
-      player = {
-        ...player,
-        wallet: grant(player.wallet, res.rewards),
-        activeExpedition: null,
-        crew: player.crew.map((c) =>
-          res.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c
-        ),
-        stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1 },
-      };
-      pushLog(
-        res.success
-          ? `Expedition success! +${res.rewards.credits}cr +${res.rewards.medals} medals`
-          : `Expedition failed. Recovered +${res.rewards.credits}cr`
-      );
-    }
-  }
+  tryResolveExpedition();
   persist();
   render();
 }
 
 function render() {
-  renderBridge(app, {
+  renderApp(app, {
     player,
     log,
-    handlers: { onAction: handleAction },
+    tab,
+    handlers: {
+      setTab: (t) => { tab = t; render(); },
+      onAction: handleAction,
+    },
   });
 }
 
-function handleAction(act) {
-  const now = Date.now();
-  if (act === 'claim') {
-    const claimed = claimFuelRegen(player, now);
+function handleAction(act, data = {}) {
+  if (act === 'claim' || act === 'exp-claim') {
+    const claimed = claimFuelRegen(player);
     player = claimed.player;
-    if (player.activeExpedition) {
-      const res = resolveExpedition(player.activeExpedition);
-      if (res.ready) {
-        player = {
-          ...player,
-          wallet: grant(player.wallet, res.rewards),
-          activeExpedition: null,
-          crew: player.crew.map((c) =>
-            res.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c
-          ),
-          stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1 },
-        };
-        pushLog(res.success ? 'Expedition complete — success!' : 'Expedition complete — rough return.');
-      } else {
-        pushLog('Expedition still underway.');
-      }
-    }
-    pushLog(claimed.gained ? `Claimed +${claimed.gained} fuel.` : 'No fuel to claim yet.');
-  } else if (act === 'travel') {
-    // Simple chooser: list linked-ish nodes (all except current for v1 slice)
-    const options = Object.values(NODES).filter((n) => n.id !== player.location);
-    const pick = options[Math.floor(Math.random() * options.length)];
-    // Prefer player-facing prompt
-    const choice = window.prompt(
-      'Travel to node id:\n' + options.map((n) => `${n.id} (${n.fuelCost} fuel) — ${n.name}`).join('\n'),
-      pick.id
-    );
-    if (!choice) return;
-    const res = travelTo(player, choice.trim(), { assistsUsed: ['shield_boost'] });
+    const resolved = tryResolveExpedition();
+    if (claimed.gained) pushLog(`Claimed +${claimed.gained} fuel.`);
+    else if (!resolved) pushLog('Nothing new to claim yet.');
+  } else if (act === 'travel' || act === 'travel-to') {
+    const nodeId = data.node || 'lane_a';
+    const res = travelTo(player, nodeId, { assistsUsed: ['shield_boost'] });
     if (!res.ok) {
       pushLog(`Travel failed: ${res.reason}`);
     } else {
       player = res.player;
       const r = res.result;
-      if (r.kind === 'combat') {
-        pushLog(`${r.combat.encounter.name}: ${r.combat.log}`);
-      } else if (r.rewards) {
-        pushLog(`${r.kind} at ${r.node.name}. Rewards: ${JSON.stringify(r.rewards)}`);
-      } else if (r.flag) {
-        pushLog(`Story: ${r.flag}`);
-      } else {
-        pushLog(`Arrived at ${r.node.name}.`);
-      }
+      if (r.combat) pushLog(`${r.combat.encounter.name}: ${r.combat.log}`);
+      else if (r.rewards) pushLog(`${r.kind} @ ${r.node.name}: ${JSON.stringify(r.rewards)}`);
+      else if (r.flag) pushLog(`Story flag: ${r.flag}`);
+      else pushLog(`Arrived ${r.node.name}`);
+      tab = 'log';
     }
-  } else if (act === 'expedition') {
+  } else if (act === 'exp-start') {
     if (player.activeExpedition) {
       pushLog('Expedition already active.');
     } else {
-      const planet = PLANETS_V1[0];
+      const planet = PLANETS_V1.find((p) => p.id === data.planet) || PLANETS_V1[0];
       const crew = readyCrew(player).slice(0, Math.min(2, readyCrew(player).length));
       if (!crew.length) {
-        pushLog('No ready crew for expedition.');
+        pushLog('No ready crew.');
       } else {
-        const power = crewPower(crew);
         const chance = expeditionSuccessChance({
-          crewPower: power,
+          crewPower: crewPower(crew),
           planetDifficulty: planet.difficulty,
         });
         const job = startExpedition({
           planetId: planet.id,
           crewInstanceIds: crew.map((c) => c.instanceId),
-          hours: planet.hours,
+          minutes: planet.minutes,
           successChance: chance,
         });
         player = {
@@ -150,7 +126,7 @@ function handleAction(act) {
             crew.some((x) => x.instanceId === c.instanceId) ? { ...c, status: 'expedition' } : c
           ),
         };
-        pushLog(`Expedition to ${planet.name} launched (${(chance * 100) | 0}% · ${planet.hours}h).`);
+        pushLog(`Launched ${planet.name} (${(chance * 100) | 0}% · ${planet.minutes}m).`);
       }
     }
   } else if (act === 'exp-abort') {
@@ -163,77 +139,63 @@ function handleAction(act) {
         ids.includes(c.instanceId) ? { ...c, status: 'ready' } : c
       ),
     };
-    pushLog('Early extract. Expedition failed.');
+    pushLog('Early extract — expedition failed.');
   } else if (act === 'gacha') {
     const free = player.dailyPullAvailable;
     const cost = free ? GACHA_COSTS.dailyFree : GACHA_COSTS.credits;
     if (!free && !canAfford(player.wallet, cost)) {
-      pushLog('Not enough credits for a pull.');
+      pushLog('Need credits for a pull.');
       return;
     }
     if (!free) {
-      const paid = pay(player.wallet, cost);
-      player = { ...player, wallet: paid.wallet };
+      player = { ...player, wallet: pay(player.wallet, cost).wallet };
     } else {
       player = { ...player, dailyPullAvailable: false };
+      pushLog('Daily free pull used.');
     }
     const { instance, rarity } = pullMerc({ reputation: player.wallet.reputation });
     if (player.crew.length < player.crewSlots) {
       player = { ...player, crew: [...player.crew, instance] };
       pushLog(`Hired ${instance.name} (${rarity}).`);
     } else {
-      // auto-dismiss for credits
+      player = { ...player, wallet: grant(player.wallet, { credits: 50, medals: 2 }) };
+      pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold +50cr.`);
+    }
+    tab = 'crew';
+  } else if (act === 'level-crew') {
+    const c = player.crew.find((x) => x.instanceId === data.id);
+    if (!c) return;
+    const cost = MEDAL_LEVEL_COST(c.level);
+    if ((player.wallet.medals || 0) < cost) {
+      pushLog(`Need ${cost} medals to level ${c.name}.`);
+    } else {
       player = {
         ...player,
-        wallet: grant(player.wallet, { credits: 50, medals: 2 }),
+        wallet: { ...player.wallet, medals: player.wallet.medals - cost },
+        crew: player.crew.map((x) =>
+          x.instanceId === c.instanceId
+            ? { ...x, level: x.level + 1, power: x.power + 3 }
+            : x
+        ),
       };
-      pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold contract +50cr.`);
+      pushLog(`${c.name} → Lv ${c.level + 1} (−${cost} medals).`);
     }
-  } else if (act === 'crew') {
-    // Level first ready crew if medals allow
-    const c = readyCrew(player)[0];
-    if (!c) {
-      pushLog('No ready crew.');
-    } else {
-      const cost = MEDAL_LEVEL_COST(c.level);
-      if ((player.wallet.medals || 0) < cost) {
-        pushLog(`Need ${cost} medals to level ${c.name}.`);
-      } else {
-        player = {
-          ...player,
-          wallet: { ...player.wallet, medals: player.wallet.medals - cost },
-          crew: player.crew.map((x) =>
-            x.instanceId === c.instanceId
-              ? { ...x, level: x.level + 1, power: x.power + 3 }
-              : x
-          ),
-        };
-        pushLog(`${c.name} → Lv ${c.level + 1} (−${cost} medals).`);
-      }
-    }
-  } else if (act === 'ship') {
-    // Unlock 3rd slot cheap for early progression
+  } else if (act === 'ship-upgrade') {
     if (player.crewSlots < 3) {
       const cost = { credits: 150 };
-      if (!canAfford(player.wallet, cost)) {
-        pushLog('Need 150 credits to expand crew quarters (slot 3).');
-      } else {
-        const paid = pay(player.wallet, cost);
-        player = { ...player, wallet: paid.wallet, crewSlots: 3 };
-        pushLog('Crew quarters expanded: 3 slots.');
+      if (!canAfford(player.wallet, cost)) pushLog('Need 150 credits for 3rd slot.');
+      else {
+        player = { ...player, wallet: pay(player.wallet, cost).wallet, crewSlots: 3 };
+        pushLog('Quarters expanded: 3 crew slots.');
       }
     } else if (player.crewSlots < 4) {
       const cost = { credits: 400 };
-      if (!canAfford(player.wallet, cost)) {
-        pushLog('Need 400 credits for 4th slot.');
-      } else {
-        const paid = pay(player.wallet, cost);
-        player = { ...player, wallet: paid.wallet, crewSlots: 4 };
-        pushLog('Crew quarters expanded: 4 slots.');
+      if (!canAfford(player.wallet, cost)) pushLog('Need 400 credits for 4th slot.');
+      else {
+        player = { ...player, wallet: pay(player.wallet, cost).wallet, crewSlots: 4 };
+        pushLog('Quarters expanded: 4 crew slots.');
       }
-    } else {
-      pushLog('Shipyard: Sparrow at mid-slice cap. Corvette coming soon.');
-    }
+    } else pushLog('Sparrow mid-slice cap. Corvette later.');
   } else if (act === 'qa-fuel') {
     player = { ...player, wallet: { ...player.wallet, fuel: (player.wallet.fuel || 0) + 5 } };
     pushLog('QA +5 fuel.');
@@ -243,12 +205,8 @@ function handleAction(act) {
   } else if (act === 'qa-reset') {
     clearSave();
     player = createNewPlayer();
+    tab = 'ship';
     pushLog('Save reset.');
-  }
-
-  // Story unlock: 3rd slot hint after first combat win
-  if (player.stats.combatsWon >= 1 && player.crewSlots === 2) {
-    pushLog('Shipyard can expand to a 3rd crew slot.');
   }
 
   persist();
