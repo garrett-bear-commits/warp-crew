@@ -1,12 +1,12 @@
 // @ts-nocheck
 /** Collision grid + A* for the Sparrow cutaway. 4-connected, no corner cut. */
 
-import { ROOMS, DOOR_PTS, FURNITURE, roomAt } from './starterShip.js';
+import { ROOMS, DOOR_PTS, FURNITURE, HALLWAYS, roomAt } from './starterShip.js';
 
 export const COLS = 72;
 export const ROWS = 128;
-const INSET = 2.4;
-const DOOR_R = 3.6;
+const INSET = 1.0;
+const DOOR_R = 4.8;
 
 const walk = new Uint8Array(COLS * ROWS);
 const baked = { ready: false };
@@ -39,7 +39,17 @@ function distSeg(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + t * vx), py - (ay + t * vy));
 }
 
+function inHall(x, y) {
+  for (const h of HALLWAYS || []) {
+    if (inRect(x, y, h, 0.2)) return true;
+  }
+  return false;
+}
+
 function inDoor(x, y) {
+  for (const d of Object.values(DOOR_PTS)) {
+    if (Math.hypot(x - d.x, y - d.y) < DOOR_R) return true;
+  }
   for (const r of ROOMS) {
     for (const nid of ['engineering', 'cargo', 'engines', 'bridge']) {
       const key = r.id < nid ? `${r.id}|${nid}` : `${nid}|${r.id}`;
@@ -47,17 +57,15 @@ function inDoor(x, y) {
       if (!d) continue;
       const cx = r.left + r.w * 0.5;
       const cy = r.top + r.h * 0.5;
-      if (distSeg(x, y, d.x, d.y, cx, cy) < DOOR_R && Math.hypot(x - d.x, y - d.y) < 8) return true;
+      if (distSeg(x, y, d.x, d.y, cx, cy) < DOOR_R && Math.hypot(x - d.x, y - d.y) < 10) return true;
     }
-  }
-  for (const d of Object.values(DOOR_PTS)) {
-    if (Math.hypot(x - d.x, y - d.y) < DOOR_R) return true;
   }
   return false;
 }
 
 function cellWalkable(xPct, yPct) {
   if (FURNITURE.some((e) => inEllipse(xPct, yPct, e))) return false;
+  if (inHall(xPct, yPct)) return true;
   for (const r of ROOMS) {
     if (inRect(xPct, yPct, r, INSET)) return true;
   }
@@ -88,11 +96,11 @@ export function clampWalkable(x, y) {
   if (isWalkablePct(x, y)) return { x, y };
   let best = { x, y };
   let bestD = Infinity;
-  for (let r = 1; r <= 10; r++) {
-    for (let a = 0; a < 12; a++) {
-      const ang = (a / 12) * Math.PI * 2;
-      const nx = x + Math.cos(ang) * r * 0.7;
-      const ny = y + Math.sin(ang) * r * 0.7;
+  for (let r = 1; r <= 12; r++) {
+    for (let a = 0; a < 14; a++) {
+      const ang = (a / 14) * Math.PI * 2;
+      const nx = x + Math.cos(ang) * r * 0.65;
+      const ny = y + Math.sin(ang) * r * 0.65;
       if (!isWalkablePct(nx, ny)) continue;
       const d = Math.hypot(nx - x, ny - y);
       if (d < bestD) {
@@ -106,7 +114,7 @@ export function clampWalkable(x, y) {
 }
 
 function los(ax, ay, bx, by) {
-  const steps = Math.max(2, Math.hypot(bx - ax, by - ay) * 1.4);
+  const steps = Math.max(2, Math.hypot(bx - ax, by - ay) * 1.6);
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     if (!isWalkablePct(ax + (bx - ax) * t, ay + (by - ay) * t)) return false;
@@ -237,8 +245,8 @@ export function findPath(x0, y0, x1, y1) {
 
 export function nearestWalkableInRoom(roomId, jitter = 0) {
   const r = ROOMS.find((x) => x.id === roomId) || ROOMS[0];
-  const x = r.walkX + (jitter - 0.5) * 6;
-  const y = r.walkY + (jitter - 0.35) * 3;
+  const x = r.walkX + (jitter - 0.5) * 5;
+  const y = r.walkY + (jitter - 0.35) * 2.4;
   const c = clampWalkable(x, y);
   return { ...c, room: roomId };
 }

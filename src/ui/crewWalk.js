@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ROOMS, roomById, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAt } from '../data/starterShip.js';
+import { ROOMS, roomById, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAt, pathRooms, doorPoint } from '../data/starterShip.js';
 import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
 import { sheetFor, walkSheetFor, WALK_CELL, WALK_FRAMES } from './crewArt.js';
 import { onTick } from './stageLoop.js';
@@ -15,9 +15,9 @@ let started = false;
 let battle = false;
 const particles = [];
 
-const WALK_SPEED = 18;
-const ARRIVE = 1.6;
-const SPRITE = 52;
+const WALK_SPEED = 9;
+const ARRIVE = 1.2;
+const SPRITE = 26;
 const DIR_ROW = { down: 0, left: 1, right: 2, up: 3 };
 
 function hash01(s) {
@@ -53,18 +53,50 @@ function spawn(crew) {
     dir: jitter > 0.5 ? 'right' : 'left',
     state: 'idle',
     path: [],
-    timer: 0.5 + jitter * 2.2,
+    timer: 0.4 + jitter * 1.8,
     jitter,
     frame: 0,
-    fps: 8,
+    fps: 7,
   };
   agents.set(a.id, a);
   return a;
 }
 
+function appendPath(pts, x0, y0, x1, y1, roomHint) {
+  const seg = findPath(x0, y0, x1, y1);
+  for (const p of seg) {
+    pts.push({ x: p.x, y: p.y, room: p.room || roomHint });
+  }
+}
+
 function beginWalk(a, destId) {
   const dest = nearestWalkableInRoom(destId, a.jitter);
-  const pts = findPath(a.x, a.y, dest.x, dest.y);
+  const pts = [];
+  let x = a.x;
+  let y = a.y;
+  let room = a.room;
+
+  if (destId !== room) {
+    const hops = pathRooms(room, destId);
+    for (const next of hops) {
+      const door = doorPoint(room, next);
+      if (door) {
+        appendPath(pts, x, y, door.x, door.y, room);
+        pts.push({ x: door.x, y: door.y, room: next, via: 'door' });
+        x = door.x;
+        y = door.y;
+        room = next;
+      } else {
+        const mid = nearestWalkableInRoom(next, a.jitter);
+        appendPath(pts, x, y, mid.x, mid.y, next);
+        x = mid.x;
+        y = mid.y;
+        room = next;
+      }
+    }
+  }
+  appendPath(pts, x, y, dest.x, dest.y, destId);
+
   if (!pts.length) {
     a.state = 'idle';
     a.timer = 1.1 + a.jitter;
@@ -76,8 +108,8 @@ function beginWalk(a, destId) {
 }
 
 function faceFrom(dx, dy) {
-  if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 'left' : 'right';
-  if (Math.abs(dy) < 0.05) return dx < 0 ? 'left' : 'right';
+  if (Math.abs(dx) > Math.abs(dy) * 0.85) return dx < 0 ? 'left' : 'right';
+  if (Math.abs(dy) < 0.04) return dx < 0 ? 'left' : 'right';
   return dy < 0 ? 'up' : 'down';
 }
 
@@ -100,19 +132,19 @@ function stepAgent(a, dt) {
   const tgt = a.path[0];
   if (!tgt) {
     a.state = 'doing';
-    a.timer = battle ? 3.2 : 2.1 + a.jitter * 2.2;
+    a.timer = battle ? 3.2 : 1.8 + a.jitter * 2.0;
     return;
   }
   const d = dist(a, tgt);
   if (d <= ARRIVE) {
     a.x = tgt.x;
     a.y = tgt.y;
-    if (tgt.room) a.room = tgt.room;
-    else a.room = roomAt(a.x, a.y) || a.room;
+    if (tgt.via === 'door') a.room = tgt.room;
+    else a.room = tgt.room || roomAt(a.x, a.y) || a.room;
     a.path.shift();
     if (!a.path.length) {
       a.state = 'doing';
-      a.timer = battle ? 3.2 : 2.1 + a.jitter * 2.2;
+      a.timer = battle ? 3.2 : 1.8 + a.jitter * 2.0;
     }
     return;
   }
@@ -216,11 +248,12 @@ function drawAgent(g, a) {
   const img = walkSheetFor(a.templateId, a.role);
   const x = (a.x / 100) * w;
   const y = (a.y / 100) * h;
+  const sz = Math.max(20, Math.min(SPRITE, h * 0.042));
   const bob = a.state === 'walk' ? Math.sin(clock * 16 + a.jitter * 8) * 1.1 : a.state === 'doing' ? Math.sin(clock * 8 + a.jitter) * 1.4 : 0;
   g.save();
   g.fillStyle = 'rgba(0,0,0,0.35)';
   g.beginPath();
-  g.ellipse(x, y + 1, 9, 3.2, 0, 0, Math.PI * 2);
+  g.ellipse(x, y + 1, sz * 0.18, sz * 0.07, 0, 0, Math.PI * 2);
   g.fill();
 
   const row = DIR_ROW[a.dir] || 0;
@@ -233,17 +266,30 @@ function drawAgent(g, a) {
       row * WALK_CELL,
       WALK_CELL,
       WALK_CELL,
-      x - SPRITE / 2,
-      y - SPRITE + 4 + bob,
-      SPRITE,
-      SPRITE
+      x - sz / 2,
+      y - sz + 3 + bob,
+      sz,
+      sz
     );
   } else {
     const sheet = sheetFor(a.templateId, a.role);
-    g.fillStyle = '#5ce1ff';
-    g.fillRect(x - 6, y - 18 + bob, 12, 18);
     if (sheet) {
-      /* fallback blob already drawn */
+      g.imageSmoothingEnabled = false;
+      const iw = 32;
+      g.drawImage(
+        Object.assign(new Image(), { src: sheet.url }),
+        0,
+        0,
+        iw,
+        iw,
+        x - sz / 2,
+        y - sz + 3 + bob,
+        sz,
+        sz
+      );
+    } else {
+      g.fillStyle = '#5ce1ff';
+      g.fillRect(x - sz * 0.22, y - sz * 0.7 + bob, sz * 0.44, sz * 0.7);
     }
   }
   g.restore();
@@ -260,13 +306,11 @@ function tick(sim, dt) {
       const a = list[i];
       const b = list[j];
       const d = dist(a, b);
-      if (d < 5 && d > 0.01) {
-        const push = ((5 - d) / 5) * 0.35;
+      if (d < 4 && d > 0.01) {
+        const push = ((4 - d) / 4) * 0.28;
         const sx = (a.x - b.x) / d;
-        const ax = a.x + sx * push;
-        const bx = b.x - sx * push;
-        const ac = clampWalkable(ax, a.y);
-        const bc = clampWalkable(bx, b.y);
+        const ac = clampWalkable(a.x + sx * push, a.y);
+        const bc = clampWalkable(b.x - sx * push, b.y);
         a.x = ac.x;
         b.x = bc.x;
       }

@@ -126,6 +126,15 @@ function tintWalk(img, look) {
     const gv = px[i + 1];
     const b = px[i + 2];
     const [h, s, v] = rgbToHsv(r, gv, b);
+    // leftover magenta / hot-pink key from the walk sheet
+    if (s > 0.35 && v > 0.2 && h >= 270 && h <= 340 && r > gv + 30 && b > gv) {
+      px[i + 3] = 0;
+      continue;
+    }
+    if (r > 200 && b > 180 && gv < 90) {
+      px[i + 3] = 0;
+      continue;
+    }
     const y = ((i / 4 / c.width) | 0) % WALK_CELL;
     const cellY = y / WALK_CELL;
     let dst = null;

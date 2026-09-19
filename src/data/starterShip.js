@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** Compact 4-room tutorial Sparrow. Percents match sparrow-hull-v2.png (1008×1792). */
+/** 4-room Sparrow cutaway. Percents match sparrow-hull-v3.png (1152×1728). */
 
 export const HULL_PX = { w: 1152, h: 1728 };
 
@@ -9,12 +9,12 @@ export const ROOMS = [
     name: 'Bridge',
     role: 'pilot',
     system: null,
-    left: 30,
-    top: 6.5,
-    w: 40,
-    h: 17,
+    left: 34,
+    top: 5,
+    w: 32,
+    h: 14,
     walkX: 50,
-    walkY: 19.5,
+    walkY: 16.5,
   },
   {
     id: 'engineering',
@@ -22,11 +22,11 @@ export const ROOMS = [
     role: 'engineer',
     system: 'shields',
     left: 16,
-    top: 25.5,
+    top: 24,
     w: 32,
-    h: 25,
-    walkX: 32,
-    walkY: 44.5,
+    h: 28,
+    walkX: 30,
+    walkY: 40,
   },
   {
     id: 'cargo',
@@ -34,24 +34,32 @@ export const ROOMS = [
     role: 'gunner',
     system: 'cargo',
     left: 52,
-    top: 25.5,
+    top: 24,
     w: 32,
-    h: 25,
-    walkX: 68,
-    walkY: 44.5,
+    h: 28,
+    walkX: 70,
+    walkY: 40,
   },
   {
     id: 'engines',
     name: 'Engines',
     role: null,
     system: 'engines',
-    left: 18,
-    top: 53.5,
-    w: 64,
-    h: 33,
-    walkX: 50,
-    walkY: 76,
+    left: 22,
+    top: 58,
+    w: 56,
+    h: 28,
+    walkX: 38,
+    walkY: 68,
   },
+];
+
+/** Central spine + necks — the hallways crew actually walk. */
+export const HALLWAYS = [
+  { left: 45, top: 16, w: 10, h: 46 }, // main spine bridge → engines
+  { left: 42, top: 16, w: 16, h: 6 }, // bridge neck
+  { left: 46, top: 52, w: 8, h: 12 }, // engine neck
+  { left: 44, top: 34, w: 12, h: 10 }, // mid crossing
 ];
 
 export const ROOM_GRAPH = {
@@ -62,24 +70,24 @@ export const ROOM_GRAPH = {
 };
 
 export const DOOR_PTS = {
-  'bridge|engineering': { x: 36, y: 23.8 },
-  'bridge|cargo': { x: 64, y: 23.8 },
-  'engineering|engines': { x: 32, y: 51 },
-  'cargo|engines': { x: 68, y: 51 },
-  'cargo|engineering': { x: 50, y: 38.5 },
+  'bridge|engineering': { x: 47, y: 19 },
+  'bridge|cargo': { x: 53, y: 19 },
+  'engineering|engines': { x: 48, y: 55 },
+  'cargo|engines': { x: 51, y: 55 },
+  'cargo|engineering': { x: 50, y: 38 },
 };
 
-/** Elliptical blockers inside rooms (percent of hull). */
+/** Keep furniture off the spine so doors stay clear. */
 export const FURNITURE = [
-  { x: 50, y: 12.4, rx: 12, ry: 4.4 },
-  { x: 31.5, y: 37.6, rx: 6.5, ry: 4.4 },
-  { x: 68.5, y: 36.2, rx: 7.2, ry: 4.6 },
-  { x: 50, y: 68.4, rx: 10.5, ry: 7.6 },
+  { x: 50, y: 9.5, rx: 7, ry: 3.2 },
+  { x: 27, y: 35, rx: 5, ry: 4 },
+  { x: 73, y: 35, rx: 5, ry: 4 },
+  { x: 50, y: 74, rx: 6, ry: 4.5 },
 ];
 
 export const THRUSTERS = [
-  { x: 31.8, y: 91.4 },
-  { x: 68.2, y: 91.4 },
+  { x: 32.5, y: 91.2 },
+  { x: 67.5, y: 91.2 },
 ];
 
 const HOME_BY_ROLE = {
@@ -128,7 +136,7 @@ export function walkWaypoints(fromId, toId) {
   let cur = fromId;
   for (const next of hops) {
     const door = doorPoint(cur, next);
-    if (door) pts.push({ x: door.x, y: door.y, room: cur });
+    if (door) pts.push({ x: door.x, y: door.y, room: cur, via: 'door' });
     const r = roomById(next);
     pts.push({ x: r.walkX, y: r.walkY, room: next });
     cur = next;

@@ -141,9 +141,9 @@ button.hud-chip {
 .ship-fit {
   position: relative;
   display: inline-block;
-  height: 64%;
+  height: 92%;
   aspect-ratio: 1152 / 1728;
-  max-width: 84%;
+  max-width: 98%;
   line-height: 0;
   z-index: 2;
   filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.62));
