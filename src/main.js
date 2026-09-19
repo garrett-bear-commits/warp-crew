@@ -453,4 +453,8 @@ function logTravelResult(r) {
   }
 }
 
-boot();
+boot().catch((err) => {
+  console.error(err);
+  const el = document.getElementById('app') || document.body;
+  el.innerHTML = `<div id="boot" class="error">Warp Crew failed to load.\n\n${err && err.stack ? err.stack : err}\n\nOpen DevTools console for details.</div>`;
+});

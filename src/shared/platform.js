@@ -35,6 +35,15 @@ export function getMockLog() {
 }
 
 export async function init(options = {}) {
+  // Wait briefly for async CDN inject from index.html
+  if (typeof window !== 'undefined' && window.__jestSdkReady) {
+    try {
+      await Promise.race([
+        window.__jestSdkReady,
+        new Promise((r) => setTimeout(r, 2500)),
+      ]);
+    } catch { /* ignore */ }
+  }
   const sdk = globalJest();
   if (!sdk) {
     ready = true;
@@ -42,10 +51,14 @@ export async function init(options = {}) {
     return { mode: 'mock' };
   }
   try {
-    await sdk.init({
+    const initP = sdk.init({
       autoLoginReminders: false,
       ...options,
     });
+    await Promise.race([
+      initP,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('JestSDK.init timeout')), 4000)),
+    ]);
     ready = true;
     log('JestSDK initialized.');
     return { mode: 'jest' };
