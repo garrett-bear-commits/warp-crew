@@ -25,7 +25,49 @@ function log(...args) {
 }
 
 export function isReal() {
-  return Boolean(globalJest());
+  const sdk = globalJest();
+  if (!sdk) return false;
+  if (inJestShell()) return true;
+  try {
+    const id = sdk.getPlayer?.()?.playerId;
+    if (id && !String(id).startsWith('mock-')) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+/** True when the page is wrapped by the Jest app / simulator. */
+export function inJestShell() {
+  if (!globalJest()) return false;
+  try {
+    const host = (typeof location !== 'undefined' && location.hostname) || '';
+    if (/(^|\.)jest\.com$/.test(host) || /(^|\.)jest\.app$/.test(host)) return true;
+    if (typeof document !== 'undefined' && /jest\.com/.test(document.referrer || '')) {
+      return true;
+    }
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      try {
+        const ph = window.parent.location.hostname || '';
+        if (/(^|\.)jest\.com$/.test(ph)) return true;
+      } catch {
+        // Cross-origin parent — Jest wrapping our GitHub Pages URL.
+        return true;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
+}
+
+function hideMockDebugChrome() {
+  if (typeof document === 'undefined' || inJestShell()) return;
+  for (const el of [...document.body.children]) {
+    if (el.id === 'app' || (el.classList && el.classList.contains('warp-crew-root'))) continue;
+    const z = parseInt((el.style && el.style.zIndex) || getComputedStyle(el).zIndex, 10);
+    if (z >= 10000) el.style.setProperty('display', 'none', 'important');
+  }
 }
 
 export function isReady() {
@@ -67,10 +109,12 @@ export async function init(options = {}) {
     ]);
     ready = true;
     log('JestSDK initialized.');
-    return { mode: 'jest' };
+    if (!inJestShell()) hideMockDebugChrome();
+    return { mode: inJestShell() ? 'jest' : 'cdn-mock' };
   } catch (e) {
     console.warn('[platform] init failed, continuing in degraded mode', e);
     ready = true;
+    hideMockDebugChrome();
     return { mode: 'degraded', error: String(e) };
   }
 }

@@ -28,6 +28,12 @@
 
 * { box-sizing: border-box; }
 
+/* Jest CDN mock inspector (debug chip + mock player panel). Hidden outside Jest. */
+body > button[style*="z-index: 10001"],
+body > div[style*="z-index: 10000"] {
+  display: none !important;
+}
+
 html, body {
   margin: 0;
   height: 100%;
