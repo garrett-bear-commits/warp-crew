@@ -5,6 +5,8 @@
  */
 
 import { grant, clampFuel } from './economy.js';
+import { PRODUCT_CATALOG } from '../data/monetization.js';
+import { fulfillSku } from './shop.js';
 import {
   getProducts,
   purchaseProduct,
@@ -13,33 +15,7 @@ import {
   captureEvent,
 } from '../shared/platform.js';
 
-/** Local + console product definitions */
-export const PRODUCT_DEFS = {
-  wc_fuel_5: {
-    sku: 'wc_fuel_5',
-    name: 'Fuel Cell ×5',
-    blurb: 'Instant +5 fuel',
-    grant: { fuel: 5 },
-  },
-  wc_gems_100: {
-    sku: 'wc_gems_100',
-    name: 'Gem Pack 100',
-    blurb: '+100 gems',
-    grant: { gems: 100 },
-  },
-  wc_gems_500: {
-    sku: 'wc_gems_500',
-    name: 'Gem Crate 500',
-    blurb: '+500 gems',
-    grant: { gems: 500 },
-  },
-  wc_starter: {
-    sku: 'wc_starter',
-    name: 'Starter Pack',
-    blurb: 'Fuel + gems + medals',
-    grant: { fuel: 10, gems: 150, medals: 30, credits: 500 },
-  },
-};
+export const PRODUCT_DEFS = PRODUCT_CATALOG;
 
 export function applyGrant(player, grantTable) {
   let wallet = grant(player.wallet, grantTable);
@@ -51,21 +27,17 @@ export function applyGrant(player, grantTable) {
 
 export async function listShopProducts() {
   const remote = await getProducts();
-  // Merge remote pricing with our grant defs
   return Object.values(PRODUCT_DEFS).map((def) => {
     const r = (remote || []).find((p) => p.sku === def.sku);
     return {
       ...def,
-      price: r?.price ?? null,
+      price: r?.price ?? def.usd ?? null,
       currency: r?.currency ?? 'USD',
       remoteName: r?.name,
     };
   });
 }
 
-/**
- * Purchase SKU: begin → grant → complete (Jest-safe order).
- */
 export async function buyProduct(player, sku) {
   const def = PRODUCT_DEFS[sku];
   if (!def) return { ok: false, reason: 'unknown_sku', player };
@@ -79,9 +51,11 @@ export async function buyProduct(player, sku) {
     };
   }
 
-  // Grant BEFORE completePurchase (Jest docs: grant then confirm)
-  const next = applyGrant(player, def.grant);
-  captureEvent('iap_granted', { sku, mock: Boolean(begin.mock) });
+  const filled = fulfillSku(player, sku);
+  if (!filled.ok) {
+    return { ok: false, reason: filled.reason, player };
+  }
+  captureEvent('iap_granted', { sku, mock: Boolean(begin.mock), doubled: filled.doubled });
 
   try {
     await completePurchase(begin.purchase.purchaseToken);
@@ -89,10 +63,16 @@ export async function buyProduct(player, sku) {
     console.warn('[iap] completePurchase failed — grant kept; will retry incomplete', e);
   }
 
-  return { ok: true, player: next, sku, purchase: begin.purchase };
+  return {
+    ok: true,
+    player: filled.player,
+    sku,
+    purchase: begin.purchase,
+    doubled: filled.doubled,
+    pulled: filled.pulled || [],
+  };
 }
 
-/** Drain incomplete purchases on boot (crash safety). */
 export async function fulfillIncompletePurchases(player) {
   let current = player;
   const granted = [];
@@ -103,7 +83,8 @@ export async function fulfillIncompletePurchases(player) {
       for (const purchase of page.purchases || []) {
         const def = PRODUCT_DEFS[purchase.productSku];
         if (!def) continue;
-        current = applyGrant(current, def.grant);
+        const filled = fulfillSku(current, purchase.productSku);
+        if (filled.ok) current = filled.player;
         granted.push(purchase.productSku);
         try {
           await completePurchase(purchase.purchaseToken);

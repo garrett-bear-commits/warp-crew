@@ -18,6 +18,22 @@ import {
 } from '../systems/tutorial.js';
 import { readyCrew } from '../systems/player.js';
 import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART } from '../data/portraits.js';
+import {
+  PRODUCT_CATALOG,
+  GEM_PACKS,
+  PASS_PREMIUM,
+  MEMBER_DAILY,
+  SHOP_LANES,
+  formatUsd,
+} from '../data/monetization.js';
+import {
+  shopState,
+  isMember,
+  memberDaysLeft,
+  dailySalesFor,
+  shopHasBadge,
+} from '../systems/shop.js';
+import { GACHA_COSTS } from '../systems/gacha.js';
 import { sheetFor } from './crewArt.js';
 import { ROOMS } from '../data/starterShip.js';
 import { syncCrewLayer } from './crewWalk.js';
@@ -124,6 +140,8 @@ function patchShell(root, ctx) {
     selectedAssists = [],
     selectedRoom = null,
     shopProducts = null,
+    shopLane = 'featured',
+    pullResults = null,
     now = Date.now(),
   } = ctx;
   const fuel = fuelStatus(player, now);
@@ -149,7 +167,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'hud', renderHud(player, fuel, chips));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, step));
-  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, selectedAssists, step }));
+  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, selectedAssists, step, pullResults }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab }));
   const showCoach = step && !step.modal && !pendingCombat && !selectedRoom && step.cta && !fighting;
@@ -163,7 +181,7 @@ function patchShell(root, ctx) {
     const detail = `${emptyHints(player, fuel, tab)}
           ${tab === 'missions' ? renderMissions(player, now) : ''}
           ${tab === 'crew' ? renderCrew(player) : ''}
-          ${tab === 'shop' ? renderShop(player, shopProducts) : ''}
+          ${tab === 'shop' ? renderShop(player, shopProducts, shopLane) : ''}
           ${tab === 'log' ? renderLog(player, log, goals) : ''}`;
     setSlot(root, 'detail', detail);
   }
@@ -172,7 +190,7 @@ function patchShell(root, ctx) {
 function renderHud(player, fuel, chips) {
   const map = {
     fuel: `
-      <button class="hud-chip ${fuel.pendingWhole ? 'has-claim' : ''}" data-act="claim">
+      <button class="hud-chip ${fuel.pendingWhole ? 'has-claim' : ''} ${fuel.member ? 'is-member' : ''}" data-act="claim">
         <img src="${ICONS.fuel}" alt="" />
         <b>${fuel.current}</b><span>/${fuel.max}</span>
         ${fuel.pendingWhole ? '<i class="claim-pip"></i>' : ''}
@@ -220,7 +238,7 @@ function renderNav(tab, player, expReady, tabs, step) {
     ship: false,
     crew: player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha'),
     missions: expReady,
-    shop: false,
+    shop: shopHasBadge(player),
     log: false,
   };
   return ids.map((id) => {
@@ -264,13 +282,14 @@ function renderCoach(step) {
     </div>`;
 }
 
-function renderModals(player, { pendingCombat, selectedAssists, step }) {
+function renderModals(player, { pendingCombat, selectedAssists, step, pullResults }) {
   if (pendingCombat) {
     return renderCombatModal(pendingCombat, selectedAssists, isTutorialActive(player));
   }
   if (step?.modal === 'victory') return renderVictoryModal(player, step);
   if (step?.modal === 'recruit') return renderRecruitModal(player, step);
   if (step?.modal === 'join') return renderJoinModal(player, step);
+  if (pullResults?.length) return renderPullModal(pullResults);
   return '';
 }
 
@@ -435,7 +454,7 @@ function renderHangarSheet(player) {
             </div>
             ${isActive ? '<button disabled>Active</button>' : isOwned
               ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
-              : '<button data-act="goto-shop">Buy</button>'}
+              : '<button data-act="goto-shop" data-lane="hangar">Buy</button>'}
           </div>`;
       }).join('')}
     </div>`;
@@ -571,15 +590,32 @@ function crewPortrait(c) {
 
 function renderCrew(player) {
   const canHire = isFeatureUnlocked(player, 'gacha');
+  const reserve = player.reserve || [];
+  const cost10 = GACHA_COSTS.gems10.gems;
   return `
     <div class="panel">
       <div class="row" style="justify-content:space-between">
         <h2>Crew Bay · ${player.crew.length}/${player.crewSlots}</h2>
-        ${canHire ? `<button class="primary" data-act="gacha">
-          ${player.dailyPullAvailable ? 'Free hire' : 'Hire 500cr'}
-        </button>` : ''}
       </div>
-      ${player.crew.map((c) => `
+      ${canHire ? `<div class="row hire-row">
+        <button class="primary" data-act="gacha">
+          ${player.dailyPullAvailable ? 'Free hire' : 'Hire 500cr'}
+        </button>
+        <button data-act="gacha-10">10-hire ${cost10}g</button>
+      </div>` : ''}
+      ${player.crew.map((c) => renderCrewCard(player, c, false)).join('') || '<div class="empty-hint">No crew — hire from the gacha.</div>'}
+    </div>
+    ${reserve.length ? `
+    <div class="panel">
+      <h2>Reserve · ${reserve.length}</h2>
+      <div class="muted">Overflow hires wait here until a deck slot opens.</div>
+      ${reserve.map((c) => renderCrewCard(player, c, true)).join('')}
+    </div>` : ''}
+  `;
+}
+
+function renderCrewCard(player, c, inReserve) {
+  return `
         <div class="crew-card">
           ${crewPortrait(c)}
           <div class="crew-body">
@@ -587,26 +623,193 @@ function renderCrew(player) {
             <span class="tag">${escapeHtml(c.role)}</span>
             <span class="tag">${escapeHtml(c.rarity)}</span>
             <span class="tag">Lv ${c.level}</span>
-            <span class="tag">${escapeHtml(c.status)}</span>
+            <span class="tag">${inReserve ? 'reserve' : escapeHtml(c.status)}</span>
             <div class="muted">Power ${c.power} · ${escapeHtml(c.species)}</div>
             <div class="muted">${escapeHtml(c.blurb || '')}</div>
-            ${isFeatureUnlocked(player, 'gacha')
-              ? `<button data-act="level-crew" data-id="${c.instanceId}">Level up (medals)</button>`
-              : ''}
+            ${inReserve
+              ? `<button class="primary" data-act="crew-assign" data-id="${c.instanceId}" ${player.crew.length >= player.crewSlots ? 'disabled' : ''}>To deck</button>`
+              : isFeatureUnlocked(player, 'gacha')
+                ? `<button data-act="level-crew" data-id="${c.instanceId}">Level up (medals)</button>`
+                : ''}
           </div>
-        </div>
-      `).join('') || '<div class="empty-hint">No crew — hire from the gacha.</div>'}
+        </div>`;
+}
+
+function priceLabel(sku, shopProducts) {
+  const remote = (shopProducts || []).find((p) => p.sku === sku);
+  const def = PRODUCT_CATALOG[sku];
+  const n = remote?.price ?? def?.usd;
+  return n != null ? formatUsd(n) : 'Buy';
+}
+
+function skuOwned(player, sku) {
+  return (shopState(player).boughtOnce || []).includes(sku);
+}
+
+function renderShop(player, shopProducts, shopLane = 'featured') {
+  const lane = SHOP_LANES.some((l) => l.id === shopLane) ? shopLane : 'featured';
+  const shop = shopState(player);
+  return `
+    <div class="shop-lanes" role="tablist">
+      ${SHOP_LANES.map((l) => `
+        <button data-act="shop-lane" data-lane="${l.id}" class="${lane === l.id ? 'active' : ''}">${l.label}</button>
+      `).join('')}
+    </div>
+    ${lane === 'featured' ? renderShopFeatured(player, shop, shopProducts) : ''}
+    ${lane === 'gems' ? renderShopGems(player, shop, shopProducts) : ''}
+    ${lane === 'daily' ? renderShopDaily(player, shop, shopProducts) : ''}
+    ${lane === 'fuel' ? renderShopFuel(player, shopProducts) : ''}
+    ${lane === 'hangar' ? renderShopHangar(player) : ''}
+    <div class="panel shop-qa">
+      <div class="row">
+        <button data-act="prompt-login">Register / Login</button>
+        <button data-act="qa-gems">QA +100 gems</button>
+        <button data-act="qa-fuel">QA +5 Fuel</button>
+      </div>
+      <button class="danger" data-act="qa-reset" style="margin-top:8px">Reset save</button>
     </div>
   `;
 }
 
-function renderShop(player, shopProducts) {
-  const products = shopProducts || [
-    { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', blurb: '+5 fuel' },
-    { sku: 'wc_gems_100', name: 'Gem Pack 100', blurb: '+100 gems' },
-    { sku: 'wc_starter', name: 'Starter Pack', blurb: 'Fuel + gems + medals' },
-  ];
-  const planets = ['b', 'c', 'a', 'd'];
+function renderShopFeatured(player, shop, shopProducts) {
+  const member = isMember(player);
+  const days = memberDaysLeft(player);
+  const passOn = shop.passPremium;
+  const goals = weekGoals(player);
+  const claimed = new Set(shop.passClaimed || []);
+  const ready = passOn && goals.goals.some((g) => g.done && !claimed.has(g.id) && PASS_PREMIUM[g.id]);
+  return `
+    <div class="panel ${member ? 'member-banner' : ''}">
+      <div class="coach-kicker">${member ? 'Membership active' : 'Captain Membership'}</div>
+      <h2>${member ? `${days}d remaining` : '30-day membership'}</h2>
+      <div class="muted">Daily ${MEMBER_DAILY.gems} gems + ${MEMBER_DAILY.fuel} fuel + ${MEMBER_DAILY.medals} medals. Fuel regen ×1.25.</div>
+      <button class="primary" data-act="iap-buy" data-sku="wc_member">${member ? `Renew ${priceLabel('wc_member', shopProducts)}` : priceLabel('wc_member', shopProducts)}</button>
+    </div>
+    ${offerCard(player, shopProducts, 'wc_captain', skuOwned(player, 'wc_captain'))}
+    ${offerCard(player, shopProducts, 'wc_pass', passOn)}
+    ${offerCard(player, shopProducts, 'wc_pass_bundle', passOn)}
+    ${offerCard(player, shopProducts, 'wc_dropship', false)}
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Veil Season</h2>
+        ${passOn
+          ? `<button class="primary" data-act="pass-collect" ${ready ? '' : 'disabled'}>Collect</button>`
+          : `<span class="tag">Free track</span>`}
+      </div>
+      <div class="muted">${passOn ? 'Premium track unlocked.' : 'Buy the pass for extra gems on each goal.'}</div>
+      ${goals.goals.map((g) => {
+        const prem = PASS_PREMIUM[g.id] || {};
+        return `
+          <div class="pass-row ${g.done ? 'done' : ''}">
+            <div>
+              <b>${g.done ? '✓' : '○'} ${escapeHtml(g.label)}</b>
+              <div class="muted">${escapeHtml(g.progress)}${passOn && prem.gems ? ` · +${prem.gems}g premium` : prem.gems ? ` · pass +${prem.gems}g` : ''}</div>
+            </div>
+            <span class="tag">${claimed.has(g.id) ? 'claimed' : g.done ? 'ready' : 'locked'}</span>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function offerCard(player, shopProducts, sku, owned) {
+  const def = PRODUCT_CATALOG[sku];
+  if (!def) return '';
+  const kicker = def.once ? 'once' : def.extra === 'pass' ? 'season' : def.extra === 'pulls_10' ? 'crew' : def.lane;
+  return `
+    <div class="panel offer-card">
+      <div>
+        <div class="coach-kicker">${kicker}</div>
+        <h2>${escapeHtml(def.name)}</h2>
+        <div class="muted">${escapeHtml(def.blurb)}</div>
+      </div>
+      ${owned
+        ? '<button disabled>Owned</button>'
+        : `<button class="primary" data-act="iap-buy" data-sku="${sku}">${priceLabel(sku, shopProducts)}</button>`}
+    </div>`;
+}
+
+function renderShopGems(player, shop, shopProducts) {
+  const doubled = !shop.firstPurchase;
+  return `
+    <div class="panel">
+      <h2>Gem packs</h2>
+      <div class="muted">${doubled ? 'First gem pack is doubled.' : 'Bigger packs carry a bigger bonus.'}</div>
+      <div class="gem-grid">
+        ${GEM_PACKS.map((p) => `
+          <div class="gem-pack ${p.tag ? `tag-${p.tag}` : ''}">
+            <div class="row" style="justify-content:space-between">
+              <b>${escapeHtml(p.name)}</b>
+              ${p.tag ? `<span class="tag">${p.tag}</span>` : ''}
+            </div>
+            <div class="gem-amt">${doubled ? p.gems * 2 : p.gems}<span>g</span></div>
+            <div class="muted">${doubled ? `First ×2 · ${p.gems} listed` : escapeHtml(p.blurb)}</div>
+            <button class="primary" data-act="iap-buy" data-sku="${p.sku}">${priceLabel(p.sku, shopProducts)}</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderShopDaily(player, shop, shopProducts) {
+  const sales = dailySalesFor(player);
+  const today = new Date();
+  const todayKey = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
+  const specialSold = shop.dailyDay === todayKey && (shop.dailyBought || []).includes('wc_daily_special');
+  const special = PRODUCT_CATALOG.wc_daily_special;
+  return `
+    <div class="panel">
+      <h2>Daily sales</h2>
+      <div class="muted">Rotates at UTC midnight. Gem sinks + one cash special.</div>
+      <div class="mission-card">
+        <img class="stat-ico" src="${ICONS.gems}" alt="" />
+        <div>
+          <b>${escapeHtml(special.name)}</b>
+          <div class="muted">${escapeHtml(special.blurb)}</div>
+        </div>
+        ${specialSold
+          ? '<button disabled>Sold</button>'
+          : `<button class="primary" data-act="iap-buy" data-sku="wc_daily_special">${priceLabel('wc_daily_special', shopProducts)}</button>`}
+      </div>
+      ${sales.map((o) => `
+        <div class="mission-card">
+          <img class="stat-ico" src="${ICONS.gems}" alt="" />
+          <div>
+            <b>${escapeHtml(o.name)}</b>
+            <div class="muted">${escapeHtml(o.blurb)} · ${o.cost.gems}g</div>
+          </div>
+          ${o.bought
+            ? '<button disabled>Sold</button>'
+            : `<button class="primary" data-act="shop-buy-daily" data-offer="${o.id}">${o.cost.gems}g</button>`}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderShopFuel(player, shopProducts) {
+  return `
+    <div class="panel">
+      <h2>Fuel</h2>
+      <div class="muted">Energy refill. Membership also speeds regen.</div>
+      ${['wc_fuel_5', 'wc_fuel_20'].map((sku) => {
+        const def = PRODUCT_CATALOG[sku];
+        return `
+        <div class="mission-card">
+          <img class="stat-ico" src="${ICONS.fuel}" alt="" />
+          <div>
+            <b>${escapeHtml(def.name)}</b>
+            <div class="muted">${escapeHtml(def.blurb)}</div>
+          </div>
+          <button class="primary" data-act="iap-buy" data-sku="${sku}">${priceLabel(sku, shopProducts)}</button>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderShopHangar(player) {
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
   return `
@@ -639,43 +842,53 @@ function renderShop(player, shopProducts) {
         </div>`;
       }).join('')}
     </div>
-    <div class="panel">
-      <h2>Shop</h2>
-      <div class="muted">Sandbox IAP for QA. Real Jest payments later.</div>
-      ${products.map((p, i) => `
-        <div class="mission-card">
-          <img class="planet-art" src="${NODE_ART[planets[i % planets.length]]}" alt="" />
-          <div>
-            <b>${escapeHtml(p.name)}</b>
-            <div class="muted">${escapeHtml(p.blurb || p.remoteName || p.sku)}</div>
-            <div class="muted">${p.price != null ? `${p.price} ${p.currency || 'USD'}` : 'sandbox'}</div>
-          </div>
-          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">Buy</button>
-        </div>
-      `).join('')}
-      <div class="row" style="margin-top:8px">
-        <button data-act="prompt-login">Register / Login</button>
-        <button data-act="qa-gems">QA +100 gems</button>
-        <button data-act="qa-fuel">QA +5 Fuel</button>
-      </div>
-      <button class="danger" data-act="qa-reset" style="margin-top:8px">Reset save</button>
-    </div>
   `;
+}
+
+function renderPullModal(results) {
+  return `
+    <div class="modal-backdrop">
+      <div class="modal panel pull-modal">
+        <div class="coach-kicker">Dropship</div>
+        <h2>${results.length} hires</h2>
+        <div class="pull-list">
+          ${results.map((r) => `
+            <div class="pull-row rarity-${escapeHtml(r.rarity)}">
+              <b>${escapeHtml(r.instance.name)}</b>
+              <span class="tag">${escapeHtml(r.rarity)}</span>
+              <span class="muted">${r.dest === 'deck' ? 'On deck' : 'Reserve'}</span>
+            </div>
+          `).join('')}
+        </div>
+        <button class="primary" data-act="close-pulls">Continue</button>
+      </div>
+    </div>`;
 }
 
 function renderLog(player, log, goals) {
   const prog = storyProgress(player);
   const goalsDone = goals.goals.filter((g) => g.done).length;
+  const shop = shopState(player);
+  const claimed = new Set(shop.passClaimed || []);
+  const ready = shop.passPremium && goals.goals.some((g) => g.done && !claimed.has(g.id) && PASS_PREMIUM[g.id]);
   return `
     <div class="panel">
-      <h2>Week goals · Day ${goals.careerDay}</h2>
-      <div class="muted">${goalsDone}/${goals.goals.length} complete</div>
-      ${goals.goals.map((g) => `
+      <div class="row" style="justify-content:space-between">
+        <h2>Week goals · Day ${goals.careerDay}</h2>
+        ${shop.passPremium
+          ? `<button class="primary" data-act="pass-collect" ${ready ? '' : 'disabled'}>Pass</button>`
+          : '<span class="tag">Free</span>'}
+      </div>
+      <div class="muted">${goalsDone}/${goals.goals.length} complete${shop.passPremium ? ' · Veil Pass on' : ''}</div>
+      ${goals.goals.map((g) => {
+        const prem = PASS_PREMIUM[g.id] || {};
+        return `
         <div class="crew-card ${g.done ? 'goal-done' : ''}">
           <b>${g.done ? '✓' : '○'} ${escapeHtml(g.label)}</b>
           <span class="tag">${escapeHtml(g.progress)}</span>
-        </div>
-      `).join('')}
+          ${prem.gems ? `<span class="tag">${claimed.has(g.id) ? 'pass claimed' : `pass +${prem.gems}g`}</span>` : ''}
+        </div>`;
+      }).join('')}
     </div>
     <div class="panel">
       <h2>Story · Eclipse Swarm</h2>
@@ -697,8 +910,8 @@ function renderLog(player, log, goals) {
 
 function escapeHtml(s) {
   return String(s)
-    .replaceAll('&', '&')
-    .replaceAll('<', '<')
-    .replaceAll('>', '>')
-    .replaceAll('"', '"');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
 }

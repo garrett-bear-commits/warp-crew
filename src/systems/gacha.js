@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { CREW_CATALOG, RARITY, createCrewInstance } from '../data/crewRoster.js';
+import { CREW_CATALOG, createCrewInstance } from '../data/crewRoster.js';
 
 /** Reputation → weight multipliers for rarities */
 export function rarityWeights(reputation = 0) {
@@ -46,3 +46,44 @@ export const GACHA_COSTS = {
   gems: { gems: 100 },
   gems10: { gems: 900 },
 };
+
+/** Deck if a slot is open, otherwise stash in reserve (PSS inventory analog). */
+export function placeCrew(player, instance) {
+  const crew = player.crew || [];
+  if (crew.length < (player.crewSlots || 0)) {
+    return { player: { ...player, crew: [...crew, instance] }, dest: 'deck' };
+  }
+  return {
+    player: { ...player, reserve: [...(player.reserve || []), instance] },
+    dest: 'reserve',
+  };
+}
+
+export function runPulls(player, count, opts = {}) {
+  let next = player;
+  const pulled = [];
+  for (let i = 0; i < count; i++) {
+    const { instance, rarity } = pullMerc({
+      reputation: next.wallet?.reputation || 0,
+      guaranteedRarity: opts.guaranteedRarity || null,
+    });
+    const placed = placeCrew(next, instance);
+    next = placed.player;
+    pulled.push({ instance, rarity, dest: placed.dest });
+  }
+  return { player: next, pulled };
+}
+
+export function assignFromReserve(player, instanceId) {
+  const reserve = [...(player.reserve || [])];
+  const idx = reserve.findIndex((c) => c.instanceId === instanceId);
+  if (idx < 0) return { ok: false, reason: 'missing', player };
+  if ((player.crew || []).length >= (player.crewSlots || 0)) {
+    return { ok: false, reason: 'no_slot', player };
+  }
+  const [instance] = reserve.splice(idx, 1);
+  return {
+    ok: true,
+    player: { ...player, reserve, crew: [...player.crew, instance] },
+  };
+}
