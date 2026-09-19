@@ -2,6 +2,7 @@
  * Jest SDK adapter for Warp Crew.
  * Docs: https://docs.jest.com/sdk/html5
  * Degrades to a local mock when window.JestSDK is missing (pnpm dev).
+ * Safe to call helpers before init — they no-op until ready.
  */
 
 const globalJest = () =>
@@ -42,7 +43,9 @@ export async function init(options = {}) {
         window.__jestSdkReady,
         new Promise((r) => setTimeout(r, 2500)),
       ]);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   const sdk = globalJest();
   if (!sdk) {
@@ -57,7 +60,9 @@ export async function init(options = {}) {
     });
     await Promise.race([
       initP,
-      new Promise((_, rej) => setTimeout(() => rej(new Error('JestSDK.init timeout')), 4000)),
+      new Promise((_, rej) =>
+        setTimeout(() => rej(new Error('JestSDK.init timeout')), 4000)
+      ),
     ]);
     ready = true;
     log('JestSDK initialized.');
@@ -70,18 +75,28 @@ export async function init(options = {}) {
 }
 
 export function setLoadingProgress(pct) {
+  if (!ready) return; // never call SDK before init
   const sdk = globalJest();
-  if (sdk?.setLoadingProgress) sdk.setLoadingProgress(pct);
+  try {
+    if (sdk?.setLoadingProgress) sdk.setLoadingProgress(pct);
+  } catch (e) {
+    console.warn('[platform] setLoadingProgress', e);
+  }
 }
 
 export function markGameLoaded() {
+  if (!ready) return;
   const sdk = globalJest();
-  if (sdk?.markGameLoaded) sdk.markGameLoaded();
+  try {
+    if (sdk?.markGameLoaded) sdk.markGameLoaded();
+  } catch (e) {
+    console.warn('[platform] markGameLoaded', e);
+  }
 }
 
 export function getPlayer() {
   const sdk = globalJest();
-  if (sdk?.getPlayer) {
+  if (ready && sdk?.getPlayer) {
     try {
       return sdk.getPlayer();
     } catch (e) {
@@ -93,14 +108,13 @@ export function getPlayer() {
 
 export function getEntryPayload() {
   const sdk = globalJest();
-  if (sdk?.getEntryPayload) {
+  if (ready && sdk?.getEntryPayload) {
     try {
       return sdk.getEntryPayload() || {};
     } catch {
       return {};
     }
   }
-  // Local: allow ?entryPayload= JSON
   try {
     const q = new URLSearchParams(window.location.search).get('entryPayload');
     return q ? JSON.parse(q) : {};
@@ -111,7 +125,7 @@ export function getEntryPayload() {
 
 export async function login(options = {}) {
   const sdk = globalJest();
-  if (sdk?.login) {
+  if (ready && sdk?.login) {
     await sdk.login(options);
     return getPlayer();
   }
@@ -122,7 +136,7 @@ export async function login(options = {}) {
 
 export function showRegistrationOverlay(options = {}) {
   const sdk = globalJest();
-  if (sdk?.showRegistrationOverlay) {
+  if (ready && sdk?.showRegistrationOverlay) {
     return sdk.showRegistrationOverlay({
       theme: 'dark',
       message:
@@ -146,7 +160,7 @@ export function showRegistrationOverlay(options = {}) {
 
 export function captureEvent(name, props = {}) {
   const sdk = globalJest();
-  if (sdk?.captureEvent) {
+  if (ready && sdk?.captureEvent) {
     try {
       sdk.captureEvent(name, props);
       return;
@@ -157,11 +171,10 @@ export function captureEvent(name, props = {}) {
   mockLog.push({ type: 'event', name, props });
 }
 
-/** Optional cloud key/value (JestSDK.data) — local no-op storage */
 export const cloudData = {
   get(key) {
     const sdk = globalJest();
-    if (sdk?.data?.get) return sdk.data.get(key);
+    if (ready && sdk?.data?.get) return sdk.data.get(key);
     try {
       const raw = localStorage.getItem('warpcrew.cloud.' + key);
       return raw == null ? undefined : JSON.parse(raw);
@@ -171,7 +184,7 @@ export const cloudData = {
   },
   set(keyOrObj, value) {
     const sdk = globalJest();
-    if (sdk?.data?.set) {
+    if (ready && sdk?.data?.set) {
       if (typeof keyOrObj === 'object') return sdk.data.set(keyOrObj);
       return sdk.data.set({ [keyOrObj]: value });
     }
@@ -185,20 +198,20 @@ export const cloudData = {
   },
   async flush() {
     const sdk = globalJest();
-    if (sdk?.data?.flush) return sdk.data.flush();
+    if (ready && sdk?.data?.flush) return sdk.data.flush();
   },
 };
 
-// --- Notifications ---
-
 export async function scheduleNotification(options) {
   const sdk = globalJest();
-  if (sdk?.notifications?.scheduleNotification) {
+  if (ready && sdk?.notifications?.scheduleNotification) {
     return sdk.notifications.scheduleNotification(options);
   }
   mockScheduled.set(options.identifier || 'anon', {
     ...options,
-    at: options.scheduledAt || Date.now() + (options.scheduledInDays || 1) * 86400000,
+    at:
+      options.scheduledAt ||
+      Date.now() + (options.scheduledInDays || 1) * 86400000,
   });
   mockLog.push({ type: 'scheduleNotification', options });
   log('mock schedule', options.identifier, options.body);
@@ -206,7 +219,7 @@ export async function scheduleNotification(options) {
 
 export async function unscheduleNotification(identifier) {
   const sdk = globalJest();
-  if (sdk?.notifications?.unscheduleNotification) {
+  if (ready && sdk?.notifications?.unscheduleNotification) {
     return sdk.notifications.unscheduleNotification({ identifier });
   }
   mockScheduled.delete(identifier);
@@ -217,14 +230,11 @@ export function getMockScheduled() {
   return [...mockScheduled.entries()].map(([id, v]) => ({ id, ...v }));
 }
 
-// --- Payments ---
-
 export async function getProducts() {
   const sdk = globalJest();
-  if (sdk?.payments?.getProducts) {
+  if (ready && sdk?.payments?.getProducts) {
     return sdk.payments.getProducts();
   }
-  // Local catalog mirrors dev console SKUs we'll register
   return [
     { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', price: 0.99, currency: 'USD' },
     { sku: 'wc_gems_100', name: 'Gem Pack 100', price: 1.99, currency: 'USD' },
@@ -233,16 +243,13 @@ export async function getProducts() {
   ];
 }
 
-/**
- * Full purchase flow: begin → grant (caller) → complete.
- * Returns { ok, cancelled, error, purchase, productSku }
- */
 export async function purchaseProduct(productSku) {
   const sdk = globalJest();
-  if (sdk?.payments?.beginPurchase) {
+  if (ready && sdk?.payments?.beginPurchase) {
     const begin = await sdk.payments.beginPurchase({ productSku });
     if (begin.result === 'cancel') return { ok: false, cancelled: true };
-    if (begin.result === 'error') return { ok: false, error: begin.error || 'error' };
+    if (begin.result === 'error')
+      return { ok: false, error: begin.error || 'error' };
     return {
       ok: true,
       purchase: begin.purchase,
@@ -250,7 +257,6 @@ export async function purchaseProduct(productSku) {
       productSku: begin.purchase?.productSku || productSku,
     };
   }
-  // Local: auto-succeed for QA
   mockLog.push({ type: 'purchase', productSku });
   return {
     ok: true,
@@ -270,7 +276,7 @@ export async function purchaseProduct(productSku) {
 
 export async function completePurchase(purchaseToken) {
   const sdk = globalJest();
-  if (sdk?.payments?.completePurchase) {
+  if (ready && sdk?.payments?.completePurchase) {
     return sdk.payments.completePurchase({ purchaseToken });
   }
   mockLog.push({ type: 'completePurchase', purchaseToken });
@@ -279,7 +285,7 @@ export async function completePurchase(purchaseToken) {
 
 export async function getIncompletePurchases() {
   const sdk = globalJest();
-  if (sdk?.payments?.getIncompletePurchases) {
+  if (ready && sdk?.payments?.getIncompletePurchases) {
     return sdk.payments.getIncompletePurchases();
   }
   return { hasMore: false, purchases: [], purchasesSigned: '' };

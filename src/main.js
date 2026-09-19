@@ -88,11 +88,12 @@ function tryResolveExpedition({ force = false } = {}) {
 }
 
 async function boot() {
-  setLoadingProgress(10);
+  // MUST init Jest SDK before any other JestSDK.* calls (setLoadingProgress, etc.)
   const initResult = await platformInit();
   platformStatus = isReal()
     ? `jest (${initResult.mode})`
     : `local mock (${initResult.mode})`;
+  setLoadingProgress(10);
 
   const jestPlayer = getJestPlayer();
   setLoadingProgress(40);
