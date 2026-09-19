@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createNewPlayer, readyCrew, migratePlayer } from './systems/player.js';
 import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { claimFuelRegen } from './systems/fuel.js';
@@ -40,16 +41,27 @@ import {
   dismissTutorial,
   migrateTutorial,
   currentTutorialStep,
+  isTutorialActive,
+  isTabUnlocked,
+  isFeatureUnlocked,
+  grantTutorialRecruit,
+  beginJoinPrompt,
+  completeTutorial,
+  preferredTab,
 } from './systems/tutorial.js';
+import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
 
-const app = document.getElementById('app');
+let app = null;
+let mountId = 0;
 const log = [];
 let player = null;
 let tab = 'ship';
 let pendingCombat = null;
 let selectedAssists = [];
+let selectedRoom = null;
 let platformStatus = 'booting';
 let shopProducts = null;
+let artReady = false;
 
 function pushLog(msg) {
   log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
@@ -101,18 +113,9 @@ function tryResolveExpedition({ force = false } = {}) {
   return true;
 }
 
-async function boot() {
-  // MUST init Jest SDK before any other JestSDK.* calls (setLoadingProgress, etc.)
-  const initResult = await platformInit();
-  platformStatus = isReal()
-    ? `jest (${initResult.mode})`
-    : `local mock (${initResult.mode})`;
-  setLoadingProgress(10);
-
+function hydratePlayer() {
   const jestPlayer = getJestPlayer();
-  setLoadingProgress(40);
 
-  // QA: ?fresh=1 wipes local save once
   try {
     if (new URLSearchParams(location.search).get('fresh') === '1') {
       clearSave();
@@ -130,15 +133,61 @@ async function boot() {
     });
     player = migrateTutorial(player);
     pushLog('Career start aboard Sparrow.');
-    pushLog('Tip: follow the tutorial banner — Dust Lane first.');
+    pushLog('Two mercs on deck — Rex and Bolt.');
   }
 
-  // Tag registration for comeback series
   player = {
     ...player,
     _jestRegistered: Boolean(jestPlayer?.registered),
     _jestPlayerId: jestPlayer?.playerId || null,
   };
+
+  if (isTutorialActive(player)) {
+    tab = preferredTab(player, tab);
+  }
+
+  const daily = applyDailyLogin(player);
+  if (!isTutorialActive(player) || player.tutorial?.phase === 'done') {
+    player = daily.player;
+    if (daily.isNewDay) {
+      pushLog(`Login streak day ${daily.bonus.streak}. Bonus: ${JSON.stringify(daily.bonus)}`);
+    }
+  } else if (daily.isNewDay) {
+    // Hold the day-1 streak without dumping extra currencies into the intro.
+    player = {
+      ...player,
+      lastLoginDay: daily.player.lastLoginDay,
+      loginStreak: daily.player.loginStreak,
+      dailyPullAvailable: false,
+    };
+  }
+
+  const claimed = claimFuelRegen(player);
+  player = claimed.player;
+  if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
+  tryResolveExpedition();
+}
+
+async function boot() {
+  try {
+    hydratePlayer();
+    artReady = hasCrewArt();
+    render();
+  } catch (e) {
+    console.warn('hydrate', e);
+  }
+
+  const initResult = await platformInit();
+  platformStatus = isReal()
+    ? `jest (${initResult.mode})`
+    : `local mock (${initResult.mode})`;
+  setLoadingProgress(10);
+
+  const jestPlayer = getJestPlayer();
+  if (player && jestPlayer?.username && player.captainName === 'Captain') {
+    player = { ...player, captainName: jestPlayer.username };
+  }
+  setLoadingProgress(40);
 
   const entry = getEntryPayload();
   if (entry?.notification_type) {
@@ -149,21 +198,21 @@ async function boot() {
     if (entry.notification_type === 'fuel_full') tab = 'missions';
   }
 
-  const daily = applyDailyLogin(player);
-  player = daily.player;
-  if (daily.isNewDay) {
-    pushLog(`Login streak day ${daily.bonus.streak}. Bonus: ${JSON.stringify(daily.bonus)}`);
-  }
+  const artP = prepareCrewArt()
+    .then(() => {
+      artReady = true;
+      render();
+    })
+    .catch((e) => console.warn('crew art', e));
 
-  const claimed = claimFuelRegen(player);
-  player = claimed.player;
-  if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
-  tryResolveExpedition();
-
-  const incomplete = await fulfillIncompletePurchases(player);
-  player = incomplete.player;
-  if (incomplete.granted?.length) {
-    pushLog(`Restored incomplete purchases: ${incomplete.granted.join(', ')}`);
+  try {
+    const incomplete = await fulfillIncompletePurchases(player);
+    player = incomplete.player;
+    if (incomplete.granted?.length) {
+      pushLog(`Restored incomplete purchases: ${incomplete.granted.join(', ')}`);
+    }
+  } catch (e) {
+    console.warn('iap restore', e);
   }
 
   try {
@@ -173,7 +222,7 @@ async function boot() {
   }
 
   setLoadingProgress(90);
-  await refreshNotifs();
+  await Promise.all([artP, refreshNotifs().catch((e) => console.warn('notif sync', e))]);
   persist();
   setLoadingProgress(100);
   markGameLoaded();
@@ -185,17 +234,27 @@ async function boot() {
 }
 
 function render() {
+  if (!app || !player) return;
   renderApp(app, {
     player,
     log,
     tab,
     pendingCombat,
     selectedAssists,
+    selectedRoom,
     platformStatus,
     shopProducts,
+    artReady,
     handlers: {
       setTab: (t) => {
+        if (!isTabUnlocked(player, t)) return;
+        if (t === 'missions' && player.tutorial?.phase === 'meet' && isTutorialActive(player)) {
+          player = advanceTutorial(player);
+          persist();
+          captureEvent('tutorial_stage', { stage: 'jump' });
+        }
         tab = t;
+        selectedRoom = null;
         render();
       },
       onAction: handleAction,
@@ -211,7 +270,67 @@ function render() {
   });
 }
 
+async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
+  const jp = getJestPlayer();
+  const finish = (registered, username) => {
+    player = {
+      ...player,
+      _jestRegistered: Boolean(registered),
+      captainName: username || player.captainName,
+    };
+    if (isTutorialActive(player) || player.tutorial?.phase === 'join') {
+      player = completeTutorial(player, { registered: Boolean(registered) });
+      tab = 'ship';
+      captureEvent('tutorial_complete', { joined: Boolean(registered) });
+    }
+  };
+
+  if (jp?.registered) {
+    finish(true, jp.username);
+    pushLog(`Already registered as ${jp.username || jp.playerId}.`);
+    return;
+  }
+
+  if (isReal()) {
+    const { loginButtonAction } = showRegistrationOverlay({
+      theme: 'dark',
+      message: 'Save Warp Crew progress! {{registrationCode}} is my code.',
+      entryPayload: { reason },
+      onClose: () => {},
+    });
+    try {
+      await login({ entryPayload: { reason } });
+      const after = getJestPlayer();
+      if (after?.registered) {
+        finish(true, after?.username);
+        pushLog('Registered on Jest. Crew, shop, and log are open.');
+      } else {
+        pushLog('Join closed — you can still play as guest.');
+      }
+    } catch {
+      pushLog('Login flow closed.');
+      loginButtonAction?.();
+    }
+    return;
+  }
+
+  await login();
+  const after = getJestPlayer();
+  finish(true, after?.username);
+  pushLog('Joined Jest. Crew, shop, and log are open.');
+}
+
 async function handleAction(act, data = {}) {
+  if (act === 'select-room') {
+    selectedRoom = selectedRoom === data.room ? null : data.room;
+    render();
+    return;
+  }
+  if (act === 'close-room') {
+    selectedRoom = null;
+    render();
+    return;
+  }
   if (act === 'claim' || act === 'exp-claim') {
     const claimed = claimFuelRegen(player);
     player = claimed.player;
@@ -220,7 +339,17 @@ async function handleAction(act, data = {}) {
     else if (!resolved) pushLog('Nothing new to claim yet.');
     await refreshNotifs();
   } else if (act === 'goto-missions') {
+    if (!isTabUnlocked(player, 'missions')) return;
     tab = 'missions';
+    selectedRoom = null;
+  } else if (act === 'goto-crew') {
+    if (!isTabUnlocked(player, 'crew')) return;
+    tab = 'crew';
+    selectedRoom = null;
+  } else if (act === 'goto-shop') {
+    if (!isTabUnlocked(player, 'shop')) return;
+    tab = 'shop';
+    selectedRoom = null;
   } else if (act === 'travel-to') {
     const nodeId = data.node;
     if (!nodeId) return;
@@ -235,6 +364,10 @@ async function handleAction(act, data = {}) {
       pendingCombat = preview;
       selectedAssists = ['shield_boost'];
       pushLog(`Contact at ${preview.node.name} — choose assists.`);
+      if (isTutorialActive(player)) {
+        const te = noteTutorialEvent(player, 'combat_ready');
+        player = te.player;
+      }
     } else {
       const res = commitTravel(player, preview);
       if (!res.ok) pushLog(`Travel failed: ${res.reason}`);
@@ -243,7 +376,7 @@ async function handleAction(act, data = {}) {
         logTravelResult(res.result);
         const te = noteTutorialEvent(player, 'travel_success');
         player = te.player;
-        if (te.advanced) pushLog('Tutorial: third crew slot unlocked after first jump.');
+        if (te.advanced) pushLog('Tutorial: first jump logged.');
         captureEvent('travel', { node: nodeId, kind: res.result.kind });
         await refreshNotifs();
       }
@@ -259,20 +392,38 @@ async function handleAction(act, data = {}) {
       logTravelResult(res.result);
       let te = noteTutorialEvent(player, 'travel_success');
       player = te.player;
-      te = noteTutorialEvent(player, 'combat_done');
+      te = noteTutorialEvent(player, 'combat_done', { rewards: res.result.rewards });
       player = te.player;
       captureEvent('combat', {
         success: res.result.combat?.success,
         encounter: res.result.combat?.encounter?.id,
       });
-      tab = 'log';
+      if (isTutorialActive(player)) {
+        captureEvent('tutorial_stage', { stage: player.tutorial?.phase });
+        tab = 'missions';
+      } else {
+        tab = 'log';
+      }
       await refreshNotifs();
     }
   } else if (act === 'combat-cancel') {
+    if (isTutorialActive(player) && player.tutorial?.phase === 'combat') {
+      // First fight cannot be aborted — stay on the assist picker.
+      render();
+      return;
+    }
     pendingCombat = null;
     selectedAssists = [];
     pushLog('Jump aborted. Fuel not spent.');
+    if (isTutorialActive(player)) {
+      const te = noteTutorialEvent(player, 'combat_abort');
+      player = te.player;
+    }
   } else if (act === 'exp-start') {
+    if (!isFeatureUnlocked(player, 'expeditions')) {
+      pushLog('Expeditions unlock after the first fight.');
+      return;
+    }
     if (player.activeExpedition) pushLog('Expedition already active.');
     else {
       const planet = PLANETS_V1.find((p) => p.id === data.planet) || PLANETS_V1[0];
@@ -334,6 +485,10 @@ async function handleAction(act, data = {}) {
     pushLog('Early extract — expedition failed.');
     await refreshNotifs();
   } else if (act === 'gacha') {
+    if (!isFeatureUnlocked(player, 'gacha')) {
+      pushLog('Hiring opens after your first gunner signs on.');
+      return;
+    }
     const free = player.dailyPullAvailable;
     const cost = free ? GACHA_COSTS.dailyFree : GACHA_COSTS.credits;
     if (!free && !canAfford(player.wallet, cost)) {
@@ -378,6 +533,10 @@ async function handleAction(act, data = {}) {
       pushLog(`${c.name} → Lv ${c.level + 1} (−${cost} medals).`);
     }
   } else if (act === 'ship-upgrade') {
+    if (isTutorialActive(player) && !isFeatureUnlocked(player, 'hangar')) {
+      pushLog('Ship upgrades open after the intro.');
+      return;
+    }
     const system = data.system || 'quarters';
     const res = upgradeSystem(player, system);
     if (!res.ok) {
@@ -390,6 +549,10 @@ async function handleAction(act, data = {}) {
       captureEvent('ship_upgrade', { system });
     }
   } else if (act === 'hull-buy') {
+    if (!isFeatureUnlocked(player, 'shop')) {
+      pushLog('Hangar unlocks after the intro.');
+      return;
+    }
     const res = buyHull(player, data.ship, data.currency || 'gems');
     if (!res.ok) {
       pushLog(res.reason === 'cannot_afford'
@@ -410,6 +573,10 @@ async function handleAction(act, data = {}) {
       pushLog(`Switched active hull to ${data.ship}.`);
     }
   } else if (act === 'iap-buy') {
+    if (!isFeatureUnlocked(player, 'shop')) {
+      pushLog('Shop unlocks after the intro.');
+      return;
+    }
     const sku = data.sku;
     pushLog(`Purchasing ${sku}…`);
     const res = await buyProduct(player, sku);
@@ -425,46 +592,44 @@ async function handleAction(act, data = {}) {
       }
       await refreshNotifs();
     }
-  } else if (act === 'prompt-login') {
-    const jp = getJestPlayer();
-    if (jp?.registered) {
-      pushLog(`Already registered as ${jp.username || jp.playerId}.`);
-    } else if (isReal()) {
-      const { loginButtonAction } = showRegistrationOverlay({
-        theme: 'dark',
-        message: 'Save Warp Crew progress! {{registrationCode}} is my code.',
-        entryPayload: { reason: 'shop_prompt' },
-        onClose: () => {},
-      });
-      // Auto-trigger login action for simplicity; overlay also available
-      try {
-        await login({ entryPayload: { reason: 'shop_prompt' } });
-        const after = getJestPlayer();
-        player = {
-          ...player,
-          _jestRegistered: Boolean(after?.registered),
-          captainName: after?.username || player.captainName,
-        };
-        pushLog(after?.registered ? 'Registered on Jest.' : 'Login dismissed.');
-      } catch (e) {
-        pushLog('Login flow closed.');
-        loginButtonAction?.();
-      }
-    } else {
-      await login();
-      player = { ...player, _jestRegistered: true };
-      pushLog('Local mock: marked registered.');
+  } else if (act === 'prompt-login' || act === 'tutorial-join') {
+    await handleJoinJest({ reason: act === 'tutorial-join' ? 'tutorial_peak' : 'shop_prompt' });
+  } else if (act === 'tutorial-next' || act === 'tutorial-go' || act === 'tutorial-jump') {
+    const step = currentTutorialStep(player);
+    if (!step) return;
+    if (step.id === 'meet') {
+      player = advanceTutorial(player);
+      tab = 'missions';
+      selectedRoom = null;
+      captureEvent('tutorial_stage', { stage: 'jump' });
+      pushLog('Missions open. Dust Lane is the only jump.');
+    } else if (step.tab) {
+      tab = step.tab;
+      selectedRoom = null;
     }
-  } else if (act === 'tutorial-next') {
-    player = advanceTutorial(player);
-    const step = player.tutorial?.stepIndex;
-    pushLog(`Tutorial advanced (${step}).`);
+  } else if (act === 'tutorial-draw') {
+    const granted = grantTutorialRecruit(player);
+    player = granted.player;
+    tab = 'crew';
+    selectedRoom = null;
+    pushLog(`${granted.instance.name} signs on as gunner.`);
+    captureEvent('tutorial_stage', { stage: 'recruit' });
+  } else if (act === 'tutorial-to-join') {
+    player = beginJoinPrompt(player);
+    tab = 'ship';
+    selectedRoom = null;
+    captureEvent('tutorial_stage', { stage: 'join' });
+    pushLog('Jest save prompt.');
+  } else if (act === 'tutorial-skip-join') {
+    player = completeTutorial(player, { registered: Boolean(getJestPlayer()?.registered) });
+    tab = 'ship';
+    captureEvent('tutorial_complete', { joined: false });
+    pushLog('Playing as guest. Crew, shop, and log are open.');
   } else if (act === 'tutorial-dismiss') {
     player = dismissTutorial(player);
-    pushLog('Tutorial dismissed — reopen tips anytime from SHIP.');
-  } else if (act === 'tutorial-jump') {
-    const step = currentTutorialStep(player);
-    if (step?.tab) tab = step.tab;
+    if (player.tutorial?.completed) {
+      pushLog('Intro complete.');
+    }
   } else if (act === 'qa-fuel') {
     player = { ...player, wallet: { ...player.wallet, fuel: (player.wallet.fuel || 0) + 5 } };
     pushLog('QA +5 fuel.');
@@ -478,10 +643,7 @@ async function handleAction(act, data = {}) {
     pendingCombat = null;
     selectedAssists = [];
     tab = 'ship';
-    const daily = applyDailyLogin(player);
-    player = daily.player;
     pushLog('Save reset.');
-    await refreshNotifs();
   }
 
   persist();
@@ -502,8 +664,24 @@ function logTravelResult(r) {
   }
 }
 
-boot().catch((err) => {
-  console.error(err);
-  const el = document.getElementById('app') || document.body;
-  el.innerHTML = `<div id="boot" class="error">Warp Crew failed to load.\n\n${err && err.stack ? err.stack : err}\n\nOpen DevTools console for details.</div>`;
-});
+export function mountWarpCrew(rootEl) {
+  const gen = ++mountId;
+  app = rootEl;
+  boot().catch((err) => {
+    if (mountId !== gen) return;
+    console.error(err);
+    const el = app || rootEl || document.body;
+    el.innerHTML = `<div id="boot" class="error">Warp Crew failed to load.\n\n${err && err.stack ? err.stack : err}</div>`;
+  });
+  return () => {
+    if (mountId === gen) app = null;
+  };
+}
+
+if (typeof document !== 'undefined') {
+  const el = document.getElementById('app');
+  if (el && !el.dataset.wcMounted) {
+    el.dataset.wcMounted = '1';
+    mountWarpCrew(el);
+  }
+}

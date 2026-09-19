@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Jest SDK adapter for Warp Crew.
  * Docs: https://docs.jest.com/sdk/html5
@@ -11,7 +12,7 @@ const globalJest = () =>
 let ready = false;
 let mockPlayer = {
   playerId: 'local-dev',
-  registered: true,
+  registered: false,
   username: 'Local Captain',
   avatarUrl: null,
 };

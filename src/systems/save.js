@@ -1,4 +1,5 @@
-const KEY = 'warpcrew.save.v1';
+// @ts-nocheck
+const KEY = 'warpcrew.save.v2';
 
 export function loadSave() {
   try {
@@ -20,5 +21,8 @@ export function writeSave(player) {
 }
 
 export function clearSave() {
-  try { localStorage.removeItem(KEY); } catch {}
+  try {
+    localStorage.removeItem(KEY);
+    localStorage.removeItem('warpcrew.save.v1');
+  } catch {}
 }

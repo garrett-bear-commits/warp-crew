@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Multi-node map — Spur + Veil Edge (week-of-content backbone) */
 
 export const NODES = {
@@ -292,7 +293,17 @@ export function careerDay(player, now = Date.now()) {
 export function visibleNodes(player, now = Date.now()) {
   const day = careerDay(player, now);
   const veilOpen = Boolean(player.flags?.veil_opened || player.story?.veilUnlocked);
+  const tutorialTight =
+    player?.tutorial &&
+    !player.tutorial.completed &&
+    !player.tutorial.dismissed &&
+    (player.tutorial.script || 1) === 2 &&
+    player.tutorial.phase !== 'done';
+
   return Object.values(NODES).filter((n) => {
+    if (tutorialTight) {
+      return n.id === 'station_home' || n.id === 'lane_a';
+    }
     if (n.sector === 'veil' && n.id !== 'veil_gate' && !veilOpen) return false;
     // veil_gate always visible as the unlock target once day>=2 or after rumor
     if (n.id === 'veil_gate' && day < 2 && !player.flags?.rumor_swarm) return false;

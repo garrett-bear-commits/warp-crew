@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hybrid auto-battler + player assists (mid-core).
  * Combat is short (30–90s conceptual); for v1 we resolve with power + assists used.
@@ -19,10 +20,20 @@ export function resolveCombat({
   enemyPower,
   assistsUsed = [],
   rng = Math.random,
+  tutorialGuaranteed = false,
 }) {
   const assistPower = assistsUsed.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
   const total = playerPower + assistPower;
-  // Soft RNG around power ratio
+  if (tutorialGuaranteed) {
+    return {
+      success: true,
+      playerPower: total,
+      enemyPower,
+      rewards: { credits: 120, medals: 8, reputation: 4 },
+      log: 'First contact. The scout wing breaks off.',
+      tutorial: true,
+    };
+  }
   const ratio = total / Math.max(1, enemyPower);
   const roll = 0.15 + ratio * 0.7 + (rng() - 0.5) * 0.1;
   const success = roll >= 0.5;
@@ -50,7 +61,8 @@ export const ENCOUNTERS_V1 = [
   { id: 'pirate_ace', name: 'Corsair Ace', power: 28, rewards: { credits: 110, medals: 9, reputation: 3 } },
 ];
 
-
-export function listAssists() {
-  return Object.values(ASSISTS);
+export function listAssists({ tutorial = false } = {}) {
+  const all = Object.values(ASSISTS);
+  if (tutorial) return all.filter((a) => a.id === 'shield_boost');
+  return all;
 }

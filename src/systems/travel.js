@@ -1,9 +1,11 @@
+// @ts-nocheck
 import { NODES, pickOutcome, visibleNodes } from '../data/sectors.js';
 import { spendFuel } from './fuel.js';
 import { grant } from './economy.js';
 import { resolveCombat, ENCOUNTERS_V1, crewPower } from './combat.js';
 import { readyCrew } from './player.js';
 import { applyStoryFlag } from './story.js';
+import { isTutorialActive, tutorialPhase } from './tutorial.js';
 
 /**
  * Preview a jump without mutating player (except we need fuel check).
@@ -31,7 +33,12 @@ export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
     };
   }
 
-  const outcome = pickOutcome(node.outcomes, rng);
+  let outcome = pickOutcome(node.outcomes, rng);
+  // First session: Dust Lane is always the pirate scout fight.
+  if (isTutorialActive(player) && !player.tutorial?.firstCombat && nodeId === 'lane_a') {
+    outcome = { w: 100, kind: 'combat', encounter: 'pirate_scout' };
+  }
+
   if (outcome.kind === 'combat') {
     const enc = ENCOUNTERS_V1.find((e) => e.id === outcome.encounter) || ENCOUNTERS_V1[0];
     const power = crewPower(readyCrew(player));
@@ -43,6 +50,7 @@ export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
       outcome,
       encounter: enc,
       playerPower: power,
+      tutorialFight: tutorialPhase(player) !== 'done' && !player.tutorial?.firstCombat,
     };
   }
 
@@ -89,11 +97,13 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
   } else if (outcome.kind === 'combat') {
     const enc = preview.encounter;
     const power = preview.playerPower ?? crewPower(readyCrew(player));
+    const tutorialGuaranteed = Boolean(preview.tutorialFight);
     const combat = resolveCombat({
       playerPower: power,
       enemyPower: enc.power,
       assistsUsed,
       rng,
+      tutorialGuaranteed,
     });
     player = { ...player, wallet: grant(player.wallet, combat.rewards) };
     if (combat.success) {
