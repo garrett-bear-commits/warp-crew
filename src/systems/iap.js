@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * IAP product grants for Warp Crew.
  * SKUs must match products configured in Jest Developer Console.

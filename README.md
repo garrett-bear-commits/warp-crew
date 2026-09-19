@@ -36,12 +36,20 @@ See `docs/` — start with `01-concept.md` and `10-build-status.md`.
 pnpm install && pnpm test && pnpm dev
 ```
 
-
 ## QA / GitHub Pages
 
-After Pages is enabled (Settings → Pages → GitHub Actions):
+Jest + simulator QA host (static build on `gh-pages`):
 
 - **Play:** https://garrett-bear-commits.github.io/warp-crew/
 - **QA Hub:** https://garrett-bear-commits.github.io/warp-crew/qa.html
+- **Fresh save:** https://garrett-bear-commits.github.io/warp-crew/?fresh=1
+
+Pages source: `gh-pages` branch / root. Redeploy by asking Grok to push, or:
+
+```bash
+npm install
+npx vite build
+# then copy dist/ onto the gh-pages branch
+```
 
 See [docs/16-github-pages-qa.md](docs/16-github-pages-qa.md).

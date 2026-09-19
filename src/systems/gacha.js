@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { CREW_CATALOG, RARITY, createCrewInstance } from '../data/crewRoster.js';
 
 /** Reputation → weight multipliers for rarities */

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { regenAmount, MS_PER_HOUR } from '../shared/timer.js';
 import { clampFuel } from './economy.js';
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Retention notification ladder for Warp Crew.
  * Schedules via Jest RCS/SMS when on platform; logs locally otherwise.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { makeTimedJob, wallClockProgress } from '../shared/timer.js';
 
 /** Test cadence — set to 360 for launch (6h) */

@@ -677,11 +677,3 @@ export function mountWarpCrew(rootEl) {
     if (mountId === gen) app = null;
   };
 }
-
-if (typeof document !== 'undefined') {
-  const el = document.getElementById('app');
-  if (el && !el.dataset.wcMounted) {
-    el.dataset.wcMounted = '1';
-    mountWarpCrew(el);
-  }
-}

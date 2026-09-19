@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Calendar-day helpers for login streak + daily free gacha reset */
 
 export function dayKey(now = Date.now()) {

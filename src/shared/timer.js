@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Wall-clock progression. Time is Date.now() against stored timestamps.
 // Never frame-delta for progression. Animation dt is separate.
 

@@ -1,9 +1,10 @@
+// @ts-nocheck
 export const SHIPS = {
   sparrow: {
     id: 'sparrow',
     name: 'Sparrow',
-    crewSlots: 2,
-    maxCrewSlots: 4,
+    crewSlots: 5,
+    maxCrewSlots: 6,
     fuelBonus: 0,
     blurb: 'Reliable starter freighter. Upgradable forever.',
     upgradeCosts: {

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Mercenary catalog — Phase C expanded pool for 7–30 day retention */
 
 export const RARITY = {

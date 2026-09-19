@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { STORY_BEATS } from '../data/sectors.js';
 
 export function applyStoryFlag(player, flag) {

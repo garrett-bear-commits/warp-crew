@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#05080f" />
   <title>Warp Crew: Idle Starship</title>
-  <link rel="stylesheet" href="./src/ui/style.css" />
   <style>
+    html, body { margin: 0; height: 100%; background: #05080f; }
     #boot { font-family: system-ui, sans-serif; color: #9ad5ff; padding: 24px; background: #0a0e14; min-height: 100vh; }
     #boot.error { color: #ff8a8a; white-space: pre-wrap; }
   </style>
-  <!-- Jest SDK: load async; game boots even if CDN fails -->
   <script>
     window.__jestSdkReady = new Promise((resolve) => {
       const s = document.createElement('script');
@@ -18,7 +18,6 @@
       const done = () => resolve(!!window.JestSDK);
       s.onload = done;
       s.onerror = () => { console.warn('[warp-crew] JestSDK CDN unavailable — local mode'); done(); };
-      // Cap wait so a hanging CDN never blocks forever
       setTimeout(done, 2500);
       document.head.appendChild(s);
     });
@@ -28,6 +27,6 @@
   <div id="app">
     <div id="boot">Loading Warp Crew…</div>
   </div>
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/pages-entry.js"></script>
 </body>
 </html>

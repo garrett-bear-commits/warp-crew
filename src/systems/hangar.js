@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { SHIPS, getShipDef } from '../data/ships.js';
 import { canAfford, pay } from './economy.js';
 

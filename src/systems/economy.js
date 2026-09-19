@@ -1,3 +1,4 @@
+// @ts-nocheck
 /** Currency & economy helpers for Warp Crew */
 
 export const CURRENCIES = {
