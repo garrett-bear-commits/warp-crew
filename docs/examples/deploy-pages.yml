@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages (QA)
+name: Deploy GitHub Pages
 
 on:
   push:
@@ -22,19 +22,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-      - name: Install & build
+      - run: npm install
+      - run: npm test
+      - name: Build (GitHub Pages base)
         env:
-          VITE_BASE: /warp-crew/
+          GITHUB_PAGES: '1'
+        run: npm run build
+      - name: Prefer QA hub as site root index
         run: |
-          npm ci || npm install
-          npm run build
-          # Ensure QA page is present (public/ copies automatically)
+          # Keep game as play.html; QA hub becomes index for shareable link
+          cp dist/index.html dist/play.html
+          cp dist/qa.html dist/index.html
+          # fix in-page play button already points to ./index.html in qa — update to play
+          sed -i 's|href="./index.html"|href="./play.html"|g' dist/index.html || true
+          sed -i 's|Play Warp Crew (this Pages build)|Play Warp Crew|g' dist/index.html || true
           ls -la dist
-          test -f dist/index.html
-          test -f dist/qa.html
-          # Stamp build id
-          echo "build $(git rev-parse --short HEAD) $(date -u +%Y-%m-%dT%H:%M:%SZ)" > dist/build.txt
+          test -f dist/index.html && test -f dist/play.html && test -f dist/qa.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
