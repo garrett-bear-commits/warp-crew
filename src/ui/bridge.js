@@ -8,6 +8,7 @@ import { SHIPS } from '../data/ships.js';
 import { listOwnedHulls } from '../systems/hangar.js';
 import { currentTutorialStep, weekGoals } from '../systems/tutorial.js';
 import { readyCrew } from '../systems/player.js';
+import { portraitFor, shipArtFor, CUTAWAY_ART, SWARM_ART, ICONS, NODE_ART } from '../data/portraits.js';
 
 const PLANET_CLASS = {
   derelict_freighter: 'a',
@@ -62,7 +63,7 @@ export function renderApp(root, ctx) {
         <div class="stat-row">
           <div class="stat">DAY <b>${goals.careerDay}</b></div>
           <div class="stat">STREAK <b>${player.loginStreak || 0}</b></div>
-          <div class="stat">CR <b>${player.wallet.credits}</b></div>
+          <div class="stat"><img class="stat-ico" src="${ICONS.credits}" alt="" />CR <b>${player.wallet.credits}</b></div>
         </div>
       </div>
     </div>
@@ -70,9 +71,9 @@ export function renderApp(root, ctx) {
     ${step ? renderTutorialBanner(step) : ''}
 
     <div class="stat-row" style="margin-bottom:10px">
-      <div class="stat">Fuel <b>${fuel.current}/${fuel.max}</b></div>
-      <div class="stat">Gems <b style="color:var(--gem)">${player.wallet.gems}</b></div>
-      <div class="stat">Medals <b>${player.wallet.medals}</b></div>
+      <div class="stat"><img class="stat-ico" src="${ICONS.fuel}" alt="" />Fuel <b>${fuel.current}/${fuel.max}</b></div>
+      <div class="stat"><img class="stat-ico" src="${ICONS.gems}" alt="" />Gems <b>${player.wallet.gems}</b></div>
+      <div class="stat"><img class="stat-ico" src="${ICONS.medals}" alt="" />Medals <b>${player.wallet.medals}</b></div>
       <div class="stat">Rep <b>${player.wallet.reputation}</b></div>
       <div class="stat">${escapeHtml(locName)}</div>
     </div>
@@ -153,8 +154,13 @@ function renderCombatModal(pending, selectedAssists) {
   return `
     <div class="modal-backdrop">
       <div class="modal panel">
-        <h2>Combat · ${escapeHtml(pending.encounter.name)}</h2>
-        <div class="muted">${escapeHtml(pending.node.name)} · fuel −${pending.fuelCost}</div>
+        <div class="combat-head">
+          <img class="swarm-art" src="${SWARM_ART}" alt="" />
+          <div>
+            <h2>Combat · ${escapeHtml(pending.encounter.name)}</h2>
+            <div class="muted">${escapeHtml(pending.node.name)} · fuel −${pending.fuelCost}</div>
+          </div>
+        </div>
         <div class="stat-row" style="margin:10px 0">
           <div class="stat">Your power <b>${pending.playerPower}</b></div>
           <div class="stat">Enemy <b>${pending.encounter.power}</b></div>
@@ -191,7 +197,8 @@ function renderShip(player, goals) {
       </div>
       <div class="muted">${escapeHtml(player.captainName)} · ${escapeHtml(def.name)} · Ch.${prog.chapter} · Story ${prog.done}/${prog.total}</div>
       <div class="ship-frame">
-        <div class="ship-silhouette" title="${escapeHtml(def.name)}"></div>
+        <img class="ship-cutaway" src="${CUTAWAY_ART}" alt="" />
+        <img class="ship-hull" src="${shipArtFor(shipId)}" alt="${escapeHtml(def.name)}" />
         <div class="room-grid">
           <div class="room"><b>BRIDGE</b>${crewInRole(player,'pilot')}</div>
           <div class="room"><b>WEAPONS</b>${crewInRole(player,'gunner')}</div>
@@ -228,7 +235,7 @@ function renderShip(player, goals) {
         const isActive = shipId === s.id;
         return `
         <div class="mission-card">
-          <div class="planet ${s.id==='corvette'?'b':s.id==='frigate'?'c':'a'}"></div>
+          <img class="ship-thumb" src="${shipArtFor(s.id)}" alt="" />
           <div>
             <b>${escapeHtml(s.name)}${isActive ? ' · ACTIVE' : isOwned ? ' · OWNED' : ''}</b>
             <div class="muted">${escapeHtml(s.blurb)}</div>
@@ -301,7 +308,7 @@ function renderMissions(player, now) {
       <div class="muted">15 min test timers · gem skip ${EXPEDITION_SKIP_GEMS}g · more sites unlock by career day</div>
       ${exp ? `
         <div class="mission-card" style="margin-top:10px;border-color:var(--cyan)">
-          <div class="planet ${PLANET_CLASS[exp.payload.planetId] || 'a'}"></div>
+          <img class="planet-art" src="${NODE_ART[PLANET_CLASS[exp.payload.planetId] || 'a']}" alt="" />
           <div>
             <b>ACTIVE · ${escapeHtml(planetName(exp.payload.planetId))}</b>
             <div class="muted">${(exp.payload.successChance*100)|0}% · ${formatDuration(Math.max(0, exp.endAt - now))} left</div>
@@ -314,7 +321,7 @@ function renderMissions(player, now) {
         </div>
       ` : planets.map((p) => `
         <div class="mission-card">
-          <div class="planet ${PLANET_CLASS[p.id] || 'a'}"></div>
+          <img class="planet-art" src="${NODE_ART[PLANET_CLASS[p.id] || 'a']}" alt="" />
           <div>
             <b>${escapeHtml(p.name)}</b>
             <div class="muted">${escapeHtml(p.blurb)}</div>
@@ -345,14 +352,17 @@ function renderCrew(player) {
         : ''}
       ${player.crew.map((c) => `
         <div class="crew-card">
-          <b>${escapeHtml(c.name)}</b>
-          <span class="tag">${escapeHtml(c.role)}</span>
-          <span class="tag">${escapeHtml(c.rarity)}</span>
-          <span class="tag">Lv ${c.level}</span>
-          <span class="tag">${escapeHtml(c.status)}</span>
-          <div class="muted">Power ${c.power} · ${escapeHtml(c.species)}</div>
-          <div class="muted">${escapeHtml(c.blurb || '')}</div>
-          <button data-act="level-crew" data-id="${c.instanceId}" style="margin-top:6px">Level up (medals)</button>
+          <img class="portrait" src="${portraitFor(c.templateId, c.role)}" alt="" width="64" height="64" />
+          <div class="crew-body">
+            <b>${escapeHtml(c.name)}</b>
+            <span class="tag">${escapeHtml(c.role)}</span>
+            <span class="tag">${escapeHtml(c.rarity)}</span>
+            <span class="tag">Lv ${c.level}</span>
+            <span class="tag">${escapeHtml(c.status)}</span>
+            <div class="muted">Power ${c.power} · ${escapeHtml(c.species)}</div>
+            <div class="muted">${escapeHtml(c.blurb || '')}</div>
+            <button data-act="level-crew" data-id="${c.instanceId}">Level up (medals)</button>
+          </div>
         </div>
       `).join('') || '<div class="empty-hint">No crew — hire from the gacha.</div>'}
     </div>
@@ -372,7 +382,7 @@ function renderShop(player, shopProducts) {
       <div class="muted">Mock IAP for QA (not on Jest yet). Real Jest payments later.</div>
       ${products.map((p, i) => `
         <div class="mission-card">
-          <div class="planet ${planets[i % planets.length]}"></div>
+          <img class="planet-art" src="${NODE_ART[planets[i % planets.length]]}" alt="" />
           <div>
             <b>${escapeHtml(p.name)}</b>
             <div class="muted">${escapeHtml(p.blurb || p.remoteName || p.sku)}</div>
