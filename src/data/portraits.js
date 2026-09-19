@@ -44,15 +44,19 @@ export const SHIP_ART = {
   frigate: artUrl('art/pixel/ships/frigate.png'),
 };
 
-export const CUTAWAY_ART = artUrl('art/space/sparrow-starter.png');
+export const CUTAWAY_ART = artUrl('art/space/sparrow-hull-v3.png');
 export const SWARM_ART = artUrl('art/pixel/fx/swarm.png');
 
 export const SPACE_ART = {
-  hull: artUrl('art/space/sparrow-starter.png'),
+  hull: artUrl('art/space/sparrow-hull-v3.png'),
   stars: artUrl('art/space/stars.png'),
   nebula: artUrl('art/space/nebula.png'),
   planet: artUrl('art/space/planet.png'),
   planetIce: artUrl('art/space/planet-ice.png'),
+  blackhole: artUrl('art/space/blackhole.png'),
+  pirate: artUrl('art/space/pirate-scout.png'),
+  impact: artUrl('art/fx/impact.png'),
+  laser: artUrl('art/fx/laser.png'),
   asteroids: [
     artUrl('art/space/asteroid-1.png'),
     artUrl('art/space/asteroid-2.png'),

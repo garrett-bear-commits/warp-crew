@@ -1,7 +1,7 @@
 // @ts-nocheck
-/** Compact 4-room tutorial Sparrow. Pixel layout matches sparrow-starter.png (320×448). */
+/** Compact 4-room tutorial Sparrow. Percents match sparrow-hull-v2.png (1008×1792). */
 
-export const HULL_PX = { w: 320, h: 448 };
+export const HULL_PX = { w: 1152, h: 1728 };
 
 export const ROOMS = [
   {
@@ -9,48 +9,48 @@ export const ROOMS = [
     name: 'Bridge',
     role: 'pilot',
     system: null,
-    left: 27.5,
-    top: 7.14,
-    w: 45,
-    h: 22.32,
+    left: 30,
+    top: 6.5,
+    w: 40,
+    h: 17,
     walkX: 50,
-    walkY: 26.34,
+    walkY: 19.5,
   },
   {
     id: 'engineering',
     name: 'Engineering',
     role: 'engineer',
     system: 'shields',
-    left: 11.25,
-    top: 33.04,
-    w: 38.75,
-    h: 27.68,
-    walkX: 30.63,
-    walkY: 56.25,
+    left: 16,
+    top: 25.5,
+    w: 32,
+    h: 25,
+    walkX: 32,
+    walkY: 44.5,
   },
   {
     id: 'cargo',
     name: 'Cargo Hold',
     role: 'gunner',
     system: 'cargo',
-    left: 50,
-    top: 33.04,
-    w: 38.75,
-    h: 27.68,
-    walkX: 69.38,
-    walkY: 56.25,
+    left: 52,
+    top: 25.5,
+    w: 32,
+    h: 25,
+    walkX: 68,
+    walkY: 44.5,
   },
   {
     id: 'engines',
     name: 'Engines',
     role: null,
     system: 'engines',
-    left: 18.75,
-    top: 64.29,
-    w: 62.5,
-    h: 25,
+    left: 18,
+    top: 53.5,
+    w: 64,
+    h: 33,
     walkX: 50,
-    walkY: 84.82,
+    walkY: 76,
   },
 ];
 
@@ -61,13 +61,26 @@ export const ROOM_GRAPH = {
   engines: ['engineering', 'cargo'],
 };
 
-const DOOR_PTS = {
-  'bridge|engineering': { x: 38.75, y: 31.25 },
-  'bridge|cargo': { x: 61.25, y: 31.25 },
-  'engineering|engines': { x: 33.75, y: 62.5 },
-  'cargo|engines': { x: 66.25, y: 62.5 },
-  'cargo|engineering': { x: 50, y: 46.43 },
+export const DOOR_PTS = {
+  'bridge|engineering': { x: 36, y: 23.8 },
+  'bridge|cargo': { x: 64, y: 23.8 },
+  'engineering|engines': { x: 32, y: 51 },
+  'cargo|engines': { x: 68, y: 51 },
+  'cargo|engineering': { x: 50, y: 38.5 },
 };
+
+/** Elliptical blockers inside rooms (percent of hull). */
+export const FURNITURE = [
+  { x: 50, y: 12.4, rx: 12, ry: 4.4 },
+  { x: 31.5, y: 37.6, rx: 6.5, ry: 4.4 },
+  { x: 68.5, y: 36.2, rx: 7.2, ry: 4.6 },
+  { x: 50, y: 68.4, rx: 10.5, ry: 7.6 },
+];
+
+export const THRUSTERS = [
+  { x: 31.8, y: 91.4 },
+  { x: 68.2, y: 91.4 },
+];
 
 const HOME_BY_ROLE = {
   pilot: 'bridge',
@@ -121,4 +134,20 @@ export function walkWaypoints(fromId, toId) {
     cur = next;
   }
   return pts;
+}
+
+export function roomAt(x, y) {
+  let best = null;
+  let bestD = Infinity;
+  for (const r of ROOMS) {
+    if (x >= r.left && x <= r.left + r.w && y >= r.top && y <= r.top + r.h) return r.id;
+    const cx = r.left + r.w * 0.5;
+    const cy = r.top + r.h * 0.5;
+    const d = (x - cx) ** 2 + (y - cy) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = r.id;
+    }
+  }
+  return best;
 }

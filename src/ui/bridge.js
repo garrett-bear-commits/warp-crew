@@ -21,6 +21,10 @@ import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART } from '
 import { sheetFor } from './crewArt.js';
 import { ROOMS } from '../data/starterShip.js';
 import { syncCrewLayer } from './crewWalk.js';
+import { attachSpace } from './spaceFlight.js';
+import { attachCombat, isBattlePlaying } from './combatView.js';
+import { unlockSfx } from './juice.js';
+import { startStageLoop } from './stageLoop.js';
 
 const PLANET_CLASS = {
   derelict_freighter: 'a',
@@ -59,6 +63,8 @@ export function renderApp(root, ctx) {
 function bindOnce(root) {
   if (root._wcBound) return;
   root._wcBound = true;
+  startStageLoop();
+  root.addEventListener('pointerdown', () => unlockSfx(), { once: true });
   root.addEventListener('click', (ev) => {
     const handlers = root._wcHandlers;
     if (!handlers) return;
@@ -80,28 +86,20 @@ function bindOnce(root) {
 }
 
 function buildShell() {
-  const ast = SPACE_ART.asteroids;
   return `
     <div class="wc-shell tab-home">
       <div class="hud-bar" data-slot="hud"></div>
       <div class="stage">
         <div class="space-stage" aria-hidden="true">
-          <img class="space-stars-img far" src="${SPACE_ART.stars}" alt="" />
-          <img class="space-stars-img near" src="${SPACE_ART.stars}" alt="" />
-          <img class="space-nebula" src="${SPACE_ART.nebula}" alt="" />
-          <img class="space-planet" src="${SPACE_ART.planet}" alt="" />
-          <img class="space-planet ice" src="${SPACE_ART.planetIce}" alt="" />
-          <img class="space-asteroid a1" src="${ast[0]}" alt="" />
-          <img class="space-asteroid a2" src="${ast[1]}" alt="" />
-          <img class="space-asteroid a3" src="${ast[2]}" alt="" />
-          <img class="space-asteroid a4" src="${ast[3]}" alt="" />
+          <canvas class="space-canvas" data-slot="space"></canvas>
         </div>
         <div class="stage-hud" data-slot="stage-hud"></div>
         <div class="ship-fit">
           <img class="sparrow-hull" src="${SPACE_ART.hull}" alt="" />
-          <div class="crew-layer" data-slot="crew"></div>
+          <canvas class="crew-canvas" data-slot="crew"></canvas>
           <div class="hotspot-layer" data-slot="hotspots"></div>
         </div>
+        <canvas class="combat-canvas" data-slot="combat"></canvas>
         <div data-slot="overlays"></div>
       </div>
       <div class="detail-scroll" data-slot="detail"></div>
@@ -140,8 +138,10 @@ function patchShell(root, ctx) {
   const isHome = tab === 'ship';
   const chips = hudChips(player);
   const tabs = unlockedTabs(player);
+  const fighting = isBattlePlaying();
 
   root.querySelector('.wc-shell')?.classList.toggle('tab-home', isHome);
+  root.querySelector('.wc-shell')?.classList.toggle('in-battle', fighting);
   root.querySelector('.wc-shell')?.setAttribute('data-phase', phase);
   root.querySelector('.bottom-nav')?.style.setProperty('--nav-cols', String(tabs.length));
   root.querySelector('.hud-bar')?.style.setProperty('--hud-cols', String(chips.length));
@@ -149,12 +149,14 @@ function patchShell(root, ctx) {
   setSlot(root, 'hud', renderHud(player, fuel, chips));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, step));
-  setSlot(root, 'modal', renderModals(player, { pendingCombat, selectedAssists, step }));
+  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, selectedAssists, step }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));
-  setSlot(root, 'overlays', renderOverlays(player, { step, selectedRoom, fuel, now, tab }));
-  const showCoach = step && !step.modal && !pendingCombat && !selectedRoom && step.cta;
+  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab }));
+  const showCoach = step && !step.modal && !pendingCombat && !selectedRoom && step.cta && !fighting;
   setSlot(root, 'coach', showCoach ? renderCoach(step) : '');
 
+  attachSpace(root.querySelector('[data-slot="space"]'));
+  attachCombat(root.querySelector('[data-slot="combat"]'), root.querySelector('.stage'));
   syncCrewLayer(root.querySelector('[data-slot="crew"]'), player);
 
   if (!isHome) {
@@ -245,7 +247,6 @@ function renderOverlays(player, { step, selectedRoom, fuel, now, tab }) {
   const room = ROOMS.find((r) => r.id === selectedRoom);
   const showHangar = isFeatureUnlocked(player, 'hangar');
   return `
-      ${!selectedRoom && !step ? '<div class="tap-hint">Tap a room</div>' : ''}
       ${!selectedRoom && showHangar ? `<button class="ship-chip" data-act="select-room" data-room="hangar">${escapeHtml(def.name)}</button>` : ''}
       ${room ? renderRoomSheet(player, room, fuel, now) : ''}
       ${selectedRoom === 'hangar' && showHangar ? renderHangarSheet(player) : ''}
@@ -286,10 +287,6 @@ function roomPip(room, player, fuel, expReady) {
   if (room.id === 'engines' && fuel.pendingWhole) return 'good';
   if (room.id === 'cargo' && (expReady || player.activeExpedition)) return expReady ? 'good' : 'cyan';
   return '';
-}
-
-function renderToast(step) {
-  return renderCoach(step);
 }
 
 function renderVictoryModal(player, step) {
@@ -462,11 +459,12 @@ function emptyHints(player, fuel, tab) {
 function renderCombatModal(pending, selectedAssists, tutorial = false) {
   const assists = listAssists({ tutorial });
   const assistPower = selectedAssists.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
+  const art = SPACE_ART.pirate || SWARM_ART;
   return `
     <div class="modal-backdrop">
       <div class="modal panel">
         <div class="combat-head">
-          <img class="swarm-art" src="${SWARM_ART}" alt="" />
+          <img class="swarm-art" src="${art}" alt="" />
           <div>
             <h2>${tutorial ? 'First contact' : 'Combat'} · ${escapeHtml(pending.encounter.name)}</h2>
             <div class="muted">${escapeHtml(pending.node.name)} · fuel −${pending.fuelCost}</div>
@@ -493,10 +491,6 @@ function renderCombatModal(pending, selectedAssists, tutorial = false) {
       </div>
     </div>
   `;
-}
-
-function crewInRole(player, role) {
-  return player.crew.find((x) => x.role === role && x.status !== 'expedition') || null;
 }
 
 function renderMissions(player, now) {
@@ -703,8 +697,8 @@ function renderLog(player, log, goals) {
 
 function escapeHtml(s) {
   return String(s)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
+    .replaceAll('&', '&')
+    .replaceAll('<', '<')
+    .replaceAll('>', '>')
+    .replaceAll('"', '"');
 }

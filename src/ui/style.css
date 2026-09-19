@@ -141,11 +141,12 @@ button.hud-chip {
 .ship-fit {
   position: relative;
   display: inline-block;
-  height: 58%;
-  aspect-ratio: 320 / 448;
-  max-width: 78%;
+  height: 64%;
+  aspect-ratio: 1152 / 1728;
+  max-width: 84%;
   line-height: 0;
   z-index: 2;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.62));
 }
 .hotspot-layer {
   position: absolute;
@@ -175,6 +176,36 @@ button.hud-chip {
   z-index: 2;
   pointer-events: none;
 }
+.crew-canvas,
+.space-canvas,
+.combat-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: block;
+}
+.crew-canvas {
+  z-index: 2;
+  image-rendering: pixelated;
+}
+.combat-canvas {
+  z-index: 8;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.combat-canvas.is-live { opacity: 1; }
+.wc-shell.in-battle .bottom-nav {
+  pointer-events: none;
+  opacity: 0.35;
+}
+.wc-shell.in-battle:not(.tab-home) .stage {
+  position: relative;
+  opacity: 1;
+  pointer-events: auto;
+}
+.wc-shell.in-battle:not(.tab-home) .detail-scroll { display: none; }
 .pip {
   position: absolute;
   top: 4px;
@@ -640,6 +671,7 @@ button.hud-chip {
   z-index: 0;
   pointer-events: none;
 }
+.space-canvas { z-index: 0; }
 .space-stars-img {
   position: absolute;
   width: 180%;
@@ -710,8 +742,8 @@ button.hud-chip {
   pointer-events: none;
   user-select: none;
   z-index: 1;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+  image-rendering: auto;
+  filter: drop-shadow(0 0 18px rgba(80, 190, 255, 0.12));
 }
 
 .crew-sprite {
@@ -798,11 +830,12 @@ button.hud-chip {
 }
 .coach {
   pointer-events: auto;
-  background: #101820;
+  background: rgba(12, 18, 28, 0.92);
   border: 1px solid color-mix(in oklab, var(--cyan) 35%, var(--line));
-  border-radius: 16px;
-  padding: 14px 14px 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  border-radius: 14px;
+  padding: 10px 12px 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
 }
 .coach-kicker {
   font-family: var(--font-display);
@@ -810,19 +843,19 @@ button.hud-chip {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--cyan);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .coach h2 {
   color: var(--text);
-  font-size: 18px;
-  margin: 0 0 6px;
+  font-size: 16px;
+  margin: 0 0 4px;
   letter-spacing: 0.04em;
 }
 .coach p {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: var(--muted);
-  font-size: var(--size);
-  line-height: 1.45;
+  font-size: var(--size-min);
+  line-height: 1.4;
 }
 .coach .primary {
   width: 100%;

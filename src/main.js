@@ -51,6 +51,9 @@ import {
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
 import { stopCrewSim } from './ui/crewWalk.js';
+import { playCombat, isBattlePlaying } from './ui/combatView.js';
+import { unlockSfx } from './ui/juice.js';
+import { startStageLoop } from './ui/stageLoop.js';
 
 let app = null;
 let mountId = 0;
@@ -248,6 +251,7 @@ function render() {
     artReady,
     handlers: {
       setTab: (t) => {
+        if (isBattlePlaying()) return;
         if (!isTabUnlocked(player, t)) return;
         if (t === 'missions' && player.tutorial?.phase === 'meet' && isTutorialActive(player)) {
           player = advanceTutorial(player);
@@ -383,30 +387,50 @@ async function handleAction(act, data = {}) {
       }
     }
   } else if (act === 'combat-confirm') {
-    if (!pendingCombat) return;
-    const res = commitTravel(player, pendingCombat, { assistsUsed: selectedAssists });
+    if (!pendingCombat || isBattlePlaying()) return;
+    const preview = pendingCombat;
+    const assists = [...selectedAssists];
     pendingCombat = null;
     selectedAssists = [];
-    if (!res.ok) pushLog(`Engage failed: ${res.reason}`);
-    else {
-      player = res.player;
-      logTravelResult(res.result);
-      let te = noteTutorialEvent(player, 'travel_success');
-      player = te.player;
-      te = noteTutorialEvent(player, 'combat_done', { rewards: res.result.rewards });
-      player = te.player;
-      captureEvent('combat', {
-        success: res.result.combat?.success,
-        encounter: res.result.combat?.encounter?.id,
+    tab = 'ship';
+    selectedRoom = null;
+    unlockSfx();
+    const res = commitTravel(player, preview, { assistsUsed: assists });
+    render();
+    requestAnimationFrame(() => {
+      playCombat({
+        preview,
+        win: Boolean(res.result?.combat?.success ?? res.ok),
+        onDone: async () => {
+          if (!res.ok) {
+            pushLog(`Engage failed: ${res.reason}`);
+            persist();
+            render();
+            return;
+          }
+          player = res.player;
+          logTravelResult(res.result);
+          let te = noteTutorialEvent(player, 'travel_success');
+          player = te.player;
+          te = noteTutorialEvent(player, 'combat_done', { rewards: res.result.rewards });
+          player = te.player;
+          captureEvent('combat', {
+            success: res.result.combat?.success,
+            encounter: res.result.combat?.encounter?.id,
+          });
+          if (isTutorialActive(player)) {
+            captureEvent('tutorial_stage', { stage: player.tutorial?.phase });
+            tab = 'ship';
+          } else {
+            tab = 'log';
+          }
+          await refreshNotifs();
+          persist();
+          render();
+        },
       });
-      if (isTutorialActive(player)) {
-        captureEvent('tutorial_stage', { stage: player.tutorial?.phase });
-        tab = 'missions';
-      } else {
-        tab = 'log';
-      }
-      await refreshNotifs();
-    }
+    });
+    return;
   } else if (act === 'combat-cancel') {
     if (isTutorialActive(player) && player.tutorial?.phase === 'combat') {
       // First fight cannot be aborted — stay on the assist picker.
@@ -668,6 +692,7 @@ function logTravelResult(r) {
 export function mountWarpCrew(rootEl) {
   const gen = ++mountId;
   app = rootEl;
+  startStageLoop();
   boot().catch((err) => {
     if (mountId !== gen) return;
     console.error(err);

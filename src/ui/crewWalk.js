@@ -1,16 +1,24 @@
 // @ts-nocheck
-import { ROOMS, roomById, homeRoomId, walkWaypoints, ROOM_GRAPH } from '../data/starterShip.js';
-import { sheetFor } from './crewArt.js';
+import { ROOMS, roomById, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAt } from '../data/starterShip.js';
+import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
+import { sheetFor, walkSheetFor, WALK_CELL, WALK_FRAMES } from './crewArt.js';
+import { onTick } from './stageLoop.js';
 
 const agents = new Map();
-let layer = null;
-let raf = 0;
-let lastT = 0;
+let canvas = null;
+let ctx = null;
+let w = 0;
+let h = 0;
+let dpr = 1;
 let clock = 0;
+let started = false;
+let battle = false;
+const particles = [];
 
-const WALK_SPEED = 26; // % of hull per second
-const ARRIVE = 1.4;
-const SCALE = 1.62;
+const WALK_SPEED = 18;
+const ARRIVE = 1.6;
+const SPRITE = 52;
+const DIR_ROW = { down: 0, left: 1, right: 2, up: 3 };
 
 function hash01(s) {
   let h = 2166136261;
@@ -19,12 +27,11 @@ function hash01(s) {
 }
 
 function dist(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return Math.hypot(dx, dy);
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function pickTask(a) {
+  if (battle) return a.home;
   const opts = (ROOM_GRAPH[a.room] || ROOMS.map((r) => r.id)).filter((id) => id !== a.room);
   if (!opts.length) return a.home;
   const i = Math.floor((hash01(a.id + String(clock | 0)) + a.jitter) * opts.length) % opts.length;
@@ -33,7 +40,7 @@ function pickTask(a) {
 
 function spawn(crew) {
   const home = homeRoomId(crew.role);
-  const room = roomById(home);
+  const pos = nearestWalkableInRoom(home, hash01(crew.instanceId));
   const jitter = hash01(crew.instanceId);
   const a = {
     id: crew.instanceId,
@@ -41,42 +48,37 @@ function spawn(crew) {
     role: crew.role,
     home,
     room: home,
-    x: room.walkX + (jitter - 0.5) * 8,
-    y: room.walkY,
-    facing: jitter > 0.5 ? 1 : -1,
+    x: pos.x,
+    y: pos.y,
+    dir: jitter > 0.5 ? 'right' : 'left',
     state: 'idle',
     path: [],
-    timer: 0.6 + jitter * 2.4,
+    timer: 0.5 + jitter * 2.2,
     jitter,
-    anim: 'idle',
-    el: null,
+    frame: 0,
+    fps: 8,
   };
   agents.set(a.id, a);
   return a;
 }
 
-function ensureEl(a) {
-  if (!layer) return;
-  if (a.el && a.el.isConnected) return;
-  const el = document.createElement('div');
-  el.className = 'crew-sprite';
-  el.dataset.id = a.id;
-  el.dataset.anim = 'idle';
-  layer.appendChild(el);
-  a.el = el;
-  a.anim = '';
-}
-
 function beginWalk(a, destId) {
-  const pts = walkWaypoints(a.room, destId);
+  const dest = nearestWalkableInRoom(destId, a.jitter);
+  const pts = findPath(a.x, a.y, dest.x, dest.y);
   if (!pts.length) {
     a.state = 'idle';
-    a.timer = 1.2 + a.jitter;
+    a.timer = 1.1 + a.jitter;
     return;
   }
   a.path = pts;
   a.state = 'walk';
   a.timer = 0;
+}
+
+function faceFrom(dx, dy) {
+  if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 'left' : 'right';
+  if (Math.abs(dy) < 0.05) return dx < 0 ? 'left' : 'right';
+  return dy < 0 ? 'up' : 'down';
 }
 
 function stepAgent(a, dt) {
@@ -85,12 +87,12 @@ function stepAgent(a, dt) {
     if (a.timer <= 0) beginWalk(a, pickTask(a));
     return;
   }
-
   if (a.state === 'doing') {
     a.timer -= dt;
+    a.frame = (a.frame + dt * 3) % WALK_FRAMES;
     if (a.timer <= 0) {
       const goHome = a.room !== a.home && a.jitter + (clock % 3) * 0.1 > 0.55;
-      beginWalk(a, goHome ? a.home : pickTask(a));
+      beginWalk(a, goHome || battle ? a.home : pickTask(a));
     }
     return;
   }
@@ -98,7 +100,7 @@ function stepAgent(a, dt) {
   const tgt = a.path[0];
   if (!tgt) {
     a.state = 'doing';
-    a.timer = 2.2 + a.jitter * 2.4;
+    a.timer = battle ? 3.2 : 2.1 + a.jitter * 2.2;
     return;
   }
   const d = dist(a, tgt);
@@ -106,87 +108,198 @@ function stepAgent(a, dt) {
     a.x = tgt.x;
     a.y = tgt.y;
     if (tgt.room) a.room = tgt.room;
+    else a.room = roomAt(a.x, a.y) || a.room;
     a.path.shift();
     if (!a.path.length) {
       a.state = 'doing';
-      a.timer = 2.2 + a.jitter * 2.4;
+      a.timer = battle ? 3.2 : 2.1 + a.jitter * 2.2;
     }
     return;
   }
   const ux = (tgt.x - a.x) / d;
   const uy = (tgt.y - a.y) / d;
   const step = Math.min(d, WALK_SPEED * dt);
-  a.x += ux * step;
-  a.y += uy * step;
-  if (Math.abs(ux) > 0.12) a.facing = ux < 0 ? -1 : 1;
+  const nx = a.x + ux * step;
+  const ny = a.y + uy * step;
+  const clamped = clampWalkable(nx, ny);
+  a.x = clamped.x;
+  a.y = clamped.y;
+  a.dir = faceFrom(ux, uy);
+  a.frame = (a.frame + dt * a.fps) % WALK_FRAMES;
+  a.room = roomAt(a.x, a.y) || a.room;
 }
 
-function paint(a) {
-  ensureEl(a);
-  const el = a.el;
-  if (!el) return;
-  const sheet = sheetFor(a.templateId, a.role);
-  const nextAnim = a.state === 'doing' ? 'doing' : a.state === 'walk' ? 'walk' : 'idle';
-  if (sheet && a.anim !== nextAnim) {
-    const url = nextAnim === 'doing' ? sheet.doing || sheet.idle : sheet.idle || sheet.url;
-    if (url) el.style.backgroundImage = `url('${url}')`;
-    el.dataset.anim = nextAnim;
-    a.anim = nextAnim;
+function resize() {
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  w = Math.max(1, rect.width);
+  h = Math.max(1, rect.height);
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = (w * dpr) | 0;
+  canvas.height = (h * dpr) | 0;
+  ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
   }
-  const bob = a.state === 'walk' ? Math.sin(clock * 14 + a.jitter * 8) * 2.4 : 0;
-  const sx = a.facing < 0 ? -SCALE : SCALE;
-  el.style.left = `${a.x}%`;
-  el.style.top = `${a.y}%`;
-  el.style.zIndex = String(20 + (a.y | 0));
-  el.style.transform = `translate(-50%, -88%) scale(${sx}, ${SCALE}) translateY(${bob}px)`;
-  el.classList.toggle('is-left', a.facing < 0);
 }
 
-function loop(now) {
-  raf = requestAnimationFrame(loop);
-  if (!layer || document.hidden) {
-    lastT = now;
-    return;
+function spawnThrust(dt) {
+  const rate = battle ? 70 : 38;
+  for (const t of THRUSTERS) {
+    const n = rate * dt;
+    const extra = n - (n | 0) > Math.random() ? 1 : 0;
+    const count = (n | 0) + extra;
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: t.x + (Math.random() - 0.5) * 3.2,
+        y: t.y + Math.random() * 1.2,
+        vx: (Math.random() - 0.5) * 6,
+        vy: 18 + Math.random() * 28,
+        life: 0.28 + Math.random() * 0.35,
+        max: 0.5,
+        hue: Math.random() < 0.35 ? 190 : 28,
+      });
+    }
   }
-  const dt = Math.min(0.1, (now - lastT) / 1000);
-  lastT = now;
-  if (!dt) return;
-  clock += dt;
-  for (const a of agents.values()) stepAgent(a, dt);
-  // simple separation in-room
+}
+
+function drawThrusters(g, dt) {
+  spawnThrust(dt);
+  const pulse = 0.55 + Math.sin(clock * 14) * 0.25;
+  for (const t of THRUSTERS) {
+    const px = (t.x / 100) * w;
+    const py = (t.y / 100) * h;
+    const rad = g.createRadialGradient(px, py, 1, px, py + 10, 28);
+    rad.addColorStop(0, `rgba(180,240,255,${0.55 * pulse})`);
+    rad.addColorStop(0.35, `rgba(80,200,255,${0.28 * pulse})`);
+    rad.addColorStop(1, 'rgba(255,140,40,0)');
+    g.fillStyle = rad;
+    g.beginPath();
+    g.ellipse(px, py + 8, 11, 22, 0, 0, Math.PI * 2);
+    g.fill();
+    const flame = g.createLinearGradient(px, py, px, py + 26);
+    flame.addColorStop(0, `rgba(255,255,220,${0.7 * pulse})`);
+    flame.addColorStop(0.4, `rgba(80,220,255,${0.45 * pulse})`);
+    flame.addColorStop(1, 'rgba(255,90,20,0)');
+    g.fillStyle = flame;
+    g.beginPath();
+    g.moveTo(px - 4, py);
+    g.lineTo(px + 4, py);
+    g.lineTo(px + 1.5, py + 18 + pulse * 8);
+    g.lineTo(px - 1.5, py + 18 + pulse * 8);
+    g.closePath();
+    g.fill();
+  }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    if (p.life <= 0) {
+      particles.splice(i, 1);
+      continue;
+    }
+    const a = p.life / p.max;
+    const px = (p.x / 100) * w;
+    const py = (p.y / 100) * h;
+    g.fillStyle =
+      p.hue > 100
+        ? `rgba(120,230,255,${a * 0.7})`
+        : `rgba(255,${160 + ((1 - a) * 60) | 0},60,${a})`;
+    const sz = 1.2 + a * 2.2;
+    g.fillRect(px, py, sz, sz);
+  }
+}
+
+function drawAgent(g, a) {
+  const img = walkSheetFor(a.templateId, a.role);
+  const x = (a.x / 100) * w;
+  const y = (a.y / 100) * h;
+  const bob = a.state === 'walk' ? Math.sin(clock * 16 + a.jitter * 8) * 1.1 : a.state === 'doing' ? Math.sin(clock * 8 + a.jitter) * 1.4 : 0;
+  g.save();
+  g.fillStyle = 'rgba(0,0,0,0.35)';
+  g.beginPath();
+  g.ellipse(x, y + 1, 9, 3.2, 0, 0, Math.PI * 2);
+  g.fill();
+
+  const row = DIR_ROW[a.dir] || 0;
+  const col = a.state === 'walk' ? a.frame | 0 : a.state === 'doing' ? (a.frame | 0) % 2 : 0;
+  if (img && img.complete && img.naturalWidth) {
+    g.imageSmoothingEnabled = false;
+    g.drawImage(
+      img,
+      col * WALK_CELL,
+      row * WALK_CELL,
+      WALK_CELL,
+      WALK_CELL,
+      x - SPRITE / 2,
+      y - SPRITE + 4 + bob,
+      SPRITE,
+      SPRITE
+    );
+  } else {
+    const sheet = sheetFor(a.templateId, a.role);
+    g.fillStyle = '#5ce1ff';
+    g.fillRect(x - 6, y - 18 + bob, 12, 18);
+    if (sheet) {
+      /* fallback blob already drawn */
+    }
+  }
+  g.restore();
+}
+
+function tick(sim, dt) {
+  if (!canvas || !ctx || !w) return;
+  if (!canvas.isConnected) return;
+  clock += sim;
+  for (const a of agents.values()) stepAgent(a, sim);
   const list = [...agents.values()];
   for (let i = 0; i < list.length; i++) {
     for (let j = i + 1; j < list.length; j++) {
       const a = list[i];
       const b = list[j];
-      if (a.room !== b.room) continue;
       const d = dist(a, b);
-      if (d < 6 && d > 0.01) {
-        const push = ((6 - d) / 6) * 0.4;
+      if (d < 5 && d > 0.01) {
+        const push = ((5 - d) / 5) * 0.35;
         const sx = (a.x - b.x) / d;
-        a.x += sx * push;
-        b.x -= sx * push;
+        const ax = a.x + sx * push;
+        const bx = b.x - sx * push;
+        const ac = clampWalkable(ax, a.y);
+        const bc = clampWalkable(bx, b.y);
+        a.x = ac.x;
+        b.x = bc.x;
       }
     }
   }
-  for (const a of agents.values()) paint(a);
+  const g = ctx;
+  g.clearRect(0, 0, w, h);
+  list.sort((p, q) => p.y - q.y);
+  for (const a of list) drawAgent(g, a);
+  drawThrusters(g, dt);
 }
 
-function start() {
-  if (raf) return;
-  lastT = performance.now();
-  raf = requestAnimationFrame(loop);
+export function setBattleStations(on) {
+  battle = Boolean(on);
+  if (!battle) return;
+  for (const a of agents.values()) beginWalk(a, a.home);
 }
 
 export function stopCrewSim() {
-  if (raf) cancelAnimationFrame(raf);
-  raf = 0;
-  lastT = 0;
+  canvas = null;
+  ctx = null;
 }
 
 export function syncCrewLayer(el, player) {
   if (!el) return;
-  layer = el;
+  if (el.tagName === 'CANVAS') {
+    canvas = el;
+    resize();
+    if (!el._wcRo) {
+      el._wcRo = new ResizeObserver(() => resize());
+      el._wcRo.observe(el);
+    }
+  }
   const live = new Set();
   for (const c of player.crew || []) {
     if (c.status === 'expedition') continue;
@@ -196,12 +309,14 @@ export function syncCrewLayer(el, player) {
     a.templateId = c.templateId;
     a.role = c.role;
     a.home = homeRoomId(c.role);
-    ensureEl(a);
   }
-  for (const [id, a] of agents) {
+  for (const [id] of agents) {
     if (live.has(id)) continue;
-    a.el?.remove();
     agents.delete(id);
   }
-  start();
+  if (!started) {
+    started = true;
+    onTick(tick);
+    window.addEventListener('resize', resize);
+  }
 }
