@@ -38,3 +38,12 @@
 - [x] Expedition gem skip (15g)
 - [x] Login streak + daily free pull reset
 - [x] Light balance for 15m test loop
+
+## Phase B (2026-09-18)
+- [x] Jest SDK adapter (`platform.js`) with local mock
+- [x] Loading progress + markGameLoaded
+- [x] Login / registration overlay hooks
+- [x] Payments: getProducts, begin/complete, incomplete recovery
+- [x] Notification ladder: fuel full, expedition done, daily pull, comeback
+- [x] Shop wired to real buy path
+- [x] Entry payload routing from notifications

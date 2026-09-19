@@ -20,6 +20,8 @@ export function renderApp(root, ctx) {
     now = Date.now(),
     pendingCombat = null,
     selectedAssists = [],
+    platformStatus = null,
+    shopProducts = null,
   } = ctx;
   const fuel = fuelStatus(player, now);
   const loc = NODES[player.location] || { name: player.location };
@@ -62,13 +64,14 @@ export function renderApp(root, ctx) {
       ${fuel.pendingWhole ? ` · claim +${fuel.pendingWhole}` : ''}
       · Free pull: ${player.dailyPullAvailable ? 'READY' : 'used'}
       · Expeditions: 15m test
+      ${platformStatus ? ` · SDK: ${platformStatus}` : ''}
     </div>
 
     ${pendingCombat ? renderCombatModal(pendingCombat, selectedAssists) : ''}
     ${tab === 'ship' ? renderShip(player) : ''}
     ${tab === 'missions' ? renderMissions(player, now) : ''}
     ${tab === 'crew' ? renderCrew(player) : ''}
-    ${tab === 'shop' ? renderShop(player) : ''}
+    ${tab === 'shop' ? renderShop(player, shopProducts) : ''}
     ${tab === 'log' ? renderLog(log) : ''}
 
     <nav class="bottom-nav">
@@ -243,35 +246,34 @@ function renderCrew(player) {
   `;
 }
 
-function renderShop(player) {
+function renderShop(player, shopProducts) {
+  const products = shopProducts || [
+    { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', blurb: '+5 fuel' },
+    { sku: 'wc_gems_100', name: 'Gem Pack 100', blurb: '+100 gems' },
+    { sku: 'wc_starter', name: 'Starter Pack', blurb: 'Fuel + gems + medals' },
+  ];
+  const planets = ['b', 'c', 'a', 'd'];
   return `
     <div class="panel">
-      <h2>Shop · Jest IAP (stub)</h2>
-      <div class="mission-card">
-        <div class="planet b"></div>
-        <div>
-          <b>Starter Pack</b>
-          <div class="muted">Fuel + gems for testing</div>
+      <h2>Shop · Jest IAP</h2>
+      <div class="muted">Uses Jest payments on-platform; local mock auto-succeeds for QA.</div>
+      ${products.map((p, i) => `
+        <div class="mission-card">
+          <div class="planet ${planets[i % planets.length]}"></div>
+          <div>
+            <b>${p.name}</b>
+            <div class="muted">${p.blurb || p.remoteName || p.sku}</div>
+            <div class="muted">${p.price != null ? `${p.price} ${p.currency || 'USD'}` : 'sandbox'}</div>
+          </div>
+          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">Buy</button>
         </div>
+      `).join('')}
+      <div class="row" style="margin-top:8px">
+        <button data-act="prompt-login">Register / Login</button>
         <button data-act="qa-gems">QA +100 gems</button>
+        <button data-act="qa-fuel">QA +5 Fuel</button>
       </div>
-      <div class="mission-card">
-        <div class="planet c"></div>
-        <div>
-          <b>Fuel Cell ×5</b>
-          <div class="muted">Instant fuel</div>
-        </div>
-        <button data-act="qa-fuel">+5 Fuel</button>
-      </div>
-      <div class="mission-card">
-        <div class="planet a"></div>
-        <div>
-          <b>Corvette (soon)</b>
-          <div class="muted">6 crew · gems or long grind</div>
-        </div>
-        <button disabled>Locked</button>
-      </div>
-      <button class="danger" data-act="qa-reset">Reset save</button>
+      <button class="danger" data-act="qa-reset" style="margin-top:8px">Reset save</button>
     </div>
   `;
 }

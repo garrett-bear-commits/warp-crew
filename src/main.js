@@ -14,6 +14,23 @@ import {
 } from './systems/expedition.js';
 import { crewPower } from './systems/combat.js';
 import { applyDailyLogin } from './systems/daily.js';
+import { syncAllNotifications } from './systems/notifications.js';
+import {
+  listShopProducts,
+  buyProduct,
+  fulfillIncompletePurchases,
+} from './systems/iap.js';
+import {
+  init as platformInit,
+  markGameLoaded,
+  setLoadingProgress,
+  getPlayer as getJestPlayer,
+  isReal,
+  captureEvent,
+  getEntryPayload,
+  showRegistrationOverlay,
+  login,
+} from './shared/platform.js';
 import { renderApp } from './ui/bridge.js';
 import { MEDAL_LEVEL_COST } from './data/crewRoster.js';
 
@@ -23,6 +40,8 @@ let player = null;
 let tab = 'ship';
 let pendingCombat = null;
 let selectedAssists = [];
+let platformStatus = 'booting';
+let shopProducts = null;
 
 function pushLog(msg) {
   log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
@@ -31,6 +50,14 @@ function pushLog(msg) {
 
 function persist() {
   writeSave(player);
+}
+
+async function refreshNotifs() {
+  try {
+    await syncAllNotifications(player);
+  } catch (e) {
+    console.warn('notif sync', e);
+  }
 }
 
 function finishExpeditionResult(res) {
@@ -59,15 +86,42 @@ function tryResolveExpedition({ force = false } = {}) {
   return true;
 }
 
-function boot() {
+async function boot() {
+  setLoadingProgress(10);
+  const initResult = await platformInit();
+  platformStatus = isReal()
+    ? `jest (${initResult.mode})`
+    : `local mock (${initResult.mode})`;
+
+  const jestPlayer = getJestPlayer();
+  setLoadingProgress(40);
+
   const saved = loadSave();
   if (saved?.player) {
     player = migratePlayer(saved.player);
     pushLog('Welcome back, Captain.');
   } else {
-    player = createNewPlayer({ captainName: 'Captain' });
+    player = createNewPlayer({
+      captainName: jestPlayer?.username || 'Captain',
+    });
     pushLog('Career start aboard Sparrow.');
-    pushLog('Phase A: map travel, combat assists, gem skip, login streak.');
+    pushLog('Phase B: Jest SDK, IAP, notification ladder.');
+  }
+
+  // Tag registration for comeback series
+  player = {
+    ...player,
+    _jestRegistered: Boolean(jestPlayer?.registered),
+    _jestPlayerId: jestPlayer?.playerId || null,
+  };
+
+  const entry = getEntryPayload();
+  if (entry?.notification_type) {
+    pushLog(`Opened from notification: ${entry.notification_type}`);
+    captureEvent('open_from_notification', entry);
+    if (entry.notification_type === 'expedition_done') tab = 'missions';
+    if (entry.notification_type === 'daily_pull') tab = 'crew';
+    if (entry.notification_type === 'fuel_full') tab = 'missions';
   }
 
   const daily = applyDailyLogin(player);
@@ -80,7 +134,28 @@ function boot() {
   player = claimed.player;
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
+
+  const incomplete = await fulfillIncompletePurchases(player);
+  player = incomplete.player;
+  if (incomplete.granted?.length) {
+    pushLog(`Restored incomplete purchases: ${incomplete.granted.join(', ')}`);
+  }
+
+  try {
+    shopProducts = await listShopProducts();
+  } catch {
+    shopProducts = null;
+  }
+
+  setLoadingProgress(90);
+  await refreshNotifs();
   persist();
+  setLoadingProgress(100);
+  markGameLoaded();
+  captureEvent('session_start', {
+    platform: isReal() ? 'jest' : 'local',
+    streak: player.loginStreak,
+  });
   render();
 }
 
@@ -91,6 +166,8 @@ function render() {
     tab,
     pendingCombat,
     selectedAssists,
+    platformStatus,
+    shopProducts,
     handlers: {
       setTab: (t) => {
         tab = t;
@@ -109,13 +186,14 @@ function render() {
   });
 }
 
-function handleAction(act, data = {}) {
+async function handleAction(act, data = {}) {
   if (act === 'claim' || act === 'exp-claim') {
     const claimed = claimFuelRegen(player);
     player = claimed.player;
     const resolved = tryResolveExpedition();
     if (claimed.gained) pushLog(`Claimed +${claimed.gained} fuel.`);
     else if (!resolved) pushLog('Nothing new to claim yet.');
+    await refreshNotifs();
   } else if (act === 'goto-missions') {
     tab = 'missions';
   } else if (act === 'travel-to') {
@@ -134,11 +212,12 @@ function handleAction(act, data = {}) {
       pushLog(`Contact at ${preview.node.name} — choose assists.`);
     } else {
       const res = commitTravel(player, preview);
-      if (!res.ok) {
-        pushLog(`Travel failed: ${res.reason}`);
-      } else {
+      if (!res.ok) pushLog(`Travel failed: ${res.reason}`);
+      else {
         player = res.player;
         logTravelResult(res.result);
+        captureEvent('travel', { node: nodeId, kind: res.result.kind });
+        await refreshNotifs();
       }
     }
   } else if (act === 'combat-confirm') {
@@ -146,26 +225,28 @@ function handleAction(act, data = {}) {
     const res = commitTravel(player, pendingCombat, { assistsUsed: selectedAssists });
     pendingCombat = null;
     selectedAssists = [];
-    if (!res.ok) {
-      pushLog(`Engage failed: ${res.reason}`);
-    } else {
+    if (!res.ok) pushLog(`Engage failed: ${res.reason}`);
+    else {
       player = res.player;
       logTravelResult(res.result);
+      captureEvent('combat', {
+        success: res.result.combat?.success,
+        encounter: res.result.combat?.encounter?.id,
+      });
       tab = 'log';
+      await refreshNotifs();
     }
   } else if (act === 'combat-cancel') {
     pendingCombat = null;
     selectedAssists = [];
     pushLog('Jump aborted. Fuel not spent.');
   } else if (act === 'exp-start') {
-    if (player.activeExpedition) {
-      pushLog('Expedition already active.');
-    } else {
+    if (player.activeExpedition) pushLog('Expedition already active.');
+    else {
       const planet = PLANETS_V1.find((p) => p.id === data.planet) || PLANETS_V1[0];
       const crew = readyCrew(player).slice(0, Math.min(2, readyCrew(player).length));
-      if (!crew.length) {
-        pushLog('No ready crew.');
-      } else {
+      if (!crew.length) pushLog('No ready crew.');
+      else {
         const chance = expeditionSuccessChance({
           crewPower: crewPower(crew),
           planetDifficulty: planet.difficulty,
@@ -184,6 +265,8 @@ function handleAction(act, data = {}) {
           ),
         };
         pushLog(`Launched ${planet.name} (${(chance * 100) | 0}% · ${planet.minutes}m).`);
+        captureEvent('expedition_start', { planet: planet.id });
+        await refreshNotifs();
       }
     }
   } else if (act === 'exp-skip') {
@@ -200,6 +283,8 @@ function handleAction(act, data = {}) {
     };
     tryResolveExpedition({ force: true });
     pushLog(`Spent ${EXPEDITION_SKIP_GEMS} gems to finish expedition.`);
+    captureEvent('expedition_skip', {});
+    await refreshNotifs();
   } else if (act === 'exp-abort') {
     if (!player.activeExpedition) return;
     const ids = player.activeExpedition.payload.crewInstanceIds || [];
@@ -211,6 +296,7 @@ function handleAction(act, data = {}) {
       ),
     };
     pushLog('Early extract — expedition failed.');
+    await refreshNotifs();
   } else if (act === 'gacha') {
     const free = player.dailyPullAvailable;
     const cost = free ? GACHA_COSTS.dailyFree : GACHA_COSTS.credits;
@@ -218,9 +304,8 @@ function handleAction(act, data = {}) {
       pushLog('Need credits for a pull.');
       return;
     }
-    if (!free) {
-      player = { ...player, wallet: pay(player.wallet, cost).wallet };
-    } else {
+    if (!free) player = { ...player, wallet: pay(player.wallet, cost).wallet };
+    else {
       player = { ...player, dailyPullAvailable: false };
       pushLog('Daily free pull used.');
     }
@@ -232,14 +317,15 @@ function handleAction(act, data = {}) {
       player = { ...player, wallet: grant(player.wallet, { credits: 50, medals: 2 }) };
       pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold +50cr.`);
     }
+    captureEvent('gacha_pull', { rarity, free });
     tab = 'crew';
+    await refreshNotifs();
   } else if (act === 'level-crew') {
     const c = player.crew.find((x) => x.instanceId === data.id);
     if (!c) return;
     const cost = MEDAL_LEVEL_COST(c.level);
-    if ((player.wallet.medals || 0) < cost) {
-      pushLog(`Need ${cost} medals to level ${c.name}.`);
-    } else {
+    if ((player.wallet.medals || 0) < cost) pushLog(`Need ${cost} medals to level ${c.name}.`);
+    else {
       player = {
         ...player,
         wallet: { ...player.wallet, medals: player.wallet.medals - cost },
@@ -267,9 +353,56 @@ function handleAction(act, data = {}) {
         pushLog('Quarters expanded: 4 crew slots.');
       }
     } else pushLog('Sparrow mid-slice cap. Corvette later.');
+  } else if (act === 'iap-buy') {
+    const sku = data.sku;
+    pushLog(`Purchasing ${sku}…`);
+    const res = await buyProduct(player, sku);
+    if (!res.ok) pushLog(`Purchase failed: ${res.reason}`);
+    else {
+      player = res.player;
+      pushLog(`Purchased ${sku}. Rewards applied.`);
+      captureEvent('iap_success', { sku });
+      // Soft prompt registration after first spend if guest
+      const jp = getJestPlayer();
+      if (jp && !jp.registered) {
+        pushLog('Tip: register to keep purchases across devices.');
+      }
+      await refreshNotifs();
+    }
+  } else if (act === 'prompt-login') {
+    const jp = getJestPlayer();
+    if (jp?.registered) {
+      pushLog(`Already registered as ${jp.username || jp.playerId}.`);
+    } else if (isReal()) {
+      const { loginButtonAction } = showRegistrationOverlay({
+        theme: 'dark',
+        message: 'Save Warp Crew progress! {{registrationCode}} is my code.',
+        entryPayload: { reason: 'shop_prompt' },
+        onClose: () => {},
+      });
+      // Auto-trigger login action for simplicity; overlay also available
+      try {
+        await login({ entryPayload: { reason: 'shop_prompt' } });
+        const after = getJestPlayer();
+        player = {
+          ...player,
+          _jestRegistered: Boolean(after?.registered),
+          captainName: after?.username || player.captainName,
+        };
+        pushLog(after?.registered ? 'Registered on Jest.' : 'Login dismissed.');
+      } catch (e) {
+        pushLog('Login flow closed.');
+        loginButtonAction?.();
+      }
+    } else {
+      await login();
+      player = { ...player, _jestRegistered: true };
+      pushLog('Local mock: marked registered.');
+    }
   } else if (act === 'qa-fuel') {
     player = { ...player, wallet: { ...player.wallet, fuel: (player.wallet.fuel || 0) + 5 } };
     pushLog('QA +5 fuel.');
+    await refreshNotifs();
   } else if (act === 'qa-gems') {
     player = { ...player, wallet: { ...player.wallet, gems: (player.wallet.gems || 0) + 100 } };
     pushLog('QA +100 gems.');
@@ -282,6 +415,7 @@ function handleAction(act, data = {}) {
     const daily = applyDailyLogin(player);
     player = daily.player;
     pushLog('Save reset.');
+    await refreshNotifs();
   }
 
   persist();
