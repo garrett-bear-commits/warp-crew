@@ -38,7 +38,6 @@ export function resolveExpedition(job, { rng = Math.random, forceComplete = fals
 
   const success = rng() < (job.payload.successChance ?? 0.5);
   const mult = success ? 1 : 0.18;
-  // Slightly tuned for 15m test loop — still meaningful but not print money
   const rewards = {
     credits: Math.floor((70 + (job.payload.successChance || 0.5) * 110) * mult),
     medals: Math.floor((10 + (job.payload.successChance || 0.5) * 18) * mult),
@@ -53,7 +52,6 @@ export function resolveExpedition(job, { rng = Math.random, forceComplete = fals
   };
 }
 
-/** Instant-complete by setting endAt to now (caller pays gems). */
 export function skipExpeditionJob(job, now = Date.now()) {
   return {
     ...job,
@@ -64,11 +62,20 @@ export function skipExpeditionJob(job, now = Date.now()) {
 
 export const PLANETS_V1 = [
   {
+    id: 'dustfall',
+    name: 'Dustfall Outpost',
+    difficulty: 18,
+    minutes: Math.max(5, Math.floor(TEST_EXPEDITION_MINUTES / 3)),
+    blurb: 'Tutorial scrap moon — short run. Start here.',
+    minDay: 1,
+  },
+  {
     id: 'derelict_freighter',
     name: 'Derelict Freighter',
     difficulty: 25,
     minutes: TEST_EXPEDITION_MINUTES,
     blurb: 'Silent hulk on the edge of the Spur. Salvage and risk.',
+    minDay: 1,
   },
   {
     id: 'crystal_asteroid',
@@ -76,20 +83,7 @@ export const PLANETS_V1 = [
     difficulty: 40,
     minutes: TEST_EXPEDITION_MINUTES,
     blurb: 'Refractive ore veins. Good medals, medium danger.',
-  },
-  {
-    id: 'ice_outpost',
-    name: 'Ice Mining Outpost',
-    difficulty: 55,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Frozen claim under Swarm probe traffic.',
-  },
-  {
-    id: 'dustfall',
-    name: 'Dustfall Outpost',
-    difficulty: 18,
-    minutes: Math.max(5, Math.floor(TEST_EXPEDITION_MINUTES / 3)),
-    blurb: 'Tutorial scrap moon — short run.',
+    minDay: 1,
   },
   {
     id: 'tidefall_ruins',
@@ -97,26 +91,75 @@ export const PLANETS_V1 = [
     difficulty: 35,
     minutes: TEST_EXPEDITION_MINUTES,
     blurb: 'Submerged alien arches. Scouts love it.',
+    minDay: 2,
+  },
+  {
+    id: 'ice_outpost',
+    name: 'Ice Mining Outpost',
+    difficulty: 55,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Frozen claim under Swarm probe traffic.',
+    minDay: 2,
   },
   {
     id: 'ledger_vault',
     name: 'Ledger Vault',
     difficulty: 45,
     minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Abandoned bank satellite. Credits if you survive.',
+    blurb: 'Abandoned bank vault asteroid. Credits + medals.',
+    minDay: 3,
   },
   {
     id: 'swarm_husk',
     name: 'Swarm Husk',
-    difficulty: 70,
+    difficulty: 60,
     minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Dead bio-ship. High risk, high rep.',
+    blurb: 'Hollowed probe carcass. High danger, high rep.',
+    minDay: 3,
   },
   {
     id: 'echo_shoal',
     name: 'Echo Shoal',
-    difficulty: 60,
+    difficulty: 50,
     minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Crystal flats that scramble sensors.',
+    blurb: 'Crystal shallows. Bring a scout.',
+    minDay: 4,
+  },
+  {
+    id: 'amber_mine',
+    name: 'Amber Mine',
+    difficulty: 42,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Resin tunnels under Amber Port.',
+    minDay: 4,
+  },
+  {
+    id: 'signal_wreck',
+    name: 'Signal Wreck',
+    difficulty: 48,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Collapsed array spine. Story-adjacent salvage.',
+    minDay: 5,
+  },
+  {
+    id: 'pirate_cache',
+    name: 'Pirate Cache',
+    difficulty: 58,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Hidden corsair stash. Security mercs shine.',
+    minDay: 5,
+  },
+  {
+    id: 'aurora_ice',
+    name: 'Aurora Ice Cap',
+    difficulty: 52,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Tourist moon’s dark side. Quiet riches.',
+    minDay: 6,
   },
 ];
+
+export function visiblePlanets(player, now = Date.now()) {
+  const day = 1 + Math.floor((now - (player.createdAt || now)) / 86400000);
+  return PLANETS_V1.filter((p) => !p.minDay || day >= p.minDay);
+}

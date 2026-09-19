@@ -47,6 +47,7 @@ export const ENCOUNTERS_V1 = [
   { id: 'swarm_probe', name: 'Eclipse Probe', power: 20, rewards: { credits: 60, medals: 6, reputation: 3 } },
   { id: 'swarm_skirmish', name: 'Swarm Skirmish', power: 32, rewards: { credits: 120, medals: 10, reputation: 5 } },
   { id: 'swarm_frigate', name: 'Swarm Frigate Echo', power: 48, rewards: { credits: 200, medals: 18, reputation: 8 } },
+  { id: 'pirate_ace', name: 'Corsair Ace', power: 28, rewards: { credits: 110, medals: 9, reputation: 3 } },
 ];
 
 

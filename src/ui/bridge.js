@@ -1,11 +1,13 @@
 import { fuelStatus } from '../systems/fuel.js';
 import { formatDuration } from '../shared/timer.js';
-import { NODES } from '../data/sectors.js';
-import { PLANETS_V1, EXPEDITION_SKIP_GEMS } from '../systems/expedition.js';
+import { visibleNodes } from '../data/sectors.js';
+import { PLANETS_V1, EXPEDITION_SKIP_GEMS, visiblePlanets } from '../systems/expedition.js';
 import { ASSISTS, listAssists } from '../systems/combat.js';
 import { storyProgress } from '../systems/story.js';
 import { SHIPS } from '../data/ships.js';
 import { listOwnedHulls } from '../systems/hangar.js';
+import { currentTutorialStep, weekGoals } from '../systems/tutorial.js';
+import { readyCrew } from '../systems/player.js';
 
 const PLANET_CLASS = {
   derelict_freighter: 'a',
@@ -16,6 +18,10 @@ const PLANET_CLASS = {
   ledger_vault: 'c',
   swarm_husk: 'a',
   echo_shoal: 'b',
+  amber_mine: 'c',
+  signal_wreck: 'a',
+  pirate_cache: 'd',
+  aurora_ice: 'b',
 };
 
 export function renderApp(root, ctx) {
@@ -31,9 +37,12 @@ export function renderApp(root, ctx) {
     shopProducts = null,
   } = ctx;
   const fuel = fuelStatus(player, now);
-  const loc = NODES[player.location] || { name: player.location };
+  const locNode = visibleNodes(player, now).find((n) => n.id === player.location);
+  const locName = locNode?.name || player.location;
   const hullPct = 100;
   const shieldPct = Math.min(100, 60 + (player.ship.systems?.shields || 1) * 10);
+  const step = currentTutorialStep(player);
+  const goals = weekGoals(player);
 
   root.innerHTML = `
     <div class="topbar">
@@ -51,19 +60,21 @@ export function renderApp(root, ctx) {
             : 'Investigate Spur traffic and grow your reputation.'}
         </div>
         <div class="stat-row">
-          <div class="stat">DAY <b>${dayNumber(player)}</b></div>
+          <div class="stat">DAY <b>${goals.careerDay}</b></div>
           <div class="stat">STREAK <b>${player.loginStreak || 0}</b></div>
           <div class="stat">CR <b>${player.wallet.credits}</b></div>
         </div>
       </div>
     </div>
 
+    ${step ? renderTutorialBanner(step) : ''}
+
     <div class="stat-row" style="margin-bottom:10px">
       <div class="stat">Fuel <b>${fuel.current}/${fuel.max}</b></div>
       <div class="stat">Gems <b style="color:var(--gem)">${player.wallet.gems}</b></div>
       <div class="stat">Medals <b>${player.wallet.medals}</b></div>
       <div class="stat">Rep <b>${player.wallet.reputation}</b></div>
-      <div class="stat">${loc.name}</div>
+      <div class="stat">${escapeHtml(locName)}</div>
     </div>
     <div class="muted" style="margin:-4px 0 10px">
       Regen ${fuel.ratePerHour}/hr
@@ -74,8 +85,10 @@ export function renderApp(root, ctx) {
       ${platformStatus ? ` · SDK: ${platformStatus}` : ''}
     </div>
 
+    ${emptyHints(player, fuel, tab)}
+
     ${pendingCombat ? renderCombatModal(pendingCombat, selectedAssists) : ''}
-    ${tab === 'ship' ? renderShip(player) : ''}
+    ${tab === 'ship' ? renderShip(player, goals) : ''}
     ${tab === 'missions' ? renderMissions(player, now) : ''}
     ${tab === 'crew' ? renderCrew(player) : ''}
     ${tab === 'shop' ? renderShop(player, shopProducts) : ''}
@@ -101,9 +114,37 @@ export function renderApp(root, ctx) {
   });
 }
 
-function dayNumber(player) {
-  const ms = Date.now() - (player.createdAt || Date.now());
-  return 1 + Math.floor(ms / 86400000);
+function renderTutorialBanner(step) {
+  return `
+    <div class="tutorial-banner panel">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;gap:8px">
+        <div>
+          <h2 style="margin:0;color:var(--warn)">Tutorial · ${escapeHtml(step.title)}</h2>
+          <div style="font-size:0.85rem;margin-top:6px;line-height:1.35">${escapeHtml(step.body)}</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" data-act="tutorial-jump">Go</button>
+        <button data-act="tutorial-next">Next tip</button>
+        <button data-act="tutorial-dismiss">Dismiss</button>
+      </div>
+    </div>
+  `;
+}
+
+function emptyHints(player, fuel, tab) {
+  const bits = [];
+  if (fuel.current <= 0 && tab === 'missions') {
+    bits.push('No fuel — wait for regen, Claim pending, or buy fuel in SHOP.');
+  }
+  if (readyCrew(player).length === 0 && tab === 'missions') {
+    bits.push('No ready crew — wait for expedition return or hire on CREW.');
+  }
+  if (player.crew.length < player.crewSlots && player.dailyPullAvailable && tab === 'crew') {
+    bits.push(`Free hire ready — fill ${player.crewSlots - player.crew.length} open slot(s).`);
+  }
+  if (!bits.length) return '';
+  return `<div class="empty-hint">${bits.map(escapeHtml).join('<br/>')}</div>`;
 }
 
 function renderCombatModal(pending, selectedAssists) {
@@ -112,8 +153,8 @@ function renderCombatModal(pending, selectedAssists) {
   return `
     <div class="modal-backdrop">
       <div class="modal panel">
-        <h2>Combat · ${pending.encounter.name}</h2>
-        <div class="muted">${pending.node.name} · fuel −${pending.fuelCost}</div>
+        <h2>Combat · ${escapeHtml(pending.encounter.name)}</h2>
+        <div class="muted">${escapeHtml(pending.node.name)} · fuel −${pending.fuelCost}</div>
         <div class="stat-row" style="margin:10px 0">
           <div class="stat">Your power <b>${pending.playerPower}</b></div>
           <div class="stat">Enemy <b>${pending.encounter.power}</b></div>
@@ -123,7 +164,7 @@ function renderCombatModal(pending, selectedAssists) {
         <div class="row">
           ${assists.map((a) => `
             <button data-assist="${a.id}" class="${selectedAssists.includes(a.id)?'primary':''}">
-              ${a.name} (+${a.power})
+              ${escapeHtml(a.name)} (+${a.power})
             </button>
           `).join('')}
         </div>
@@ -136,20 +177,21 @@ function renderCombatModal(pending, selectedAssists) {
   `;
 }
 
-function renderShip(player) {
+function renderShip(player, goals) {
   const prog = storyProgress(player);
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
   const def = SHIPS[shipId] || SHIPS.sparrow;
+  const goalsDone = goals.goals.filter((g) => g.done).length;
   return `
     <div class="panel">
       <div class="row" style="justify-content:space-between">
         <h1>Warp Crew</h1>
         <button class="primary" data-act="claim">Claim</button>
       </div>
-      <div class="muted">${player.captainName} · ${def.name} · Ch.${prog.chapter} · Story ${prog.done}/${prog.total}</div>
+      <div class="muted">${escapeHtml(player.captainName)} · ${escapeHtml(def.name)} · Ch.${prog.chapter} · Story ${prog.done}/${prog.total}</div>
       <div class="ship-frame">
-        <div class="ship-silhouette" title="${def.name}"></div>
+        <div class="ship-silhouette" title="${escapeHtml(def.name)}"></div>
         <div class="room-grid">
           <div class="room"><b>BRIDGE</b>${crewInRole(player,'pilot')}</div>
           <div class="room"><b>WEAPONS</b>${crewInRole(player,'gunner')}</div>
@@ -168,6 +210,17 @@ function renderShip(player) {
     </div>
 
     <div class="panel">
+      <h2>Week goals · Day ${goals.careerDay}</h2>
+      <div class="muted">${goalsDone}/${goals.goals.length} complete — soft targets for the test week</div>
+      ${goals.goals.map((g) => `
+        <div class="crew-card ${g.done ? 'goal-done' : ''}">
+          <b>${g.done ? '✓' : '○'} ${escapeHtml(g.label)}</b>
+          <span class="tag">${escapeHtml(g.progress)}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="panel">
       <h2>Hangar</h2>
       <div class="muted">Buy larger hulls with credits (grind) or gems (fast). Owned: ${owned.join(', ')}</div>
       ${Object.values(SHIPS).map((s) => {
@@ -177,8 +230,8 @@ function renderShip(player) {
         <div class="mission-card">
           <div class="planet ${s.id==='corvette'?'b':s.id==='frigate'?'c':'a'}"></div>
           <div>
-            <b>${s.name}${isActive ? ' · ACTIVE' : isOwned ? ' · OWNED' : ''}</b>
-            <div class="muted">${s.blurb}</div>
+            <b>${escapeHtml(s.name)}${isActive ? ' · ACTIVE' : isOwned ? ' · OWNED' : ''}</b>
+            <div class="muted">${escapeHtml(s.blurb)}</div>
             <div class="muted">Crew ${s.crewSlots}–${s.maxCrewSlots}
               ${s.gemPrice ? ` · ${s.gemPrice}g` : ''}
               ${s.creditPrice ? ` · ${s.creditPrice}cr` : ''}
@@ -202,30 +255,31 @@ function renderShip(player) {
       <div class="muted">Travel story nodes to unlock beats. Chapter ${prog.chapter}.</div>
       ${prog.beats.map((b) => `
         <div class="crew-card">
-          <b>${b.unlocked ? '✓' : '○'} ${b.title}</b>
+          <b>${b.unlocked ? '✓' : '○'} ${escapeHtml(b.title)}</b>
           <span class="tag">Ch.${b.chapter}</span>
-          <div class="muted">${b.unlocked ? b.text : '???'}</div>
+          <div class="muted">${b.unlocked ? escapeHtml(b.text) : '???'}</div>
         </div>
       `).join('')}
     </div>
   `;
 }
 
-
 function crewInRole(player, role) {
   const c = player.crew.find((x) => x.role === role && x.status !== 'expedition');
-  return c ? c.name : '— empty —';
+  return c ? escapeHtml(c.name) : '— empty —';
 }
 
 function renderMissions(player, now) {
   const exp = player.activeExpedition;
   const here = player.location;
-  const nodes = Object.values(NODES);
+  const nodes = visibleNodes(player, now);
+  const planets = visiblePlanets(player, now);
 
   return `
     <div class="panel">
-      <h2>Star map · The Spur</h2>
-      <div class="muted">Tap a destination. Combat jumps open the assist picker.</div>
+      <h2>Star map</h2>
+      <div class="muted">Unlocked routes for your career day. Combat jumps open the assist picker. Veil Edge unlocks after Veil Gate.</div>
+      ${nodes.length === 0 ? '<div class="empty-hint">No routes — something is wrong with map data.</div>' : ''}
       <div class="map-grid">
         ${nodes.map((n) => {
           const hereCls = n.id === here ? 'here' : '';
@@ -233,9 +287,9 @@ function renderMissions(player, now) {
           return `
             <button class="map-node ${hereCls}" data-act="travel-to" data-node="${n.id}"
               ${n.id === here ? 'disabled' : ''}>
-              <span class="map-title">${n.name}</span>
-              <span class="map-meta">${n.type} · ${cost}F</span>
-              <span class="map-blurb">${n.blurb || ''}</span>
+              <span class="map-title">${escapeHtml(n.name)}</span>
+              <span class="map-meta">${n.type} · ${cost}F${n.sector === 'veil' ? ' · Veil' : ''}</span>
+              <span class="map-blurb">${escapeHtml(n.blurb || '')}</span>
             </button>
           `;
         }).join('')}
@@ -244,12 +298,12 @@ function renderMissions(player, now) {
 
     <div class="panel">
       <h2>Expeditions</h2>
-      <div class="muted">15 min test timers · gem skip ${EXPEDITION_SKIP_GEMS}g · success % shown</div>
+      <div class="muted">15 min test timers · gem skip ${EXPEDITION_SKIP_GEMS}g · more sites unlock by career day</div>
       ${exp ? `
         <div class="mission-card" style="margin-top:10px;border-color:var(--cyan)">
           <div class="planet ${PLANET_CLASS[exp.payload.planetId] || 'a'}"></div>
           <div>
-            <b>ACTIVE · ${planetName(exp.payload.planetId)}</b>
+            <b>ACTIVE · ${escapeHtml(planetName(exp.payload.planetId))}</b>
             <div class="muted">${(exp.payload.successChance*100)|0}% · ${formatDuration(Math.max(0, exp.endAt - now))} left</div>
           </div>
           <div class="row" style="flex-direction:column;gap:6px">
@@ -258,12 +312,12 @@ function renderMissions(player, now) {
             <button class="danger" data-act="exp-abort">Extract</button>
           </div>
         </div>
-      ` : PLANETS_V1.map((p) => `
+      ` : planets.map((p) => `
         <div class="mission-card">
           <div class="planet ${PLANET_CLASS[p.id] || 'a'}"></div>
           <div>
-            <b>${p.name}</b>
-            <div class="muted">${p.blurb}</div>
+            <b>${escapeHtml(p.name)}</b>
+            <div class="muted">${escapeHtml(p.blurb)}</div>
             <div class="muted">Diff ${p.difficulty} · ${p.minutes}m</div>
           </div>
           <button class="primary" data-act="exp-start" data-planet="${p.id}">Launch</button>
@@ -286,17 +340,21 @@ function renderCrew(player) {
           ${player.dailyPullAvailable ? 'Free hire' : 'Hire 500cr'}
         </button>
       </div>
+      ${player.tutorial?.slot3Unlocked && player.crewSlots >= 3 && player.crew.length < 3
+        ? '<div class="empty-hint">Slot 3 open — Free hire a third merc.</div>'
+        : ''}
       ${player.crew.map((c) => `
         <div class="crew-card">
-          <b>${c.name}</b>
-          <span class="tag">${c.role}</span>
-          <span class="tag">${c.rarity}</span>
+          <b>${escapeHtml(c.name)}</b>
+          <span class="tag">${escapeHtml(c.role)}</span>
+          <span class="tag">${escapeHtml(c.rarity)}</span>
           <span class="tag">Lv ${c.level}</span>
-          <span class="tag">${c.status}</span>
-          <div class="muted">Power ${c.power} · ${c.species}</div>
+          <span class="tag">${escapeHtml(c.status)}</span>
+          <div class="muted">Power ${c.power} · ${escapeHtml(c.species)}</div>
+          <div class="muted">${escapeHtml(c.blurb || '')}</div>
           <button data-act="level-crew" data-id="${c.instanceId}" style="margin-top:6px">Level up (medals)</button>
         </div>
-      `).join('') || '<div class="muted">No crew</div>'}
+      `).join('') || '<div class="empty-hint">No crew — hire from the gacha.</div>'}
     </div>
   `;
 }
@@ -310,14 +368,14 @@ function renderShop(player, shopProducts) {
   const planets = ['b', 'c', 'a', 'd'];
   return `
     <div class="panel">
-      <h2>Shop · Jest IAP</h2>
-      <div class="muted">Uses Jest payments on-platform; local mock auto-succeeds for QA.</div>
+      <h2>Shop</h2>
+      <div class="muted">Mock IAP for QA (not on Jest yet). Real Jest payments later.</div>
       ${products.map((p, i) => `
         <div class="mission-card">
           <div class="planet ${planets[i % planets.length]}"></div>
           <div>
-            <b>${p.name}</b>
-            <div class="muted">${p.blurb || p.remoteName || p.sku}</div>
+            <b>${escapeHtml(p.name)}</b>
+            <div class="muted">${escapeHtml(p.blurb || p.remoteName || p.sku)}</div>
             <div class="muted">${p.price != null ? `${p.price} ${p.currency || 'USD'}` : 'sandbox'}</div>
           </div>
           <button class="primary" data-act="iap-buy" data-sku="${p.sku}">Buy</button>
@@ -343,5 +401,9 @@ function renderLog(log) {
 }
 
 function escapeHtml(s) {
-  return String(s).replaceAll('&','&').replaceAll('<','<').replaceAll('>','>');
+  return String(s)
+    .replaceAll('&', '&')
+    .replaceAll('<', '<')
+    .replaceAll('>', '>')
+    .replaceAll('"', '"');
 }

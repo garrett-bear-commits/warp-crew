@@ -1,4 +1,4 @@
-import { NODES, pickOutcome } from '../data/sectors.js';
+import { NODES, pickOutcome, visibleNodes } from '../data/sectors.js';
 import { spendFuel } from './fuel.js';
 import { grant } from './economy.js';
 import { resolveCombat, ENCOUNTERS_V1, crewPower } from './combat.js';
@@ -12,6 +12,10 @@ import { applyStoryFlag } from './story.js';
 export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
   const node = NODES[nodeId];
   if (!node) return { ok: false, reason: 'unknown_node' };
+  const visible = visibleNodes(player);
+  if (!visible.find((n) => n.id === nodeId)) {
+    return { ok: false, reason: 'locked_node' };
+  }
   const fuelCost = node.fuelCost ?? 1;
   if ((player.wallet?.fuel ?? 0) < fuelCost) {
     return { ok: false, reason: 'not_enough_fuel' };

@@ -233,3 +233,28 @@ button.danger { border-color: var(--bad); }
   border-color: var(--cyan) !important;
   box-shadow: 0 0 40px rgba(92,225,255,0.15);
 }
+
+/* Track A/B polish */
+.tutorial-banner {
+  border-color: rgba(255, 200, 87, 0.45) !important;
+  box-shadow: 0 0 24px rgba(255, 200, 87, 0.12);
+  margin-bottom: 10px;
+}
+.empty-hint {
+  background: rgba(92, 225, 255, 0.08);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--cyan);
+  font-size: 0.82rem;
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+.goal-done {
+  opacity: 0.75;
+  border-color: rgba(61, 220, 151, 0.35);
+}
+.map-node.here {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 1px var(--cyan);
+}

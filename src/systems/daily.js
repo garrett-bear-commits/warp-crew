@@ -33,25 +33,31 @@ export function applyDailyLogin(player, now = Date.now()) {
     loginStreak = 1;
   }
 
-  // New calendar day: free pull resets
   dailyPullAvailable = true;
 
-  // Light streak rewards (credits/medals) — keeps retention without breaking economy
+  // 7-day cycle — day 7 is the big retention hit
   const rewardTable = {
-    1: { credits: 25 },
-    2: { credits: 40 },
-    3: { medals: 5 },
-    4: { credits: 60 },
-    5: { medals: 8, credits: 40 },
-    6: { credits: 80 },
-    7: { gems: 10, credits: 100, medals: 10 },
+    1: { credits: 40, medals: 2 },
+    2: { credits: 55 },
+    3: { medals: 8, credits: 40 },
+    4: { credits: 80, fuel: 1 },
+    5: { medals: 12, credits: 60 },
+    6: { credits: 100, reputation: 2 },
+    7: { gems: 15, credits: 150, medals: 15, reputation: 5 },
   };
-  const dayReward = rewardTable[((loginStreak - 1) % 7) + 1] || { credits: 30 };
+  const dayReward = rewardTable[((loginStreak - 1) % 7) + 1] || { credits: 40 };
   bonus = { ...dayReward, streak: loginStreak };
 
   const wallet = { ...player.wallet };
   for (const [k, v] of Object.entries(dayReward)) {
-    wallet[k] = (wallet[k] || 0) + v;
+    if (k === 'fuel') {
+      wallet.fuel = Math.min(
+        player.fuelMax || 10,
+        (wallet.fuel || 0) + v
+      );
+    } else {
+      wallet[k] = (wallet[k] || 0) + v;
+    }
   }
 
   return {

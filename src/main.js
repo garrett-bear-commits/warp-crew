@@ -34,6 +34,13 @@ import {
 import { renderApp } from './ui/bridge.js';
 import { MEDAL_LEVEL_COST } from './data/crewRoster.js';
 import { buyHull, switchHull, upgradeSystem } from './systems/hangar.js';
+import {
+  noteTutorialEvent,
+  advanceTutorial,
+  dismissTutorial,
+  migrateTutorial,
+  currentTutorialStep,
+} from './systems/tutorial.js';
 
 const app = document.getElementById('app');
 const log = [];
@@ -71,6 +78,13 @@ function finishExpeditionResult(res) {
     ),
     stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1 },
   };
+  {
+    const te = noteTutorialEvent(player, 'expedition_done');
+    player = te.player;
+    if (te.player.tutorial?.slot4Unlocked) {
+      /* slot unlock may raise crewSlots */
+    }
+  }
   const skipNote = res.skipped ? ' (skipped)' : '';
   pushLog(
     res.success
@@ -108,14 +122,15 @@ async function boot() {
 
   const saved = loadSave();
   if (saved?.player) {
-    player = migratePlayer(saved.player);
+    player = migrateTutorial(migratePlayer(saved.player));
     pushLog('Welcome back, Captain.');
   } else {
     player = createNewPlayer({
       captainName: jestPlayer?.username || 'Captain',
     });
+    player = migrateTutorial(player);
     pushLog('Career start aboard Sparrow.');
-    pushLog('Phase B: Jest SDK, IAP, notification ladder.');
+    pushLog('Tip: follow the tutorial banner — Dust Lane first.');
   }
 
   // Tag registration for comeback series
@@ -226,6 +241,9 @@ async function handleAction(act, data = {}) {
       else {
         player = res.player;
         logTravelResult(res.result);
+        const te = noteTutorialEvent(player, 'travel_success');
+        player = te.player;
+        if (te.advanced) pushLog('Tutorial: third crew slot unlocked after first jump.');
         captureEvent('travel', { node: nodeId, kind: res.result.kind });
         await refreshNotifs();
       }
@@ -239,6 +257,10 @@ async function handleAction(act, data = {}) {
     else {
       player = res.player;
       logTravelResult(res.result);
+      let te = noteTutorialEvent(player, 'travel_success');
+      player = te.player;
+      te = noteTutorialEvent(player, 'combat_done');
+      player = te.player;
       captureEvent('combat', {
         success: res.result.combat?.success,
         encounter: res.result.combat?.encounter?.id,
@@ -275,6 +297,10 @@ async function handleAction(act, data = {}) {
           ),
         };
         pushLog(`Launched ${planet.name} (${(chance * 100) | 0}% · ${planet.minutes}m).`);
+        {
+          const te = noteTutorialEvent(player, 'expedition_start');
+          player = te.player;
+        }
         captureEvent('expedition_start', { planet: planet.id });
         await refreshNotifs();
       }
@@ -323,6 +349,10 @@ async function handleAction(act, data = {}) {
     if (player.crew.length < player.crewSlots) {
       player = { ...player, crew: [...player.crew, instance] };
       pushLog(`Hired ${instance.name} (${rarity}).`);
+      {
+        const te = noteTutorialEvent(player, 'hired');
+        player = te.player;
+      }
     } else {
       player = { ...player, wallet: grant(player.wallet, { credits: 50, medals: 2 }) };
       pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold +50cr.`);
@@ -425,6 +455,16 @@ async function handleAction(act, data = {}) {
       player = { ...player, _jestRegistered: true };
       pushLog('Local mock: marked registered.');
     }
+  } else if (act === 'tutorial-next') {
+    player = advanceTutorial(player);
+    const step = player.tutorial?.stepIndex;
+    pushLog(`Tutorial advanced (${step}).`);
+  } else if (act === 'tutorial-dismiss') {
+    player = dismissTutorial(player);
+    pushLog('Tutorial dismissed — reopen tips anytime from SHIP.');
+  } else if (act === 'tutorial-jump') {
+    const step = currentTutorialStep(player);
+    if (step?.tab) tab = step.tab;
   } else if (act === 'qa-fuel') {
     player = { ...player, wallet: { ...player.wallet, fuel: (player.wallet.fuel || 0) + 5 } };
     pushLog('QA +5 fuel.');

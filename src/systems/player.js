@@ -1,6 +1,7 @@
 import { createCrewInstance } from '../data/crewRoster.js';
 import { starterShip } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
+import { defaultTutorial } from './tutorial.js';
 
 export function createNewPlayer({ captainName = 'Captain' } = {}) {
   const now = Date.now();
@@ -9,13 +10,13 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     createCrewInstance('merc_bolt'),
   ];
   return {
-    version: 2,
+    version: 3,
     captainName,
     createdAt: now,
     wallet: {
       credits: 250,
       fuel: DEFAULT_FUEL_CONFIG.startingFuel,
-      gems: 25, // test gems so skip / IAP UX can be tried
+      gems: 25,
       medals: 25,
       reputation: 0,
     },
@@ -34,10 +35,10 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     dailyPullAvailable: true,
     stats: { jumps: 0, combatsWon: 0, expeditions: 0 },
     story: { chapter: 0, eclipseIntro: false },
+    tutorial: defaultTutorial(),
   };
 }
 
-/** Fill missing fields on older saves */
 export function migratePlayer(player) {
   if (!player) return createNewPlayer();
   const base = createNewPlayer({ captainName: player.captainName || 'Captain' });
@@ -50,7 +51,8 @@ export function migratePlayer(player) {
     stats: { ...base.stats, ...(player.stats || {}) },
     story: { ...base.story, ...(player.story || {}) },
     flags: player.flags || {},
-    version: Math.max(2, player.version || 1),
+    tutorial: { ...defaultTutorial(), ...(player.tutorial || {}) },
+    version: Math.max(3, player.version || 1),
   };
 }
 
