@@ -6,6 +6,7 @@ import { resolveCombat, ENCOUNTERS_V1, crewPower } from './combat.js';
 import { readyCrew } from './player.js';
 import { applyStoryFlag } from './story.js';
 import { isTutorialActive, tutorialPhase } from './tutorial.js';
+import { fuelCostFor, tradePayout, combatBonuses, hullAfterCombat } from './passives.js';
 
 /**
  * Preview a jump without mutating player (except we need fuel check).
@@ -18,9 +19,12 @@ export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
   if (!visible.find((n) => n.id === nodeId)) {
     return { ok: false, reason: 'locked_node' };
   }
-  const fuelCost = node.fuelCost ?? 1;
+  const fuelCost = fuelCostFor(player, node.fuelCost ?? 1);
   if ((player.wallet?.fuel ?? 0) < fuelCost) {
     return { ok: false, reason: 'not_enough_fuel' };
+  }
+  if ((player.ship?.hull ?? 100) <= 8 && nodeId !== 'station_home') {
+    return { ok: false, reason: 'hull_critical' };
   }
 
   if (!node.outcomes?.length) {
@@ -41,15 +45,17 @@ export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
 
   if (outcome.kind === 'combat') {
     const enc = ENCOUNTERS_V1.find((e) => e.id === outcome.encounter) || ENCOUNTERS_V1[0];
-    const power = crewPower(readyCrew(player));
+    const bonus = combatBonuses(player, enc);
+    const power = crewPower(readyCrew(player)) + bonus.extraPower;
     return {
       ok: true,
       needsAssists: true,
       node,
       fuelCost,
       outcome,
-      encounter: enc,
+      encounter: { ...enc, power: Math.max(6, Math.round(enc.power * bonus.enemyScale)) },
       playerPower: power,
+      assistMult: 1 + (bonus.pass?.assistCharge || 0),
       tutorialFight: tutorialPhase(player) !== 'done' && !player.tutorial?.firstCombat,
     };
   }
@@ -87,8 +93,9 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
   }
 
   if (outcome.kind === 'trade' || outcome.kind === 'delivery' || outcome.kind === 'salvage') {
+    const crew = readyCrew(player);
     const reward = {
-      credits: outcome.credits || 0,
+      credits: tradePayout(outcome.credits || 0, crew),
       medals: outcome.medals || 0,
       reputation: outcome.reputation || 0,
     };
@@ -104,8 +111,13 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
       assistsUsed,
       rng,
       tutorialGuaranteed,
+      assistMult: preview.assistMult || 1,
     });
     player = { ...player, wallet: grant(player.wallet, combat.rewards) };
+    player = hullAfterCombat(player, {
+      success: combat.success,
+      tutorial: tutorialGuaranteed,
+    });
     if (combat.success) {
       player = {
         ...player,
@@ -119,6 +131,7 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
     player = applied.player;
     result.flag = outcome.flag;
     result.beat = applied.beat;
+    result.rewards = { credits: 40, reputation: 3 };
   }
 
   return { ok: true, player, result };

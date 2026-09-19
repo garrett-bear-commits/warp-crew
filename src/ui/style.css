@@ -170,6 +170,19 @@ button.hud-chip {
   border-color: rgba(92, 225, 255, 0.55);
   box-shadow: inset 0 0 0 1px rgba(92, 225, 255, 0.25), 0 0 16px rgba(92, 225, 255, 0.18);
 }
+.hotspot .pip {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+.hotspot .pip.good { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.hotspot .pip.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.hotspot .pip.cyan { background: var(--cyan); }
 .crew-layer {
   position: absolute;
   inset: 0;
@@ -219,6 +232,7 @@ button.hud-chip {
 }
 .pip.good { background: var(--good); box-shadow: 0 0 0 2px #05080f, 0 0 10px var(--good); }
 .pip.cyan { background: var(--cyan); box-shadow: 0 0 0 2px #05080f, 0 0 10px var(--cyan); }
+.pip.warn { background: var(--warn); box-shadow: 0 0 0 2px #05080f, 0 0 10px var(--warn); }
 
 @keyframes pip-pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
@@ -588,13 +602,26 @@ button.hud-chip {
 }
 .map-node {
   text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  grid-template-rows: auto auto auto;
+  column-gap: 8px;
+  row-gap: 2px;
   min-height: 96px;
   background: #0a1220;
   padding: 12px;
 }
+.map-node .node-thumb {
+  grid-row: 1 / span 3;
+  width: 36px;
+  height: 36px;
+  align-self: start;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+.map-node .map-title { grid-column: 2; }
+.map-node .map-meta { grid-column: 2; }
+.map-node .map-blurb { grid-column: 2; }
 .map-node.here {
   border-color: var(--cyan);
   box-shadow: 0 0 0 1px var(--cyan);
@@ -916,3 +943,40 @@ button.hud-chip {
   color: var(--text);
   line-height: 1.45;
 }
+
+[data-slot="toast"] {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: calc(8px + env(safe-area-inset-top));
+  z-index: 28;
+  pointer-events: none;
+}
+[data-slot="toast"] .reward-toast { pointer-events: auto; }
+.reward-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reward-toast .muted { flex: 1; min-width: 0; }
+
+.next-chip {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 8;
+  min-height: 40px;
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: var(--size-min);
+  border-color: var(--cyan);
+  background: rgba(12, 18, 28, 0.92);
+  color: var(--cyan);
+}
+
+.hire-row { margin: 8px 0 10px; }
+
+.wc-shell[data-phase="done"] .detail-scroll { padding-bottom: 16px; }
+

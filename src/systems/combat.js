@@ -12,7 +12,7 @@ export const ASSISTS = {
 };
 
 export function crewPower(crewList = []) {
-  return crewList.reduce((s, c) => s + (c.power || 10), 0);
+  return (crewList || []).reduce((s, c) => s + (c.power || 10), 0);
 }
 
 export function resolveCombat({
@@ -21,8 +21,10 @@ export function resolveCombat({
   assistsUsed = [],
   rng = Math.random,
   tutorialGuaranteed = false,
+  assistMult = 1,
 }) {
-  const assistPower = assistsUsed.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
+  const rawAssist = assistsUsed.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
+  const assistPower = Math.round(rawAssist * (assistMult || 1));
   const total = playerPower + assistPower;
   if (tutorialGuaranteed) {
     return {

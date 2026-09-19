@@ -130,5 +130,7 @@ export function sfx(name) {
     setTimeout(() => beep({ freq: 659, freq2: 988, dur: 0.22, type: 'triangle', gain: 0.14 }), 90);
   } else if (name === 'lock') {
     beep({ freq: 440, dur: 0.05, type: 'square', gain: 0.08 });
+  } else if (name === 'coin') {
+    beep({ freq: 880, freq2: 1320, dur: 0.1, type: 'triangle', gain: 0.14, slide: 200 });
   }
 }

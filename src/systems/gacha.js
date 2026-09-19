@@ -3,7 +3,6 @@ import { CREW_CATALOG, RARITY, createCrewInstance } from '../data/crewRoster.js'
 
 /** Reputation → weight multipliers for rarities */
 export function rarityWeights(reputation = 0) {
-  // Base weights
   let w = {
     common: 70,
     uncommon: 25,
@@ -17,6 +16,14 @@ export function rarityWeights(reputation = 0) {
   if (reputation >= 1000) { w.common = 20; w.uncommon = 30; w.rare = 28; w.epic = 16; w.legendary = 5; }
   if (reputation >= 2000) { w.common = 12; w.uncommon = 25; w.rare = 30; w.epic = 22; w.legendary = 10; }
   return w;
+}
+
+export const REP_GATES = [100, 300, 600, 1000, 2000];
+
+export function nextRepGate(reputation = 0) {
+  const next = REP_GATES.find((n) => reputation < n);
+  if (!next) return { next: null, label: 'max oddities' };
+  return { next, remain: next - reputation, label: `${reputation} / ${next} rep` };
 }
 
 function pickRarity(weights, rng = Math.random) {
@@ -46,3 +53,5 @@ export const GACHA_COSTS = {
   gems: { gems: 100 },
   gems10: { gems: 900 },
 };
+
+export { RARITY, CREW_CATALOG };

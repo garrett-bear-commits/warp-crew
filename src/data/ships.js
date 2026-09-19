@@ -46,6 +46,7 @@ export function starterShip() {
     systems: { engines: 1, shields: 1, cargo: 1, weapons: 1, quarters: 0 },
     cosmetics: {},
     ownedHulls: ['sparrow'],
+    hull: 100,
   };
 }
 

@@ -14,7 +14,7 @@ export const PHASES = [
   {
     id: 'meet',
     title: 'Sparrow is yours',
-    body: 'Two mercs on deck. Rex flies. Bolt keeps her together.',
+    body: 'Rex on the stick. Bolt in engineering. Open Missions — pirates tagged a lane.',
     cta: 'Open missions',
     tab: 'ship',
     spotlight: 'nav-missions',
@@ -23,7 +23,7 @@ export const PHASES = [
   {
     id: 'jump',
     title: 'First jump',
-    body: 'Pirates tagged Dust Lane. Spend 1 fuel and jump.',
+    body: 'Tap Dust Lane. One fuel. The fight is waiting.',
     cta: null,
     tab: 'missions',
     spotlight: 'node-lane_a',
@@ -41,9 +41,9 @@ export const PHASES = [
   {
     id: 'victory',
     title: 'First contact',
-    body: 'Pirates broke off. Salvage is yours — then draw a gunner.',
+    body: 'They broke off. Salvage is yours — then draw a gunner for the third berth.',
     cta: 'Draw teammate',
-    tab: 'missions',
+    tab: 'ship',
     spotlight: 'draw-cta',
     kicker: '4 / 5',
     modal: 'victory',
@@ -51,7 +51,7 @@ export const PHASES = [
   {
     id: 'recruit',
     title: 'Jen Park comes aboard',
-    body: 'A station gunner hails from the wreck. Third berth is hers.',
+    body: 'Station gunner. Crit on the guns. Third berth is hers.',
     cta: 'Welcome aboard',
     tab: 'crew',
     spotlight: null,
@@ -121,6 +121,7 @@ export function defaultTutorial() {
     jestPrompted: false,
     lastRewards: null,
     recruit: null,
+    ordersBeat: null,
   };
 }
 
@@ -184,6 +185,9 @@ export function migrateTutorial(player) {
     }
   }
   if (t.completed) t.phase = 'done';
+  if (t.completed && !t.ordersBeat) {
+    t.ordersBeat = (player?.stats?.expeditions || 0) > 0 ? 'done' : 'exp';
+  }
   return { ...player, tutorial: t };
 }
 
@@ -204,6 +208,10 @@ export function noteTutorialEvent(player, event, payload = {}) {
   if (event === 'expedition_done' || event === 'expedition_start') {
     t = { ...t, firstExpedition: true, slot4Unlocked: true };
     crewSlots = Math.max(crewSlots, 4);
+    if (t.ordersBeat === 'exp') t = { ...t, ordersBeat: 'hire' };
+  }
+  if (event === 'hired' && t.ordersBeat === 'hire') {
+    t = { ...t, ordersBeat: 'done' };
   }
 
   if (!active) {
@@ -267,7 +275,7 @@ export function dismissTutorial(player) {
   if (t.phase !== 'join' && !t.completed) return player;
   return {
     ...player,
-    tutorial: { ...t, dismissed: true, completed: true, phase: 'done' },
+    tutorial: { ...t, dismissed: true, completed: true, phase: 'done', ordersBeat: t.ordersBeat || 'exp' },
   };
 }
 
@@ -281,6 +289,7 @@ export function completeTutorial(player, { registered = false } = {}) {
       phase: 'done',
       jestPrompted: true,
       registered,
+      ordersBeat: t.ordersBeat || 'exp',
     },
     crewSlots: Math.max(player.crewSlots || 0, 3),
   };
@@ -384,4 +393,62 @@ export function weekGoals(player) {
       },
     ],
   };
+}
+
+export function skipOrders(player) {
+  const t = { ...defaultTutorial(), ...(player.tutorial || {}) };
+  return { ...player, tutorial: { ...t, ordersBeat: 'done' } };
+}
+
+/** Post-intro coach (expedition then hire). Null when the day loop is taught. */
+export function ordersStep(player) {
+  if (isTutorialActive(player)) return null;
+  const beat = player.tutorial?.ordersBeat;
+  if (beat === 'exp') {
+    return {
+      title: 'Work while you are gone',
+      body: 'Launch Dustfall from Missions. Five minutes. Salvage lands when they return.',
+      cta: 'Open missions',
+      tab: 'ship',
+      spotlight: 'nav-missions',
+      kicker: 'Your day',
+      act: 'goto-missions',
+    };
+  }
+  if (beat === 'hire') {
+    return {
+      title: 'Fourth berth is open',
+      body: 'That run unlocked a slot. Free hire is waiting on Crew.',
+      cta: 'Open crew',
+      tab: 'ship',
+      spotlight: 'nav-crew',
+      kicker: 'Your day',
+      act: 'goto-crew',
+    };
+  }
+  return null;
+}
+
+/** Compact home chip after the day-loop lesson. */
+export function sessionHint(player, { fuel, now = Date.now() } = {}) {
+  if (isTutorialActive(player) || player.tutorial?.ordersBeat === 'exp' || player.tutorial?.ordersBeat === 'hire') {
+    return null;
+  }
+  const expReady = Boolean(player.activeExpedition && player.activeExpedition.endAt <= now);
+  if (fuel?.pendingWhole) {
+    return { title: 'Claim fuel', act: 'claim', kicker: 'Next' };
+  }
+  if (expReady) {
+    return { title: 'Expedition back', act: 'goto-missions', kicker: 'Next' };
+  }
+  if (player.dailyPullAvailable && player.crew.length < player.crewSlots) {
+    return { title: 'Free hire', act: 'goto-crew', kicker: 'Next' };
+  }
+  if ((player.ship?.hull ?? 100) < 40) {
+    return { title: 'Repair hull', act: 'select-room', room: 'engineering', kicker: 'Next' };
+  }
+  if ((fuel?.current || 0) > 0) {
+    return { title: 'Jump the Spur', act: 'goto-missions', kicker: 'Next' };
+  }
+  return { title: 'Fuel regen / Shop', act: 'goto-shop', kicker: 'Next' };
 }

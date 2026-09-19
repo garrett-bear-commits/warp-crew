@@ -21,6 +21,7 @@ import {
   buyProduct,
   fulfillIncompletePurchases,
 } from './systems/iap.js';
+import { sumPassives, repairHull } from './systems/passives.js';
 import {
   init as platformInit,
   markGameLoaded,
@@ -48,11 +49,12 @@ import {
   beginJoinPrompt,
   completeTutorial,
   preferredTab,
+  skipOrders,
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
 import { stopCrewSim } from './ui/crewWalk.js';
 import { playCombat, isBattlePlaying } from './ui/combatView.js';
-import { unlockSfx } from './ui/juice.js';
+import { unlockSfx, sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
 
 let app = null;
@@ -66,6 +68,30 @@ let selectedRoom = null;
 let platformStatus = 'booting';
 let shopProducts = null;
 let artReady = false;
+let toast = null;
+let toastTimer = 0;
+
+const TRAVEL_FAIL = {
+  not_enough_fuel: 'Not enough fuel.',
+  hull_critical: 'Hull is critical — repair in Engineering.',
+  locked_node: 'That lane is locked.',
+  unknown_node: 'Unknown jump.',
+};
+
+function showToast(next) {
+  toast = next || null;
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = 0;
+  }
+  if (toast) {
+    toastTimer = setTimeout(() => {
+      toast = null;
+      toastTimer = 0;
+      render();
+    }, 4200);
+  }
+}
 
 function pushLog(msg) {
   log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
@@ -97,9 +123,6 @@ function finishExpeditionResult(res) {
   {
     const te = noteTutorialEvent(player, 'expedition_done');
     player = te.player;
-    if (te.player.tutorial?.slot4Unlocked) {
-      /* slot unlock may raise crewSlots */
-    }
   }
   const skipNote = res.skipped ? ' (skipped)' : '';
   pushLog(
@@ -107,6 +130,11 @@ function finishExpeditionResult(res) {
       ? `Expedition success${skipNote}! +${res.rewards.credits}cr +${res.rewards.medals} medals +${res.rewards.reputation} rep`
       : `Expedition failed${skipNote}. Recovered +${res.rewards.credits}cr`
   );
+  showToast({
+    title: res.success ? 'Expedition complete' : 'Expedition failed',
+    rewards: res.rewards,
+  });
+  sfx(res.success ? 'coin' : 'hit');
 }
 
 function tryResolveExpedition({ force = false } = {}) {
@@ -155,6 +183,8 @@ function hydratePlayer() {
     player = daily.player;
     if (daily.isNewDay) {
       pushLog(`Login streak day ${daily.bonus.streak}. Bonus: ${JSON.stringify(daily.bonus)}`);
+      showToast({ title: `Day ${daily.bonus.streak} bonus`, rewards: daily.bonus });
+      sfx('coin');
     }
   } else if (daily.isNewDay) {
     // Hold the day-1 streak without dumping extra currencies into the intro.
@@ -162,7 +192,6 @@ function hydratePlayer() {
       ...player,
       lastLoginDay: daily.player.lastLoginDay,
       loginStreak: daily.player.loginStreak,
-      dailyPullAvailable: false,
     };
   }
 
@@ -249,6 +278,7 @@ function render() {
     platformStatus,
     shopProducts,
     artReady,
+    toast,
     handlers: {
       setTab: (t) => {
         if (isBattlePlaying()) return;
@@ -325,6 +355,42 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
   pushLog('Joined Jest. Crew, shop, and log are open.');
 }
 
+function doHire({ gems = false } = {}) {
+  if (!isFeatureUnlocked(player, 'gacha')) {
+    pushLog('Hiring opens after your first gunner signs on.');
+    return false;
+  }
+  const free = !gems && player.dailyPullAvailable;
+  const cost = free ? GACHA_COSTS.dailyFree : gems ? GACHA_COSTS.gems : GACHA_COSTS.credits;
+  if (!free && !canAfford(player.wallet, cost)) {
+    pushLog(gems ? 'Need 100 gems for a hire.' : 'Need credits for a pull.');
+    return false;
+  }
+  if (!free) player = { ...player, wallet: pay(player.wallet, cost).wallet };
+  else {
+    player = { ...player, dailyPullAvailable: false };
+    pushLog('Daily free pull used.');
+  }
+  const { instance, rarity } = pullMerc({ reputation: player.wallet.reputation });
+  if (player.crew.length < player.crewSlots) {
+    player = { ...player, crew: [...player.crew, instance] };
+    pushLog(`Hired ${instance.name} (${rarity}).`);
+    {
+      const te = noteTutorialEvent(player, 'hired');
+      player = te.player;
+    }
+    showToast({ title: `${instance.name} signs on` });
+    sfx('coin');
+  } else {
+    player = { ...player, wallet: grant(player.wallet, { credits: 50, medals: 2 }) };
+    pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold +50cr.`);
+    showToast({ title: `${instance.name} sold`, rewards: { credits: 50, medals: 2 } });
+  }
+  captureEvent('gacha_pull', { rarity, free, gems });
+  tab = 'crew';
+  return true;
+}
+
 async function handleAction(act, data = {}) {
   if (act === 'select-room') {
     selectedRoom = selectedRoom === data.room ? null : data.room;
@@ -336,12 +402,19 @@ async function handleAction(act, data = {}) {
     render();
     return;
   }
+  if (act === 'close-toast') {
+    showToast(null);
+    render();
+    return;
+  }
   if (act === 'claim' || act === 'exp-claim') {
     const claimed = claimFuelRegen(player);
     player = claimed.player;
     const resolved = tryResolveExpedition();
-    if (claimed.gained) pushLog(`Claimed +${claimed.gained} fuel.`);
-    else if (!resolved) pushLog('Nothing new to claim yet.');
+    if (claimed.gained) {
+      pushLog(`Claimed +${claimed.gained} fuel.`);
+      showToast({ title: `+${claimed.gained} fuel` });
+    } else if (!resolved) pushLog('Nothing new to claim yet.');
     await refreshNotifs();
   } else if (act === 'goto-missions') {
     if (!isTabUnlocked(player, 'missions')) return;
@@ -355,6 +428,22 @@ async function handleAction(act, data = {}) {
     if (!isTabUnlocked(player, 'shop')) return;
     tab = 'shop';
     selectedRoom = null;
+  } else if (act === 'orders-skip') {
+    player = skipOrders(player);
+  } else if (act === 'repair-hull') {
+    const cost = { credits: 35 };
+    if (!canAfford(player.wallet, cost)) {
+      pushLog('Need 35 credits to patch hull.');
+    } else if ((player.ship?.hull ?? 100) >= 100) {
+      pushLog('Hull is already sound.');
+    } else {
+      player = { ...player, wallet: pay(player.wallet, cost).wallet };
+      const r = repairHull(player, 25);
+      player = r.player;
+      pushLog(`Patched hull +${r.gained}% (−35cr).`);
+      showToast({ title: `Hull +${r.gained}%` });
+      sfx('coin');
+    }
   } else if (act === 'travel-to') {
     const nodeId = data.node;
     if (!nodeId) return;
@@ -364,7 +453,7 @@ async function handleAction(act, data = {}) {
     }
     const preview = previewTravel(player, nodeId);
     if (!preview.ok) {
-      pushLog(`Travel failed: ${preview.reason}`);
+      pushLog(`Travel failed: ${TRAVEL_FAIL[preview.reason] || preview.reason}`);
     } else if (preview.needsAssists) {
       pendingCombat = preview;
       selectedAssists = ['shield_boost'];
@@ -375,13 +464,22 @@ async function handleAction(act, data = {}) {
       }
     } else {
       const res = commitTravel(player, preview);
-      if (!res.ok) pushLog(`Travel failed: ${res.reason}`);
+      if (!res.ok) pushLog(`Travel failed: ${TRAVEL_FAIL[res.reason] || res.reason}`);
       else {
         player = res.player;
         logTravelResult(res.result);
         const te = noteTutorialEvent(player, 'travel_success');
         player = te.player;
         if (te.advanced) pushLog('Tutorial: first jump logged.');
+        if (res.result.rewards) {
+          showToast({
+            title: res.result.beat?.title || `${res.result.kind} · ${res.result.node.name}`,
+            rewards: res.result.rewards,
+          });
+          sfx('coin');
+        } else if (res.result.beat) {
+          showToast({ title: res.result.beat.title });
+        }
         captureEvent('travel', { node: nodeId, kind: res.result.kind });
         await refreshNotifs();
       }
@@ -403,7 +501,7 @@ async function handleAction(act, data = {}) {
         win: Boolean(res.result?.combat?.success ?? res.ok),
         onDone: async () => {
           if (!res.ok) {
-            pushLog(`Engage failed: ${res.reason}`);
+            pushLog(`Engage failed: ${TRAVEL_FAIL[res.reason] || res.reason}`);
             persist();
             render();
             return;
@@ -418,12 +516,14 @@ async function handleAction(act, data = {}) {
             success: res.result.combat?.success,
             encounter: res.result.combat?.encounter?.id,
           });
-          if (isTutorialActive(player)) {
-            captureEvent('tutorial_stage', { stage: player.tutorial?.phase });
-            tab = 'ship';
-          } else {
-            tab = 'log';
+          tab = 'ship';
+          if (!isTutorialActive(player)) {
+            showToast({
+              title: res.result.combat?.success ? 'Victory' : 'Hull holds',
+              rewards: res.result.rewards,
+            });
           }
+          sfx(res.result.combat?.success ? 'win' : 'hit');
           await refreshNotifs();
           persist();
           render();
@@ -458,6 +558,7 @@ async function handleAction(act, data = {}) {
         const chance = expeditionSuccessChance({
           crewPower: crewPower(crew),
           planetDifficulty: planet.difficulty,
+          gearBonus: sumPassives(crew).expeditionSuccess || 0,
         });
         const job = startExpedition({
           planetId: planet.id,
@@ -509,36 +610,8 @@ async function handleAction(act, data = {}) {
     };
     pushLog('Early extract — expedition failed.');
     await refreshNotifs();
-  } else if (act === 'gacha') {
-    if (!isFeatureUnlocked(player, 'gacha')) {
-      pushLog('Hiring opens after your first gunner signs on.');
-      return;
-    }
-    const free = player.dailyPullAvailable;
-    const cost = free ? GACHA_COSTS.dailyFree : GACHA_COSTS.credits;
-    if (!free && !canAfford(player.wallet, cost)) {
-      pushLog('Need credits for a pull.');
-      return;
-    }
-    if (!free) player = { ...player, wallet: pay(player.wallet, cost).wallet };
-    else {
-      player = { ...player, dailyPullAvailable: false };
-      pushLog('Daily free pull used.');
-    }
-    const { instance, rarity } = pullMerc({ reputation: player.wallet.reputation });
-    if (player.crew.length < player.crewSlots) {
-      player = { ...player, crew: [...player.crew, instance] };
-      pushLog(`Hired ${instance.name} (${rarity}).`);
-      {
-        const te = noteTutorialEvent(player, 'hired');
-        player = te.player;
-      }
-    } else {
-      player = { ...player, wallet: grant(player.wallet, { credits: 50, medals: 2 }) };
-      pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold +50cr.`);
-    }
-    captureEvent('gacha_pull', { rarity, free });
-    tab = 'crew';
+  } else if (act === 'gacha' || act === 'gacha-gems') {
+    doHire({ gems: act === 'gacha-gems' });
     await refreshNotifs();
   } else if (act === 'level-crew') {
     const c = player.crew.find((x) => x.instanceId === data.id);
@@ -556,6 +629,7 @@ async function handleAction(act, data = {}) {
         ),
       };
       pushLog(`${c.name} → Lv ${c.level + 1} (−${cost} medals).`);
+      showToast({ title: `${c.name} Lv ${c.level + 1}` });
     }
   } else if (act === 'ship-upgrade') {
     if (isTutorialActive(player) && !isFeatureUnlocked(player, 'hangar')) {
@@ -571,6 +645,7 @@ async function handleAction(act, data = {}) {
     } else {
       player = res.player;
       pushLog(`Upgraded ${system}. Crew slots: ${player.crewSlots}.`);
+      showToast({ title: `${system} up` });
       captureEvent('ship_upgrade', { system });
     }
   } else if (act === 'hull-buy') {
@@ -588,6 +663,7 @@ async function handleAction(act, data = {}) {
     } else {
       player = res.player;
       pushLog(`Acquired ${res.def.name}! Crew capacity ${res.def.crewSlots}.`);
+      showToast({ title: `${res.def.name} acquired` });
       captureEvent('hull_buy', { ship: data.ship, currency: data.currency });
     }
   } else if (act === 'hull-switch') {
@@ -609,8 +685,9 @@ async function handleAction(act, data = {}) {
     else {
       player = res.player;
       pushLog(`Purchased ${sku}. Rewards applied.`);
+      showToast({ title: 'Purchase applied' });
+      sfx('coin');
       captureEvent('iap_success', { sku });
-      // Soft prompt registration after first spend if guest
       const jp = getJestPlayer();
       if (jp && !jp.registered) {
         pushLog('Tip: register to keep purchases across devices.');
@@ -638,6 +715,7 @@ async function handleAction(act, data = {}) {
     tab = 'crew';
     selectedRoom = null;
     pushLog(`${granted.instance.name} signs on as gunner.`);
+    sfx('coin');
     captureEvent('tutorial_stage', { stage: 'recruit' });
   } else if (act === 'tutorial-to-join') {
     player = beginJoinPrompt(player);
@@ -668,6 +746,7 @@ async function handleAction(act, data = {}) {
     pendingCombat = null;
     selectedAssists = [];
     tab = 'ship';
+    showToast(null);
     pushLog('Save reset.');
   }
 
@@ -679,11 +758,12 @@ function logTravelResult(r) {
   if (r.combat) {
     const a = (r.combat.assistsUsed || []).join(', ') || 'none';
     pushLog(`${r.combat.encounter.name}: ${r.combat.log} [assists: ${a}]`);
+  } else if (r.beat) {
+    pushLog(`Story — ${r.beat.title}: ${r.beat.text}`);
   } else if (r.rewards) {
     pushLog(`${r.kind} @ ${r.node.name}: ${JSON.stringify(r.rewards)}`);
   } else if (r.flag) {
-    if (r.beat) pushLog(`Story — ${r.beat.title}: ${r.beat.text}`);
-    else pushLog(`Story: ${r.flag}`);
+    pushLog(`Story: ${r.flag}`);
   } else {
     pushLog(`Arrived ${r.node.name}`);
   }
