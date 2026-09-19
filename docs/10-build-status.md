@@ -31,3 +31,10 @@
 - Mockup-aligned UI (SHIP/CREW/MISSIONS/SHOP/LOG)
 - Expeditions **15 minutes** for testing
 - Force-push package prepared for GitHub main
+
+## Phase A (2026-09-18)
+- [x] Travel map UI
+- [x] Combat assist picker
+- [x] Expedition gem skip (15g)
+- [x] Login streak + daily free pull reset
+- [x] Light balance for 15m test loop

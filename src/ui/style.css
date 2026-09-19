@@ -192,3 +192,44 @@ button.danger { border-color: var(--bad); }
 }
 
 #boot { text-align: center; padding: 48px 12px; color: var(--muted); }
+
+.map-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.map-node {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 88px;
+  background: #0a1220;
+}
+.map-node.here {
+  border-color: var(--good);
+  opacity: 0.85;
+}
+.map-title { font-size: 0.8rem; color: var(--cyan); }
+.map-meta { font-size: 0.68rem; color: var(--muted); }
+.map-blurb { font-size: 0.68rem; color: #9aacc4; line-height: 1.25; }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+.modal {
+  width: min(430px, 100%);
+  max-height: 80vh;
+  overflow: auto;
+  margin-bottom: 64px;
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 40px rgba(92,225,255,0.15);
+}

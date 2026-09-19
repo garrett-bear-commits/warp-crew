@@ -46,3 +46,8 @@ export const ENCOUNTERS_V1 = [
   { id: 'swarm_probe', name: 'Eclipse Probe', power: 55, fuelCost: 1 },
   { id: 'swarm_skirmish', name: 'Eclipse Skirmish', power: 80, fuelCost: 2 },
 ];
+
+
+export function listAssists() {
+  return Object.values(ASSISTS);
+}

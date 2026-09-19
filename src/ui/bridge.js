@@ -1,8 +1,8 @@
 import { fuelStatus } from '../systems/fuel.js';
 import { formatDuration } from '../shared/timer.js';
 import { NODES } from '../data/sectors.js';
-import { PLANETS_V1 } from '../systems/expedition.js';
-import { ASSISTS } from '../systems/combat.js';
+import { PLANETS_V1, EXPEDITION_SKIP_GEMS } from '../systems/expedition.js';
+import { ASSISTS, listAssists } from '../systems/combat.js';
 
 const PLANET_CLASS = {
   derelict_freighter: 'a',
@@ -12,10 +12,18 @@ const PLANET_CLASS = {
 };
 
 export function renderApp(root, ctx) {
-  const { player, log, tab, handlers, now = Date.now() } = ctx;
+  const {
+    player,
+    log,
+    tab,
+    handlers,
+    now = Date.now(),
+    pendingCombat = null,
+    selectedAssists = [],
+  } = ctx;
   const fuel = fuelStatus(player, now);
   const loc = NODES[player.location] || { name: player.location };
-  const hullPct = 100; // v1 full; combat injury later
+  const hullPct = 100;
   const shieldPct = Math.min(100, 60 + (player.ship.systems?.shields || 1) * 10);
 
   root.innerHTML = `
@@ -35,6 +43,7 @@ export function renderApp(root, ctx) {
         </div>
         <div class="stat-row">
           <div class="stat">DAY <b>${dayNumber(player)}</b></div>
+          <div class="stat">STREAK <b>${player.loginStreak || 0}</b></div>
           <div class="stat">CR <b>${player.wallet.credits}</b></div>
         </div>
       </div>
@@ -51,9 +60,11 @@ export function renderApp(root, ctx) {
       Regen ${fuel.ratePerHour}/hr
       ${fuel.isFull ? ' · FULL' : ` · +1 in ${formatDuration(Math.max(0, fuel.nextUnitAt - now))}`}
       ${fuel.pendingWhole ? ` · claim +${fuel.pendingWhole}` : ''}
-      · Expeditions: 15m test cadence
+      · Free pull: ${player.dailyPullAvailable ? 'READY' : 'used'}
+      · Expeditions: 15m test
     </div>
 
+    ${pendingCombat ? renderCombatModal(pendingCombat, selectedAssists) : ''}
     ${tab === 'ship' ? renderShip(player) : ''}
     ${tab === 'missions' ? renderMissions(player, now) : ''}
     ${tab === 'crew' ? renderCrew(player) : ''}
@@ -73,13 +84,46 @@ export function renderApp(root, ctx) {
     btn.addEventListener('click', () => handlers.setTab(btn.getAttribute('data-tab')));
   });
   root.querySelectorAll('[data-act]').forEach((btn) => {
-    btn.addEventListener('click', () => handlers.onAction(btn.getAttribute('data-act'), btn.dataset));
+    btn.addEventListener('click', () => handlers.onAction(btn.getAttribute('data-act'), { ...btn.dataset }));
+  });
+  root.querySelectorAll('[data-assist]').forEach((btn) => {
+    btn.addEventListener('click', () => handlers.toggleAssist(btn.getAttribute('data-assist')));
   });
 }
 
 function dayNumber(player) {
   const ms = Date.now() - (player.createdAt || Date.now());
   return 1 + Math.floor(ms / 86400000);
+}
+
+function renderCombatModal(pending, selectedAssists) {
+  const assists = listAssists();
+  const assistPower = selectedAssists.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
+  return `
+    <div class="modal-backdrop">
+      <div class="modal panel">
+        <h2>Combat · ${pending.encounter.name}</h2>
+        <div class="muted">${pending.node.name} · fuel −${pending.fuelCost}</div>
+        <div class="stat-row" style="margin:10px 0">
+          <div class="stat">Your power <b>${pending.playerPower}</b></div>
+          <div class="stat">Enemy <b>${pending.encounter.power}</b></div>
+          <div class="stat">Assists <b>+${assistPower}</b></div>
+        </div>
+        <div class="muted" style="margin-bottom:8px">Pick assists (free in v1 — skill expression)</div>
+        <div class="row">
+          ${assists.map((a) => `
+            <button data-assist="${a.id}" class="${selectedAssists.includes(a.id)?'primary':''}">
+              ${a.name} (+${a.power})
+            </button>
+          `).join('')}
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button class="primary" data-act="combat-confirm">Engage</button>
+          <button data-act="combat-cancel">Abort jump</button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderShip(player) {
@@ -89,7 +133,7 @@ function renderShip(player) {
         <h1>Warp Crew</h1>
         <button class="primary" data-act="claim">Claim</button>
       </div>
-      <div class="muted">${player.captainName} · ${player.ship.shipId.toUpperCase()}</div>
+      <div class="muted">${player.captainName} · ${player.ship.shipId.toUpperCase()} · streak ${player.loginStreak || 0}</div>
       <div class="ship-frame">
         <div class="ship-silhouette" title="Sparrow schematic"></div>
         <div class="room-grid">
@@ -102,7 +146,7 @@ function renderShip(player) {
         </div>
       </div>
       <div class="row" style="margin-top:8px">
-        <button data-act="travel">Travel (fuel)</button>
+        <button data-act="goto-missions">Missions / Travel</button>
         <button data-act="ship-upgrade">Expand quarters</button>
         <button data-act="qa-fuel">QA +5 Fuel</button>
       </div>
@@ -117,10 +161,32 @@ function crewInRole(player, role) {
 
 function renderMissions(player, now) {
   const exp = player.activeExpedition;
+  const here = player.location;
+  const nodes = Object.values(NODES);
+
   return `
     <div class="panel">
-      <h2>Missions</h2>
-      <div class="muted">Planetary expeditions · 15 min test timers · success % shown</div>
+      <h2>Star map · The Spur</h2>
+      <div class="muted">Tap a destination. Combat jumps open the assist picker.</div>
+      <div class="map-grid">
+        ${nodes.map((n) => {
+          const hereCls = n.id === here ? 'here' : '';
+          const cost = n.fuelCost ?? 0;
+          return `
+            <button class="map-node ${hereCls}" data-act="travel-to" data-node="${n.id}"
+              ${n.id === here ? 'disabled' : ''}>
+              <span class="map-title">${n.name}</span>
+              <span class="map-meta">${n.type} · ${cost}F</span>
+              <span class="map-blurb">${n.blurb || ''}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Expeditions</h2>
+      <div class="muted">15 min test timers · gem skip ${EXPEDITION_SKIP_GEMS}g · success % shown</div>
       ${exp ? `
         <div class="mission-card" style="margin-top:10px;border-color:var(--cyan)">
           <div class="planet ${PLANET_CLASS[exp.payload.planetId] || 'a'}"></div>
@@ -128,12 +194,13 @@ function renderMissions(player, now) {
             <b>ACTIVE · ${planetName(exp.payload.planetId)}</b>
             <div class="muted">${(exp.payload.successChance*100)|0}% · ${formatDuration(Math.max(0, exp.endAt - now))} left</div>
           </div>
-          <div class="row">
+          <div class="row" style="flex-direction:column;gap:6px">
             <button data-act="exp-claim">Claim</button>
+            <button class="primary" data-act="exp-skip">Skip ${EXPEDITION_SKIP_GEMS}g</button>
             <button class="danger" data-act="exp-abort">Extract</button>
           </div>
         </div>
-      ` : PLANETS_V1.map((p, i) => `
+      ` : PLANETS_V1.map((p) => `
         <div class="mission-card">
           <div class="planet ${PLANET_CLASS[p.id] || 'a'}"></div>
           <div>
@@ -144,15 +211,6 @@ function renderMissions(player, now) {
           <button class="primary" data-act="exp-start" data-planet="${p.id}">Launch</button>
         </div>
       `).join('')}
-    </div>
-    <div class="panel">
-      <h2>Travel lanes</h2>
-      <div class="muted">Spend fuel to jump. Outcomes: trade, combat, story, salvage.</div>
-      <div class="row" style="margin-top:8px">
-        ${Object.values(NODES).filter(n=>n.id!==player.location).map(n => `
-          <button data-act="travel-to" data-node="${n.id}">${n.name} (${n.fuelCost}F)</button>
-        `).join('')}
-      </div>
     </div>
   `;
 }
@@ -166,7 +224,9 @@ function renderCrew(player) {
     <div class="panel">
       <div class="row" style="justify-content:space-between">
         <h2>Crew Bay · ${player.crew.length}/${player.crewSlots}</h2>
-        <button class="primary" data-act="gacha">Hire (gacha)</button>
+        <button class="primary" data-act="gacha">
+          ${player.dailyPullAvailable ? 'Free hire' : 'Hire 500cr'}
+        </button>
       </div>
       ${player.crew.map((c) => `
         <div class="crew-card">
@@ -179,7 +239,6 @@ function renderCrew(player) {
           <button data-act="level-crew" data-id="${c.instanceId}" style="margin-top:6px">Level up (medals)</button>
         </div>
       `).join('') || '<div class="muted">No crew</div>'}
-      <div class="muted" style="margin-top:8px">Assists: ${Object.values(ASSISTS).map(a=>a.name).join(' · ')}</div>
     </div>
   `;
 }
@@ -192,7 +251,7 @@ function renderShop(player) {
         <div class="planet b"></div>
         <div>
           <b>Starter Pack</b>
-          <div class="muted">Fuel + gems + rare merc teaser</div>
+          <div class="muted">Fuel + gems for testing</div>
         </div>
         <button data-act="qa-gems">QA +100 gems</button>
       </div>
@@ -200,7 +259,7 @@ function renderShop(player) {
         <div class="planet c"></div>
         <div>
           <b>Fuel Cell ×5</b>
-          <div class="muted">Instant fuel for testing</div>
+          <div class="muted">Instant fuel</div>
         </div>
         <button data-act="qa-fuel">+5 Fuel</button>
       </div>
@@ -208,7 +267,7 @@ function renderShop(player) {
         <div class="planet a"></div>
         <div>
           <b>Corvette (soon)</b>
-          <div class="muted">6 crew slots · gems or long credit grind</div>
+          <div class="muted">6 crew · gems or long grind</div>
         </div>
         <button disabled>Locked</button>
       </div>
@@ -221,7 +280,7 @@ function renderLog(log) {
   return `
     <div class="panel">
       <h2>Captain's Log</h2>
-      <div class="log">${(log || []).slice(-20).map(escapeHtml).join('\n') || 'No entries.'}</div>
+      <div class="log">${(log || []).slice(-24).map(escapeHtml).join('\n') || 'No entries.'}</div>
     </div>
   `;
 }

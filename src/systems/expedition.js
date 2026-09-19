@@ -1,12 +1,15 @@
 import { makeTimedJob, wallClockProgress } from '../shared/timer.js';
 
-/** Test cadence — set TEST_EXPEDITION_MINUTES = 360 for launch (6h) */
+/** Test cadence — set to 360 for launch (6h) */
 export const TEST_EXPEDITION_MINUTES = 15;
 export const LAUNCH_EXPEDITION_MINUTES = 360;
 
+/** Gem cost to finish an active expedition immediately (success roll still applies). */
+export const EXPEDITION_SKIP_GEMS = 15;
+
 export function expeditionSuccessChance({ crewPower, planetDifficulty, gearBonus = 0 }) {
-  const raw = 0.35 + (crewPower / (crewPower + planetDifficulty)) * 0.55 + gearBonus;
-  return Math.max(0.05, Math.min(0.95, raw));
+  const raw = 0.38 + (crewPower / (crewPower + planetDifficulty)) * 0.52 + gearBonus;
+  return Math.max(0.08, Math.min(0.94, raw));
 }
 
 export function startExpedition({
@@ -29,14 +32,16 @@ export function startExpedition({
   });
 }
 
-export function resolveExpedition(job, { rng = Math.random } = {}) {
+export function resolveExpedition(job, { rng = Math.random, forceComplete = false } = {}) {
   const { progress, complete } = wallClockProgress(job);
-  if (!complete) return { ready: false, progress };
+  if (!forceComplete && !complete) return { ready: false, progress };
+
   const success = rng() < (job.payload.successChance ?? 0.5);
-  const mult = success ? 1 : 0.15;
+  const mult = success ? 1 : 0.18;
+  // Slightly tuned for 15m test loop — still meaningful but not print money
   const rewards = {
-    credits: Math.floor((80 + (job.payload.successChance || 0.5) * 120) * mult),
-    medals: Math.floor((12 + (job.payload.successChance || 0.5) * 20) * mult),
+    credits: Math.floor((70 + (job.payload.successChance || 0.5) * 110) * mult),
+    medals: Math.floor((10 + (job.payload.successChance || 0.5) * 18) * mult),
     reputation: success ? 5 : 1,
   };
   return {
@@ -44,10 +49,19 @@ export function resolveExpedition(job, { rng = Math.random } = {}) {
     success,
     rewards,
     crewInstanceIds: job.payload.crewInstanceIds,
+    skipped: Boolean(forceComplete),
   };
 }
 
-/** Mission board destinations (aligns with mockup: freighter / asteroid / outpost) */
+/** Instant-complete by setting endAt to now (caller pays gems). */
+export function skipExpeditionJob(job, now = Date.now()) {
+  return {
+    ...job,
+    endAt: now,
+    payload: { ...job.payload, skippedWithGems: true },
+  };
+}
+
 export const PLANETS_V1 = [
   {
     id: 'derelict_freighter',
@@ -73,8 +87,8 @@ export const PLANETS_V1 = [
   {
     id: 'dustfall',
     name: 'Dustfall Outpost',
-    difficulty: 20,
-    minutes: Math.max(5, Math.floor(TEST_EXPEDITION_MINUTES / 2)),
+    difficulty: 18,
+    minutes: Math.max(5, Math.floor(TEST_EXPEDITION_MINUTES / 3)),
     blurb: 'Tutorial scrap moon — short run.',
   },
 ];

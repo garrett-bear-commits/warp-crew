@@ -7,10 +7,16 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node test/timer.test.mjs && node test/fuel.test.mjs && node test/economy.test.mjs"
+    "test": "node test/timer.test.mjs && node test/fuel.test.mjs && node test/economy.test.mjs && node test/daily.test.mjs && node test/travel_phase_a.test.mjs"
   },
   "devDependencies": {
     "vite": "^6.0.0"
   },
-  "keywords": ["idle", "space", "jest", "crew", "ship"]
+  "keywords": [
+    "idle",
+    "space",
+    "jest",
+    "crew",
+    "ship"
+  ]
 }

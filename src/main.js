@@ -1,7 +1,7 @@
-import { createNewPlayer, readyCrew } from './systems/player.js';
+import { createNewPlayer, readyCrew, migratePlayer } from './systems/player.js';
 import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { claimFuelRegen } from './systems/fuel.js';
-import { travelTo } from './systems/travel.js';
+import { previewTravel, commitTravel } from './systems/travel.js';
 import { pullMerc, GACHA_COSTS } from './systems/gacha.js';
 import { canAfford, pay, grant } from './systems/economy.js';
 import {
@@ -9,8 +9,11 @@ import {
   expeditionSuccessChance,
   startExpedition,
   resolveExpedition,
+  skipExpeditionJob,
+  EXPEDITION_SKIP_GEMS,
 } from './systems/expedition.js';
 import { crewPower } from './systems/combat.js';
+import { applyDailyLogin } from './systems/daily.js';
 import { renderApp } from './ui/bridge.js';
 import { MEDAL_LEVEL_COST } from './data/crewRoster.js';
 
@@ -18,6 +21,8 @@ const app = document.getElementById('app');
 const log = [];
 let player = null;
 let tab = 'ship';
+let pendingCombat = null;
+let selectedAssists = [];
 
 function pushLog(msg) {
   log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
@@ -28,10 +33,7 @@ function persist() {
   writeSave(player);
 }
 
-function tryResolveExpedition() {
-  if (!player.activeExpedition) return;
-  const res = resolveExpedition(player.activeExpedition);
-  if (!res.ready) return false;
+function finishExpeditionResult(res) {
   player = {
     ...player,
     wallet: grant(player.wallet, res.rewards),
@@ -41,24 +43,39 @@ function tryResolveExpedition() {
     ),
     stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1 },
   };
+  const skipNote = res.skipped ? ' (skipped)' : '';
   pushLog(
     res.success
-      ? `Expedition success! +${res.rewards.credits}cr +${res.rewards.medals} medals +${res.rewards.reputation} rep`
-      : `Expedition failed. Recovered +${res.rewards.credits}cr`
+      ? `Expedition success${skipNote}! +${res.rewards.credits}cr +${res.rewards.medals} medals +${res.rewards.reputation} rep`
+      : `Expedition failed${skipNote}. Recovered +${res.rewards.credits}cr`
   );
+}
+
+function tryResolveExpedition({ force = false } = {}) {
+  if (!player.activeExpedition) return false;
+  const res = resolveExpedition(player.activeExpedition, { forceComplete: force });
+  if (!res.ready) return false;
+  finishExpeditionResult(res);
   return true;
 }
 
 function boot() {
   const saved = loadSave();
   if (saved?.player) {
-    player = saved.player;
+    player = migratePlayer(saved.player);
     pushLog('Welcome back, Captain.');
   } else {
     player = createNewPlayer({ captainName: 'Captain' });
     pushLog('Career start aboard Sparrow.');
-    pushLog('15-minute test expeditions active. Claim fuel, run missions, hire mercs.');
+    pushLog('Phase A: map travel, combat assists, gem skip, login streak.');
   }
+
+  const daily = applyDailyLogin(player);
+  player = daily.player;
+  if (daily.isNewDay) {
+    pushLog(`Login streak day ${daily.bonus.streak}. Bonus: ${JSON.stringify(daily.bonus)}`);
+  }
+
   const claimed = claimFuelRegen(player);
   player = claimed.player;
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
@@ -72,9 +89,22 @@ function render() {
     player,
     log,
     tab,
+    pendingCombat,
+    selectedAssists,
     handlers: {
-      setTab: (t) => { tab = t; render(); },
+      setTab: (t) => {
+        tab = t;
+        render();
+      },
       onAction: handleAction,
+      toggleAssist: (id) => {
+        if (selectedAssists.includes(id)) {
+          selectedAssists = selectedAssists.filter((x) => x !== id);
+        } else {
+          selectedAssists = [...selectedAssists, id];
+        }
+        render();
+      },
     },
   });
 }
@@ -86,20 +116,47 @@ function handleAction(act, data = {}) {
     const resolved = tryResolveExpedition();
     if (claimed.gained) pushLog(`Claimed +${claimed.gained} fuel.`);
     else if (!resolved) pushLog('Nothing new to claim yet.');
-  } else if (act === 'travel' || act === 'travel-to') {
-    const nodeId = data.node || 'lane_a';
-    const res = travelTo(player, nodeId, { assistsUsed: ['shield_boost'] });
+  } else if (act === 'goto-missions') {
+    tab = 'missions';
+  } else if (act === 'travel-to') {
+    const nodeId = data.node;
+    if (!nodeId) return;
+    if (nodeId === player.location) {
+      pushLog('Already here.');
+      return;
+    }
+    const preview = previewTravel(player, nodeId);
+    if (!preview.ok) {
+      pushLog(`Travel failed: ${preview.reason}`);
+    } else if (preview.needsAssists) {
+      pendingCombat = preview;
+      selectedAssists = ['shield_boost'];
+      pushLog(`Contact at ${preview.node.name} — choose assists.`);
+    } else {
+      const res = commitTravel(player, preview);
+      if (!res.ok) {
+        pushLog(`Travel failed: ${res.reason}`);
+      } else {
+        player = res.player;
+        logTravelResult(res.result);
+      }
+    }
+  } else if (act === 'combat-confirm') {
+    if (!pendingCombat) return;
+    const res = commitTravel(player, pendingCombat, { assistsUsed: selectedAssists });
+    pendingCombat = null;
+    selectedAssists = [];
     if (!res.ok) {
-      pushLog(`Travel failed: ${res.reason}`);
+      pushLog(`Engage failed: ${res.reason}`);
     } else {
       player = res.player;
-      const r = res.result;
-      if (r.combat) pushLog(`${r.combat.encounter.name}: ${r.combat.log}`);
-      else if (r.rewards) pushLog(`${r.kind} @ ${r.node.name}: ${JSON.stringify(r.rewards)}`);
-      else if (r.flag) pushLog(`Story flag: ${r.flag}`);
-      else pushLog(`Arrived ${r.node.name}`);
+      logTravelResult(res.result);
       tab = 'log';
     }
+  } else if (act === 'combat-cancel') {
+    pendingCombat = null;
+    selectedAssists = [];
+    pushLog('Jump aborted. Fuel not spent.');
   } else if (act === 'exp-start') {
     if (player.activeExpedition) {
       pushLog('Expedition already active.');
@@ -129,6 +186,20 @@ function handleAction(act, data = {}) {
         pushLog(`Launched ${planet.name} (${(chance * 100) | 0}% · ${planet.minutes}m).`);
       }
     }
+  } else if (act === 'exp-skip') {
+    if (!player.activeExpedition) return;
+    const cost = { gems: EXPEDITION_SKIP_GEMS };
+    if (!canAfford(player.wallet, cost)) {
+      pushLog(`Need ${EXPEDITION_SKIP_GEMS} gems to skip.`);
+      return;
+    }
+    player = {
+      ...player,
+      wallet: pay(player.wallet, cost).wallet,
+      activeExpedition: skipExpeditionJob(player.activeExpedition),
+    };
+    tryResolveExpedition({ force: true });
+    pushLog(`Spent ${EXPEDITION_SKIP_GEMS} gems to finish expedition.`);
   } else if (act === 'exp-abort') {
     if (!player.activeExpedition) return;
     const ids = player.activeExpedition.payload.crewInstanceIds || [];
@@ -205,12 +276,29 @@ function handleAction(act, data = {}) {
   } else if (act === 'qa-reset') {
     clearSave();
     player = createNewPlayer();
+    pendingCombat = null;
+    selectedAssists = [];
     tab = 'ship';
+    const daily = applyDailyLogin(player);
+    player = daily.player;
     pushLog('Save reset.');
   }
 
   persist();
   render();
+}
+
+function logTravelResult(r) {
+  if (r.combat) {
+    const a = (r.combat.assistsUsed || []).join(', ') || 'none';
+    pushLog(`${r.combat.encounter.name}: ${r.combat.log} [assists: ${a}]`);
+  } else if (r.rewards) {
+    pushLog(`${r.kind} @ ${r.node.name}: ${JSON.stringify(r.rewards)}`);
+  } else if (r.flag) {
+    pushLog(`Story: ${r.flag}`);
+  } else {
+    pushLog(`Arrived ${r.node.name}`);
+  }
 }
 
 boot();
