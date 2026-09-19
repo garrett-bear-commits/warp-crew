@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Warp Crew: Idle Starship</title>
+  <base href="/warp-crew/" />
+  <link rel="stylesheet" href="src/ui/style.css" />
+  <style>
+    #boot { font-family: system-ui, sans-serif; color: #9ad5ff; padding: 24px; background: #0a0e14; min-height: 100vh; }
+    #boot.error { color: #ff8a8a; white-space: pre-wrap; }
+  </style>
+  <script>
+    window.__jestSdkReady = new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jest.com/sdk/latest/jestsdk.js';
+      s.async = true;
+      const done = () => resolve(!!window.JestSDK);
+      s.onload = done;
+      s.onerror = () => { console.warn('[warp-crew] JestSDK CDN unavailable'); done(); };
+      setTimeout(done, 2500);
+      document.head.appendChild(s);
+    });
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="boot">Loading Warp Crew…</div>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
