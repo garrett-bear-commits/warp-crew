@@ -1,19 +1,12 @@
 // @ts-nocheck
 import { regenAmount, MS_PER_HOUR } from '../shared/timer.js';
 import { clampFuel } from './economy.js';
-import { isMember } from './shop.js';
-import { MEMBER_FUEL_MULT } from '../data/monetization.js';
 
 export const DEFAULT_FUEL_CONFIG = {
   ratePerHour: 1,
   startingMax: 10,
   startingFuel: 8,
 };
-
-function fuelRate(player, now = Date.now()) {
-  const base = player.fuelRatePerHour ?? DEFAULT_FUEL_CONFIG.ratePerHour;
-  return isMember(player, now) ? base * MEMBER_FUEL_MULT : base;
-}
 
 /**
  * Claim offline fuel regen into wallet.
@@ -23,10 +16,9 @@ export function claimFuelRegen(player, now = Date.now()) {
   const max = player.fuelMax ?? DEFAULT_FUEL_CONFIG.startingMax;
   const current = player.wallet?.fuel ?? 0;
   const last = player.fuelClaimAt ?? now;
-  const rate = fuelRate(player, now);
   const { gained, nextAt } = regenAmount({
     lastClaimAt: last,
-    ratePerHour: rate,
+    ratePerHour: player.fuelRatePerHour ?? DEFAULT_FUEL_CONFIG.ratePerHour,
     max,
     current,
     now,
@@ -37,12 +29,15 @@ export function claimFuelRegen(player, now = Date.now()) {
     return {
       player: {
         ...player,
+        // advance claim cursor partially so we don't lose fractional progress? 
         // Keep last claim; fractional is recomputed each time from last whole claim.
       },
       gained: 0,
       nextFuelAt: nextAt,
     };
   }
+  // Move claimAt forward by whole units worth of time
+  const rate = player.fuelRatePerHour ?? DEFAULT_FUEL_CONFIG.ratePerHour;
   const msPerUnit = MS_PER_HOUR / rate;
   const newClaimAt = last + whole * msPerUnit;
   let wallet = { ...player.wallet, fuel: current + whole };
@@ -64,7 +59,7 @@ export function spendFuel(player, amount = 1) {
 export function fuelStatus(player, now = Date.now()) {
   const max = player.fuelMax ?? DEFAULT_FUEL_CONFIG.startingMax;
   const current = player.wallet?.fuel ?? 0;
-  const rate = fuelRate(player, now);
+  const rate = player.fuelRatePerHour ?? DEFAULT_FUEL_CONFIG.ratePerHour;
   const last = player.fuelClaimAt ?? now;
   const { gained, nextAt } = regenAmount({
     lastClaimAt: last,
@@ -77,7 +72,6 @@ export function fuelStatus(player, now = Date.now()) {
     current,
     max,
     ratePerHour: rate,
-    member: isMember(player, now),
     pendingWhole: Math.floor(gained),
     nextUnitAt: nextAt,
     isFull: current >= max,

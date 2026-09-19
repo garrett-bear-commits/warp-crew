@@ -6,8 +6,6 @@
  * Safe to call helpers before init — they no-op until ready.
  */
 
-import { PRODUCT_CATALOG } from '../data/monetization.js';
-
 const globalJest = () =>
   typeof window !== 'undefined' ? window.JestSDK || null : null;
 
@@ -282,12 +280,12 @@ export async function getProducts() {
   if (ready && sdk?.payments?.getProducts) {
     return sdk.payments.getProducts();
   }
-  return Object.values(PRODUCT_CATALOG).map((p) => ({
-    sku: p.sku,
-    name: p.name,
-    price: p.usd,
-    currency: 'USD',
-  }));
+  return [
+    { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', price: 0.99, currency: 'USD' },
+    { sku: 'wc_gems_100', name: 'Gem Pack 100', price: 1.99, currency: 'USD' },
+    { sku: 'wc_starter', name: 'Starter Pack', price: 4.99, currency: 'USD' },
+    { sku: 'wc_gems_500', name: 'Gem Crate 500', price: 7.99, currency: 'USD' },
+  ];
 }
 
 export async function purchaseProduct(productSku) {

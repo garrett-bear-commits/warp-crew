@@ -3,7 +3,6 @@ import { createCrewInstance } from '../data/crewRoster.js';
 import { starterShip } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
 import { defaultTutorial, TUTORIAL_SCRIPT } from './tutorial.js';
-import { defaultShop } from './shop.js';
 
 export function createNewPlayer({ captainName = 'Captain' } = {}) {
   const now = Date.now();
@@ -12,7 +11,7 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     createCrewInstance('merc_bolt'),
   ];
   return {
-    version: 6,
+    version: 5,
     captainName,
     createdAt: now,
     wallet: {
@@ -38,7 +37,6 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     stats: { jumps: 0, combatsWon: 0, expeditions: 0 },
     story: { chapter: 0, eclipseIntro: false },
     tutorial: defaultTutorial(),
-    shop: defaultShop(),
   };
 }
 
@@ -69,14 +67,12 @@ export function migratePlayer(player) {
     wallet: { ...base.wallet, ...(player.wallet || {}) },
     ship: player.ship || base.ship,
     crew,
-    reserve: Array.isArray(player.reserve) ? player.reserve : [],
     crewSlots: Math.max(crewSlots, crew.length, tutorial.completed ? 3 : 2),
     stats: { ...base.stats, ...(player.stats || {}) },
     story: { ...base.story, ...(player.story || {}) },
     flags: player.flags || {},
     tutorial,
-    shop: { ...base.shop, ...(player.shop || {}) },
-    version: 6,
+    version: 5,
   };
 }
 

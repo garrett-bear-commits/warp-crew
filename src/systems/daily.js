@@ -1,8 +1,6 @@
 // @ts-nocheck
 /** Calendar-day helpers for login streak + daily free gacha reset */
 
-import { claimMembershipDay } from './shop.js';
-
 export function dayKey(now = Date.now()) {
   const d = new Date(now);
   const y = d.getUTCFullYear();
@@ -63,20 +61,15 @@ export function applyDailyLogin(player, now = Date.now()) {
     }
   }
 
-  const mem = claimMembershipDay(
-    {
+  return {
+    player: {
       ...player,
       lastLoginDay: today,
       loginStreak,
       dailyPullAvailable,
       wallet,
     },
-    now
-  );
-
-  return {
-    player: mem.player,
     isNewDay: true,
-    bonus: mem.claimed ? { ...bonus, member: mem.grant } : bonus,
+    bonus,
   };
 }

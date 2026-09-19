@@ -3,7 +3,7 @@ import { createNewPlayer, readyCrew, migratePlayer } from './systems/player.js';
 import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { claimFuelRegen } from './systems/fuel.js';
 import { previewTravel, commitTravel } from './systems/travel.js';
-import { pullMerc, GACHA_COSTS, placeCrew, runPulls, assignFromReserve } from './systems/gacha.js';
+import { pullMerc, GACHA_COSTS } from './systems/gacha.js';
 import { canAfford, pay, grant } from './systems/economy.js';
 import {
   PLANETS_V1,
@@ -21,10 +21,6 @@ import {
   buyProduct,
   fulfillIncompletePurchases,
 } from './systems/iap.js';
-import {
-  buyGemDeal,
-  collectPassRewards,
-} from './systems/shop.js';
 import {
   init as platformInit,
   markGameLoaded,
@@ -69,8 +65,6 @@ let selectedAssists = [];
 let selectedRoom = null;
 let platformStatus = 'booting';
 let shopProducts = null;
-let shopLane = 'featured';
-let pullResults = null;
 let artReady = false;
 
 function pushLog(msg) {
@@ -176,33 +170,6 @@ function hydratePlayer() {
   player = claimed.player;
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
-  const pass = collectPassRewards(player);
-  if (Object.keys(pass.gained || {}).length) {
-    player = pass.player;
-    pushLog(`Season pass: ${JSON.stringify(pass.gained)}`);
-  } else {
-    player = pass.player;
-  }
-
-  try {
-    const qa = new URLSearchParams(location.search).get('qa');
-    if (qa === 'shop') {
-      player = completeTutorial(player, { registered: false });
-      player = {
-        ...player,
-        wallet: {
-          ...player.wallet,
-          gems: Math.max(player.wallet.gems || 0, 250),
-          credits: Math.max(player.wallet.credits || 0, 800),
-          medals: Math.max(player.wallet.medals || 0, 20),
-        },
-        dailyPullAvailable: true,
-      };
-      tab = 'shop';
-      shopLane = 'featured';
-      pushLog('QA shop lane.');
-    }
-  } catch { /* ignore */ }
 }
 
 async function boot() {
@@ -281,8 +248,6 @@ function render() {
     selectedRoom,
     platformStatus,
     shopProducts,
-    shopLane,
-    pullResults,
     artReady,
     handlers: {
       setTab: (t) => {
@@ -390,7 +355,6 @@ async function handleAction(act, data = {}) {
     if (!isTabUnlocked(player, 'shop')) return;
     tab = 'shop';
     selectedRoom = null;
-    shopLane = data.lane || 'hangar';
   } else if (act === 'travel-to') {
     const nodeId = data.node;
     if (!nodeId) return;
@@ -562,16 +526,16 @@ async function handleAction(act, data = {}) {
       pushLog('Daily free pull used.');
     }
     const { instance, rarity } = pullMerc({ reputation: player.wallet.reputation });
-    const placed = placeCrew(player, instance);
-    player = placed.player;
-    if (placed.dest === 'deck') {
+    if (player.crew.length < player.crewSlots) {
+      player = { ...player, crew: [...player.crew, instance] };
       pushLog(`Hired ${instance.name} (${rarity}).`);
       {
         const te = noteTutorialEvent(player, 'hired');
         player = te.player;
       }
     } else {
-      pushLog(`Hired ${instance.name} (${rarity}) — reserve (no slot).`);
+      player = { ...player, wallet: grant(player.wallet, { credits: 50, medals: 2 }) };
+      pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold +50cr.`);
     }
     captureEvent('gacha_pull', { rarity, free });
     tab = 'crew';
@@ -644,61 +608,14 @@ async function handleAction(act, data = {}) {
     if (!res.ok) pushLog(`Purchase failed: ${res.reason}`);
     else {
       player = res.player;
-      if (res.doubled) pushLog('First gem pack doubled.');
-      else pushLog(`Purchased ${sku}. Rewards applied.`);
-      if (res.pulled?.length) {
-        pullResults = res.pulled;
-        tab = 'crew';
-      }
-      captureEvent('iap_success', { sku, doubled: Boolean(res.doubled) });
+      pushLog(`Purchased ${sku}. Rewards applied.`);
+      captureEvent('iap_success', { sku });
+      // Soft prompt registration after first spend if guest
       const jp = getJestPlayer();
       if (jp && !jp.registered) {
         pushLog('Tip: register to keep purchases across devices.');
       }
       await refreshNotifs();
-    }
-  } else if (act === 'shop-lane') {
-    shopLane = data.lane || 'featured';
-  } else if (act === 'shop-buy-daily') {
-    const res = buyGemDeal(player, data.offer);
-    if (!res.ok) {
-      pushLog(res.reason === 'cannot_afford' ? 'Need more gems for that sale.' : 'Sale already bought.');
-    } else {
-      player = res.player;
-      pushLog(`Daily sale picked up.`);
-      captureEvent('daily_sale', { offer: data.offer });
-    }
-  } else if (act === 'gacha-10') {
-    if (!isFeatureUnlocked(player, 'gacha')) {
-      pushLog('Hiring opens after your first gunner signs on.');
-    } else if (!canAfford(player.wallet, GACHA_COSTS.gems10)) {
-      pushLog('Need 900 gems for a 10-hire.');
-      tab = 'shop';
-      shopLane = 'gems';
-      selectedRoom = null;
-    } else {
-      player = { ...player, wallet: pay(player.wallet, GACHA_COSTS.gems10).wallet };
-      const res = runPulls(player, 10);
-      player = res.player;
-      pullResults = res.pulled;
-      const rares = res.pulled.filter((p) => ['rare', 'epic', 'legendary'].includes(p.rarity)).length;
-      pushLog(`10-hire complete. ${rares} rare+.`);
-      captureEvent('gacha_10', { rares });
-      tab = 'crew';
-    }
-  } else if (act === 'pass-collect') {
-    const res = collectPassRewards(player);
-    player = res.player;
-    if (!Object.keys(res.gained || {}).length) pushLog('No pass rewards ready.');
-    else pushLog(`Pass claimed: ${JSON.stringify(res.gained)}`);
-  } else if (act === 'close-pulls') {
-    pullResults = null;
-  } else if (act === 'crew-assign') {
-    const res = assignFromReserve(player, data.id);
-    if (!res.ok) pushLog(res.reason === 'no_slot' ? 'No open deck slot.' : 'Reserve hire missing.');
-    else {
-      player = res.player;
-      pushLog('Moved hire onto the deck.');
     }
   } else if (act === 'prompt-login' || act === 'tutorial-join') {
     await handleJoinJest({ reason: act === 'tutorial-join' ? 'tutorial_peak' : 'shop_prompt' });
@@ -750,16 +667,8 @@ async function handleAction(act, data = {}) {
     player = createNewPlayer();
     pendingCombat = null;
     selectedAssists = [];
-    pullResults = null;
-    shopLane = 'featured';
     tab = 'ship';
     pushLog('Save reset.');
-  }
-
-  const passTick = collectPassRewards(player);
-  if (Object.keys(passTick.gained || {}).length) {
-    player = passTick.player;
-    pushLog(`Season pass: ${JSON.stringify(passTick.gained)}`);
   }
 
   persist();
