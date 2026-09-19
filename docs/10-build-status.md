@@ -47,3 +47,10 @@
 - [x] Notification ladder: fuel full, expedition done, daily pull, comeback
 - [x] Shop wired to real buy path
 - [x] Entry payload routing from notifications
+
+## Phase C (2026-09-18)
+- [x] Expanded merc catalog (22)
+- [x] Expanded map (11 nodes) + story beats + chapters
+- [x] More expeditions + Swarm encounters
+- [x] Hangar: Corvette/Frigate buy + system upgrades
+- [x] Soft-launch checklist + boglightgames blurb

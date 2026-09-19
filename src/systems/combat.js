@@ -41,10 +41,12 @@ export function resolveCombat({
 }
 
 export const ENCOUNTERS_V1 = [
-  { id: 'pirate_scout', name: 'Pirate Scout', power: 25, fuelCost: 1 },
-  { id: 'pirate_wing', name: 'Pirate Wing', power: 45, fuelCost: 1 },
-  { id: 'swarm_probe', name: 'Eclipse Probe', power: 55, fuelCost: 1 },
-  { id: 'swarm_skirmish', name: 'Eclipse Skirmish', power: 80, fuelCost: 2 },
+  { id: 'pirate_scout', name: 'Pirate Scout', power: 12, rewards: { credits: 40, medals: 2, reputation: 1 } },
+  { id: 'pirate_wing', name: 'Pirate Wing', power: 22, rewards: { credits: 80, medals: 5, reputation: 2 } },
+  { id: 'scrapper_gang', name: 'Scrapper Gang', power: 18, rewards: { credits: 70, medals: 6, reputation: 1 } },
+  { id: 'swarm_probe', name: 'Eclipse Probe', power: 20, rewards: { credits: 60, medals: 6, reputation: 3 } },
+  { id: 'swarm_skirmish', name: 'Swarm Skirmish', power: 32, rewards: { credits: 120, medals: 10, reputation: 5 } },
+  { id: 'swarm_frigate', name: 'Swarm Frigate Echo', power: 48, rewards: { credits: 200, medals: 18, reputation: 8 } },
 ];
 
 

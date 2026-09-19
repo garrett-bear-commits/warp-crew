@@ -33,6 +33,7 @@ import {
 } from './shared/platform.js';
 import { renderApp } from './ui/bridge.js';
 import { MEDAL_LEVEL_COST } from './data/crewRoster.js';
+import { buyHull, switchHull, upgradeSystem } from './systems/hangar.js';
 
 const app = document.getElementById('app');
 const log = [];
@@ -338,21 +339,37 @@ async function handleAction(act, data = {}) {
       pushLog(`${c.name} → Lv ${c.level + 1} (−${cost} medals).`);
     }
   } else if (act === 'ship-upgrade') {
-    if (player.crewSlots < 3) {
-      const cost = { credits: 150 };
-      if (!canAfford(player.wallet, cost)) pushLog('Need 150 credits for 3rd slot.');
-      else {
-        player = { ...player, wallet: pay(player.wallet, cost).wallet, crewSlots: 3 };
-        pushLog('Quarters expanded: 3 crew slots.');
-      }
-    } else if (player.crewSlots < 4) {
-      const cost = { credits: 400 };
-      if (!canAfford(player.wallet, cost)) pushLog('Need 400 credits for 4th slot.');
-      else {
-        player = { ...player, wallet: pay(player.wallet, cost).wallet, crewSlots: 4 };
-        pushLog('Quarters expanded: 4 crew slots.');
-      }
-    } else pushLog('Sparrow mid-slice cap. Corvette later.');
+    const system = data.system || 'quarters';
+    const res = upgradeSystem(player, system);
+    if (!res.ok) {
+      pushLog(res.reason === 'cannot_afford'
+        ? `Need ${JSON.stringify(res.cost)} for ${system}.`
+        : `Upgrade failed: ${res.reason}`);
+    } else {
+      player = res.player;
+      pushLog(`Upgraded ${system}. Crew slots: ${player.crewSlots}.`);
+      captureEvent('ship_upgrade', { system });
+    }
+  } else if (act === 'hull-buy') {
+    const res = buyHull(player, data.ship, data.currency || 'gems');
+    if (!res.ok) {
+      pushLog(res.reason === 'cannot_afford'
+        ? `Cannot afford ${data.ship} (${data.currency}).`
+        : res.reason === 'chapter_lock'
+          ? `Locked until story chapter ${res.need}.`
+          : `Hull buy failed: ${res.reason}`);
+    } else {
+      player = res.player;
+      pushLog(`Acquired ${res.def.name}! Crew capacity ${res.def.crewSlots}.`);
+      captureEvent('hull_buy', { ship: data.ship, currency: data.currency });
+    }
+  } else if (act === 'hull-switch') {
+    const res = switchHull(player, data.ship);
+    if (!res.ok) pushLog(`Switch failed: ${res.reason}`);
+    else {
+      player = res.player;
+      pushLog(`Switched active hull to ${data.ship}.`);
+    }
   } else if (act === 'iap-buy') {
     const sku = data.sku;
     pushLog(`Purchasing ${sku}…`);
@@ -429,7 +446,8 @@ function logTravelResult(r) {
   } else if (r.rewards) {
     pushLog(`${r.kind} @ ${r.node.name}: ${JSON.stringify(r.rewards)}`);
   } else if (r.flag) {
-    pushLog(`Story: ${r.flag}`);
+    if (r.beat) pushLog(`Story — ${r.beat.title}: ${r.beat.text}`);
+    else pushLog(`Story: ${r.flag}`);
   } else {
     pushLog(`Arrived ${r.node.name}`);
   }

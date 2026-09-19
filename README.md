@@ -25,3 +25,13 @@ Open the URL Vite prints (usually http://localhost:5173).
 
 ## Docs
 See `docs/` — start with `01-concept.md` and `10-build-status.md`.
+
+
+## Phase status
+- **A** Map travel, combat assists, gem skip, login streak  
+- **B** Jest SDK, IAP, notification ladder  
+- **C** Content expansion, hangar/Corvette, soft-launch docs  
+
+```bash
+pnpm install && pnpm test && pnpm dev
+```

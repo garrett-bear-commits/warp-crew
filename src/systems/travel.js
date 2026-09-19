@@ -3,6 +3,7 @@ import { spendFuel } from './fuel.js';
 import { grant } from './economy.js';
 import { resolveCombat, ENCOUNTERS_V1, crewPower } from './combat.js';
 import { readyCrew } from './player.js';
+import { applyStoryFlag } from './story.js';
 
 /**
  * Preview a jump without mutating player (except we need fuel check).
@@ -100,18 +101,10 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
     result.combat = { ...combat, encounter: enc, assistsUsed: [...assistsUsed] };
     result.rewards = combat.rewards;
   } else if (outcome.kind === 'story') {
-    player = {
-      ...player,
-      flags: { ...player.flags, [outcome.flag]: true },
-      story: {
-        ...player.story,
-        eclipseIntro:
-          player.story.eclipseIntro ||
-          outcome.flag === 'rumor_swarm' ||
-          outcome.flag === 'colony_help',
-      },
-    };
+    const applied = applyStoryFlag(player, outcome.flag);
+    player = applied.player;
     result.flag = outcome.flag;
+    result.beat = applied.beat;
   }
 
   return { ok: true, player, result };

@@ -91,4 +91,32 @@ export const PLANETS_V1 = [
     minutes: Math.max(5, Math.floor(TEST_EXPEDITION_MINUTES / 3)),
     blurb: 'Tutorial scrap moon — short run.',
   },
+  {
+    id: 'tidefall_ruins',
+    name: 'Tidefall Ruins',
+    difficulty: 35,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Submerged alien arches. Scouts love it.',
+  },
+  {
+    id: 'ledger_vault',
+    name: 'Ledger Vault',
+    difficulty: 45,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Abandoned bank satellite. Credits if you survive.',
+  },
+  {
+    id: 'swarm_husk',
+    name: 'Swarm Husk',
+    difficulty: 70,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Dead bio-ship. High risk, high rep.',
+  },
+  {
+    id: 'echo_shoal',
+    name: 'Echo Shoal',
+    difficulty: 60,
+    minutes: TEST_EXPEDITION_MINUTES,
+    blurb: 'Crystal flats that scramble sensors.',
+  },
 ];

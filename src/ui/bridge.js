@@ -3,12 +3,19 @@ import { formatDuration } from '../shared/timer.js';
 import { NODES } from '../data/sectors.js';
 import { PLANETS_V1, EXPEDITION_SKIP_GEMS } from '../systems/expedition.js';
 import { ASSISTS, listAssists } from '../systems/combat.js';
+import { storyProgress } from '../systems/story.js';
+import { SHIPS } from '../data/ships.js';
+import { listOwnedHulls } from '../systems/hangar.js';
 
 const PLANET_CLASS = {
   derelict_freighter: 'a',
   crystal_asteroid: 'b',
   ice_outpost: 'c',
   dustfall: 'd',
+  tidefall_ruins: 'b',
+  ledger_vault: 'c',
+  swarm_husk: 'a',
+  echo_shoal: 'b',
 };
 
 export function renderApp(root, ctx) {
@@ -130,15 +137,19 @@ function renderCombatModal(pending, selectedAssists) {
 }
 
 function renderShip(player) {
+  const prog = storyProgress(player);
+  const owned = listOwnedHulls(player);
+  const shipId = player.ship?.shipId || 'sparrow';
+  const def = SHIPS[shipId] || SHIPS.sparrow;
   return `
     <div class="panel">
       <div class="row" style="justify-content:space-between">
         <h1>Warp Crew</h1>
         <button class="primary" data-act="claim">Claim</button>
       </div>
-      <div class="muted">${player.captainName} · ${player.ship.shipId.toUpperCase()} · streak ${player.loginStreak || 0}</div>
+      <div class="muted">${player.captainName} · ${def.name} · Ch.${prog.chapter} · Story ${prog.done}/${prog.total}</div>
       <div class="ship-frame">
-        <div class="ship-silhouette" title="Sparrow schematic"></div>
+        <div class="ship-silhouette" title="${def.name}"></div>
         <div class="room-grid">
           <div class="room"><b>BRIDGE</b>${crewInRole(player,'pilot')}</div>
           <div class="room"><b>WEAPONS</b>${crewInRole(player,'gunner')}</div>
@@ -150,12 +161,56 @@ function renderShip(player) {
       </div>
       <div class="row" style="margin-top:8px">
         <button data-act="goto-missions">Missions / Travel</button>
-        <button data-act="ship-upgrade">Expand quarters</button>
-        <button data-act="qa-fuel">QA +5 Fuel</button>
+        <button data-act="ship-upgrade" data-system="quarters">Expand quarters</button>
+        <button data-act="ship-upgrade" data-system="shields">Upgrade shields</button>
+        <button data-act="ship-upgrade" data-system="weapons">Upgrade weapons</button>
       </div>
+    </div>
+
+    <div class="panel">
+      <h2>Hangar</h2>
+      <div class="muted">Buy larger hulls with credits (grind) or gems (fast). Owned: ${owned.join(', ')}</div>
+      ${Object.values(SHIPS).map((s) => {
+        const isOwned = owned.includes(s.id);
+        const isActive = shipId === s.id;
+        return `
+        <div class="mission-card">
+          <div class="planet ${s.id==='corvette'?'b':s.id==='frigate'?'c':'a'}"></div>
+          <div>
+            <b>${s.name}${isActive ? ' · ACTIVE' : isOwned ? ' · OWNED' : ''}</b>
+            <div class="muted">${s.blurb}</div>
+            <div class="muted">Crew ${s.crewSlots}–${s.maxCrewSlots}
+              ${s.gemPrice ? ` · ${s.gemPrice}g` : ''}
+              ${s.creditPrice ? ` · ${s.creditPrice}cr` : ''}
+              ${s.lockedUntilChapter ? ` · Ch.${s.lockedUntilChapter}+` : ''}
+            </div>
+          </div>
+          <div class="row" style="flex-direction:column;gap:4px">
+            ${isActive ? '<button disabled>Active</button>' : isOwned
+              ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
+              : s.id === 'sparrow' ? '<button disabled>Starter</button>' : `
+                <button class="primary" data-act="hull-buy" data-ship="${s.id}" data-currency="gems">Gems</button>
+                <button data-act="hull-buy" data-ship="${s.id}" data-currency="credits">Credits</button>
+              `}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="panel">
+      <h2>Story · Eclipse Swarm</h2>
+      <div class="muted">Travel story nodes to unlock beats. Chapter ${prog.chapter}.</div>
+      ${prog.beats.map((b) => `
+        <div class="crew-card">
+          <b>${b.unlocked ? '✓' : '○'} ${b.title}</b>
+          <span class="tag">Ch.${b.chapter}</span>
+          <div class="muted">${b.unlocked ? b.text : '???'}</div>
+        </div>
+      `).join('')}
     </div>
   `;
 }
+
 
 function crewInRole(player, role) {
   const c = player.crew.find((x) => x.role === role && x.status !== 'expedition');
