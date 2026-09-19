@@ -35,3 +35,13 @@ See `docs/` — start with `01-concept.md` and `10-build-status.md`.
 ```bash
 pnpm install && pnpm test && pnpm dev
 ```
+
+
+## QA / GitHub Pages
+
+After Pages is enabled (Settings → Pages → GitHub Actions):
+
+- **Play:** https://garrett-bear-commits.github.io/warp-crew/
+- **QA Hub:** https://garrett-bear-commits.github.io/warp-crew/qa.html
+
+See [docs/16-github-pages-qa.md](docs/16-github-pages-qa.md).

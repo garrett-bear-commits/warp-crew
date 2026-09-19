@@ -98,6 +98,14 @@ async function boot() {
   const jestPlayer = getJestPlayer();
   setLoadingProgress(40);
 
+  // QA: ?fresh=1 wipes local save once
+  try {
+    if (new URLSearchParams(location.search).get('fresh') === '1') {
+      clearSave();
+      pushLog('QA fresh start (?fresh=1).');
+    }
+  } catch { /* ignore */ }
+
   const saved = loadSave();
   if (saved?.player) {
     player = migratePlayer(saved.player);
