@@ -44,11 +44,11 @@ export const SHIP_ART = {
   frigate: artUrl('art/pixel/ships/frigate.png'),
 };
 
-export const CUTAWAY_ART = artUrl('art/space/sparrow-hull-v2.png');
+export const CUTAWAY_ART = artUrl('art/space/sparrow-starter.png');
 export const SWARM_ART = artUrl('art/pixel/fx/swarm.png');
 
 export const SPACE_ART = {
-  hull: artUrl('art/space/sparrow-hull-v2.png'),
+  hull: artUrl('art/space/sparrow-starter.png'),
   stars: artUrl('art/space/stars.png'),
   nebula: artUrl('art/space/nebula.png'),
   planet: artUrl('art/space/planet.png'),

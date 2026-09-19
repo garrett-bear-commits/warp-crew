@@ -140,9 +140,11 @@ button.hud-chip {
 }
 .ship-fit {
   position: relative;
-  height: 100%;
-  max-width: 100%;
-  margin: 0 auto;
+  display: inline-block;
+  height: 58%;
+  aspect-ratio: 320 / 448;
+  max-width: 78%;
+  line-height: 0;
   z-index: 2;
 }
 .hotspot-layer {
@@ -669,16 +671,16 @@ button.hud-chip {
   object-fit: contain;
   opacity: 0.72;
   animation: drift-nebula 48s ease-in-out infinite;
-  mix-blend-mode: screen;
 }
 .space-planet {
   position: absolute;
-  width: 30%;
+  width: 26%;
   left: 3%;
   top: 8%;
+  object-fit: contain;
   animation: bob-planet 16s ease-in-out infinite;
   filter: drop-shadow(0 0 16px rgba(200, 80, 40, 0.35));
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 .space-planet.ice {
   width: 15%;
@@ -699,32 +701,39 @@ button.hud-chip {
 .space-asteroid.a4 { width: 9%; top: 32%; left: 6%; animation: float-b 19s ease-in-out infinite reverse; }
 
 .sparrow-hull {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  width: auto;
-  max-width: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: fill;
   pointer-events: none;
   user-select: none;
-  position: relative;
   z-index: 1;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
 }
 
 .crew-sprite {
   position: absolute;
   width: 32px;
   height: 32px;
-  margin-left: -16px;
-  margin-top: -30px;
   background-repeat: no-repeat;
   background-size: 288px 32px;
   animation: crew-idle 1.12s steps(9) infinite;
-  transform: scale(1.9);
   transform-origin: center bottom;
   image-rendering: pixelated;
   pointer-events: none;
   z-index: 2;
   filter: drop-shadow(0 1px 0 #05080f);
+  will-change: left, top, transform;
+}
+.crew-sprite[data-anim="walk"] {
+  animation: crew-idle 0.64s steps(9) infinite;
+}
+.crew-sprite[data-anim="doing"] {
+  background-size: 256px 32px;
+  animation: crew-doing 0.9s steps(8) infinite;
 }
 
 .idle-portrait {
@@ -743,6 +752,10 @@ button.hud-chip {
 @keyframes crew-idle {
   from { background-position: 0 0; }
   to { background-position: -288px 0; }
+}
+@keyframes crew-doing {
+  from { background-position: 0 0; }
+  to { background-position: -256px 0; }
 }
 @keyframes crew-idle-crop {
   from { background-position: 0 0; }

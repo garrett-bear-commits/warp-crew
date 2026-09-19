@@ -19,6 +19,8 @@ import {
 import { readyCrew } from '../systems/player.js';
 import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART } from '../data/portraits.js';
 import { sheetFor } from './crewArt.js';
+import { ROOMS } from '../data/starterShip.js';
+import { syncCrewLayer } from './crewWalk.js';
 
 const PLANET_CLASS = {
   derelict_freighter: 'a',
@@ -34,19 +36,6 @@ const PLANET_CLASS = {
   pirate_cache: 'd',
   aurora_ice: 'b',
 };
-
-const ROOMS = [
-  { id: 'bridge', name: 'Bridge', role: 'pilot', system: null, left: 36, top: 13, w: 28, h: 11 },
-  { id: 'nav', name: 'Navigation', role: 'scout', system: null, left: 30, top: 24, w: 20, h: 12 },
-  { id: 'science', name: 'Science Lab', role: 'trader', system: null, left: 50, top: 24, w: 20, h: 12 },
-  { id: 'engineering', name: 'Engineering', role: 'engineer', system: 'shields', left: 30, top: 36, w: 20, h: 12 },
-  { id: 'medbay', name: 'Medbay', role: 'medic', system: null, left: 50, top: 36, w: 20, h: 12 },
-  { id: 'quarters', name: 'Crew Quarters', role: null, system: 'quarters', left: 30, top: 48, w: 20, h: 12 },
-  { id: 'mess', name: 'Mess Hall', role: null, system: null, left: 50, top: 48, w: 20, h: 12 },
-  { id: 'cargo', name: 'Cargo Hold', role: null, system: 'cargo', left: 30, top: 60, w: 20, h: 12 },
-  { id: 'weapons', name: 'Weapons', role: 'gunner', system: 'weapons', left: 50, top: 60, w: 20, h: 12 },
-  { id: 'engines', name: 'Engines', role: null, system: 'engines', left: 34, top: 72, w: 32, h: 12 },
-];
 
 const NAV_ICO = {
   ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
@@ -166,16 +155,7 @@ function patchShell(root, ctx) {
   const showCoach = step && !step.modal && !pendingCombat && !selectedRoom && step.cta;
   setSlot(root, 'coach', showCoach ? renderCoach(step) : '');
 
-  const crewHtml = renderCrewSprites(player);
-  const crewEl = root.querySelector('[data-slot="crew"]');
-  const sample = player.crew[0] ? sheetFor(player.crew[0].templateId, player.crew[0].role) : null;
-  const crewSig = `${sample?.url?.length || 0}|${player.crew
-    .map((c) => `${c.instanceId}:${c.status}:${sheetFor(c.templateId, c.role) ? '1' : '0'}`)
-    .join('|')}`;
-  if (crewEl && crewEl.dataset.sig !== crewSig) {
-    crewEl.dataset.sig = crewSig;
-    crewEl.innerHTML = crewHtml;
-  }
+  syncCrewLayer(root.querySelector('[data-slot="crew"]'), player);
 
   if (!isHome) {
     const detail = `${emptyHints(player, fuel, tab)}
@@ -308,36 +288,6 @@ function roomPip(room, player, fuel, expReady) {
   return '';
 }
 
-function renderCrewSprites(player) {
-  const used = new Set();
-  const bits = [];
-  for (const room of ROOMS) {
-    if (!room.role) continue;
-    const c = player.crew.find((x) => x.role === room.role && x.status !== 'expedition');
-    if (!c) continue;
-    used.add(c.instanceId);
-    const sheet = sheetFor(c.templateId, c.role);
-    if (!sheet) continue;
-    const left = room.left + room.w / 2;
-    const top = room.top + room.h * 0.78;
-    bits.push(
-      `<div class="crew-sprite" style="left:${left}%;top:${top}%;background-image:url('${sheet.url}')"></div>`
-    );
-  }
-  const extras = player.crew.filter((c) => c.status !== 'expedition' && !used.has(c.instanceId));
-  const quarters = ROOMS.find((r) => r.id === 'quarters');
-  extras.slice(0, 2).forEach((c, i) => {
-    const sheet = sheetFor(c.templateId, c.role);
-    if (!sheet || !quarters) return;
-    const left = quarters.left + 8 + i * 10;
-    const top = quarters.top + quarters.h * 0.78;
-    bits.push(
-      `<div class="crew-sprite" style="left:${left}%;top:${top}%;background-image:url('${sheet.url}')"></div>`
-    );
-  });
-  return bits.join('');
-}
-
 function renderToast(step) {
   return renderCoach(step);
 }
@@ -435,15 +385,13 @@ function renderRoomSheet(player, room, fuel, now) {
 function roomActions(room, player) {
   const hangar = isFeatureUnlocked(player, 'hangar');
   const crewOpen = isFeatureUnlocked(player, 'nav_crew');
-  if (room.id === 'nav' || room.id === 'science') {
+  if (room.id === 'bridge') {
     return '<button class="primary" data-act="goto-missions">Open missions</button>';
   }
-  if (room.id === 'quarters') {
+  if (room.id === 'engineering') {
     return `
-      ${hangar ? '<button class="primary" data-act="ship-upgrade" data-system="quarters">Expand quarters</button>' : ''}
-      ${crewOpen
-        ? '<button data-act="goto-crew">Crew bay</button>'
-        : '<button class="primary" data-act="goto-missions">Open missions</button>'}`;
+      ${crewOpen ? '<button class="primary" data-act="goto-crew">Crew bay</button>' : '<button class="primary" data-act="goto-missions">Open missions</button>'}
+      ${hangar ? '<button data-act="ship-upgrade" data-system="shields">Upgrade shields</button>' : ''}`;
   }
   if (room.id === 'cargo') {
     return `

@@ -50,6 +50,7 @@ import {
   preferredTab,
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
+import { stopCrewSim } from './ui/crewWalk.js';
 
 let app = null;
 let mountId = 0;
@@ -675,5 +676,6 @@ export function mountWarpCrew(rootEl) {
   });
   return () => {
     if (mountId === gen) app = null;
+    stopCrewSim();
   };
 }
