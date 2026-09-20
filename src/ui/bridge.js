@@ -23,11 +23,10 @@ import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART, planetA
 import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP } from '../systems/gacha.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
-import { hullRepairOffer, formatReward, fuelCreditPrice, systemBlurb, visitMult, reputationRank } from '../systems/economy.js';
+import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost } from '../data/crewRoster.js';
-import { INTEL_TRACKS, ECONOMY_BEATS } from '../data/intel.js';
 import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying } from './combatView.js';
@@ -155,8 +154,8 @@ function patchShell(root, ctx) {
   if (coachStep && coachStep.act === 'goto-missions' && tab === 'missions') {
     coachStep = {
       ...coachStep,
-      title: 'Launch Dustfall',
-      body: 'Short scrap run. Salvage lands when they return.',
+      title: 'Dustfall',
+      body: 'Launch.',
       cta: null,
       act: null,
       spotlight: 'exp-dustfall',
@@ -165,7 +164,7 @@ function patchShell(root, ctx) {
     coachStep = {
       ...coachStep,
       title: 'Free hire',
-      body: 'Fill the fourth berth. Reputation weights the board.',
+      body: 'Fourth berth.',
       cta: null,
       act: null,
       spotlight: null,
@@ -218,7 +217,7 @@ function renderHud(player, fuel, chips) {
         <b>${player.wallet.credits}</b>
       </div>`,
     gems: `
-      <div class="hud-chip">
+      <div class="hud-chip premium">
         <img src="${ICONS.gems}" alt="" />
         <b>${player.wallet.gems}</b>
       </div>`,
@@ -233,17 +232,18 @@ function renderHud(player, fuel, chips) {
 }
 
 function renderStageHud(locName, hullPct, shieldPct) {
+  const filled = Math.max(0, Math.min(10, Math.round(hullPct / 10)));
+  const pips = Array.from({ length: 10 }, (_, i) => `<i class="${i < filled ? 'on' : ''}"></i>`).join('');
   return `
         <div class="meter-chip">
           <span class="lbl">HULL</span>
-          <div class="meter hull"><span style="width:${hullPct}%"></span></div>
+          <div class="hull-pips" aria-label="Hull ${hullPct}">${pips}</div>
           <span class="pct">${hullPct}</span>
         </div>
         <div class="loc-chip">${escapeHtml(locName)}</div>
-        <div class="meter-chip">
+        <div class="meter-chip ghost">
           <span class="lbl">SHLD</span>
           <div class="meter shield"><span style="width:${shieldPct}%"></span></div>
-          <span class="pct">${shieldPct}</span>
         </div>
   `;
 }
@@ -267,11 +267,14 @@ function renderNav(tab, player, expReady, tabs, step) {
 function renderHotspots(player, fuel, expReady, selectedRoom) {
   return ROOMS.map((r) => {
     const pip = roomPip(r, player, fuel, expReady);
+    const sys = r.system ? player.ship?.systems?.[r.system] || 0 : null;
+    const tag = sys != null ? `${r.name} ${sys}` : r.name;
     return `
               <button class="hotspot ${selectedRoom === r.id ? 'selected' : ''}"
                 data-act="select-room" data-room="${r.id}"
                 style="left:${r.left}%;top:${r.top}%;width:${r.w}%;height:${r.h}%"
                 aria-label="${escapeHtml(r.name)}">
+                <span class="room-tag">${escapeHtml(tag)}</span>
                 ${pip ? `<span class="pip ${pip}"></span>` : ''}
               </button>`;
   }).join('');
@@ -283,7 +286,7 @@ function renderOverlays(player, { step, selectedRoom, fuel, now, tab, hint, isHo
   const showHangar = isFeatureUnlocked(player, 'hangar');
   return `
       ${!selectedRoom && showHangar ? `<button class="ship-chip" data-act="select-room" data-room="hangar">${escapeHtml(def.name)}</button>` : ''}
-      ${isHome && !selectedRoom && hint ? `<button class="next-chip" data-act="${hint.act}" ${hint.room ? `data-room="${hint.room}"` : ''}>${escapeHtml(hint.kicker)} · ${escapeHtml(hint.title)}</button>` : ''}
+      ${isHome && !selectedRoom && hint ? `<button class="next-chip" data-act="${hint.act}" ${hint.room ? `data-room="${hint.room}"` : ''}>${escapeHtml(hint.title)}</button>` : ''}
       ${room ? renderRoomSheet(player, room, fuel, now) : ''}
       ${selectedRoom === 'hangar' && showHangar ? renderHangarSheet(player) : ''}
   `;
@@ -294,9 +297,9 @@ function renderCoach(step) {
   const act = step.act || 'tutorial-go';
   return `
     <div class="coach" data-spot="${escapeHtml(step.spotlight || '')}">
-      <div class="coach-kicker">${escapeHtml(step.kicker || '')}</div>
-      <h2>${escapeHtml(step.title)}</h2>
-      <p>${escapeHtml(step.body)}</p>
+      ${step.kicker ? `<span class="coach-kicker">${escapeHtml(step.kicker)}</span>` : ''}
+      <b>${escapeHtml(step.title)}</b>
+      ${step.body ? `<span class="coach-body">${escapeHtml(step.body)}</span>` : ''}
       ${step.cta ? `<button class="primary" data-act="${act}">${escapeHtml(step.cta)}</button>` : ''}
       ${step.act && !isTutorialCta(step) ? '<button data-act="orders-skip">Got it</button>' : ''}
     </div>`;
@@ -348,9 +351,8 @@ function renderSplash() {
       <div class="splash-card">
         <img src="${SPLASH_ART}" alt="Warp Crew" />
         <div class="splash-copy">
-          <div class="coach-kicker">Idle starship</div>
           <h2>Warp Crew</h2>
-          <p>Hire mercs. Jump lanes. Outlast Eclipse.</p>
+          <p>Your ship. Your crew.</p>
           <button class="primary" data-act="splash-dismiss">Launch</button>
         </div>
       </div>
@@ -377,6 +379,7 @@ function renderDossier(player, id) {
   const rankCost = rankUpCost(c);
   const lvlCost = medalLevelCostFor(c);
   const title = rankTitle(c.rank);
+  const passive = passiveLabel(c.passive);
   return `
     <div class="modal-backdrop">
       <div class="modal panel dossier">
@@ -387,14 +390,11 @@ function renderDossier(player, id) {
               <b>${escapeHtml(c.name)}</b>
               <div><span class="tag">${escapeHtml(c.role)}</span><span class="tag">${escapeHtml(c.rarity)}</span></div>
               ${starsHtml(c.stars)}
-              <div class="muted">${escapeHtml(title)} · Lv ${c.level} · Power ${c.power}</div>
+              <div class="muted">${escapeHtml(title)} · Lv ${c.level} · ${c.power}${passive ? ` · ${escapeHtml(passive)}` : ''}</div>
             </div>
           </div>
           <button class="icon-close" data-act="close-crew" aria-label="Close">×</button>
         </div>
-        ${c.quote ? `<p class="quote">“${escapeHtml(c.quote)}”</p>` : ''}
-        <p class="muted">${escapeHtml(c.history || c.blurb || '')}</p>
-        <div class="muted">${escapeHtml(c.origin || '')}${c.faction ? ` · ${escapeHtml(c.faction)}` : ''}${passiveLabel(c.passive) ? ` · ${escapeHtml(passiveLabel(c.passive))}` : ''}</div>
         <div class="row" style="margin-top:10px;flex-direction:column">
           ${c.status !== 'expedition' ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${lvlCost} medals</button>` : ''}
           <button data-act="rank-up" data-id="${c.instanceId}">Rank up · ${rankCost.medals} med · ${rankCost.credits}cr</button>
@@ -425,14 +425,12 @@ function renderVictoryModal(player, step) {
   return `
     <div class="modal-backdrop">
       <div class="modal panel victory-modal">
-        <img class="cinematic-still" src="${cinematicArtFor('jump')}" alt="" />
-        <div class="coach-kicker">${escapeHtml(step.kicker)}</div>
         <h2>${escapeHtml(step.title)}</h2>
         <p class="muted">${escapeHtml(step.body)}</p>
         <div class="reward-row">
-          <div class="stat"><img class="stat-ico" src="${ICONS.credits}" alt="" /> Credits <b>+${r.credits || 0}</b></div>
-          <div class="stat"><img class="stat-ico" src="${ICONS.medals}" alt="" /> Medals <b>+${r.medals || 0}</b></div>
-          <div class="stat">Rep <b>+${r.reputation || 0}</b></div>
+          <div class="stat">+${r.credits || 0} cr</div>
+          <div class="stat">+${r.medals || 0} med</div>
+          <div class="stat">+${r.reputation || 0} rep</div>
         </div>
         <button class="primary spot-glow" data-act="tutorial-draw" data-spot-target="draw-cta">${escapeHtml(step.cta)}</button>
       </div>
@@ -443,7 +441,6 @@ function renderRecruitModal(player, step) {
   const rec = player.tutorial?.recruit;
   const name = rec?.name || 'Jen Park';
   const role = rec?.role || 'gunner';
-  const blurb = rec?.blurb || 'Station security washout.';
   const src = portraitFor(rec?.templateId || 'merc_jen', role);
   const member = player.crew.find((c) => c.templateId === (rec?.templateId || 'merc_jen'));
   const sheet = member ? sheetFor(member.templateId, member.role) : null;
@@ -453,16 +450,13 @@ function renderRecruitModal(player, step) {
   return `
     <div class="modal-backdrop">
       <div class="modal panel recruit-modal">
-        <img class="cinematic-still" src="${cinematicArtFor('hire')}" alt="" />
-        <div class="coach-kicker">${escapeHtml(step.kicker)}</div>
         <h2>${escapeHtml(step.title)}</h2>
         <div class="recruit-card">
           ${portrait}
           <div>
             <b>${escapeHtml(name)}</b>
-            <div><span class="tag">${escapeHtml(role)}</span><span class="tag">common</span></div>
-            <p class="muted">${escapeHtml(blurb)}</p>
-            <p class="muted">Crew ${player.crew.length}/${player.crewSlots}</p>
+            <div><span class="tag">${escapeHtml(role)}</span></div>
+            <div class="muted">Crew ${player.crew.length}/${player.crewSlots}</div>
           </div>
         </div>
         <button class="primary" data-act="tutorial-to-join">${escapeHtml(step.cta)}</button>
@@ -492,12 +486,15 @@ function renderRoomSheet(player, room, fuel, now) {
   const sheet = assigned ? sheetFor(assigned.templateId, assigned.role) : null;
   const sys = room.system ? player.ship.systems?.[room.system] || 1 : null;
   const actions = roomActions(room, player);
+  const sysLine = sys != null
+    ? `Lv ${sys}${room.system ? ` · ${escapeHtml(systemStat(room.system, sys))}` : ''}`
+    : assigned ? escapeHtml(assigned.role) : 'Empty';
   return `
     <div class="room-sheet">
       <div class="sheet-head">
         <div>
           <h2>${escapeHtml(room.name)}</h2>
-          <div class="muted">${sys != null ? `System lv ${sys}${room.system ? ` · ${escapeHtml(systemBlurb(room.system, sys))}` : ''}` : assigned ? escapeHtml(assigned.role) : 'Unassigned'}</div>
+          <div class="muted">${sysLine}</div>
         </div>
         <button class="icon-close" data-act="close-room" aria-label="Close">×</button>
       </div>
@@ -505,7 +502,7 @@ function renderRoomSheet(player, room, fuel, now) {
         ${sheet ? `<div class="portrait idle-portrait" style="background-image:url('${sheet.url}')"></div>` : '<div class="portrait"></div>'}
         <div>
           <b>${assigned ? escapeHtml(assigned.name) : 'Empty'}</b>
-          <div class="muted">${assigned ? `Lv ${assigned.level} · ${escapeHtml(assigned.status)}` : 'Tap Crew to assign later'}</div>
+          <div class="muted">${assigned ? `Lv ${assigned.level}` : 'Unassigned'}</div>
         </div>
       </div>
       <div class="sheet-actions">${actions}</div>
@@ -529,81 +526,55 @@ function roomActions(room, player) {
   const crewOpen = isFeatureUnlocked(player, 'nav_crew');
   const offer = hullRepairOffer(player);
   if (room.id === 'bridge') {
-    return '<button class="primary" data-act="goto-missions">Open missions</button>';
+    return '<button class="primary" data-act="goto-missions">Jump</button>';
   }
   if (room.id === 'engineering') {
     const sh = nextUpgradeCost(player, 'shields');
-    const lv = player.ship?.systems?.shields || 1;
     return `
-      ${crewOpen ? '<button class="primary" data-act="goto-crew">Crew bay</button>' : '<button class="primary" data-act="goto-missions">Open missions</button>'}
+      ${crewOpen ? '<button class="primary" data-act="goto-crew">Crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
       ${offer ? `<button data-act="repair-hull">Repair ${offer.cost}cr (+${offer.amount}%)</button>` : ''}
-      ${hangar && sh ? `<button data-act="ship-upgrade" data-system="shields">Shields lv ${sh.level} · ${sh.credits}cr</button>` : ''}
-      <div class="muted">${escapeHtml(systemBlurb('shields', lv))}</div>`;
+      ${hangar && sh ? `<button data-act="ship-upgrade" data-system="shields">Shields ${sh.level} · ${sh.credits}cr</button>` : ''}`;
   }
   if (room.id === 'cargo') {
     const cg = nextUpgradeCost(player, 'cargo');
-    const lv = player.ship?.systems?.cargo || 1;
     return `
-      <button class="primary" data-act="goto-missions">${hangar ? 'Expeditions' : 'Missions'}</button>
+      <button class="primary" data-act="goto-missions">${hangar ? 'Expeditions' : 'Jump'}</button>
       ${fuelBuyButtons(player)}
-      ${hangar && cg ? `<button data-act="ship-upgrade" data-system="cargo">Cargo lv ${cg.level} · ${cg.credits}cr</button>` : ''}
-      <div class="muted">${escapeHtml(systemBlurb('cargo', lv))}</div>`;
+      ${hangar && cg ? `<button data-act="ship-upgrade" data-system="cargo">Cargo ${cg.level} · ${cg.credits}cr</button>` : ''}`;
   }
   if (room.id === 'engines') {
     const en = nextUpgradeCost(player, 'engines');
-    const lv = player.ship?.systems?.engines || 1;
     return `
       <button class="primary" data-act="claim">Claim fuel</button>
       ${fuelBuyButtons(player)}
-      ${hangar && en ? `<button data-act="ship-upgrade" data-system="engines">Engines lv ${en.level} · ${en.credits}cr</button>` : ''}
-      <div class="muted">${escapeHtml(systemBlurb('engines', lv))}</div>`;
+      ${hangar && en ? `<button data-act="ship-upgrade" data-system="engines">Engines ${en.level} · ${en.credits}cr</button>` : ''}`;
   }
   if (room.system && hangar) {
     const up = nextUpgradeCost(player, room.system);
-    const lv = player.ship?.systems?.[room.system] || 1;
     return `
-      <button class="primary" data-act="ship-upgrade" data-system="${room.system}">Upgrade ${escapeHtml(room.system)}${up ? ` ${up.credits}cr` : ''}</button>
-      <div class="muted">${escapeHtml(systemBlurb(room.system, lv))}</div>`;
+      <button class="primary" data-act="ship-upgrade" data-system="${room.system}">Upgrade${up ? ` ${up.credits}cr` : ''}</button>`;
   }
   if (room.role) {
     return crewOpen
-      ? '<button class="primary" data-act="goto-crew">Open crew</button>'
-      : '<button class="primary" data-act="goto-missions">Open missions</button>';
+      ? '<button class="primary" data-act="goto-crew">Crew</button>'
+      : '<button class="primary" data-act="goto-missions">Jump</button>';
   }
   return '';
 }
 
 function renderHangarSheet(player) {
-  const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
+  const def = SHIPS[shipId] || SHIPS.sparrow;
   const sys = player.ship?.systems || {};
   return `
-    <div class="room-sheet">
+    <div class="room-sheet hangar-sheet">
       <div class="sheet-head">
         <div>
-          <h2>Hangar</h2>
-          <div class="muted">Hull ${player.ship?.hull ?? 100}% · berths ${player.crewSlots}</div>
+          <h2>${escapeHtml(def.name)}</h2>
+          <div class="muted">Hull ${player.ship?.hull ?? 100}% · ${player.crewSlots} berths</div>
         </div>
         <button class="icon-close" data-act="close-room" aria-label="Close">×</button>
       </div>
-      ${Object.values(SHIPS).map((s) => {
-        const isOwned = owned.includes(s.id);
-        const isActive = shipId === s.id;
-        const check = isOwned ? { ok: true } : canBuyHull(player, s.id);
-        const lock = hullLockLabel(check, s);
-        return `
-          <div class="mission-card" style="margin-bottom:8px">
-            <img class="ship-thumb" src="${shipArtFor(s.id)}" alt="" />
-            <div>
-              <b>${escapeHtml(s.name)}${isActive ? ' · ACTIVE' : isOwned ? ' · OWNED' : ''}</b>
-              <div class="muted">Crew ${s.crewSlots}–${s.maxCrewSlots} · tank +${s.fuelMaxBonus || 0}${s.fuelBonus ? ` · regen +${(s.fuelBonus * 0.15).toFixed(1)}/h` : ''}${lock ? ` · ${escapeHtml(lock)}` : ''}</div>
-            </div>
-            ${isActive ? '<button disabled>Active</button>' : isOwned
-              ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
-              : '<button data-act="goto-shop">Buy</button>'}
-          </div>`;
-      }).join('')}
-      <div class="muted" style="margin:8px 0 4px">Systems</div>
       ${SHIP_SYSTEMS.map((id) => {
         const lv = sys[id] || 0;
         const up = nextUpgradeCost(player, id);
@@ -611,12 +582,13 @@ function renderHangarSheet(player) {
         return `
           <div class="sys-row">
             <div>
-              <b>${escapeHtml(label)} lv ${lv}</b>
-              <div class="muted">${escapeHtml(systemBlurb(id, lv))}</div>
+              <b>${escapeHtml(label)} ${lv}</b>
+              <div class="muted">${escapeHtml(systemStat(id, lv))}</div>
             </div>
             ${up ? `<button data-act="ship-upgrade" data-system="${id}">${up.credits}cr</button>` : '<span class="muted">MAX</span>'}
           </div>`;
       }).join('')}
+      <button data-act="goto-shop">Buy hulls</button>
     </div>`;
 }
 
@@ -631,57 +603,52 @@ function hullLockLabel(check, ship) {
 
 function emptyHints(player, fuel, tab) {
   const bits = [];
-  if (fuel.current <= 0 && tab === 'missions') {
-    bits.push('No fuel — wait for regen, Claim pending, or buy fuel in SHOP.');
-  }
-  if (readyCrew(player).length === 0 && tab === 'missions') {
-    bits.push('No ready crew — wait for expedition return or hire on CREW.');
-  }
-  if (player.crew.length < player.crewSlots && player.dailyPullAvailable && tab === 'crew') {
-    bits.push(`Free hire ready — fill ${player.crewSlots - player.crew.length} open slot(s).`);
-  }
+  if (fuel.current <= 0 && tab === 'missions') bits.push('No fuel.');
+  if (readyCrew(player).length === 0 && tab === 'missions') bits.push('No ready crew.');
+  if (player.crew.length < player.crewSlots && player.dailyPullAvailable && tab === 'crew') bits.push('Free hire.');
   if (!bits.length) return '';
-  return `<div class="empty-hint">${bits.map(escapeHtml).join('<br/>')}</div>`;
+  return `<div class="empty-hint">${bits.map(escapeHtml).join(' ')}</div>`;
 }
 
 function renderCombatModal(pending, selectedAssists, tutorial = false) {
   const assists = listAssists({ tutorial });
   const assistPower = selectedAssists.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
-  const odds = tutorial ? 1 : combatWinChance((pending.playerPower || 0) + assistPower, pending.encounter.power);
+  const you = (pending.playerPower || 0) + assistPower;
+  const them = pending.encounter.power;
+  const odds = tutorial ? 1 : combatWinChance(you, them);
+  const pct = Math.round(odds * 100);
+  const tone = tutorial || pct >= 58 ? 'good' : pct >= 42 ? 'mid' : 'bad';
   const art = SPACE_ART.pirate || SWARM_ART;
+  const win = pending.encounter.rewards ? formatReward(pending.encounter.rewards) : '';
   return `
-    <div class="modal-backdrop">
-      <div class="modal panel">
+    <div class="modal-backdrop combat-backdrop">
+      <div class="combat-sheet">
         <div class="combat-head">
           <img class="swarm-art" src="${art}" alt="" />
           <div>
-            <h2>${tutorial ? 'First contact' : 'Combat'} · ${escapeHtml(pending.encounter.name)}</h2>
-            <div class="muted">${escapeHtml(pending.node.name)} · fuel −${pending.fuelCost}</div>
+            <h2>${escapeHtml(pending.encounter.name)}</h2>
+            <div class="muted">${escapeHtml(pending.node.name)} · −${pending.fuelCost}F${win ? ` · ${escapeHtml(win)}` : ''}</div>
           </div>
         </div>
-        ${tutorial ? '<p class="muted">Shield Boost is primed. One tap to engage.</p>' : ''}
-        ${pending.encounter.blurb ? `<p class="muted">${escapeHtml(pending.encounter.blurb)}</p>` : ''}
-        <div class="stat-row" style="margin:10px 0">
-          <div class="stat">Your power <b>${pending.playerPower}</b></div>
-          <div class="stat">Enemy <b>${pending.encounter.power}</b></div>
-          <div class="stat">Assists <b>+${assistPower}</b></div>
+        <div class="odds-row ${tone}">
+          <span>You ${you}</span>
+          <b class="odds">${tutorial ? 'Sure' : pct + '%'}</b>
+          <span>Them ${them}</span>
         </div>
-        ${pending.encounter.rewards ? `<div class="muted" style="margin-bottom:8px">Win ${escapeHtml(formatReward(pending.encounter.rewards))}</div>` : ''}
-        ${tutorial ? '' : `<div class="muted" style="margin-bottom:8px">Pick up to ${ASSIST_CAP} assists · odds ${Math.round(odds * 100)}%</div>`}
+        <div class="odds-bar ${tone}"><span style="width:${tutorial ? 100 : pct}%"></span></div>
         <div class="row">
           ${assists.map((a) => `
             <button data-assist="${a.id}" class="${selectedAssists.includes(a.id) ? 'primary' : ''}">
-              ${escapeHtml(a.name)} (+${a.power})
+              ${escapeHtml(a.name)} +${a.power}
             </button>
           `).join('')}
         </div>
         <div class="row" style="margin-top:12px">
           <button class="primary spot-glow" data-act="combat-confirm" data-spot-target="combat-engage">Engage</button>
-          ${tutorial ? '' : '<button data-act="combat-cancel">Abort jump</button>'}
+          ${tutorial ? '' : '<button data-act="combat-cancel">Abort</button>'}
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 function renderNodeCard(n, player, here, step) {
@@ -693,15 +660,15 @@ function renderNodeCard(n, player, here, step) {
   const visits = player.stats?.visits?.[n.id] || 0;
   const hint = typicalPayout(n);
   const worn = visits >= 2 ? ' worn' : '';
-  const decay = visits ? ` · ×${visits}${visitMult(visits) < 1 ? ` ${Math.round(visitMult(visits) * 100)}%` : ''}` : '';
+  const decay = visits && visitMult(visits) < 1 ? ` · ${Math.round(visitMult(visits) * 100)}%` : '';
   return `
     <button class="map-node hazard-${meta.hazard}${worn} ${hereCls} ${spot}" data-act="travel-to" data-node="${n.id}"
       data-spot-target="node-${n.id}"
       ${n.id === here ? 'disabled' : ''}>
       <img class="node-thumb" src="${art}" alt="" />
       <span class="map-title">${escapeHtml(n.name)}</span>
-      <span class="map-meta">${escapeHtml(n.type)} · ${cost}F · ${escapeHtml(hint)}${decay}</span>
-      <span class="map-blurb">${escapeHtml(n.blurb || '')}</span>
+      <span class="map-meta">${cost}F · ${escapeHtml(hint)}${decay}</span>
+      <span class="map-jump">${n.id === here ? 'HERE' : 'JUMP'}</span>
     </button>
   `;
 }
@@ -717,7 +684,6 @@ function renderMissions(player, now) {
   const teachDust = player.tutorial?.ordersBeat === 'exp';
   const planetList = teachDust ? planets.filter((p) => p.id === 'dustfall') : planets;
   const { spur, veil, ember, hollow, crown } = nodesBySector(nodes);
-  const rank = reputationRank(player.wallet?.reputation);
 
   const mapBlock = (title, list) => list.length ? `
     <div class="sector-kicker">${escapeHtml(title)}</div>
@@ -727,21 +693,19 @@ function renderMissions(player, now) {
 
   const mapPanel = `
     <div class="panel">
-      <h2>${tight ? 'First jump' : 'Star map'}</h2>
-      <div class="muted">${tight ? 'One lane is open. Jump Dust Lane.' : `${rank.label} · cargo and rep lift trade. Engines cut jump cost. Repeat visits pay less.`}</div>
-      ${nodes.length === 0 ? '<div class="empty-hint">No routes — something is wrong with map data.</div>' : ''}
+      <h2>${tight ? 'Jump' : 'Map'}</h2>
+      ${nodes.length === 0 ? '<div class="empty-hint">No routes.</div>' : ''}
       ${tight ? `<div class="map-grid">${nodes.map((n) => renderNodeCard(n, player, here, step)).join('')}</div>`
-        : mapBlock('The Spur', spur)
-          + mapBlock('Veil Edge', veil)
-          + mapBlock('Ember Reach', ember)
-          + mapBlock('Hollow Expanse', hollow)
-          + mapBlock('Crown Halo', crown)}
+        : mapBlock('Spur', spur)
+          + mapBlock('Veil', veil)
+          + mapBlock('Ember', ember)
+          + mapBlock('Hollow', hollow)
+          + mapBlock('Crown', crown)}
     </div>`;
 
   const expPanel = showExp ? `
     <div class="panel">
       <h2>Expeditions</h2>
-      <div class="muted">${teachDust ? 'Start with Dustfall — short scrap run.' : `Two crew leave the ship. Role match +6%. ${EXPEDITION_SKIP_GEMS}g skip. Extract after halfway for scrap. Fail injures the pair.`}</div>
       ${exp ? renderActiveExpedition(player, exp, now) : planetList.map((p) => renderPlanetCard(player, p, teachDust)).join('')}
     </div>` : '';
   return teachDust ? expPanel + mapPanel : mapPanel + expPanel;
@@ -774,21 +738,15 @@ function renderActiveExpedition(player, exp, now) {
 function renderPlanetCard(player, p, teachDust) {
   const prev = previewExpedition(player, p.id);
   const kind = planetType(p);
-  const names = prev.crew.map((c) => c.name).join(', ') || 'no crew';
+  const names = prev.crew.map((c) => c.name).join(', ') || '—';
   const win = formatReward(prev.win);
-  const fail = formatReward(prev.fail);
   const mins = p.minutes || 15;
   return `
     <div class="mission-card ${teachDust && p.id === 'dustfall' ? 'spot-glow' : ''}">
       <img class="planet-art" src="${planetArtFor(kind.art)}" alt="" />
       <div>
         <b>${escapeHtml(p.name)}</b>
-        <span class="tag">${escapeHtml(kind.label)}</span>
-        ${p.prefRole ? `<span class="tag">${escapeHtml(p.prefRole)}</span>` : ''}
-        ${p.sector && p.sector !== 'spur' ? `<span class="tag">${escapeHtml(p.sector)}</span>` : ''}
-        <div class="muted">${escapeHtml(p.blurb)}</div>
-        <div class="muted">${(prev.chance * 100) | 0}% · ${mins}m · win ${escapeHtml(win)}</div>
-        <div class="muted">Fail ${escapeHtml(fail)} · Going: ${escapeHtml(names)}${prev.roleHit ? ' · role match' : ''}</div>
+        <div class="muted">${(prev.chance * 100) | 0}% · ${mins}m · ${escapeHtml(win)} · ${escapeHtml(names)}</div>
       </div>
       <button class="primary" data-act="exp-start" data-planet="${p.id}" data-spot-target="exp-${p.id}" ${prev.crew.length ? '' : 'disabled'}>Launch</button>
     </div>
@@ -820,13 +778,11 @@ function renderCrew(player) {
   const reserve = player.reserve || [];
   return `
     <div class="panel">
-      <div class="row" style="justify-content:space-between">
-        <h2>Crew Bay · ${player.crew.length}/${player.crewSlots}</h2>
-      </div>
-      <div class="muted">Power ${crewPower(fightingCrew(player))} · ${escapeHtml(nextRepGate(player.wallet.reputation || 0).label)}${open ? ` · ${open} open` : ''}</div>
+      <h2>Crew · ${player.crew.length}/${player.crewSlots}</h2>
+      <div class="muted">Power ${crewPower(fightingCrew(player))}${open ? ` · ${open} open` : ''}</div>
       ${canHire ? `
         <div class="luck-meter">
-          <div class="muted">Luck ${g.luck || 0}/${LUCK_CAP} · Rare pity ${g.pityRare || 0}/${PITY.rareHard} · Legend ${g.pityLegend || 0}/${PITY.legendHard}</div>
+          <div class="muted">Luck ${g.luck || 0}/${LUCK_CAP} · pity ${g.pityRare || 0}/${PITY.rareHard}</div>
           <div class="pity-bar"><span style="width:${pityRarePct}%"></span></div>
           <div class="row hire-row">
             <button data-act="buy-luck" data-currency="credits" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckCreditCost(g.luck)}cr`}</button>
@@ -851,17 +807,13 @@ function renderCrew(player) {
           <div class="crew-body">
             <b>${escapeHtml(c.name)}</b>
             <span class="tag">${escapeHtml(c.role)}</span>
-            <span class="tag">${escapeHtml(c.rarity)}</span>
             <span class="tag">Lv ${c.level}</span>
-            <span class="tag">${escapeHtml(rankTitle(c.rank))}</span>
-            <span class="tag ${c.status === 'injured' ? 'injured' : ''}">${escapeHtml(c.status)}</span>
-            <div>${starsHtml(c.stars)}</div>
-            <div class="muted">Power ${c.power} · XP ${c.xp || 0}${hurt}${passiveLabel(c.passive) ? ` · ${escapeHtml(passiveLabel(c.passive))}` : ''}</div>
-            <div class="muted">${escapeHtml(c.blurb || '')}</div>
+            ${c.status === 'injured' ? '<span class="tag injured">down</span>' : ''}
+            <div>${starsHtml(c.stars)} <span class="muted">${c.power}${hurt}</span></div>
             <div class="row" style="margin-top:6px">
-              <button data-act="select-crew" data-id="${c.instanceId}">Dossier</button>
+              <button data-act="select-crew" data-id="${c.instanceId}">Info</button>
               ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
-                ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${cost} medals</button>`
+                ? `<button data-act="level-crew" data-id="${c.instanceId}">Lv ${c.level + 1} · ${cost} med</button>`
                 : ''}
               ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition' && player.crew.length > 1
                 ? `<button data-act="crew-bench" data-id="${c.instanceId}">Bench</button>`
@@ -869,19 +821,17 @@ function renderCrew(player) {
             </div>
           </div>
         </div>`;
-      }).join('') || '<div class="empty-hint">No crew — hire from the board.</div>'}
+      }).join('') || '<div class="empty-hint">No crew.</div>'}
     </div>
     ${canHire && reserve.length ? `
     <div class="panel">
       <h2>Reserve · ${reserve.length}/${RESERVE_CAP}</h2>
-      <div class="muted">Overflow hires wait here. Call up when a berth opens.</div>
       ${reserve.map((c) => `
         <div class="crew-card">
           ${crewPortrait(c)}
           <div class="crew-body">
             <b>${escapeHtml(c.name)}</b>
             <span class="tag">${escapeHtml(c.role)}</span>
-            <span class="tag">${escapeHtml(c.rarity)}</span>
             <div>${starsHtml(c.stars)}</div>
             <div class="row" style="margin-top:6px">
               <button class="primary" data-act="reserve-call" data-id="${c.instanceId}" ${open ? '' : 'disabled'}>Call up</button>
@@ -892,17 +842,14 @@ function renderCrew(player) {
     </div>` : ''}
     ${canHire && board.length ? `
     <div class="panel">
-      <h2>Contract board</h2>
-      <div class="muted">Direct hire. Mythics stay on the gacha.</div>
+      <h2>Hire</h2>
       ${board.map((t) => `
         <div class="crew-card">
           <img class="portrait" src="${portraitFor(t.id, t.role)}" alt="" width="64" height="64" />
           <div class="crew-body">
             <b>${escapeHtml(t.name)}</b>
             <span class="tag">${escapeHtml(t.role)}</span>
-            <span class="tag">${escapeHtml(t.rarity)}</span>
-            <div class="muted">${escapeHtml(t.blurb)}</div>
-            <button data-act="contract-hire" data-id="${t.id}" ${open ? '' : 'disabled'}>${open ? `Hire ${t.hireCost.credits}cr` : 'No berth'}</button>
+            <button data-act="contract-hire" data-id="${t.id}" ${open ? '' : 'disabled'}>${open ? `${t.hireCost.credits}cr` : 'Full'}</button>
           </div>
         </div>`).join('')}
     </div>` : ''}
@@ -910,74 +857,79 @@ function renderCrew(player) {
 }
 
 function renderShop(player, shopProducts) {
-  const products = shopProducts || [
-    { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', blurb: '+5 fuel' },
-    { sku: 'wc_gems_100', name: 'Gem Pack 100', blurb: '+100 gems' },
-    { sku: 'wc_gems_500', name: 'Gem Crate 500', blurb: '+500 gems' },
-    { sku: 'wc_starter', name: 'Starter Pack', blurb: 'Fuel + gems + medals' },
-  ];
-  const planets = ['b', 'c', 'a', 'd'];
+  const SKU_COPY = {
+    wc_fuel_5: { name: 'Fuel ×5', blurb: 'Jump five times' },
+    wc_gems_100: { name: '100 gems', blurb: 'One hire, or luck' },
+    wc_gems_500: { name: '500 gems', blurb: '10-pull, leftover 100' },
+    wc_starter: { name: 'Starter', blurb: '10 fuel · 150g · 30 med · 500cr' },
+  };
+  const bySku = Object.fromEntries((shopProducts || []).map((p) => [p.sku, p]));
+  const products = Object.keys(SKU_COPY).map((sku) => {
+    const remote = bySku[sku] || {};
+    return {
+      sku,
+      ...remote,
+      name: SKU_COPY[sku].name,
+      blurb: SKU_COPY[sku].blurb,
+    };
+  });
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
-  const price = fuelCreditPrice(player);
+  const qa = typeof window !== 'undefined' && /(?:^|[?&])qa=1(?:&|$)/.test(window.location.search);
   return `
     <div class="panel">
       <h2>Hangar</h2>
-      <div class="muted">Larger hulls: credits (grind) or gems (fast). Systems never reset on a hull buy.</div>
+      <div class="muted">Credits grind. Gems skip.</div>
       ${Object.values(SHIPS).map((s) => {
         const isOwned = owned.includes(s.id);
         const isActive = shipId === s.id;
         const check = isOwned || s.id === 'sparrow' ? { ok: true } : canBuyHull(player, s.id);
         const lock = hullLockLabel(check, s);
+        const price = [
+          s.gemPrice ? `${s.gemPrice}g` : '',
+          s.creditPrice ? `${s.creditPrice}cr` : '',
+        ].filter(Boolean).join(' · ');
         return `
-        <div class="mission-card">
-          <img class="ship-thumb" src="${shipArtFor(s.id)}" alt="" />
+        <div class="hull-row">
+          <img class="ship-thumb-sm" src="${shipArtFor(s.id)}" alt="" />
           <div>
-            <b>${escapeHtml(s.name)}${isActive ? ' · ACTIVE' : isOwned ? ' · OWNED' : ''}</b>
-            <div class="muted">${escapeHtml(s.blurb)}</div>
-            <div class="muted">Crew ${s.crewSlots}–${s.maxCrewSlots}
-              ${s.gemPrice ? ` · ${s.gemPrice}g` : ''}
-              ${s.creditPrice ? ` · ${s.creditPrice}cr` : ''}
-              ${s.fuelMaxBonus ? ` · tank +${s.fuelMaxBonus}` : ''}
-              ${lock ? ` · ${escapeHtml(lock)}` : ''}
-            </div>
+            <b>${escapeHtml(s.name)}${isActive ? ' · live' : ''}</b>
+            <div class="muted">${s.crewSlots}–${s.maxCrewSlots}${price ? ` · ${price}` : ''}${lock ? ` · ${escapeHtml(lock)}` : ''}</div>
           </div>
-          <div class="row" style="flex-direction:column;gap:4px">
+          <div class="hull-buy">
             ${isActive ? '<button disabled>Active</button>' : isOwned
               ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
               : s.id === 'sparrow' ? '<button disabled>Starter</button>' : check.ok ? `
-                <button class="primary" data-act="hull-buy" data-ship="${s.id}" data-currency="gems">Gems</button>
-                <button data-act="hull-buy" data-ship="${s.id}" data-currency="credits">Credits</button>
+                <button class="primary" data-act="hull-buy" data-ship="${s.id}" data-currency="gems">${s.gemPrice}g</button>
+                <button data-act="hull-buy" data-ship="${s.id}" data-currency="credits">${s.creditPrice}cr</button>
               ` : `<button disabled>${escapeHtml(lock || 'Locked')}</button>`}
           </div>
         </div>`;
       }).join('')}
     </div>
     <div class="panel">
-      <h2>Dock fuel</h2>
-      <div class="muted">${reputationRank(player.wallet?.reputation).label} rate ${price}cr each.</div>
+      <h2>Fuel</h2>
       <div class="row">${fuelBuyButtons(player) || '<span class="muted">Tanks full.</span>'}</div>
     </div>
     <div class="panel">
-      <h2>Shop</h2>
-      <div class="muted">Sandbox IAP for QA. Real Jest payments later.</div>
-      ${products.map((p, i) => `
-        <div class="mission-card">
-          <img class="planet-art" src="${NODE_ART[planets[i % planets.length]]}" alt="" />
+      <h2>Buy</h2>
+      <div class="muted">Real money. Gems skip the grind.</div>
+      ${products.map((p) => `
+        <div class="iap-row">
           <div>
             <b>${escapeHtml(p.name)}</b>
-            <div class="muted">${escapeHtml(p.blurb || p.remoteName || p.sku)}</div>
-            <div class="muted">${p.price != null ? `${p.price} ${p.currency || 'USD'}` : 'sandbox'}</div>
+            <div class="muted">${escapeHtml(p.blurb)}</div>
           </div>
-          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">Buy</button>
+          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">${p.price != null ? `$${p.price}` : 'Buy'}</button>
         </div>
       `).join('')}
+      <button data-act="prompt-login" style="margin-top:8px">Register</button>
+      ${qa ? `
       <div class="row" style="margin-top:8px">
-        <button data-act="prompt-login">Register / Login</button>
         <button data-act="qa-gems">QA +100 gems</button>
         <button data-act="qa-fuel">QA +5 Fuel</button>
       </div>
-      <button class="danger" data-act="qa-reset" style="margin-top:8px">Reset save</button>
+      <button class="danger" data-act="qa-reset" style="margin-top:8px">Reset save</button>` : ''}
     </div>
   `;
 }
@@ -985,40 +937,15 @@ function renderShop(player, shopProducts) {
 function renderLog(player, log, goals) {
   const prog = storyProgress(player);
   const goalsDone = goals.goals.filter((g) => g.done).length;
-  const nextGoal = goals.goals.find((g) => !g.done);
   const collected = new Set((player.crew || []).map((c) => c.templateId)).size;
-  const gate = nextRepGate(player.wallet.reputation || 0);
-  const power = crewPower(fightingCrew(player));
   const rank = reputationRank(player.wallet.reputation || 0);
   return `
     <div class="panel">
       <h2>Career</h2>
-      <div class="muted">${escapeHtml(rank.label)} · Streak ${player.loginStreak || 0} · Hull ${player.ship?.hull ?? 100}% · Power ${power}</div>
-      <div class="muted">Collection ${collected}/${CREW_CATALOG.length} · ${escapeHtml(gate.label)}</div>
+      <div class="muted">${escapeHtml(rank.label)} · Ch.${prog.chapter} · ${collected} mercs · ${goalsDone}/${goals.goals.length} week</div>
     </div>
     <div class="panel">
-      <h2>Economy spine</h2>
-      ${ECONOMY_BEATS.map((b) => `
-        <div class="intel-card">
-          <b>${escapeHtml(b.title)}</b>
-          <div class="muted">${escapeHtml(b.blurb)}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div class="panel">
-      <h2>Intel board</h2>
-      <div class="muted">Fast-follow. Charted, not shipped. The four IAP SKUs stay the cash shop.</div>
-      ${INTEL_TRACKS.map((t) => `
-        <div class="intel-card">
-          <b>${escapeHtml(t.title)}</b>
-          <span class="tag">${escapeHtml(t.eta)}</span>
-          <div class="muted">${escapeHtml(t.blurb)}</div>
-        </div>
-      `).join('')}
-    </div>
-    <div class="panel">
-      <h2>Week goals · Day ${goals.careerDay}</h2>
-      <div class="muted">${goalsDone}/${goals.goals.length} complete${nextGoal ? ` · next: ${escapeHtml(nextGoal.label)}` : ''}</div>
+      <h2>Week</h2>
       ${goals.goals.map((g) => `
         <div class="crew-card ${g.done ? 'goal-done' : ''}">
           <b>${g.done ? '✓' : '○'} ${escapeHtml(g.label)}</b>
@@ -1027,20 +954,17 @@ function renderLog(player, log, goals) {
       `).join('')}
     </div>
     <div class="panel">
-      <h2>Story · Eclipse Swarm</h2>
-      <div class="muted">Chapter ${prog.chapter} · ${prog.done}/${prog.total} beats</div>
-      ${prog.beats.map((b) => `
+      <h2>Story</h2>
+      ${prog.beats.filter((b) => b.unlocked).slice(-6).map((b) => `
         <div class="crew-card">
-          <b>${b.unlocked ? '✓' : '○'} ${escapeHtml(b.title)}</b>
+          <b>${escapeHtml(b.title)}</b>
           <span class="tag">Ch.${b.chapter}</span>
-          <div class="muted">${b.unlocked ? escapeHtml(b.text) : '???'}</div>
-          ${b.unlocked && b.rewards ? `<div class="muted">${escapeHtml(formatReward(b.rewards))}</div>` : ''}
         </div>
-      `).join('')}
+      `).join('') || '<div class="muted">Jump story nodes to log beats.</div>'}
     </div>
     <div class="panel">
-      <h2>Captain's Log</h2>
-      <div class="log">${(log || []).slice(-24).map(escapeHtml).join('\n') || 'No entries.'}</div>
+      <h2>Log</h2>
+      <div class="log">${(log || []).slice(-16).map(escapeHtml).join('\n') || '—'}</div>
     </div>
   `;
 }

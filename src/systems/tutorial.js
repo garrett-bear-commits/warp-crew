@@ -2,11 +2,10 @@
 /**
  * First-session script (v2).
  * Beats are action-gated after the welcome tap — one system at a time.
- * Inspired by Barrowdeep (spotlight one action, Jest card after the peak)
- * and Zlarn (hide nav until the system exists, one glow on the live target).
+ * Inspired by FTL (one sentence, point at the control, do the action)
+ * and Pixel Starships (ship is the home screen).
  */
 import { createCrewInstance } from '../data/crewRoster.js';
-import { STORY_BEATS } from '../data/sectors.js';
 
 export const TUTORIAL_SCRIPT = 2;
 export const TUTORIAL_RECRUIT_ID = 'merc_jen';
@@ -14,59 +13,59 @@ export const TUTORIAL_RECRUIT_ID = 'merc_jen';
 export const PHASES = [
   {
     id: 'meet',
-    title: 'Sparrow is yours',
-    body: 'Rex on the stick. Bolt in engineering. Open Missions — pirates tagged a lane.',
-    cta: 'Open missions',
+    title: 'Sparrow',
+    body: 'Rex at the stick. Bolt in engineering. Open Missions.',
+    cta: 'Missions',
     tab: 'ship',
     spotlight: 'nav-missions',
-    kicker: '1 / 5',
+    kicker: '1 / 4',
   },
   {
     id: 'jump',
-    title: 'First jump',
-    body: 'Tap Dust Lane. One fuel. The fight is waiting.',
+    title: 'Dust Lane',
+    body: 'One fuel. Jump.',
     cta: null,
     tab: 'missions',
     spotlight: 'node-lane_a',
-    kicker: '2 / 5',
+    kicker: '2 / 4',
   },
   {
     id: 'combat',
-    title: 'Raise shields',
-    body: 'Shield Boost is primed. Tap Engage.',
+    title: 'Shields',
+    body: 'Engage.',
     cta: null,
     tab: 'missions',
     spotlight: 'combat-engage',
-    kicker: '3 / 5',
+    kicker: '3 / 4',
   },
   {
     id: 'victory',
-    title: 'First contact',
-    body: 'They broke off. Salvage is yours — then draw a gunner for the third berth.',
-    cta: 'Draw teammate',
+    title: 'Salvage',
+    body: 'Third berth is open. Hire a gunner.',
+    cta: 'Hire Jen',
     tab: 'ship',
     spotlight: 'draw-cta',
-    kicker: '4 / 5',
+    kicker: '4 / 4',
     modal: 'victory',
   },
   {
     id: 'recruit',
-    title: 'Jen Park comes aboard',
-    body: 'Station gunner. Crit on the guns. Third berth is hers.',
-    cta: 'Welcome aboard',
+    title: 'Jen Park',
+    body: 'Gunner. Third berth.',
+    cta: 'To the ship',
     tab: 'crew',
     spotlight: null,
-    kicker: '5 / 5',
+    kicker: '',
     modal: 'recruit',
   },
   {
     id: 'join',
-    title: 'Keep this crew',
-    body: 'Register on Jest so Rex, Bolt, and Jen stay with you.',
-    cta: 'Join Jest',
+    title: 'Save',
+    body: 'Register if you want this crew on another device.',
+    cta: 'Register',
     tab: 'ship',
     spotlight: null,
-    kicker: 'Save',
+    kicker: '',
     modal: 'join',
   },
 ];
@@ -344,56 +343,33 @@ export function beginJoinPrompt(player) {
 /** Soft 7-day goals for test week — hidden until the intro is done */
 export function weekGoals(player) {
   const s = player.stats || {};
-  const flags = player.flags || {};
   const day = 1 + Math.floor((Date.now() - (player.createdAt || Date.now())) / 86400000);
   return {
     careerDay: day,
     goals: [
       {
         id: 'jumps_5',
-        label: 'Complete 5 jumps',
+        label: '5 jumps',
         done: (s.jumps || 0) >= 5,
         progress: `${s.jumps || 0}/5`,
       },
       {
         id: 'combat_3',
-        label: 'Win 3 combats',
+        label: 'Win 3 fights',
         done: (s.combatsWon || 0) >= 3,
         progress: `${s.combatsWon || 0}/3`,
       },
       {
         id: 'exp_2',
-        label: 'Finish 2 expeditions',
+        label: '2 expeditions',
         done: (s.expeditions || 0) >= 2,
         progress: `${s.expeditions || 0}/2`,
       },
       {
-        id: 'rep_25',
-        label: 'Reach 25 reputation',
-        done: (player.wallet.reputation || 0) >= 25,
-        progress: `${player.wallet.reputation || 0}/25`,
-      },
-      {
-        id: 'story_2',
-        label: 'Unlock 2 story beats',
-        done: Object.keys(STORY_BEATS).filter((k) => flags[k]).length >= 2,
-        progress: `${Object.keys(STORY_BEATS).filter((k) => flags[k]).length}/2`,
-      },
-      {
         id: 'crew_4',
-        label: 'Hold 4 crew (or max slots)',
+        label: '4 crew',
         done: player.crew.length >= Math.min(4, player.crewSlots),
         progress: `${player.crew.length}/${Math.min(4, player.crewSlots)}`,
-      },
-      {
-        id: 'corvette_or_ch2',
-        label: 'Own Corvette OR reach story Ch.2',
-        done:
-          (player.ship?.ownedHulls || []).includes('corvette') ||
-          (player.story?.chapter || 0) >= 2,
-        progress: (player.ship?.ownedHulls || []).includes('corvette')
-          ? 'Corvette'
-          : `Ch.${player.story?.chapter || 0}`,
       },
     ],
   };
@@ -410,23 +386,23 @@ export function ordersStep(player) {
   const beat = player.tutorial?.ordersBeat;
   if (beat === 'exp') {
     return {
-      title: 'Work while you are gone',
-      body: 'Launch Dustfall from Missions. Five minutes. Salvage lands when they return.',
-      cta: 'Open missions',
+      title: 'Dustfall',
+      body: 'Send two crew. They work while you jump.',
+      cta: 'Missions',
       tab: 'ship',
       spotlight: 'nav-missions',
-      kicker: 'Your day',
+      kicker: '',
       act: 'goto-missions',
     };
   }
   if (beat === 'hire') {
     return {
-      title: 'Fourth berth is open',
-      body: 'That run unlocked a slot. Free hire is waiting on Crew.',
-      cta: 'Open crew',
+      title: 'Free hire',
+      body: 'Fourth berth is open.',
+      cta: 'Crew',
       tab: 'ship',
       spotlight: 'nav-crew',
-      kicker: 'Your day',
+      kicker: '',
       act: 'goto-crew',
     };
   }
@@ -440,19 +416,19 @@ export function sessionHint(player, { fuel, now = Date.now() } = {}) {
   }
   const expReady = Boolean(player.activeExpedition && player.activeExpedition.endAt <= now);
   if (fuel?.pendingWhole) {
-    return { title: 'Claim fuel', act: 'claim', kicker: 'Next' };
+    return { title: 'Claim fuel', act: 'claim', kicker: '' };
   }
   if (expReady) {
-    return { title: 'Expedition back', act: 'goto-missions', kicker: 'Next' };
+    return { title: 'Expedition back', act: 'goto-missions', kicker: '' };
   }
   if (player.dailyPullAvailable && player.crew.length < player.crewSlots) {
-    return { title: 'Free hire', act: 'goto-crew', kicker: 'Next' };
+    return { title: 'Free hire', act: 'goto-crew', kicker: '' };
   }
   if ((player.ship?.hull ?? 100) < 40) {
-    return { title: 'Repair hull', act: 'select-room', room: 'engineering', kicker: 'Next' };
+    return { title: 'Repair hull', act: 'select-room', room: 'engineering', kicker: '' };
   }
   if ((fuel?.current || 0) > 0) {
-    return { title: 'Jump the Spur', act: 'goto-missions', kicker: 'Next' };
+    return { title: 'Jump', act: 'goto-missions', kicker: '' };
   }
-  return { title: 'Fuel regen / Shop', act: 'goto-shop', kicker: 'Next' };
+  return { title: 'Shop', act: 'goto-shop', kicker: '' };
 }

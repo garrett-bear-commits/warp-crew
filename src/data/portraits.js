@@ -119,7 +119,7 @@ export const PLANET_ART = {
 };
 
 export const CINEMATIC_ART = {
-  splash: artUrl('art/pixel/splash.png'),
+  splash: artUrl('art/pixel/cinematic/jump.png'),
   jump: artUrl('art/pixel/cinematic/jump.png'),
   hire: artUrl('art/pixel/cinematic/hire.png'),
   veil: artUrl('art/pixel/cinematic/veil.png'),

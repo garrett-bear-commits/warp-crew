@@ -100,6 +100,15 @@ export function playCombat({ preview, win = true, onDone } = {}) {
   setBattleStations(true);
   if (canvas) canvas.classList.add('is-live');
   sfx('lock');
+  if (!ctx) {
+    const cb = onDone;
+    setTimeout(() => {
+      battle = null;
+      setBattleStations(false);
+      if (canvas) canvas.classList.remove('is-live');
+      cb?.();
+    }, 400);
+  }
 }
 
 function spawnLaser(from, to, ally) {

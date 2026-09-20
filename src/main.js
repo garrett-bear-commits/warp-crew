@@ -583,6 +583,7 @@ async function handleAction(act, data = {}) {
           render();
         },
       });
+      render();
     });
     return;
   } else if (act === 'combat-cancel') {
@@ -851,11 +852,11 @@ async function handleAction(act, data = {}) {
     sfx('coin');
     captureEvent('tutorial_stage', { stage: 'recruit' });
   } else if (act === 'tutorial-to-join') {
-    player = beginJoinPrompt(player);
+    player = completeTutorial(player, { registered: Boolean(getJestPlayer()?.registered) });
     tab = 'ship';
     selectedRoom = null;
-    captureEvent('tutorial_stage', { stage: 'join' });
-    pushLog('Jest save prompt.');
+    captureEvent('tutorial_complete', { joined: false, skipped_save_prompt: true });
+    pushLog('Ship, crew, shop, and map are open.');
   } else if (act === 'tutorial-skip-join') {
     player = completeTutorial(player, { registered: Boolean(getJestPlayer()?.registered) });
     tab = 'ship';
