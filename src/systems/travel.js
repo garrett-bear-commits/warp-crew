@@ -2,8 +2,8 @@
 import { NODES, pickOutcome, visibleNodes } from '../data/sectors.js';
 import { spendFuel } from './fuel.js';
 import { grant, scaleSitePayout } from './economy.js';
-import { resolveCombat, crewPower, encounterById } from './combat.js';
-import { readyCrew, applyCrewInjury, grantCrewXp } from './player.js';
+import { resolveCombat, crewPower, encounterById, rubberBandPower } from './combat.js';
+import { applyCrewInjury, grantCrewXp, fightingCrew } from './player.js';
 import { applyStoryFlag } from './story.js';
 import { isTutorialActive, tutorialPhase } from './tutorial.js';
 import { fuelCostFor, tradePayout, combatBonuses, hullAfterCombat, injuryMinutesFor } from './passives.js';
@@ -46,14 +46,16 @@ export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
   if (outcome.kind === 'combat') {
     const enc = encounterById(outcome.encounter);
     const bonus = combatBonuses(player, enc);
-    const power = crewPower(readyCrew(player)) + bonus.extraPower;
+    const squad = fightingCrew(player);
+    const power = crewPower(squad) + bonus.extraPower;
+    const threat = rubberBandPower(enc.power, power);
     return {
       ok: true,
       needsAssists: true,
       node,
       fuelCost,
       outcome,
-      encounter: { ...enc, power: Math.max(6, Math.round(enc.power * bonus.enemyScale)) },
+      encounter: { ...enc, power: Math.max(6, Math.round(threat * bonus.enemyScale)) },
       playerPower: power,
       assistMult: 1 + (bonus.pass?.assistCharge || 0),
       tutorialFight: tutorialPhase(player) !== 'done' && !player.tutorial?.firstCombat,
@@ -104,7 +106,7 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
     return { ok: true, player, result };
   }
 
-  const crew = readyCrew(player);
+  const crew = fightingCrew(player);
   const visits = marked.prior;
 
   if (outcome.kind === 'trade' || outcome.kind === 'delivery' || outcome.kind === 'salvage') {
@@ -173,7 +175,14 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
     result.already = Boolean(applied.already);
     result.rewards = applied.rewards || null;
     if (applied.already) {
-      result.flavor = `You already logged this beat at ${preview.node.name}.`;
+      const consolation = scaleSitePayout(
+        { credits: 18, medals: 1, reputation: 0 },
+        player,
+        { kind: 'salvage', visits }
+      );
+      player = { ...player, wallet: grant(player.wallet, consolation) };
+      result.rewards = consolation;
+      result.flavor = `You already logged this beat at ${preview.node.name}. Dock scrap.`;
     }
   }
 

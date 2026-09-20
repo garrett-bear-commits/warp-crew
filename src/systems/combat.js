@@ -11,6 +11,9 @@ export const ASSISTS = {
   decoy: { id: 'decoy', name: 'Decoy Flare', power: 5, cost: {} },
 };
 
+/** Free assists, but you only get two per fight so they stay a choice. */
+export const ASSIST_CAP = 2;
+
 export function crewPower(crewList = []) {
   return (crewList || []).reduce((s, c) => s + (c.power || 10), 0);
 }
@@ -32,14 +35,14 @@ export function resolveCombat({
       success: true,
       playerPower: total,
       enemyPower,
+      chance: 1,
       rewards: { credits: 120, medals: 8, reputation: 4 },
       log: encounter?.win || 'First contact. The scout wing breaks off.',
       tutorial: true,
     };
   }
-  const ratio = total / Math.max(1, enemyPower);
-  const roll = 0.15 + ratio * 0.7 + (rng() - 0.5) * 0.1;
-  const success = roll >= 0.5;
+  const chance = combatWinChance(total, enemyPower);
+  const success = rng() < chance;
   const base = encounter?.rewards || {
     credits: Math.floor(40 + enemyPower * 0.8),
     medals: Math.floor(4 + enemyPower * 0.15),
@@ -56,6 +59,7 @@ export function resolveCombat({
     success,
     playerPower: total,
     enemyPower,
+    chance,
     rewards,
     log: success
       ? (encounter?.win || `Victory. Assists contributed +${assistPower} power.`)
@@ -209,6 +213,20 @@ export const ENCOUNTERS_V1 = [
     fail: 'It does not kill you. It files you. You leave marked.',
   },
 ];
+
+export function combatWinChance(playerPower, enemyPower) {
+  const ratio = (Number(playerPower) || 0) / Math.max(1, Number(enemyPower) || 1);
+  // Even fight ~58%. 1.5× ~82%. 0.5× ~34%. Always a sliver of swing.
+  return Math.max(0.1, Math.min(0.94, 0.58 + (ratio - 1) * 0.48));
+}
+
+export function rubberBandPower(base, playerPower) {
+  const b = Math.max(1, Number(base) || 1);
+  const p = Math.max(1, Number(playerPower) || 1);
+  if (p <= b) return b;
+  // Pull listed fights toward the squad so late jumps aren't free wins.
+  return Math.round(b + (p - b) * 0.82);
+}
 
 export function encounterById(id) {
   return ENCOUNTERS_V1.find((e) => e.id === id) || ENCOUNTERS_V1[0];

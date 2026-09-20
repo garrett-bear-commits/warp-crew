@@ -41,12 +41,20 @@ export const PRODUCT_DEFS = {
   },
 };
 
-export function applyGrant(player, grantTable) {
+export function applyGrant(player, grantTable, token = null) {
+  const fulfilled = player.iapFulfilled || [];
+  if (token && fulfilled.includes(token)) {
+    return player;
+  }
   let wallet = grant(player.wallet, grantTable);
   if (grantTable.fuel) {
     wallet = clampFuel(wallet, player.fuelMax ?? 10);
   }
-  return { ...player, wallet };
+  return {
+    ...player,
+    wallet,
+    iapFulfilled: token ? [...fulfilled, token] : fulfilled,
+  };
 }
 
 export async function listShopProducts() {
@@ -80,7 +88,16 @@ export async function buyProduct(player, sku) {
   }
 
   // Grant BEFORE completePurchase (Jest docs: grant then confirm)
-  const next = applyGrant(player, def.grant);
+  const token = begin.purchase?.purchaseToken;
+  if (token && (player.iapFulfilled || []).includes(token)) {
+    try {
+      await completePurchase(token);
+    } catch (e) {
+      console.warn('[iap] completePurchase failed on duplicate', e);
+    }
+    return { ok: true, player, sku, purchase: begin.purchase, duplicate: true };
+  }
+  const next = applyGrant(player, def.grant, token);
   captureEvent('iap_granted', { sku, mock: Boolean(begin.mock) });
 
   try {
@@ -103,10 +120,19 @@ export async function fulfillIncompletePurchases(player) {
       for (const purchase of page.purchases || []) {
         const def = PRODUCT_DEFS[purchase.productSku];
         if (!def) continue;
-        current = applyGrant(current, def.grant);
+        const token = purchase.purchaseToken;
+        if (token && (current.iapFulfilled || []).includes(token)) {
+          try {
+            await completePurchase(token);
+          } catch (e) {
+            console.warn('[iap] incomplete complete failed', e);
+          }
+          continue;
+        }
+        current = applyGrant(current, def.grant, token);
         granted.push(purchase.productSku);
         try {
-          await completePurchase(purchase.purchaseToken);
+          await completePurchase(token);
         } catch (e) {
           console.warn('[iap] incomplete complete failed', e);
         }

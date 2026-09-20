@@ -1,9 +1,11 @@
 // @ts-nocheck
 import { createCrewInstance, recomputeCrew } from '../data/crewRoster.js';
-import { starterShip } from '../data/ships.js';
+import { starterShip, getShipDef } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
 import { defaultTutorial, TUTORIAL_SCRIPT } from './tutorial.js';
 import { defaultGacha } from './gacha.js';
+import { berthsFor, fuelMaxFor, fuelRateFor, parkOverflowToReserve } from './hangar.js';
+import { clampFuel } from './economy.js';
 
 const SAVE_VERSION = 6;
 
@@ -51,6 +53,7 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     crewSlots: 2,
     crew,
     reserve: [],
+    iapFulfilled: [],
     activeExpedition: null,
     location: 'station_home',
     flags: {},
@@ -58,7 +61,7 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     loginStreak: 0,
     lastLoginDay: null,
     dailyPullAvailable: true,
-    stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {} },
+    stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {} },
     story: { chapter: 0, eclipseIntro: false },
     tutorial: defaultTutorial(),
   };
@@ -73,13 +76,27 @@ export function migratePlayer(player) {
   const freshIntro =
     (player.version || 0) < 5 || script !== TUTORIAL_SCRIPT;
 
-  // Zero-progress careers re-enter the v2 intro (2 mercs, gated nav).
+  // Zero-progress careers re-enter the v2 intro, but keep any wallet / IAP.
   if (freshIntro && jumps === 0 && combats === 0) {
-    return createNewPlayer({ captainName });
+    const fresh = createNewPlayer({ captainName });
+    return {
+      ...fresh,
+      createdAt: player.createdAt || fresh.createdAt,
+      wallet: {
+        ...fresh.wallet,
+        credits: Math.max(fresh.wallet.credits, player.wallet?.credits || 0),
+        fuel: Math.max(fresh.wallet.fuel, player.wallet?.fuel || 0),
+        gems: Math.max(fresh.wallet.gems, player.wallet?.gems || 0),
+        medals: Math.max(fresh.wallet.medals, player.wallet?.medals || 0),
+        reputation: Math.max(fresh.wallet.reputation, player.wallet?.reputation || 0),
+      },
+      iapFulfilled: [...(player.iapFulfilled || [])],
+    };
   }
 
   const base = createNewPlayer({ captainName });
   let crew = Array.isArray(player.crew) ? player.crew.map((c) => recomputeCrew(c)) : base.crew;
+  let reserve = Array.isArray(player.reserve) ? player.reserve.map((c) => recomputeCrew(c)) : [];
   let crewSlots = player.crewSlots ?? base.crewSlots;
   const tutorial = freshIntro
     ? { ...defaultTutorial(), completed: true, phase: 'done', dismissed: true }
@@ -89,20 +106,41 @@ export function migratePlayer(player) {
   const flags = { ...(player.flags || {}) };
   if (veteran && flags.splashSeen == null) flags.splashSeen = true;
 
-  return {
+  const ship = ensureShip(player.ship || base.ship);
+  const story = { ...base.story, ...(player.story || {}) };
+  // Interiors follow gate visits, not chapter skips or Spur keys.
+  if (!flags.ember_opened) story.emberUnlocked = false;
+  if (!flags.hollow_opened) story.hollowUnlocked = false;
+  if (!flags.crown_opened) story.crownUnlocked = false;
+
+  let next = {
     ...base,
     ...player,
     wallet: { ...base.wallet, ...(player.wallet || {}) },
-    ship: ensureShip(player.ship || base.ship),
+    ship,
     crew,
+    reserve,
     gacha: { ...defaultGacha(), ...(player.gacha || {}) },
-    crewSlots: Math.max(crewSlots, crew.length, tutorial.completed ? 3 : 2),
-    stats: { ...base.stats, ...(player.stats || {}) },
-    story: { ...base.story, ...(player.story || {}) },
+    crewSlots,
+    stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) } },
+    story,
     flags,
     tutorial,
+    iapFulfilled: [...(player.iapFulfilled || [])],
     version: SAVE_VERSION,
   };
+
+  const def = getShipDef(next.ship.shipId);
+  next.crewSlots = berthsFor(next, def, { fillBase: false });
+  if (tutorial.completed) {
+    next.crewSlots = Math.min(def.maxCrewSlots, Math.max(next.crewSlots, 3));
+  }
+  const parked = parkOverflowToReserve(next, next.crewSlots);
+  next = parked.player;
+  next.fuelMax = fuelMaxFor(next, def);
+  next.fuelRatePerHour = fuelRateFor(next, def);
+  next.wallet = clampFuel(next.wallet, next.fuelMax);
+  return next;
 }
 
 export function assignedCrew(player) {
@@ -115,6 +153,13 @@ export function readyCrew(player, now = Date.now()) {
     if (c.status === 'injured' && (c.injuredUntil || 0) > now) return false;
     return true;
   });
+}
+
+/** Combat / jump squad: top N ready mercs, N = berths. Overflow in reserve does not fight. */
+export function fightingCrew(player, now = Date.now()) {
+  const ready = readyCrew(player, now);
+  const slots = Math.max(1, player.crewSlots || 2);
+  return [...ready].sort((a, b) => (b.power || 0) - (a.power || 0)).slice(0, slots);
 }
 
 export function tickCrewStatus(player, now = Date.now()) {

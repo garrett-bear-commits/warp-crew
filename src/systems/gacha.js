@@ -10,6 +10,9 @@ import {
 } from '../data/crewRoster.js';
 import { sellContract, reputationRank, canAfford, pay, grant } from './economy.js';
 
+export const RESERVE_CAP = 8;
+export const LUCK_CAP = 15;
+
 export function defaultGacha() {
   return { pityRare: 0, pityLegend: 0, luck: 0, pulls: 0, lastRarity: null };
 }
@@ -24,21 +27,22 @@ export function rarityWeights(reputation = 0, luck = 0) {
     mythic: 0.12,
     apex: 0.03,
   };
-  if (reputation >= 100) { w.common = 56; w.uncommon = 28; w.rare = 11; w.epic = 3.2; w.legendary = 1.2; w.mythic = 0.45; w.apex = 0.15; }
-  if (reputation >= 300) { w.common = 42; w.uncommon = 32; w.rare = 16; w.epic = 6; w.legendary = 2.6; w.mythic = 1; w.apex = 0.4; }
-  if (reputation >= 600) { w.common = 30; w.uncommon = 30; w.rare = 22; w.epic = 10; w.legendary = 5; w.mythic = 2.2; w.apex = 0.8; }
-  if (reputation >= 1000) { w.common = 20; w.uncommon = 26; w.rare = 26; w.epic = 14; w.legendary = 8; w.mythic = 4; w.apex = 2; }
-  if (reputation >= 2000) { w.common = 12; w.uncommon = 20; w.rare = 26; w.epic = 18; w.legendary = 12; w.mythic = 7; w.apex = 5; }
+  if (reputation >= 100) { w.common = 56; w.uncommon = 28; w.rare = 11; w.epic = 3.2; w.legendary = 1.2; w.mythic = 0.35; w.apex = 0.1; }
+  if (reputation >= 300) { w.common = 44; w.uncommon = 32; w.rare = 15; w.epic = 5.5; w.legendary = 2.2; w.mythic = 0.8; w.apex = 0.22; }
+  if (reputation >= 600) { w.common = 34; w.uncommon = 30; w.rare = 20; w.epic = 9; w.legendary = 4.2; w.mythic = 1.6; w.apex = 0.45; }
+  if (reputation >= 1000) { w.common = 26; w.uncommon = 28; w.rare = 22; w.epic = 12; w.legendary = 7; w.mythic = 3; w.apex = 0.9; }
+  if (reputation >= 2000) { w.common = 20; w.uncommon = 26; w.rare = 24; w.epic = 14; w.legendary = 9; w.mythic = 4.5; w.apex = 1.5; }
+  if (reputation >= 3500) { w.common = 16; w.uncommon = 24; w.rare = 24; w.epic = 16; w.legendary = 11; w.mythic = 6; w.apex = 2.2; }
+  if (reputation >= 5500) { w.common = 14; w.uncommon = 22; w.rare = 24; w.epic = 17; w.legendary = 12.2; w.mythic = 7; w.apex = 2.6; }
 
-  const L = Math.max(0, luck || 0);
-  // Orbo-style luck: spend to bias the board. Diminishing but never wasted.
+  const L = Math.max(0, Math.min(LUCK_CAP, luck || 0));
   const odd = 1 + L * 0.018;
   w.rare *= odd;
   w.epic *= 1 + L * 0.028;
   w.legendary *= 1 + L * 0.04;
   w.mythic *= 1 + L * 0.05;
   w.apex *= 1 + L * 0.055;
-  w.common = Math.max(6, w.common / (1 + L * 0.012));
+  w.common = Math.max(8, w.common / (1 + L * 0.012));
   return w;
 }
 
@@ -141,6 +145,7 @@ export function luckGemCost(luck = 0) {
 
 export function buyLuck(player, currency = 'credits') {
   const g = { ...defaultGacha(), ...(player.gacha || {}) };
+  if ((g.luck || 0) >= LUCK_CAP) return { ok: false, reason: 'luck_cap', luck: g.luck };
   const cost = currency === 'gems' ? { gems: luckGemCost(g.luck) } : { credits: luckCreditCost(g.luck) };
   if (!canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
   const paid = pay(player.wallet, cost);
@@ -148,56 +153,128 @@ export function buyLuck(player, currency = 'credits') {
   return { ok: true, player: { ...player, wallet: paid.wallet, gacha: g }, cost, luck: g.luck };
 }
 
-/** Own copy → star up (max 5). At 5 stars, convert to medals/credits. */
+function starCopy(owned) {
+  return recomputeCrew({
+    ...owned,
+    stars: (owned.stars || 1) + 1,
+    copies: (owned.copies || 1) + 1,
+  });
+}
+
+/** Own copy → star up (max 5). Overflow parks in reserve. Reserve full → sell. */
 export function applyPullToRoster(player, instance) {
-  const owned = (player.crew || []).find((c) => c.templateId === instance.templateId);
-  if (!owned) {
-    if ((player.crew || []).length < (player.crewSlots || 2)) {
+  const crew = player.crew || [];
+  const reserve = player.reserve || [];
+  const owned = crew.find((c) => c.templateId === instance.templateId);
+  if (owned) {
+    if ((owned.stars || 1) < 5) {
+      const next = starCopy(owned);
       return {
-        player: { ...player, crew: [...player.crew, instance] },
-        kind: 'hire',
-        instance,
+        player: {
+          ...player,
+          crew: crew.map((c) => (c.instanceId === owned.instanceId ? next : c)),
+        },
+        kind: 'star',
+        instance: next,
+      };
+    }
+    const sold = sellContract(instance.rarity);
+    const bonus = {
+      credits: Math.floor((sold.credits || 0) * 1.4),
+      medals: Math.floor((sold.medals || 0) * 1.6),
+    };
+    return {
+      player: {
+        ...player,
+        wallet: grant(player.wallet, bonus),
+        crew: crew.map((c) =>
+          c.instanceId === owned.instanceId ? { ...c, copies: (c.copies || 1) + 1 } : c
+        ),
+      },
+      kind: 'cap',
+      instance: owned,
+      sold: bonus,
+    };
+  }
+
+  const parked = reserve.find((c) => c.templateId === instance.templateId);
+  if (parked) {
+    if ((parked.stars || 1) < 5) {
+      const next = starCopy(parked);
+      return {
+        player: {
+          ...player,
+          reserve: reserve.map((c) => (c.instanceId === parked.instanceId ? next : c)),
+        },
+        kind: 'star',
+        instance: next,
       };
     }
     const sold = sellContract(instance.rarity);
     return {
       player: { ...player, wallet: grant(player.wallet, sold) },
-      kind: 'sold',
-      instance,
+      kind: 'cap',
+      instance: parked,
       sold,
     };
   }
-  if ((owned.stars || 1) < 5) {
-    const next = recomputeCrew({
-      ...owned,
-      stars: (owned.stars || 1) + 1,
-      copies: (owned.copies || 1) + 1,
-    });
+
+  if (crew.length < (player.crewSlots || 2)) {
     return {
-      player: {
-        ...player,
-        crew: player.crew.map((c) => (c.instanceId === owned.instanceId ? next : c)),
-      },
-      kind: 'star',
-      instance: next,
+      player: { ...player, crew: [...crew, instance] },
+      kind: 'hire',
+      instance,
     };
   }
+
+  if (reserve.length < RESERVE_CAP) {
+    return {
+      player: { ...player, reserve: [...reserve, { ...instance, status: 'reserve' }] },
+      kind: 'reserve',
+      instance,
+    };
+  }
+
   const sold = sellContract(instance.rarity);
-  const bonus = {
-    credits: Math.floor((sold.credits || 0) * 1.4),
-    medals: Math.floor((sold.medals || 0) * 1.6),
-  };
   return {
+    player: { ...player, wallet: grant(player.wallet, sold) },
+    kind: 'sold',
+    instance,
+    sold,
+  };
+}
+
+export function callUpReserve(player, instanceId) {
+  const reserve = player.reserve || [];
+  const found = reserve.find((c) => c.instanceId === instanceId);
+  if (!found) return { ok: false, reason: 'missing' };
+  if ((player.crew || []).length >= (player.crewSlots || 2)) return { ok: false, reason: 'no_slot' };
+  if ((player.crew || []).some((c) => c.templateId === found.templateId)) return { ok: false, reason: 'owned' };
+  return {
+    ok: true,
     player: {
       ...player,
-      wallet: grant(player.wallet, bonus),
-      crew: player.crew.map((c) =>
-        c.instanceId === owned.instanceId ? { ...c, copies: (c.copies || 1) + 1 } : c
-      ),
+      crew: [...player.crew, { ...found, status: 'ready' }],
+      reserve: reserve.filter((c) => c.instanceId !== instanceId),
     },
-    kind: 'cap',
-    instance: owned,
-    sold: bonus,
+    instance: found,
+  };
+}
+
+export function sellReserve(player, instanceId) {
+  const reserve = player.reserve || [];
+  const found = reserve.find((c) => c.instanceId === instanceId);
+  if (!found) return { ok: false, reason: 'missing' };
+  const sold = sellContract(found.rarity);
+  return {
+    ok: true,
+    player: {
+      ...player,
+      wallet: grant(player.wallet, sold),
+      reserve: reserve.filter((c) => c.instanceId !== instanceId),
+    },
+    instance: found,
+    sold,
   };
 }
 
@@ -206,6 +283,7 @@ export function contractHire(player, templateId) {
   if (!t) return { ok: false, reason: 'unknown' };
   if (!t.hireCost) return { ok: false, reason: 'gacha_only' };
   if ((player.crew || []).some((c) => c.templateId === templateId)) return { ok: false, reason: 'owned' };
+  if ((player.reserve || []).some((c) => c.templateId === templateId)) return { ok: false, reason: 'owned' };
   if ((player.crew || []).length >= (player.crewSlots || 2)) return { ok: false, reason: 'no_slot' };
   if (!canAfford(player.wallet, t.hireCost)) return { ok: false, reason: 'cannot_afford', cost: t.hireCost };
   const paid = pay(player.wallet, t.hireCost);
@@ -217,6 +295,32 @@ export function contractHire(player, templateId) {
     cost: t.hireCost,
   };
 }
+
+export function benchCrew(player, instanceId) {
+  const crew = player.crew || [];
+  const found = crew.find((c) => c.instanceId === instanceId);
+  if (!found) return { ok: false, reason: 'missing' };
+  if (found.status === 'expedition') return { ok: false, reason: 'away' };
+  if (crew.length <= 1) return { ok: false, reason: 'last_crew' };
+  const reserve = player.reserve || [];
+  if (reserve.length >= RESERVE_CAP) return { ok: false, reason: 'reserve_full' };
+  return {
+    ok: true,
+    player: {
+      ...player,
+      crew: crew.filter((c) => c.instanceId !== instanceId),
+      reserve: [...reserve, { ...found, status: 'reserve' }],
+    },
+    instance: found,
+  };
+}
+
+export const GACHA_COSTS = {
+  dailyFree: {},
+  credits: { credits: 500 },
+  gems: { gems: 100 },
+  gems10: { gems: 900 },
+};
 
 export function pullOnce(player, { gems = false, free = false, rng = Math.random } = {}) {
   const cost = free ? {} : gems ? GACHA_COSTS.gems : GACHA_COSTS.credits;
@@ -306,12 +410,5 @@ export function levelCrew(player, instanceId) {
     cost,
   };
 }
-
-export const GACHA_COSTS = {
-  dailyFree: {},
-  credits: { credits: 500 },
-  gems: { gems: 100 },
-  gems10: { gems: 900 },
-};
 
 export { RARITY, CREW_CATALOG, sellContract, rarityRank };

@@ -19,7 +19,13 @@ export function expeditionSuccessChance({ crewPower: power, planetDifficulty, ge
   return Math.max(0.08, Math.min(0.94, raw));
 }
 
-export function pickExpeditionCrew(player, planet, max = 2) {
+export function expeditionPartySize(player) {
+  const slots = player.crewSlots || 2;
+  return Math.min(4, 2 + Math.floor(Math.max(0, slots - 2) / 4));
+}
+
+export function pickExpeditionCrew(player, planet, max = null) {
+  const cap = max ?? expeditionPartySize(player);
   const pref = planet?.prefRole;
   const ready = readyCrew(player);
   const scored = ready
@@ -31,7 +37,7 @@ export function pickExpeditionCrew(player, planet, max = 2) {
         (c.passive?.expeditionSuccess || 0) * 90,
     }))
     .sort((a, b) => b.score - a.score);
-  return scored.slice(0, max).map((x) => x.c);
+  return scored.slice(0, cap).map((x) => x.c);
 }
 
 export function previewExpedition(player, planetId) {
@@ -45,13 +51,14 @@ export function previewExpedition(player, planetId) {
     gearBonus: (sumPassives(crew).expeditionSuccess || 0) + sensors,
     roleBonus: roleHit ? 0.06 : 0,
   });
+  const visits = player.stats?.planetRuns?.[planet.id] || 0;
   const win = scaleSitePayout(planet.success || { credits: 80, medals: 8, reputation: 3 }, player, {
     kind: 'expedition',
-    visits: player.stats?.expeditions || 0,
+    visits,
   });
   const fail = scaleSitePayout(planet.failLoot || { credits: 18, medals: 2, reputation: 1 }, player, {
     kind: 'expedition',
-    visits: player.stats?.expeditions || 0,
+    visits,
   });
   return { planet, crew, chance, roleHit, win, fail };
 }
@@ -87,7 +94,7 @@ function lootFor(job, success, player) {
     : { credits: 16, medals: 2, reputation: 1 });
   return scaleSitePayout(base, player || {}, {
     kind: 'expedition',
-    visits: player?.stats?.expeditions || 0,
+    visits: player?.stats?.planetRuns?.[planet.id] || 0,
   });
 }
 
@@ -141,9 +148,10 @@ export const PLANETS_V1 = PLANET_DEFS.map((p) => ({
 
 export function visiblePlanets(player, now = Date.now()) {
   const day = 1 + Math.floor((now - (player.createdAt || now)) / 86400000);
+  const sensorBonus = (player?.ship?.systems?.sensors || 0) >= 3 ? 1 : 0;
   return PLANETS_V1.filter((p) => {
     if (p.sector && p.sector !== 'spur' && !galaxyUnlocked(player, p.sector)) return false;
-    if (p.minDay && day < p.minDay) return false;
+    if (p.minDay && day + sensorBonus < p.minDay) return false;
     return true;
   });
 }

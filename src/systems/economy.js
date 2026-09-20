@@ -124,14 +124,15 @@ export function upgradeCost(baseCredits, level = 1) {
 }
 
 export function systemBlurb(system, level = 1) {
-  const lv = Math.max(1, Number(level) || 1);
-  if (system === 'cargo') return `Trade +${(lv - 1) * 8}% · salvage & expeditions scale`;
-  if (system === 'engines') return `Jump fuel −${((lv - 1) * 0.35).toFixed(1)} (min 1) · even lv +1 tank`;
-  if (system === 'weapons') return `Combat +${(lv - 1) * 4} power · loot +${(lv - 1) * 5}%`;
-  if (system === 'shields') return `Combat hull loss −${Math.round(lv * 1.5)}`;
-  if (system === 'quarters') return 'Adds one crew berth (up to hull max)';
-  if (system === 'sensors') return `Expedition +${(lv) * 2}% · map intel`;
-  if (system === 'medbay') return `Injury time −${lv * 8}%`;
+  const lv = Math.max(0, Number(level) || 0);
+  const shown = Math.max(system === 'quarters' || system === 'sensors' || system === 'medbay' ? 0 : 1, lv);
+  if (system === 'cargo') return `Trade +${(shown - 1) * 8}% · salvage & expeditions scale`;
+  if (system === 'engines') return `Jump fuel −${((shown - 1) * 0.35).toFixed(1)} (min 40%) · even lv +1 tank`;
+  if (system === 'weapons') return `Combat +${(shown - 1) * 4} power · loot +${(shown - 1) * 5}%`;
+  if (system === 'shields') return `Combat hull loss −${Math.round(shown * 1.5)} (win always −3)`;
+  if (system === 'quarters') return shown >= 1 ? `Adds one crew berth (up to hull max)` : 'Adds one crew berth (up to hull max)';
+  if (system === 'sensors') return `Expedition +${shown * 2}% · lv 3 reveals sites a day early`;
+  if (system === 'medbay') return `Injury time −${shown * 8}%`;
   return '';
 }
 

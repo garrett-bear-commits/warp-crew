@@ -282,8 +282,9 @@ export const GALAXY_BEATS = {
 export function galaxyUnlocked(player, sector) {
   if (sector === 'spur') return true;
   if (sector === 'veil') return Boolean(player.flags?.veil_opened || player.story?.veilUnlocked);
-  if (sector === 'ember') return Boolean(player.flags?.ember_opened || player.flags?.forge_gift || player.flags?.ember_map || (player.story?.chapter || 0) >= 4);
-  if (sector === 'hollow') return Boolean(player.flags?.hollow_opened || (player.story?.chapter || 0) >= 5);
-  if (sector === 'crown') return Boolean(player.flags?.crown_opened || (player.story?.chapter || 0) >= 6);
+  // Interiors only after the gate visit — forge_gift / ember_map / chapter only reveal the GATE.
+  if (sector === 'ember') return Boolean(player.flags?.ember_opened || player.story?.emberUnlocked);
+  if (sector === 'hollow') return Boolean(player.flags?.hollow_opened || player.story?.hollowUnlocked);
+  if (sector === 'crown') return Boolean(player.flags?.crown_opened || player.story?.crownUnlocked);
   return true;
 }

@@ -18,7 +18,7 @@ export function applyStoryFlag(player, flag) {
   if (flag === 'veil_opened') {
     story.veilUnlocked = true;
   }
-  if (flag === 'ember_opened' || flag === 'forge_gift' || flag === 'ember_map') {
+  if (flag === 'ember_opened') {
     story.emberUnlocked = true;
   }
   if (flag === 'hollow_opened') {

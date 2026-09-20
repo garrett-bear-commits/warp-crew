@@ -6,6 +6,7 @@
  * and Zlarn (hide nav until the system exists, one glow on the live target).
  */
 import { createCrewInstance } from '../data/crewRoster.js';
+import { STORY_BEATS } from '../data/sectors.js';
 
 export const TUTORIAL_SCRIPT = 2;
 export const TUTORIAL_RECRUIT_ID = 'merc_jen';
@@ -281,8 +282,11 @@ export function dismissTutorial(player) {
 
 export function completeTutorial(player, { registered = false } = {}) {
   const t = { ...defaultTutorial(), ...(player.tutorial || {}) };
+  const story = { ...(player.story || {}) };
+  if ((story.chapter || 0) < 1) story.chapter = 1;
   return {
     ...player,
+    story,
     tutorial: {
       ...t,
       completed: true,
@@ -372,8 +376,8 @@ export function weekGoals(player) {
       {
         id: 'story_2',
         label: 'Unlock 2 story beats',
-        done: Object.keys(flags).filter((k) => flags[k]).length >= 2,
-        progress: `${Object.keys(flags).filter((k) => flags[k]).length}/2`,
+        done: Object.keys(STORY_BEATS).filter((k) => flags[k]).length >= 2,
+        progress: `${Object.keys(STORY_BEATS).filter((k) => flags[k]).length}/2`,
       },
       {
         id: 'crew_4',

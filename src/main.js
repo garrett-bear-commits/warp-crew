@@ -3,7 +3,8 @@ import { createNewPlayer, migratePlayer, tickCrewStatus, grantCrewXp, applyCrewI
 import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { claimFuelRegen } from './systems/fuel.js';
 import { previewTravel, commitTravel } from './systems/travel.js';
-import { pullOnce, pullTen, buyLuck, contractHire, rankUpCrew, levelCrew } from './systems/gacha.js';
+import { ASSIST_CAP } from './systems/combat.js';
+import { pullOnce, pullTen, buyLuck, contractHire, rankUpCrew, levelCrew, callUpReserve, sellReserve, benchCrew, LUCK_CAP } from './systems/gacha.js';
 import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, clampFuel } from './systems/economy.js';
 import {
   startExpedition,
@@ -111,6 +112,9 @@ async function refreshNotifs() {
 }
 
 function finishExpeditionResult(res) {
+  const planetId = res.planet?.id || player.activeExpedition?.payload?.planetId;
+  const planetRuns = { ...(player.stats?.planetRuns || {}) };
+  if (planetId) planetRuns[planetId] = (planetRuns[planetId] || 0) + 1;
   player = {
     ...player,
     wallet: grant(player.wallet, res.rewards),
@@ -118,7 +122,7 @@ function finishExpeditionResult(res) {
     crew: player.crew.map((c) =>
       res.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c
     ),
-    stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1 },
+    stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1, planetRuns },
   };
   if (res.success) {
     player = grantCrewXp(player, res.crewInstanceIds, 18);
@@ -309,6 +313,8 @@ function render() {
       toggleAssist: (id) => {
         if (selectedAssists.includes(id)) {
           selectedAssists = selectedAssists.filter((x) => x !== id);
+        } else if (selectedAssists.length >= ASSIST_CAP) {
+          selectedAssists = [...selectedAssists.slice(1), id];
         } else {
           selectedAssists = [...selectedAssists, id];
         }
@@ -407,6 +413,9 @@ function doHire({ gems = false, ten = false } = {}) {
     pushLog(`${name} stars up ★${res.instance.stars} (${res.rarity}).`);
     showToast({ title: `${name} ★${res.instance.stars}` });
     sfx('coin');
+  } else if (res.kind === 'reserve') {
+    pushLog(`${name} (${res.rarity}) waits in reserve.`);
+    showToast({ title: `${name} → reserve` });
   } else {
     pushLog(`Pulled ${name} (${res.rarity}) — ${res.kind === 'cap' ? 'max stars' : 'no slot'}, sold ${formatReward(res.sold)}.`);
     showToast({ title: `${name} sold`, rewards: res.sold });
@@ -667,11 +676,41 @@ async function handleAction(act, data = {}) {
     await refreshNotifs();
   } else if (act === 'buy-luck') {
     const res = buyLuck(player, data.currency || 'credits');
-    if (!res.ok) pushLog(`Need ${formatReward(res.cost)} for luck.`);
-    else {
+    if (!res.ok) {
+      pushLog(res.reason === 'luck_cap' ? `Luck is capped at ${LUCK_CAP}.` : `Need ${formatReward(res.cost)} for luck.`);
+    } else {
       player = res.player;
       pushLog(`Luck ${res.luck}. Odds tilt.`);
       showToast({ title: `Luck ${res.luck}` });
+    }
+  } else if (act === 'reserve-call') {
+    const res = callUpReserve(player, data.id);
+    if (!res.ok) pushLog(res.reason === 'no_slot' ? 'No open berth.' : `Reserve failed: ${res.reason}`);
+    else {
+      player = res.player;
+      pushLog(`${res.instance.name} called up.`);
+      showToast({ title: `${res.instance.name} on deck` });
+    }
+  } else if (act === 'reserve-sell') {
+    const res = sellReserve(player, data.id);
+    if (!res.ok) pushLog(`Sell failed: ${res.reason}`);
+    else {
+      player = res.player;
+      pushLog(`Sold ${res.instance.name} ${formatReward(res.sold)}.`);
+      showToast({ title: `${res.instance.name} sold`, rewards: res.sold });
+    }
+  } else if (act === 'crew-bench') {
+    const res = benchCrew(player, data.id);
+    if (!res.ok) {
+      pushLog(res.reason === 'reserve_full' ? 'Reserve bay is full.'
+        : res.reason === 'last_crew' ? 'Keep at least one merc aboard.'
+        : res.reason === 'away' ? 'They are on an expedition.'
+        : `Bench failed: ${res.reason}`);
+    } else {
+      player = res.player;
+      selectedCrewId = null;
+      pushLog(`${res.instance.name} benched to reserve.`);
+      showToast({ title: `${res.instance.name} → reserve` });
     }
   } else if (act === 'contract-hire') {
     const res = contractHire(player, data.id);
@@ -683,6 +722,8 @@ async function handleAction(act, data = {}) {
     } else {
       player = res.player;
       pushLog(`Contract: ${res.instance.name} signs on.`);
+      const te = noteTutorialEvent(player, 'hired');
+      player = te.player;
       showToast({ title: `${res.instance.name} signs on` });
       sfx('coin');
     }
@@ -722,7 +763,9 @@ async function handleAction(act, data = {}) {
     if (!res.ok) {
       pushLog(res.reason === 'cannot_afford'
         ? `Need ${JSON.stringify(res.cost)} for ${system}.`
-        : `Upgrade failed: ${res.reason}`);
+        : res.reason === 'max_berths'
+          ? 'Berths maxed for this hull — buy a larger hull first.'
+          : `Upgrade failed: ${res.reason}`);
     } else {
       player = res.player;
       const spent = res.cost?.credits ? ` (−${res.cost.credits}cr)` : '';
@@ -757,7 +800,11 @@ async function handleAction(act, data = {}) {
     if (!res.ok) pushLog(`Switch failed: ${res.reason}`);
     else {
       player = res.player;
-      pushLog(`Switched active hull to ${data.ship}.`);
+      const extra = [];
+      if (res.parked) extra.push(`${res.parked} benched`);
+      if (res.sold?.length) extra.push(`${res.sold.length} sold (bay full)`);
+      pushLog(`Switched active hull to ${data.ship}.${extra.length ? ' ' + extra.join(', ') + '.' : ''}`);
+      if (res.sold?.length) showToast({ title: 'Overflow sold', rewards: res.sold[0]?.sold });
     }
   } else if (act === 'iap-buy') {
     if (!isFeatureUnlocked(player, 'shop')) {

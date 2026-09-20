@@ -464,9 +464,9 @@ export function visibleNodes(player, now = Date.now()) {
     if (n.sector === 'ember' && n.id !== 'ember_gate' && !galaxyUnlocked(player, 'ember')) return false;
     if (n.id === 'ember_gate' && (player.story?.chapter || 0) < 3 && !player.flags?.forge_gift && !player.flags?.ember_map) return false;
     if (n.sector === 'hollow' && n.id !== 'hollow_mouth' && !galaxyUnlocked(player, 'hollow')) return false;
-    if (n.id === 'hollow_mouth' && !galaxyUnlocked(player, 'ember') && (player.story?.chapter || 0) < 5) return false;
+    if (n.id === 'hollow_mouth' && !player.flags?.hollow_opened && !player.flags?.ember_opened && (player.story?.chapter || 0) < 5) return false;
     if (n.sector === 'crown' && n.id !== 'halo_approach' && !galaxyUnlocked(player, 'crown')) return false;
-    if (n.id === 'halo_approach' && !galaxyUnlocked(player, 'hollow') && (player.story?.chapter || 0) < 6) return false;
+    if (n.id === 'halo_approach' && !player.flags?.crown_opened && !player.flags?.hollow_opened && (player.story?.chapter || 0) < 6) return false;
     if (n.minDay && day < n.minDay) return false;
     return true;
   });

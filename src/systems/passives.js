@@ -38,7 +38,8 @@ export function fuelCostFor(player, baseCost) {
   const n = Number(baseCost) || 0;
   if (n <= 0) return 0;
   const cut = (readyPassives(player).fuelCostReduce || 0) + engineFuelCut(player);
-  return Math.max(1, Math.ceil(n - cut));
+  const floor = Math.max(1, Math.ceil(n * 0.4));
+  return Math.max(floor, Math.ceil(n - cut));
 }
 
 export function tradePayout(base, crew) {
@@ -68,8 +69,13 @@ export function hullAfterCombat(player, { success, tutorial = false } = {}) {
   const repair = readyPassives(player).repairBonus || 0;
   let delta = tutorial ? -4 : success ? -8 : -22;
   delta += Math.round(shields * 1.5 + repair * 20);
-  if (delta > -2 && !success && !tutorial) delta = -8;
-  if (delta > 0) delta = 0;
+  if (tutorial) {
+    delta = Math.min(-2, delta);
+  } else if (success) {
+    delta = Math.min(-3, delta);
+  } else {
+    delta = Math.min(-10, delta);
+  }
   const hull = Math.max(0, Math.min(100, (player.ship?.hull ?? 100) + delta));
   return { ...player, ship: { ...player.ship, hull } };
 }
@@ -82,9 +88,8 @@ export function repairHull(player, amount = 25) {
 }
 
 export function injuryMinutesFor(player, base = 20) {
-  const cut = readyPassives(player).assistCharge || 0;
   const med = Math.max(0, player?.ship?.systems?.medbay || 0);
-  return Math.max(6, Math.round((base || 20) * (1 - cut * 1.5) * (1 - med * 0.08)));
+  return Math.max(6, Math.round((base || 20) * (1 - med * 0.08)));
 }
 
 export function passiveLabel(passive = {}) {
