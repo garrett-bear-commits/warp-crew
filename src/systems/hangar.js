@@ -143,6 +143,7 @@ export function switchHull(player, shipId) {
     player: next,
     def,
     sold: parked.sold,
+    granted: parked.granted,
     parked: Math.max(0, (player.crew || []).length - (next.crew || []).length - parked.sold.length),
   };
 }

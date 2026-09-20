@@ -805,7 +805,7 @@ async function handleAction(act, data = {}) {
       if (res.parked) extra.push(`${res.parked} benched`);
       if (res.sold?.length) extra.push(`${res.sold.length} sold (bay full)`);
       pushLog(`Switched active hull to ${data.ship}.${extra.length ? ' ' + extra.join(', ') + '.' : ''}`);
-      if (res.sold?.length) showToast({ title: 'Overflow sold', rewards: res.sold[0]?.sold });
+      if (res.sold?.length) showToast({ title: 'Overflow sold', rewards: res.granted });
     }
   } else if (act === 'iap-buy') {
     if (!isFeatureUnlocked(player, 'shop')) {

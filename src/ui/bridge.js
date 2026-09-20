@@ -24,6 +24,7 @@ import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, l
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
+import { INTEL_TRACKS } from '../data/intel.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost } from '../data/crewRoster.js';
@@ -588,7 +589,7 @@ function renderHangarSheet(player) {
             ${up ? `<button data-act="ship-upgrade" data-system="${id}">${up.credits}cr</button>` : '<span class="muted">MAX</span>'}
           </div>`;
       }).join('')}
-      <button data-act="goto-shop">Buy hulls</button>
+      <button class="primary" data-act="goto-shop">Hangar shop</button>
     </div>`;
 }
 
@@ -636,6 +637,7 @@ function renderCombatModal(pending, selectedAssists, tutorial = false) {
           <span>Them ${them}</span>
         </div>
         <div class="odds-bar ${tone}"><span style="width:${tutorial ? 100 : pct}%"></span></div>
+        ${tutorial ? '' : `<div class="muted">Pick up to ${ASSIST_CAP}</div>`}
         <div class="row">
           ${assists.map((a) => `
             <button data-assist="${a.id}" class="${selectedAssists.includes(a.id) ? 'primary' : ''}">
@@ -805,18 +807,19 @@ function renderCrew(player) {
         <div class="crew-card">
           ${crewPortrait(c)}
           <div class="crew-body">
-            <b>${escapeHtml(c.name)}</b>
-            <span class="tag">${escapeHtml(c.role)}</span>
-            <span class="tag">Lv ${c.level}</span>
-            ${c.status === 'injured' ? '<span class="tag injured">down</span>' : ''}
-            <div>${starsHtml(c.stars)} <span class="muted">${c.power}${hurt}</span></div>
-            <div class="row" style="margin-top:6px">
-              <button data-act="select-crew" data-id="${c.instanceId}">Info</button>
+            <div class="crew-top">
+              <b>${escapeHtml(c.name)}</b>
+              <span class="crew-power">${c.power}</span>
+            </div>
+            <div class="crew-meta">${escapeHtml(c.role)} · Lv ${c.level}${hurt}</div>
+            <div>${starsHtml(c.stars)}</div>
+            <div class="row crew-actions">
+              <button class="ghost" data-act="select-crew" data-id="${c.instanceId}">Dossier</button>
               ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
                 ? `<button data-act="level-crew" data-id="${c.instanceId}">Lv ${c.level + 1} · ${cost} med</button>`
                 : ''}
               ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition' && player.crew.length > 1
-                ? `<button data-act="crew-bench" data-id="${c.instanceId}">Bench</button>`
+                ? `<button class="ghost" data-act="crew-bench" data-id="${c.instanceId}">Bench</button>`
                 : ''}
             </div>
           </div>
@@ -840,19 +843,24 @@ function renderCrew(player) {
           </div>
         </div>`).join('')}
     </div>` : ''}
-    ${canHire && board.length ? `
+    ${canHire && board.length && open ? `
     <div class="panel">
       <h2>Hire</h2>
       ${board.map((t) => `
         <div class="crew-card">
-          <img class="portrait" src="${portraitFor(t.id, t.role)}" alt="" width="64" height="64" />
+          <img class="portrait" src="${portraitFor(t.id, t.role)}" alt="" width="52" height="52" />
           <div class="crew-body">
-            <b>${escapeHtml(t.name)}</b>
-            <span class="tag">${escapeHtml(t.role)}</span>
-            <button data-act="contract-hire" data-id="${t.id}" ${open ? '' : 'disabled'}>${open ? `${t.hireCost.credits}cr` : 'Full'}</button>
+            <div class="crew-top">
+              <b>${escapeHtml(t.name)}</b>
+              <span class="crew-power">${t.hireCost.credits}cr</span>
+            </div>
+            <div class="crew-meta">${escapeHtml(t.role)}</div>
+            <div class="row crew-actions">
+              <button class="primary" data-act="contract-hire" data-id="${t.id}">Sign on</button>
+            </div>
           </div>
         </div>`).join('')}
-    </div>` : ''}
+    </div>` : canHire && !open ? '<div class="muted" style="margin:8px 0 16px">Berths full. Bench someone to hire.</div>' : ''}
   `;
 }
 
@@ -897,12 +905,12 @@ function renderShop(player, shopProducts) {
             <div class="muted">${s.crewSlots}–${s.maxCrewSlots}${price ? ` · ${price}` : ''}${lock ? ` · ${escapeHtml(lock)}` : ''}</div>
           </div>
           <div class="hull-buy">
-            ${isActive ? '<button disabled>Active</button>' : isOwned
+            ${isActive ? '<span class="lock-pill">Active</span>' : isOwned
               ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
-              : s.id === 'sparrow' ? '<button disabled>Starter</button>' : check.ok ? `
+              : s.id === 'sparrow' ? '<span class="lock-pill">Starter</span>' : check.ok ? `
                 <button class="primary" data-act="hull-buy" data-ship="${s.id}" data-currency="gems">${s.gemPrice}g</button>
                 <button data-act="hull-buy" data-ship="${s.id}" data-currency="credits">${s.creditPrice}cr</button>
-              ` : `<button disabled>${escapeHtml(lock || 'Locked')}</button>`}
+              ` : `<span class="lock-pill">${escapeHtml(lock || 'Locked')}</span>`}
           </div>
         </div>`;
       }).join('')}
@@ -947,20 +955,32 @@ function renderLog(player, log, goals) {
     <div class="panel">
       <h2>Week</h2>
       ${goals.goals.map((g) => `
-        <div class="crew-card ${g.done ? 'goal-done' : ''}">
-          <b>${g.done ? '✓' : '○'} ${escapeHtml(g.label)}</b>
-          <span class="tag">${escapeHtml(g.progress)}</span>
+        <div class="week-row ${g.done ? 'done' : ''}">
+          <span class="mark">${g.done ? '●' : '○'}</span>
+          <span>${escapeHtml(g.label)}</span>
+          <span class="prog">${escapeHtml(g.progress)}</span>
         </div>
       `).join('')}
     </div>
     <div class="panel">
       <h2>Story</h2>
       ${prog.beats.filter((b) => b.unlocked).slice(-6).map((b) => `
-        <div class="crew-card">
-          <b>${escapeHtml(b.title)}</b>
-          <span class="tag">Ch.${b.chapter}</span>
+        <div class="week-row">
+          <span class="mark">●</span>
+          <span>${escapeHtml(b.title)}</span>
+          <span class="prog">Ch.${b.chapter}</span>
         </div>
       `).join('') || '<div class="muted">Jump story nodes to log beats.</div>'}
+    </div>
+    <div class="panel">
+      <h2>Later</h2>
+      ${INTEL_TRACKS.slice(0, 4).map((t) => `
+        <div class="week-row">
+          <span class="mark">○</span>
+          <span>${escapeHtml(t.title)}</span>
+          <span class="prog">${escapeHtml(t.eta)}</span>
+        </div>
+      `).join('')}
     </div>
     <div class="panel">
       <h2>Log</h2>
@@ -970,9 +990,7 @@ function renderLog(player, log, goals) {
 }
 
 function escapeHtml(s) {
-  return String(s)
-    .replaceAll('&', '&')
-    .replaceAll('<', '<')
-    .replaceAll('>', '>')
-    .replaceAll('"', '"');
+  return String(s).replace(/[&<>"']/g, (ch) =>
+    ({ '&': '&' + 'amp;', '<': '&' + 'lt;', '>': '&' + 'gt;', '"': '&' + 'quot;', "'": '&#39;' }[ch])
+  );
 }
