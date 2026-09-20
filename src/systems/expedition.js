@@ -1,5 +1,10 @@
 // @ts-nocheck
 import { makeTimedJob, wallClockProgress } from '../shared/timer.js';
+import { PLANET_DEFS, planetById } from '../data/planets.js';
+import { readyCrew } from './player.js';
+import { crewPower } from './combat.js';
+import { sumPassives } from './passives.js';
+import { scaleSitePayout } from './economy.js';
 
 /** Test cadence — set to 360 for launch (6h) */
 export const TEST_EXPEDITION_MINUTES = 15;
@@ -8,9 +13,45 @@ export const LAUNCH_EXPEDITION_MINUTES = 360;
 /** Gem cost to finish an active expedition immediately (success roll still applies). */
 export const EXPEDITION_SKIP_GEMS = 15;
 
-export function expeditionSuccessChance({ crewPower, planetDifficulty, gearBonus = 0 }) {
-  const raw = 0.38 + (crewPower / (crewPower + planetDifficulty)) * 0.52 + gearBonus;
+export function expeditionSuccessChance({ crewPower: power, planetDifficulty, gearBonus = 0, roleBonus = 0 }) {
+  const raw = 0.38 + (power / (power + planetDifficulty)) * 0.52 + gearBonus + roleBonus;
   return Math.max(0.08, Math.min(0.94, raw));
+}
+
+export function pickExpeditionCrew(player, planet, max = 2) {
+  const pref = planet?.prefRole;
+  const ready = readyCrew(player);
+  const scored = ready
+    .map((c) => ({
+      c,
+      score:
+        (c.power || 10) +
+        (pref && c.role === pref ? 14 : 0) +
+        (c.passive?.expeditionSuccess || 0) * 90,
+    }))
+    .sort((a, b) => b.score - a.score);
+  return scored.slice(0, max).map((x) => x.c);
+}
+
+export function previewExpedition(player, planetId) {
+  const planet = planetById(planetId);
+  const crew = pickExpeditionCrew(player, planet);
+  const roleHit = planet.prefRole && crew.some((c) => c.role === planet.prefRole);
+  const chance = expeditionSuccessChance({
+    crewPower: crewPower(crew),
+    planetDifficulty: planet.difficulty,
+    gearBonus: sumPassives(crew).expeditionSuccess || 0,
+    roleBonus: roleHit ? 0.06 : 0,
+  });
+  const win = scaleSitePayout(planet.success || { credits: 80, medals: 8, reputation: 3 }, player, {
+    kind: 'expedition',
+    visits: player.stats?.expeditions || 0,
+  });
+  const fail = scaleSitePayout(planet.failLoot || { credits: 18, medals: 2, reputation: 1 }, player, {
+    kind: 'expedition',
+    visits: player.stats?.expeditions || 0,
+  });
+  return { planet, crew, chance, roleHit, win, fail };
 }
 
 export function startExpedition({
@@ -19,37 +60,61 @@ export function startExpedition({
   minutes = TEST_EXPEDITION_MINUTES,
   successChance,
   startedAt = Date.now(),
+  roleHit = false,
 }) {
+  const planet = planetById(planetId);
   return makeTimedJob({
     id: `exp_${planetId}_${startedAt}`,
     kind: 'expedition',
-    minutes,
+    minutes: minutes ?? planet.minutes ?? TEST_EXPEDITION_MINUTES,
     startedAt,
     payload: {
       planetId,
       crewInstanceIds: [...crewInstanceIds],
       successChance,
+      roleHit: Boolean(roleHit),
     },
   });
 }
 
-export function resolveExpedition(job, { rng = Math.random, forceComplete = false } = {}) {
+function lootFor(job, success, player) {
+  const planet = planetById(job.payload.planetId);
+  const table = success ? planet.success : planet.failLoot;
+  const base = table || (success
+    ? { credits: 70, medals: 8, reputation: 4 }
+    : { credits: 16, medals: 2, reputation: 1 });
+  return scaleSitePayout(base, player || {}, {
+    kind: 'expedition',
+    visits: player?.stats?.expeditions || 0,
+  });
+}
+
+export function resolveExpedition(job, { rng = Math.random, forceComplete = false, player = null, abortFrac = 1 } = {}) {
   const { progress, complete } = wallClockProgress(job);
   if (!forceComplete && !complete) return { ready: false, progress };
 
-  const success = rng() < (job.payload.successChance ?? 0.5);
-  const mult = success ? 1 : 0.18;
-  const rewards = {
-    credits: Math.floor((70 + (job.payload.successChance || 0.5) * 110) * mult),
-    medals: Math.floor((10 + (job.payload.successChance || 0.5) * 18) * mult),
-    reputation: success ? 5 : 1,
-  };
+  const chance = job.payload.successChance ?? 0.5;
+  const success = abortFrac < 1 ? false : rng() < chance;
+  let rewards = lootFor(job, success, player);
+  if (abortFrac < 1) {
+    rewards = {
+      credits: Math.floor((rewards.credits || 0) * abortFrac),
+      medals: Math.max(0, Math.floor((rewards.medals || 0) * abortFrac)),
+      reputation: Math.max(0, Math.floor((rewards.reputation || 0) * abortFrac)),
+      gems: 0,
+    };
+  }
+  const planet = planetById(job.payload.planetId);
   return {
     ready: true,
     success,
     rewards,
     crewInstanceIds: job.payload.crewInstanceIds,
-    skipped: Boolean(forceComplete),
+    skipped: Boolean(forceComplete) && abortFrac >= 1,
+    aborted: abortFrac < 1,
+    flavor: success ? planet.win : planet.fail,
+    planet,
+    progress: 1,
   };
 }
 
@@ -61,106 +126,25 @@ export function skipExpeditionJob(job, now = Date.now()) {
   };
 }
 
-export const PLANETS_V1 = [
-  {
-    id: 'dustfall',
-    name: 'Dustfall Outpost',
-    difficulty: 18,
-    minutes: Math.max(5, Math.floor(TEST_EXPEDITION_MINUTES / 3)),
-    blurb: 'Tutorial scrap moon — short run. Start here.',
-    minDay: 1,
-  },
-  {
-    id: 'derelict_freighter',
-    name: 'Derelict Freighter',
-    difficulty: 25,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Silent hulk on the edge of the Spur. Salvage and risk.',
-    minDay: 1,
-  },
-  {
-    id: 'crystal_asteroid',
-    name: 'Crystal Asteroid',
-    difficulty: 40,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Refractive ore veins. Good medals, medium danger.',
-    minDay: 1,
-  },
-  {
-    id: 'tidefall_ruins',
-    name: 'Tidefall Ruins',
-    difficulty: 35,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Submerged alien arches. Scouts love it.',
-    minDay: 2,
-  },
-  {
-    id: 'ice_outpost',
-    name: 'Ice Mining Outpost',
-    difficulty: 55,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Frozen claim under Swarm probe traffic.',
-    minDay: 2,
-  },
-  {
-    id: 'ledger_vault',
-    name: 'Ledger Vault',
-    difficulty: 45,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Abandoned bank vault asteroid. Credits + medals.',
-    minDay: 3,
-  },
-  {
-    id: 'swarm_husk',
-    name: 'Swarm Husk',
-    difficulty: 60,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Hollowed probe carcass. High danger, high rep.',
-    minDay: 3,
-  },
-  {
-    id: 'echo_shoal',
-    name: 'Echo Shoal',
-    difficulty: 50,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Crystal shallows. Bring a scout.',
-    minDay: 4,
-  },
-  {
-    id: 'amber_mine',
-    name: 'Amber Mine',
-    difficulty: 42,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Resin tunnels under Amber Port.',
-    minDay: 4,
-  },
-  {
-    id: 'signal_wreck',
-    name: 'Signal Wreck',
-    difficulty: 48,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Collapsed array spine. Story-adjacent salvage.',
-    minDay: 5,
-  },
-  {
-    id: 'pirate_cache',
-    name: 'Pirate Cache',
-    difficulty: 58,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Hidden corsair stash. Security mercs shine.',
-    minDay: 5,
-  },
-  {
-    id: 'aurora_ice',
-    name: 'Aurora Ice Cap',
-    difficulty: 52,
-    minutes: TEST_EXPEDITION_MINUTES,
-    blurb: 'Tourist moon’s dark side. Quiet riches.',
-    minDay: 6,
-  },
-];
+export function abortPayoutFrac(job, now = Date.now()) {
+  const { progress } = wallClockProgress(job);
+  if (progress < 0.5) return 0;
+  return 0.25;
+}
+
+export const PLANETS_V1 = PLANET_DEFS.map((p) => ({
+  ...p,
+  minutes: p.minutes ?? TEST_EXPEDITION_MINUTES,
+}));
 
 export function visiblePlanets(player, now = Date.now()) {
   const day = 1 + Math.floor((now - (player.createdAt || now)) / 86400000);
-  return PLANETS_V1.filter((p) => !p.minDay || day >= p.minDay);
+  const veilOpen = Boolean(player.flags?.veil_opened || player.story?.veilUnlocked);
+  return PLANETS_V1.filter((p) => {
+    if (p.sector === 'veil' && !veilOpen) return false;
+    if (p.minDay && day < p.minDay) return false;
+    return true;
+  });
 }
+
+export { planetById };

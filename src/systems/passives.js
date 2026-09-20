@@ -1,6 +1,8 @@
 // @ts-nocheck
 /** Sum crew passives. Templates define them; combat/travel/expeditions consume them. */
 
+import { engineFuelCut } from './economy.js';
+
 const KEYS = [
   'tradeCredits',
   'critChance',
@@ -34,7 +36,7 @@ export function readyPassives(player, now = Date.now()) {
 export function fuelCostFor(player, baseCost) {
   const n = Number(baseCost) || 0;
   if (n <= 0) return 0;
-  const cut = readyPassives(player).fuelCostReduce || 0;
+  const cut = (readyPassives(player).fuelCostReduce || 0) + engineFuelCut(player);
   return Math.max(1, Math.ceil(n - cut));
 }
 
@@ -75,6 +77,11 @@ export function repairHull(player, amount = 25) {
   const gained = Math.round(amount * (1 + (pass.repairBonus || 0)));
   const hull = Math.min(100, (player.ship?.hull ?? 100) + gained);
   return { player: { ...player, ship: { ...player.ship, hull } }, gained: hull - (player.ship?.hull ?? 100) };
+}
+
+export function injuryMinutesFor(player, base = 20) {
+  const cut = readyPassives(player).assistCharge || 0;
+  return Math.max(8, Math.round((base || 20) * (1 - cut * 1.5)));
 }
 
 export function passiveLabel(passive = {}) {

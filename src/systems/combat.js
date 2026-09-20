@@ -22,6 +22,7 @@ export function resolveCombat({
   rng = Math.random,
   tutorialGuaranteed = false,
   assistMult = 1,
+  encounter = null,
 }) {
   const rawAssist = assistsUsed.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
   const assistPower = Math.round(rawAssist * (assistMult || 1));
@@ -32,36 +33,150 @@ export function resolveCombat({
       playerPower: total,
       enemyPower,
       rewards: { credits: 120, medals: 8, reputation: 4 },
-      log: 'First contact. The scout wing breaks off.',
+      log: encounter?.win || 'First contact. The scout wing breaks off.',
       tutorial: true,
     };
   }
   const ratio = total / Math.max(1, enemyPower);
   const roll = 0.15 + ratio * 0.7 + (rng() - 0.5) * 0.1;
   const success = roll >= 0.5;
-  const credits = success ? Math.floor(40 + enemyPower * 0.8) : Math.floor(10 + enemyPower * 0.1);
-  const medals = success ? Math.floor(4 + enemyPower * 0.15) : 1;
-  const reputation = success ? 3 : 0;
+  const base = encounter?.rewards || {
+    credits: Math.floor(40 + enemyPower * 0.8),
+    medals: Math.floor(4 + enemyPower * 0.15),
+    reputation: 3,
+  };
+  const rewards = success
+    ? { ...base }
+    : {
+        credits: Math.max(8, Math.floor((base.credits || 0) * 0.22)),
+        medals: Math.max(1, Math.floor((base.medals || 0) * 0.25)),
+        reputation: 0,
+      };
   return {
     success,
     playerPower: total,
     enemyPower,
-    rewards: { credits, medals, reputation },
+    rewards,
     log: success
-      ? `Victory. Assists contributed +${assistPower} power.`
-      : `Defeat. Hull holds; crew shaken. Scrap recovered.`,
+      ? (encounter?.win || `Victory. Assists contributed +${assistPower} power.`)
+      : (encounter?.fail || 'Defeat. Hull holds; crew shaken. Scrap recovered.'),
   };
 }
 
 export const ENCOUNTERS_V1 = [
-  { id: 'pirate_scout', name: 'Pirate Scout', power: 12, rewards: { credits: 40, medals: 2, reputation: 1 } },
-  { id: 'pirate_wing', name: 'Pirate Wing', power: 22, rewards: { credits: 80, medals: 5, reputation: 2 } },
-  { id: 'scrapper_gang', name: 'Scrapper Gang', power: 18, rewards: { credits: 70, medals: 6, reputation: 1 } },
-  { id: 'swarm_probe', name: 'Eclipse Probe', power: 20, rewards: { credits: 60, medals: 6, reputation: 3 } },
-  { id: 'swarm_skirmish', name: 'Swarm Skirmish', power: 32, rewards: { credits: 120, medals: 10, reputation: 5 } },
-  { id: 'swarm_frigate', name: 'Swarm Frigate Echo', power: 48, rewards: { credits: 200, medals: 18, reputation: 8 } },
-  { id: 'pirate_ace', name: 'Corsair Ace', power: 28, rewards: { credits: 110, medals: 9, reputation: 3 } },
+  {
+    id: 'pirate_scout',
+    name: 'Pirate Scout',
+    power: 12,
+    rewards: { credits: 40, medals: 2, reputation: 1 },
+    blurb: 'A light cutter tagging freighters.',
+    win: 'The scout wing breaks off. You strip the pod.',
+    fail: 'They rake the hull and vanish into dust.',
+  },
+  {
+    id: 'pirate_wing',
+    name: 'Pirate Wing',
+    power: 22,
+    rewards: { credits: 80, medals: 5, reputation: 2 },
+    blurb: 'Three cutters flying a ragged V.',
+    win: 'The wing scatters. You keep one engine and the pay chest.',
+    fail: 'They punch a hole in cargo and run.',
+  },
+  {
+    id: 'scrapper_gang',
+    name: 'Scrapper Gang',
+    power: 18,
+    rewards: { credits: 70, medals: 6, reputation: 1 },
+    blurb: 'Yard dogs with cutting torches.',
+    win: 'You outbid them with guns. Their salvage is yours.',
+    fail: 'They torch a panel and take the easy metal.',
+  },
+  {
+    id: 'swarm_probe',
+    name: 'Eclipse Probe',
+    power: 20,
+    rewards: { credits: 60, medals: 6, reputation: 3 },
+    blurb: 'A black-shelled mapper. It already knows your name.',
+    win: 'The probe cracks. A nav-crystal ticks in the husk.',
+    fail: 'It tags your hull and slips into the dark.',
+  },
+  {
+    id: 'swarm_skirmish',
+    name: 'Swarm Skirmish',
+    power: 32,
+    rewards: { credits: 120, medals: 10, reputation: 5 },
+    blurb: 'A hunting pack. Do not let them surround you.',
+    win: 'The pack peels. Chitin and medals in the wake.',
+    fail: 'They score the shields and leave a mark.',
+  },
+  {
+    id: 'swarm_frigate',
+    name: 'Swarm Frigate Echo',
+    power: 48,
+    rewards: { credits: 200, medals: 18, reputation: 8 },
+    blurb: 'A silhouette larger than a station, half-remembered.',
+    win: 'The echo breaks. You bag a core fragment.',
+    fail: 'The shadow passes. Hull sings with stress.',
+  },
+  {
+    id: 'pirate_ace',
+    name: 'Corsair Ace',
+    power: 28,
+    rewards: { credits: 110, medals: 9, reputation: 3 },
+    blurb: 'One pilot, one painted hull, no manners.',
+    win: 'The ace ejects. You keep the painted fin.',
+    fail: 'A perfect rake. You limp home with scrap.',
+  },
+  {
+    id: 'ice_raiders',
+    name: 'Ice Raiders',
+    power: 26,
+    rewards: { credits: 100, medals: 8, reputation: 3 },
+    blurb: 'Glass-spur corsairs in white hulls.',
+    win: 'You crack their ice-lock. Convoy pay inside.',
+    fail: 'They steal a pallet and vanish into glare.',
+  },
+  {
+    id: 'swarm_brood',
+    name: 'Swarm Brood',
+    power: 40,
+    rewards: { credits: 160, medals: 14, reputation: 7 },
+    blurb: 'A living cloud of half-grown probes.',
+    win: 'The brood burns. Cores tick in the ash.',
+    fail: 'They cling. You scrape them off with hull.',
+  },
+  {
+    id: 'veil_wraith',
+    name: 'Veil Wraith',
+    power: 44,
+    rewards: { credits: 180, medals: 16, reputation: 8 },
+    blurb: 'Something that only moves when you look away.',
+    win: 'The wraith unravels. Cold medals in the dust.',
+    fail: 'It brands the hull and is gone.',
+  },
+  {
+    id: 'corsair_king',
+    name: 'Corsair King',
+    power: 36,
+    rewards: { credits: 150, medals: 12, reputation: 5 },
+    blurb: 'The nest’s old captain, still armed.',
+    win: 'The king yields a crate and a grudging salute.',
+    fail: 'He rakes engineering and laughs on comms.',
+  },
+  {
+    id: 'eclipse_echo',
+    name: 'Eclipse Echo',
+    power: 56,
+    rewards: { credits: 240, medals: 22, reputation: 10 },
+    blurb: 'A war-form the Spur was never meant to see.',
+    win: 'The echo folds. A gem-bright core in the wrecklight.',
+    fail: 'It does not chase. That is worse.',
+  },
 ];
+
+export function encounterById(id) {
+  return ENCOUNTERS_V1.find((e) => e.id === id) || ENCOUNTERS_V1[0];
+}
 
 export function listAssists({ tutorial = false } = {}) {
   const all = Object.values(ASSISTS);

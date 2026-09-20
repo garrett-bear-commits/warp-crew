@@ -34,7 +34,7 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     loginStreak: 0,
     lastLoginDay: null,
     dailyPullAvailable: true,
-    stats: { jumps: 0, combatsWon: 0, expeditions: 0 },
+    stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {} },
     story: { chapter: 0, eclipseIntro: false },
     tutorial: defaultTutorial(),
   };
@@ -80,11 +80,47 @@ export function assignedCrew(player) {
   return player.crew.filter((c) => c.status === 'ready' || c.status === 'injured');
 }
 
-export function readyCrew(player) {
-  const now = Date.now();
+export function readyCrew(player, now = Date.now()) {
   return player.crew.filter((c) => {
     if (c.status === 'expedition') return false;
     if (c.status === 'injured' && (c.injuredUntil || 0) > now) return false;
     return true;
   });
+}
+
+export function tickCrewStatus(player, now = Date.now()) {
+  let changed = false;
+  const crew = (player.crew || []).map((c) => {
+    if (c.status === 'injured' && (c.injuredUntil || 0) <= now) {
+      changed = true;
+      return { ...c, status: 'ready', injuredUntil: 0 };
+    }
+    return c;
+  });
+  return changed ? { ...player, crew } : player;
+}
+
+export function applyCrewInjury(player, instanceIds = [], minutes = 20, now = Date.now()) {
+  if (!instanceIds.length || minutes <= 0) return player;
+  const until = now + Math.round(minutes) * 60000;
+  const set = new Set(instanceIds);
+  return {
+    ...player,
+    crew: player.crew.map((c) =>
+      set.has(c.instanceId) && c.status !== 'expedition'
+        ? { ...c, status: 'injured', injuredUntil: until }
+        : c
+    ),
+  };
+}
+
+export function grantCrewXp(player, instanceIds = [], amount = 10) {
+  if (!instanceIds.length || !amount) return player;
+  const set = new Set(instanceIds);
+  return {
+    ...player,
+    crew: player.crew.map((c) =>
+      set.has(c.instanceId) ? { ...c, xp: (c.xp || 0) + amount } : c
+    ),
+  };
 }

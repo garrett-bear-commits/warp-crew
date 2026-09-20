@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { CREW_CATALOG, RARITY, createCrewInstance } from '../data/crewRoster.js';
+import { sellContract, reputationRank } from './economy.js';
 
 /** Reputation → weight multipliers for rarities */
 export function rarityWeights(reputation = 0) {
@@ -21,9 +22,10 @@ export function rarityWeights(reputation = 0) {
 export const REP_GATES = [100, 300, 600, 1000, 2000];
 
 export function nextRepGate(reputation = 0) {
+  const rank = reputationRank(reputation);
   const next = REP_GATES.find((n) => reputation < n);
-  if (!next) return { next: null, label: 'max oddities' };
-  return { next, remain: next - reputation, label: `${reputation} / ${next} rep` };
+  if (!next) return { next: null, label: `${rank.label} · max oddities`, rank };
+  return { next, remain: next - reputation, label: `${rank.label} · ${reputation} / ${next} rep`, rank };
 }
 
 function pickRarity(weights, rng = Math.random) {
@@ -54,4 +56,4 @@ export const GACHA_COSTS = {
   gems10: { gems: 900 },
 };
 
-export { RARITY, CREW_CATALOG };
+export { RARITY, CREW_CATALOG, sellContract };

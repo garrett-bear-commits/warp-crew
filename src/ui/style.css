@@ -631,6 +631,40 @@ button.hud-chip {
 .map-meta { font-size: var(--size-min); color: var(--muted); }
 .map-blurb { font-size: var(--size-min); color: #9aacc4; line-height: 1.35; }
 
+.sector-kicker {
+  font-family: var(--font-display);
+  font-size: var(--size-min);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin: 14px 0 6px;
+}
+.map-node.hazard-high {
+  border-color: rgba(255, 107, 107, 0.45);
+}
+.map-node.hazard-mid {
+  border-color: rgba(255, 200, 87, 0.35);
+}
+.map-node.hazard-none {
+  border-color: rgba(61, 220, 151, 0.3);
+}
+.map-node.worn .map-meta { color: var(--warn); }
+.tag.injured {
+  color: var(--bad);
+  border-color: color-mix(in oklab, var(--bad) 45%, var(--line));
+}
+.sys-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sys-row:last-child { border-bottom: 0; }
+.sheet-actions .muted { margin-top: 6px; }
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

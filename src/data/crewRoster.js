@@ -97,3 +97,10 @@ export function createCrewInstance(templateId, { level = 1 } = {}) {
 }
 
 export const MEDAL_LEVEL_COST = (level) => Math.floor(10 * Math.pow(1.35, level - 1));
+
+export function medalLevelCostFor(crew) {
+  const base = MEDAL_LEVEL_COST(crew?.level || 1);
+  const xp = crew?.xp || 0;
+  const cut = Math.min(Math.floor(base * 0.4), Math.floor(xp / 12));
+  return Math.max(1, base - cut);
+}

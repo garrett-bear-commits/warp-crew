@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { fuelStatus } from '../systems/fuel.js';
 import { formatDuration } from '../shared/timer.js';
-import { visibleNodes } from '../data/sectors.js';
-import { PLANETS_V1, EXPEDITION_SKIP_GEMS, visiblePlanets } from '../systems/expedition.js';
+import { visibleNodes, nodesBySector, nodeMeta, typicalPayout } from '../data/sectors.js';
+import { EXPEDITION_SKIP_GEMS, visiblePlanets, previewExpedition, planetById } from '../systems/expedition.js';
 import { ASSISTS, listAssists, crewPower } from '../systems/combat.js';
 import { storyProgress } from '../systems/story.js';
 import { SHIPS } from '../data/ships.js';
-import { listOwnedHulls } from '../systems/hangar.js';
+import { listOwnedHulls, nextUpgradeCost } from '../systems/hangar.js';
 import {
   currentTutorialStep,
   weekGoals,
@@ -19,31 +19,19 @@ import {
   sessionHint,
 } from '../systems/tutorial.js';
 import { readyCrew } from '../systems/player.js';
-import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART } from '../data/portraits.js';
+import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART, planetArtFor } from '../data/portraits.js';
 import { GACHA_COSTS, nextRepGate, CREW_CATALOG } from '../systems/gacha.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
+import { hullRepairOffer, formatReward, fuelCreditPrice, systemBlurb, visitMult, reputationRank } from '../systems/economy.js';
+import { planetType } from '../data/planets.js';
 import { ROOMS } from '../data/starterShip.js';
+import { medalLevelCostFor } from '../data/crewRoster.js';
 import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying } from './combatView.js';
 import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
-
-const PLANET_CLASS = {
-  derelict_freighter: 'a',
-  crystal_asteroid: 'b',
-  ice_outpost: 'c',
-  dustfall: 'd',
-  tidefall_ruins: 'b',
-  ledger_vault: 'c',
-  swarm_husk: 'a',
-  echo_shoal: 'b',
-  amber_mine: 'c',
-  signal_wreck: 'a',
-  pirate_cache: 'd',
-  aurora_ice: 'b',
-};
 
 const NAV_ICO = {
   ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
@@ -51,6 +39,15 @@ const NAV_ICO = {
   missions: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg>',
   shop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 11H6L5 8z"/><path d="M8 8V7a4 4 0 0 1 8 0v1"/></svg>',
   log: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16H7z"/><path d="M10 8h4M10 12h4M10 16h3"/></svg>',
+};
+
+const NODE_KIND_ART = {
+  station: 'c',
+  trade: 'b',
+  travel: 'd',
+  danger: 'a',
+  story: 'c',
+  salvage: 'a',
 };
 
 export function renderApp(root, ctx) {
@@ -420,7 +417,7 @@ function renderRoomSheet(player, room, fuel, now) {
       <div class="sheet-head">
         <div>
           <h2>${escapeHtml(room.name)}</h2>
-          <div class="muted">${sys != null ? `System lv ${sys}` : assigned ? escapeHtml(assigned.role) : 'Unassigned'}</div>
+          <div class="muted">${sys != null ? `System lv ${sys}${room.system ? ` · ${escapeHtml(systemBlurb(room.system, sys))}` : ''}` : assigned ? escapeHtml(assigned.role) : 'Unassigned'}</div>
         </div>
         <button class="icon-close" data-act="close-room" aria-label="Close">×</button>
       </div>
@@ -435,31 +432,58 @@ function renderRoomSheet(player, room, fuel, now) {
     </div>`;
 }
 
+function fuelBuyButtons(player) {
+  const fuel = player.wallet?.fuel || 0;
+  const fuelMax = player.fuelMax || 10;
+  const room = Math.max(0, fuelMax - fuel);
+  if (!room) return '';
+  const price = fuelCreditPrice(player);
+  const n5 = Math.min(5, room);
+  return `
+    <button data-act="buy-fuel" data-n="1">Buy 1 fuel ${price}cr</button>
+    ${n5 > 1 ? `<button data-act="buy-fuel" data-n="${n5}">Buy ${n5} fuel ${price * n5}cr</button>` : ''}`;
+}
+
 function roomActions(room, player) {
   const hangar = isFeatureUnlocked(player, 'hangar');
   const crewOpen = isFeatureUnlocked(player, 'nav_crew');
+  const offer = hullRepairOffer(player);
   if (room.id === 'bridge') {
     return '<button class="primary" data-act="goto-missions">Open missions</button>';
   }
   if (room.id === 'engineering') {
-    const hull = player.ship?.hull ?? 100;
+    const sh = nextUpgradeCost(player, 'shields');
+    const lv = player.ship?.systems?.shields || 1;
     return `
       ${crewOpen ? '<button class="primary" data-act="goto-crew">Crew bay</button>' : '<button class="primary" data-act="goto-missions">Open missions</button>'}
-      ${hull < 100 ? `<button data-act="repair-hull">Repair hull 35cr (${hull}%)</button>` : ''}
-      ${hangar ? '<button data-act="ship-upgrade" data-system="shields">Upgrade shields</button>' : ''}`;
+      ${offer ? `<button data-act="repair-hull">Repair ${offer.cost}cr (+${offer.amount}%)</button>` : ''}
+      ${hangar && sh ? `<button data-act="ship-upgrade" data-system="shields">Shields lv ${sh.level} · ${sh.credits}cr</button>` : ''}
+      <div class="muted">${escapeHtml(systemBlurb('shields', lv))}</div>`;
   }
   if (room.id === 'cargo') {
+    const cg = nextUpgradeCost(player, 'cargo');
+    const lv = player.ship?.systems?.cargo || 1;
     return `
       <button class="primary" data-act="goto-missions">${hangar ? 'Expeditions' : 'Missions'}</button>
-      ${hangar ? '<button data-act="ship-upgrade" data-system="cargo">Upgrade cargo</button>' : ''}`;
+      ${fuelBuyButtons(player)}
+      ${hangar && cg ? `<button data-act="ship-upgrade" data-system="cargo">Cargo lv ${cg.level} · ${cg.credits}cr</button>` : ''}
+      <div class="muted">${escapeHtml(systemBlurb('cargo', lv))}</div>`;
   }
   if (room.id === 'engines') {
+    const en = nextUpgradeCost(player, 'engines');
+    const lv = player.ship?.systems?.engines || 1;
     return `
       <button class="primary" data-act="claim">Claim fuel</button>
-      ${hangar ? '<button data-act="ship-upgrade" data-system="engines">Upgrade engines</button>' : ''}`;
+      ${fuelBuyButtons(player)}
+      ${hangar && en ? `<button data-act="ship-upgrade" data-system="engines">Engines lv ${en.level} · ${en.credits}cr</button>` : ''}
+      <div class="muted">${escapeHtml(systemBlurb('engines', lv))}</div>`;
   }
   if (room.system && hangar) {
-    return `<button class="primary" data-act="ship-upgrade" data-system="${room.system}">Upgrade ${escapeHtml(room.system)}</button>`;
+    const up = nextUpgradeCost(player, room.system);
+    const lv = player.ship?.systems?.[room.system] || 1;
+    return `
+      <button class="primary" data-act="ship-upgrade" data-system="${room.system}">Upgrade ${escapeHtml(room.system)}${up ? ` ${up.credits}cr` : ''}</button>
+      <div class="muted">${escapeHtml(systemBlurb(room.system, lv))}</div>`;
   }
   if (room.role) {
     return crewOpen
@@ -473,6 +497,7 @@ function renderHangarSheet(player) {
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
   const sys = player.ship?.systems || {};
+  const systems = ['engines', 'shields', 'cargo', 'weapons', 'quarters'];
   return `
     <div class="room-sheet">
       <div class="sheet-head">
@@ -497,10 +522,19 @@ function renderHangarSheet(player) {
               : '<button data-act="goto-shop">Buy</button>'}
           </div>`;
       }).join('')}
-      <div class="row" style="margin-top:8px">
-        <button data-act="ship-upgrade" data-system="weapons">Weapons lv ${sys.weapons || 1}</button>
-        <button data-act="ship-upgrade" data-system="quarters">Expand berth</button>
-      </div>
+      <div class="muted" style="margin:8px 0 4px">Systems</div>
+      ${systems.map((id) => {
+        const lv = sys[id] || (id === 'quarters' ? 0 : 1);
+        const up = nextUpgradeCost(player, id);
+        return `
+          <div class="sys-row">
+            <div>
+              <b>${escapeHtml(id)} lv ${lv}</b>
+              <div class="muted">${escapeHtml(systemBlurb(id, lv || 1))}</div>
+            </div>
+            ${up ? `<button data-act="ship-upgrade" data-system="${id}">${up.credits}cr</button>` : ''}
+          </div>`;
+      }).join('')}
     </div>`;
 }
 
@@ -534,11 +568,13 @@ function renderCombatModal(pending, selectedAssists, tutorial = false) {
           </div>
         </div>
         ${tutorial ? '<p class="muted">Shield Boost is primed. One tap to engage.</p>' : ''}
+        ${pending.encounter.blurb ? `<p class="muted">${escapeHtml(pending.encounter.blurb)}</p>` : ''}
         <div class="stat-row" style="margin:10px 0">
           <div class="stat">Your power <b>${pending.playerPower}</b></div>
           <div class="stat">Enemy <b>${pending.encounter.power}</b></div>
           <div class="stat">Assists <b>+${assistPower}</b></div>
         </div>
+        ${pending.encounter.rewards ? `<div class="muted" style="margin-bottom:8px">Win ${escapeHtml(formatReward(pending.encounter.rewards))}</div>` : ''}
         ${tutorial ? '' : '<div class="muted" style="margin-bottom:8px">Pick assists (free in v1)</div>'}
         <div class="row">
           ${assists.map((a) => `
@@ -556,14 +592,27 @@ function renderCombatModal(pending, selectedAssists, tutorial = false) {
   `;
 }
 
-const NODE_KIND_ART = {
-  station: 'c',
-  trade: 'b',
-  travel: 'd',
-  danger: 'a',
-  story: 'c',
-  salvage: 'a',
-};
+function renderNodeCard(n, player, here, step) {
+  const hereCls = n.id === here ? 'here' : '';
+  const spot = step?.spotlight === `node-${n.id}` ? 'spot-glow' : '';
+  const cost = fuelCostFor(player, n.fuelCost ?? 1);
+  const art = NODE_ART[NODE_KIND_ART[n.type] || 'd'];
+  const meta = nodeMeta(n);
+  const visits = player.stats?.visits?.[n.id] || 0;
+  const hint = typicalPayout(n);
+  const worn = visits >= 2 ? ' worn' : '';
+  const decay = visits ? ` · ×${visits}${visitMult(visits) < 1 ? ` ${Math.round(visitMult(visits) * 100)}%` : ''}` : '';
+  return `
+    <button class="map-node hazard-${meta.hazard}${worn} ${hereCls} ${spot}" data-act="travel-to" data-node="${n.id}"
+      data-spot-target="node-${n.id}"
+      ${n.id === here ? 'disabled' : ''}>
+      <img class="node-thumb" src="${art}" alt="" />
+      <span class="map-title">${escapeHtml(n.name)}</span>
+      <span class="map-meta">${escapeHtml(n.type)} · ${cost}F · ${escapeHtml(hint)}${decay}</span>
+      <span class="map-blurb">${escapeHtml(n.blurb || '')}</span>
+    </button>
+  `;
+}
 
 function renderMissions(player, now) {
   const exp = player.activeExpedition;
@@ -575,65 +624,78 @@ function renderMissions(player, now) {
   const tight = isTutorialActive(player) && !isFeatureUnlocked(player, 'map_extra');
   const teachDust = player.tutorial?.ordersBeat === 'exp';
   const planetList = teachDust ? planets.filter((p) => p.id === 'dustfall') : planets;
+  const { spur, veil } = nodesBySector(nodes);
+  const rank = reputationRank(player.wallet?.reputation);
+
+  const mapBlock = (title, list) => list.length ? `
+    <div class="sector-kicker">${escapeHtml(title)}</div>
+    <div class="map-grid">
+      ${list.map((n) => renderNodeCard(n, player, here, step)).join('')}
+    </div>` : '';
 
   const mapPanel = `
     <div class="panel">
       <h2>${tight ? 'First jump' : 'Star map'}</h2>
-      <div class="muted">${tight ? 'One lane is open. Jump Dust Lane.' : 'Spend fuel. Trade, salvage, or fight. Assists on combat jumps.'}</div>
+      <div class="muted">${tight ? 'One lane is open. Jump Dust Lane.' : `${rank.label} · cargo and rep lift trade. Engines cut jump cost. Repeat visits pay less.`}</div>
       ${nodes.length === 0 ? '<div class="empty-hint">No routes — something is wrong with map data.</div>' : ''}
-      <div class="map-grid">
-        ${nodes.map((n) => {
-          const hereCls = n.id === here ? 'here' : '';
-          const spot = step?.spotlight === `node-${n.id}` ? 'spot-glow' : '';
-          const cost = fuelCostFor(player, n.fuelCost ?? 1);
-          const art = NODE_ART[NODE_KIND_ART[n.type] || 'd'];
-          return `
-            <button class="map-node ${hereCls} ${spot}" data-act="travel-to" data-node="${n.id}"
-              data-spot-target="node-${n.id}"
-              ${n.id === here ? 'disabled' : ''}>
-              <img class="node-thumb" src="${art}" alt="" />
-              <span class="map-title">${escapeHtml(n.name)}</span>
-              <span class="map-meta">${n.type} · ${cost}F${n.sector === 'veil' ? ' · Veil' : ''}</span>
-              <span class="map-blurb">${escapeHtml(n.blurb || '')}</span>
-            </button>
-          `;
-        }).join('')}
-      </div>
+      ${tight ? `<div class="map-grid">${nodes.map((n) => renderNodeCard(n, player, here, step)).join('')}</div>` : mapBlock('The Spur', spur) + mapBlock('Veil Edge', veil)}
     </div>`;
+
   const expPanel = showExp ? `
     <div class="panel">
       <h2>Expeditions</h2>
-      <div class="muted">${teachDust ? 'Start with Dustfall — short scrap run.' : `Crew leaves the ship. ${EXPEDITION_SKIP_GEMS}g skip.`}</div>
-      ${exp ? `
-        <div class="mission-card" style="margin-top:10px;border-color:var(--cyan)">
-          <img class="planet-art" src="${NODE_ART[PLANET_CLASS[exp.payload.planetId] || 'a']}" alt="" />
-          <div>
-            <b>ACTIVE · ${escapeHtml(planetName(exp.payload.planetId))}</b>
-            <div class="muted">${(exp.payload.successChance * 100) | 0}% · ${formatDuration(Math.max(0, exp.endAt - now))} left</div>
-          </div>
-          <div class="row" style="flex-direction:column;gap:6px">
-            <button data-act="exp-claim">Claim</button>
-            <button class="primary" data-act="exp-skip">Skip ${EXPEDITION_SKIP_GEMS}g</button>
-            <button class="danger" data-act="exp-abort">Extract</button>
-          </div>
-        </div>
-      ` : planetList.map((p) => `
-        <div class="mission-card ${teachDust && p.id === 'dustfall' ? 'spot-glow' : ''}">
-          <img class="planet-art" src="${NODE_ART[PLANET_CLASS[p.id] || 'a']}" alt="" />
-          <div>
-            <b>${escapeHtml(p.name)}</b>
-            <div class="muted">${escapeHtml(p.blurb)}</div>
-            <div class="muted">Diff ${p.difficulty} · ${p.minutes}m</div>
-          </div>
-          <button class="primary" data-act="exp-start" data-planet="${p.id}" data-spot-target="exp-${p.id}">Launch</button>
-        </div>
-      `).join('')}
+      <div class="muted">${teachDust ? 'Start with Dustfall — short scrap run.' : `Two crew leave the ship. Role match +6%. ${EXPEDITION_SKIP_GEMS}g skip. Extract after halfway for scrap. Fail injures the pair.`}</div>
+      ${exp ? renderActiveExpedition(player, exp, now) : planetList.map((p) => renderPlanetCard(player, p, teachDust)).join('')}
     </div>` : '';
   return teachDust ? expPanel + mapPanel : mapPanel + expPanel;
 }
 
-function planetName(id) {
-  return PLANETS_V1.find((p) => p.id === id)?.name || id;
+function renderActiveExpedition(player, exp, now) {
+  const planet = planetById(exp.payload.planetId);
+  const kind = planetType(planet);
+  const names = (exp.payload.crewInstanceIds || [])
+    .map((id) => player.crew.find((c) => c.instanceId === id)?.name)
+    .filter(Boolean)
+    .join(', ');
+  return `
+    <div class="mission-card" style="margin-top:10px;border-color:var(--cyan)">
+      <img class="planet-art" src="${planetArtFor(kind.art)}" alt="" />
+      <div>
+        <b>ACTIVE · ${escapeHtml(planet.name)}</b>
+        <div class="muted">${(exp.payload.successChance * 100) | 0}% · ${formatDuration(Math.max(0, exp.endAt - now))} left</div>
+        <div class="muted">${escapeHtml(names || 'crew out')}</div>
+      </div>
+      <div class="row" style="flex-direction:column;gap:6px">
+        <button data-act="exp-claim">Claim</button>
+        <button class="primary" data-act="exp-skip">Skip ${EXPEDITION_SKIP_GEMS}g</button>
+        <button class="danger" data-act="exp-abort">Extract</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderPlanetCard(player, p, teachDust) {
+  const prev = previewExpedition(player, p.id);
+  const kind = planetType(p);
+  const names = prev.crew.map((c) => c.name).join(', ') || 'no crew';
+  const win = formatReward(prev.win);
+  const fail = formatReward(prev.fail);
+  const mins = p.minutes || 15;
+  return `
+    <div class="mission-card ${teachDust && p.id === 'dustfall' ? 'spot-glow' : ''}">
+      <img class="planet-art" src="${planetArtFor(kind.art)}" alt="" />
+      <div>
+        <b>${escapeHtml(p.name)}</b>
+        <span class="tag">${escapeHtml(kind.label)}</span>
+        ${p.prefRole ? `<span class="tag">${escapeHtml(p.prefRole)}</span>` : ''}
+        ${p.sector === 'veil' ? '<span class="tag">Veil</span>' : ''}
+        <div class="muted">${escapeHtml(p.blurb)}</div>
+        <div class="muted">${(prev.chance * 100) | 0}% · ${mins}m · win ${escapeHtml(win)}</div>
+        <div class="muted">Fail ${escapeHtml(fail)} · Going: ${escapeHtml(names)}${prev.roleHit ? ' · role match' : ''}</div>
+      </div>
+      <button class="primary" data-act="exp-start" data-planet="${p.id}" data-spot-target="exp-${p.id}" ${prev.crew.length ? '' : 'disabled'}>Launch</button>
+    </div>
+  `;
 }
 
 function crewPortrait(c) {
@@ -649,12 +711,13 @@ function renderCrew(player) {
   const free = player.dailyPullAvailable;
   const open = Math.max(0, player.crewSlots - player.crew.length);
   const teachHire = player.tutorial?.ordersBeat === 'hire';
+  const now = Date.now();
   return `
     <div class="panel">
       <div class="row" style="justify-content:space-between">
         <h2>Crew Bay · ${player.crew.length}/${player.crewSlots}</h2>
       </div>
-      <div class="muted">Power ${crewPower(readyCrew(player))} · Rep ${player.wallet.reputation || 0} · ${nextRepGate(player.wallet.reputation || 0).label}${open ? ` · ${open} open` : ''}</div>
+      <div class="muted">Power ${crewPower(readyCrew(player))} · ${escapeHtml(nextRepGate(player.wallet.reputation || 0).label)}${open ? ` · ${open} open` : ''}</div>
       ${canHire ? `
         <div class="row hire-row">
           <button class="primary ${teachHire && free ? 'spot-glow' : ''}" data-act="gacha">
@@ -662,7 +725,12 @@ function renderCrew(player) {
           </button>
           ${free ? '' : `<button data-act="gacha-gems">Hire ${GACHA_COSTS.gems.gems}g</button>`}
         </div>` : ''}
-      ${player.crew.map((c) => `
+      ${player.crew.map((c) => {
+        const cost = medalLevelCostFor(c);
+        const hurt = c.status === 'injured' && (c.injuredUntil || 0) > now
+          ? ` · down ${formatDuration(c.injuredUntil - now)}`
+          : '';
+        return `
         <div class="crew-card">
           ${crewPortrait(c)}
           <div class="crew-body">
@@ -670,15 +738,15 @@ function renderCrew(player) {
             <span class="tag">${escapeHtml(c.role)}</span>
             <span class="tag">${escapeHtml(c.rarity)}</span>
             <span class="tag">Lv ${c.level}</span>
-            <span class="tag">${escapeHtml(c.status)}</span>
-            <div class="muted">Power ${c.power} · ${escapeHtml(c.species)}${passiveLabel(c.passive) ? ` · ${escapeHtml(passiveLabel(c.passive))}` : ''}</div>
+            <span class="tag ${c.status === 'injured' ? 'injured' : ''}">${escapeHtml(c.status)}</span>
+            <div class="muted">Power ${c.power} · XP ${c.xp || 0}${hurt}${passiveLabel(c.passive) ? ` · ${escapeHtml(passiveLabel(c.passive))}` : ''}</div>
             <div class="muted">${escapeHtml(c.blurb || '')}</div>
-            ${isFeatureUnlocked(player, 'gacha')
-              ? `<button data-act="level-crew" data-id="${c.instanceId}">Level up (medals)</button>`
+            ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
+              ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${cost} medals</button>`
               : ''}
           </div>
-        </div>
-      `).join('') || '<div class="empty-hint">No crew — hire from the board.</div>'}
+        </div>`;
+      }).join('') || '<div class="empty-hint">No crew — hire from the board.</div>'}
     </div>
   `;
 }
@@ -693,6 +761,7 @@ function renderShop(player, shopProducts) {
   const planets = ['b', 'c', 'a', 'd'];
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
+  const price = fuelCreditPrice(player);
   return `
     <div class="panel">
       <h2>Hangar</h2>
@@ -722,6 +791,11 @@ function renderShop(player, shopProducts) {
           </div>
         </div>`;
       }).join('')}
+    </div>
+    <div class="panel">
+      <h2>Dock fuel</h2>
+      <div class="muted">${reputationRank(player.wallet?.reputation).label} rate ${price}cr each.</div>
+      <div class="row">${fuelBuyButtons(player) || '<span class="muted">Tanks full.</span>'}</div>
     </div>
     <div class="panel">
       <h2>Shop</h2>
@@ -754,10 +828,11 @@ function renderLog(player, log, goals) {
   const collected = new Set((player.crew || []).map((c) => c.templateId)).size;
   const gate = nextRepGate(player.wallet.reputation || 0);
   const power = crewPower(readyCrew(player));
+  const rank = reputationRank(player.wallet.reputation || 0);
   return `
     <div class="panel">
       <h2>Career</h2>
-      <div class="muted">Streak ${player.loginStreak || 0} · Hull ${player.ship?.hull ?? 100}% · Power ${power}</div>
+      <div class="muted">${escapeHtml(rank.label)} · Streak ${player.loginStreak || 0} · Hull ${player.ship?.hull ?? 100}% · Power ${power}</div>
       <div class="muted">Collection ${collected}/${CREW_CATALOG.length} · ${escapeHtml(gate.label)}</div>
     </div>
     <div class="panel">
@@ -778,6 +853,7 @@ function renderLog(player, log, goals) {
           <b>${b.unlocked ? '✓' : '○'} ${escapeHtml(b.title)}</b>
           <span class="tag">Ch.${b.chapter}</span>
           <div class="muted">${b.unlocked ? escapeHtml(b.text) : '???'}</div>
+          ${b.unlocked && b.rewards ? `<div class="muted">${escapeHtml(formatReward(b.rewards))}</div>` : ''}
         </div>
       `).join('')}
     </div>
@@ -790,8 +866,8 @@ function renderLog(player, log, goals) {
 
 function escapeHtml(s) {
   return String(s)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
+    .replaceAll('&', '&')
+    .replaceAll('<', '<')
+    .replaceAll('>', '>')
+    .replaceAll('"', '"');
 }

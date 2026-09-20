@@ -1,12 +1,12 @@
 // @ts-nocheck
 import { NODES, pickOutcome, visibleNodes } from '../data/sectors.js';
 import { spendFuel } from './fuel.js';
-import { grant } from './economy.js';
-import { resolveCombat, ENCOUNTERS_V1, crewPower } from './combat.js';
-import { readyCrew } from './player.js';
+import { grant, scaleSitePayout } from './economy.js';
+import { resolveCombat, crewPower, encounterById } from './combat.js';
+import { readyCrew, applyCrewInjury, grantCrewXp } from './player.js';
 import { applyStoryFlag } from './story.js';
 import { isTutorialActive, tutorialPhase } from './tutorial.js';
-import { fuelCostFor, tradePayout, combatBonuses, hullAfterCombat } from './passives.js';
+import { fuelCostFor, tradePayout, combatBonuses, hullAfterCombat, injuryMinutesFor } from './passives.js';
 
 /**
  * Preview a jump without mutating player (except we need fuel check).
@@ -44,7 +44,7 @@ export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
   }
 
   if (outcome.kind === 'combat') {
-    const enc = ENCOUNTERS_V1.find((e) => e.id === outcome.encounter) || ENCOUNTERS_V1[0];
+    const enc = encounterById(outcome.encounter);
     const bonus = combatBonuses(player, enc);
     const power = crewPower(readyCrew(player)) + bonus.extraPower;
     return {
@@ -69,6 +69,16 @@ export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
   };
 }
 
+function noteVisit(player, nodeId) {
+  const visits = { ...(player.stats?.visits || {}) };
+  const prior = visits[nodeId] || 0;
+  visits[nodeId] = prior + 1;
+  return {
+    player: { ...player, stats: { ...player.stats, visits } },
+    prior,
+  };
+}
+
 export function commitTravel(player, preview, { assistsUsed = [], rng = Math.random } = {}) {
   if (!preview?.ok) return { ok: false, reason: preview?.reason || 'bad_preview' };
 
@@ -79,6 +89,8 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
     player = spent.player;
   }
 
+  const marked = noteVisit(player, preview.node.id);
+  player = marked.player;
   player = {
     ...player,
     location: preview.node.id,
@@ -92,18 +104,33 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
     return { ok: true, player, result };
   }
 
+  const crew = readyCrew(player);
+  const visits = marked.prior;
+
   if (outcome.kind === 'trade' || outcome.kind === 'delivery' || outcome.kind === 'salvage') {
-    const crew = readyCrew(player);
-    const reward = {
-      credits: tradePayout(outcome.credits || 0, crew),
-      medals: outcome.medals || 0,
-      reputation: outcome.reputation || 0,
-    };
+    let reward = scaleSitePayout(
+      {
+        credits: outcome.credits || 0,
+        medals: outcome.medals || 0,
+        reputation: outcome.reputation || 0,
+      },
+      player,
+      { kind: outcome.kind, visits }
+    );
+    if (outcome.kind === 'trade' || outcome.kind === 'delivery') {
+      reward = { ...reward, credits: tradePayout(reward.credits, crew) };
+    }
     player = { ...player, wallet: grant(player.wallet, reward) };
     result.rewards = reward;
+    result.flavor =
+      outcome.kind === 'trade'
+        ? `The stalls at ${preview.node.name} pay out.`
+        : outcome.kind === 'delivery'
+          ? `Contract closed. Dockhands wave you off.`
+          : `You cut salvage from the wrecklight.`;
   } else if (outcome.kind === 'combat') {
     const enc = preview.encounter;
-    const power = preview.playerPower ?? crewPower(readyCrew(player));
+    const power = preview.playerPower ?? crewPower(crew);
     const tutorialGuaranteed = Boolean(preview.tutorialFight);
     const combat = resolveCombat({
       playerPower: power,
@@ -112,8 +139,13 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
       rng,
       tutorialGuaranteed,
       assistMult: preview.assistMult || 1,
+      encounter: enc,
     });
-    player = { ...player, wallet: grant(player.wallet, combat.rewards) };
+    let rewards = combat.rewards;
+    if (!tutorialGuaranteed) {
+      rewards = scaleSitePayout(rewards, player, { kind: 'combat', visits });
+    }
+    player = { ...player, wallet: grant(player.wallet, rewards) };
     player = hullAfterCombat(player, {
       success: combat.success,
       tutorial: tutorialGuaranteed,
@@ -123,15 +155,26 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
         ...player,
         stats: { ...player.stats, combatsWon: (player.stats.combatsWon || 0) + 1 },
       };
+      if (!tutorialGuaranteed) {
+        player = grantCrewXp(player, crew.map((c) => c.instanceId), 10);
+      }
+    } else if (!tutorialGuaranteed && crew.length) {
+      const pick = crew[Math.floor(rng() * crew.length)];
+      player = applyCrewInjury(player, [pick.instanceId], injuryMinutesFor(player, 20));
+      result.injured = pick.name;
     }
-    result.combat = { ...combat, encounter: enc, assistsUsed: [...assistsUsed] };
-    result.rewards = combat.rewards;
+    result.combat = { ...combat, encounter: enc, assistsUsed: [...assistsUsed], rewards };
+    result.rewards = rewards;
   } else if (outcome.kind === 'story') {
     const applied = applyStoryFlag(player, outcome.flag);
     player = applied.player;
     result.flag = outcome.flag;
     result.beat = applied.beat;
-    result.rewards = { credits: 40, reputation: 3 };
+    result.already = Boolean(applied.already);
+    result.rewards = applied.rewards || null;
+    if (applied.already) {
+      result.flavor = `You already logged this beat at ${preview.node.name}.`;
+    }
   }
 
   return { ok: true, player, result };

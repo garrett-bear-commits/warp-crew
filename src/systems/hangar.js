@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { SHIPS, getShipDef } from '../data/ships.js';
-import { canAfford, pay } from './economy.js';
+import { canAfford, pay, upgradeCost } from './economy.js';
 
 export function listOwnedHulls(player) {
   const owned = player.ship?.ownedHulls || [player.ship?.shipId || 'sparrow'];
@@ -69,20 +69,34 @@ export function switchHull(player, shipId) {
   };
 }
 
+export function nextUpgradeCost(player, system) {
+  const def = getShipDef(player.ship.shipId);
+  const costs = def.upgradeCosts || SHIPS.sparrow.upgradeCosts;
+  if (!costs?.[system]) return null;
+  const level = player.ship?.systems?.[system] || 1;
+  return { credits: upgradeCost(costs[system].credits || 0, level), level };
+}
+
 export function upgradeSystem(player, system) {
   const def = getShipDef(player.ship.shipId);
-  // Corvette/frigate inherit Sparrow upgrade cost table if missing
   const costs = def.upgradeCosts || SHIPS.sparrow.upgradeCosts;
   if (!costs?.[system]) return { ok: false, reason: 'no_upgrade' };
-  const cost = costs[system];
+  const level = player.ship?.systems?.[system] || 1;
+  const base = costs[system];
+  const cost = { credits: upgradeCost(base.credits || 0, level) };
   if (!canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
 
   const systems = { ...(player.ship.systems || {}) };
-  systems[system] = (systems[system] || 1) + 1;
+  systems[system] = level + 1;
 
   let crewSlots = player.crewSlots;
   if (system === 'quarters') {
     crewSlots = Math.min(def.maxCrewSlots, crewSlots + 1);
+  }
+
+  let fuelMax = player.fuelMax || 10;
+  if (system === 'engines' && systems.engines % 2 === 0) {
+    fuelMax += 1;
   }
 
   return {
@@ -92,6 +106,9 @@ export function upgradeSystem(player, system) {
       wallet: pay(player.wallet, cost).wallet,
       ship: { ...player.ship, systems },
       crewSlots,
+      fuelMax,
     },
+    cost,
+    nextLevel: systems[system],
   };
 }

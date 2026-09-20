@@ -79,6 +79,19 @@ export const NODE_ART = {
   d: artUrl('art/pixel/icons/node-planet.png'),
 };
 
+export const PLANET_ART = {
+  wreck: artUrl('art/pixel/icons/node-wreck.png'),
+  crystal: artUrl('art/pixel/icons/node-crystal.png'),
+  station: artUrl('art/pixel/icons/node-station.png'),
+  planet: artUrl('art/pixel/icons/node-planet.png'),
+  ice: artUrl('art/space/planet-ice.png'),
+  swarm: artUrl('art/pixel/fx/swarm.png'),
+};
+
+export function planetArtFor(key) {
+  return PLANET_ART[key] || PLANET_ART.planet;
+}
+
 export function portraitFor(templateId, role) {
   return CREW_PORTRAITS[templateId] || ROLE_FALLBACK[role] || CREW_PORTRAITS.merc_rex;
 }

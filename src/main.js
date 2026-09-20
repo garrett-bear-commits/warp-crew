@@ -1,19 +1,18 @@
 // @ts-nocheck
-import { createNewPlayer, readyCrew, migratePlayer } from './systems/player.js';
+import { createNewPlayer, migratePlayer, tickCrewStatus, grantCrewXp, applyCrewInjury } from './systems/player.js';
 import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { claimFuelRegen } from './systems/fuel.js';
 import { previewTravel, commitTravel } from './systems/travel.js';
 import { pullMerc, GACHA_COSTS } from './systems/gacha.js';
-import { canAfford, pay, grant } from './systems/economy.js';
+import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, sellContract, clampFuel } from './systems/economy.js';
 import {
-  PLANETS_V1,
-  expeditionSuccessChance,
   startExpedition,
   resolveExpedition,
   skipExpeditionJob,
   EXPEDITION_SKIP_GEMS,
+  previewExpedition,
+  abortPayoutFrac,
 } from './systems/expedition.js';
-import { crewPower } from './systems/combat.js';
 import { applyDailyLogin } from './systems/daily.js';
 import { syncAllNotifications } from './systems/notifications.js';
 import {
@@ -21,7 +20,7 @@ import {
   buyProduct,
   fulfillIncompletePurchases,
 } from './systems/iap.js';
-import { sumPassives, repairHull } from './systems/passives.js';
+import { repairHull, injuryMinutesFor } from './systems/passives.js';
 import {
   init as platformInit,
   markGameLoaded,
@@ -34,7 +33,7 @@ import {
   login,
 } from './shared/platform.js';
 import { renderApp } from './ui/bridge.js';
-import { MEDAL_LEVEL_COST } from './data/crewRoster.js';
+import { medalLevelCostFor } from './data/crewRoster.js';
 import { buyHull, switchHull, upgradeSystem } from './systems/hangar.js';
 import {
   noteTutorialEvent,
@@ -120,18 +119,24 @@ function finishExpeditionResult(res) {
     ),
     stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1 },
   };
+  if (res.success) {
+    player = grantCrewXp(player, res.crewInstanceIds, 18);
+  } else if (!res.aborted) {
+    player = applyCrewInjury(player, res.crewInstanceIds, injuryMinutesFor(player, 18));
+  }
   {
     const te = noteTutorialEvent(player, 'expedition_done');
     player = te.player;
   }
-  const skipNote = res.skipped ? ' (skipped)' : '';
+  const skipNote = res.skipped ? ' (skipped)' : res.aborted ? ' (extract)' : '';
+  const paid = formatReward(res.rewards);
   pushLog(
     res.success
-      ? `Expedition success${skipNote}! +${res.rewards.credits}cr +${res.rewards.medals} medals +${res.rewards.reputation} rep`
-      : `Expedition failed${skipNote}. Recovered +${res.rewards.credits}cr`
+      ? `Expedition success${skipNote}! ${paid}${res.flavor ? ` — ${res.flavor}` : ''}`
+      : `Expedition failed${skipNote}. ${paid}${res.flavor ? ` — ${res.flavor}` : ''}`
   );
   showToast({
-    title: res.success ? 'Expedition complete' : 'Expedition failed',
+    title: res.success ? 'Expedition complete' : res.aborted ? 'Early extract' : 'Expedition failed',
     rewards: res.rewards,
   });
   sfx(res.success ? 'coin' : 'hit');
@@ -139,7 +144,7 @@ function finishExpeditionResult(res) {
 
 function tryResolveExpedition({ force = false } = {}) {
   if (!player.activeExpedition) return false;
-  const res = resolveExpedition(player.activeExpedition, { forceComplete: force });
+  const res = resolveExpedition(player.activeExpedition, { forceComplete: force, player });
   if (!res.ready) return false;
   finishExpeditionResult(res);
   return true;
@@ -196,7 +201,7 @@ function hydratePlayer() {
   }
 
   const claimed = claimFuelRegen(player);
-  player = claimed.player;
+  player = tickCrewStatus(claimed.player);
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
 }
@@ -268,6 +273,11 @@ async function boot() {
 
 function render() {
   if (!app || !player) return;
+  const ticked = tickCrewStatus(player);
+  if (ticked !== player) {
+    player = ticked;
+    persist();
+  }
   renderApp(app, {
     player,
     log,
@@ -382,9 +392,10 @@ function doHire({ gems = false } = {}) {
     showToast({ title: `${instance.name} signs on` });
     sfx('coin');
   } else {
-    player = { ...player, wallet: grant(player.wallet, { credits: 50, medals: 2 }) };
-    pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold +50cr.`);
-    showToast({ title: `${instance.name} sold`, rewards: { credits: 50, medals: 2 } });
+    const sold = sellContract(rarity);
+    player = { ...player, wallet: grant(player.wallet, sold) };
+    pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold ${formatReward(sold)}.`);
+    showToast({ title: `${instance.name} sold`, rewards: sold });
   }
   captureEvent('gacha_pull', { rarity, free, gems });
   tab = 'crew';
@@ -431,18 +442,38 @@ async function handleAction(act, data = {}) {
   } else if (act === 'orders-skip') {
     player = skipOrders(player);
   } else if (act === 'repair-hull') {
-    const cost = { credits: 35 };
-    if (!canAfford(player.wallet, cost)) {
-      pushLog('Need 35 credits to patch hull.');
-    } else if ((player.ship?.hull ?? 100) >= 100) {
+    const offer = hullRepairOffer(player);
+    if (!offer) {
       pushLog('Hull is already sound.');
+    } else if (!canAfford(player.wallet, { credits: offer.cost })) {
+      pushLog(`Need ${offer.cost} credits to patch hull.`);
     } else {
-      player = { ...player, wallet: pay(player.wallet, cost).wallet };
-      const r = repairHull(player, 25);
+      player = { ...player, wallet: pay(player.wallet, { credits: offer.cost }).wallet };
+      const r = repairHull(player, offer.amount);
       player = r.player;
-      pushLog(`Patched hull +${r.gained}% (−35cr).`);
+      pushLog(`Patched hull +${r.gained}% (−${offer.cost}cr).`);
       showToast({ title: `Hull +${r.gained}%` });
       sfx('coin');
+    }
+  } else if (act === 'buy-fuel') {
+    const max = player.fuelMax || 10;
+    const room = Math.max(0, max - (player.wallet.fuel || 0));
+    if (!room) {
+      pushLog('Tanks are full.');
+    } else {
+      const n = Math.min(Math.max(1, Number(data.n) || 1), room);
+      const price = fuelCreditPrice(player);
+      const cost = price * n;
+      if (!canAfford(player.wallet, { credits: cost })) {
+        pushLog(`Need ${cost} credits for ${n} fuel.`);
+      } else {
+        const paid = pay(player.wallet, { credits: cost });
+        const wallet = clampFuel({ ...paid.wallet, fuel: (paid.wallet.fuel || 0) + n }, max);
+        player = { ...player, wallet };
+        pushLog(`Bought ${n} fuel (−${cost}cr).`);
+        showToast({ title: `+${n} fuel` });
+        sfx('coin');
+      }
     }
   } else if (act === 'travel-to') {
     const nodeId = data.node;
@@ -551,20 +582,16 @@ async function handleAction(act, data = {}) {
     }
     if (player.activeExpedition) pushLog('Expedition already active.');
     else {
-      const planet = PLANETS_V1.find((p) => p.id === data.planet) || PLANETS_V1[0];
-      const crew = readyCrew(player).slice(0, Math.min(2, readyCrew(player).length));
+      const prev = previewExpedition(player, data.planet);
+      const crew = prev.crew;
       if (!crew.length) pushLog('No ready crew.');
       else {
-        const chance = expeditionSuccessChance({
-          crewPower: crewPower(crew),
-          planetDifficulty: planet.difficulty,
-          gearBonus: sumPassives(crew).expeditionSuccess || 0,
-        });
         const job = startExpedition({
-          planetId: planet.id,
+          planetId: prev.planet.id,
           crewInstanceIds: crew.map((c) => c.instanceId),
-          minutes: planet.minutes,
-          successChance: chance,
+          minutes: prev.planet.minutes,
+          successChance: prev.chance,
+          roleHit: prev.roleHit,
         });
         player = {
           ...player,
@@ -573,12 +600,13 @@ async function handleAction(act, data = {}) {
             crew.some((x) => x.instanceId === c.instanceId) ? { ...c, status: 'expedition' } : c
           ),
         };
-        pushLog(`Launched ${planet.name} (${(chance * 100) | 0}% · ${planet.minutes}m).`);
+        const names = crew.map((c) => c.name).join(', ');
+        pushLog(`Launched ${prev.planet.name} with ${names} (${(prev.chance * 100) | 0}% · ${prev.planet.minutes || 15}m).`);
         {
           const te = noteTutorialEvent(player, 'expedition_start');
           player = te.player;
         }
-        captureEvent('expedition_start', { planet: planet.id });
+        captureEvent('expedition_start', { planet: prev.planet.id });
         await refreshNotifs();
       }
     }
@@ -600,15 +628,22 @@ async function handleAction(act, data = {}) {
     await refreshNotifs();
   } else if (act === 'exp-abort') {
     if (!player.activeExpedition) return;
-    const ids = player.activeExpedition.payload.crewInstanceIds || [];
-    player = {
-      ...player,
-      activeExpedition: null,
-      crew: player.crew.map((c) =>
-        ids.includes(c.instanceId) ? { ...c, status: 'ready' } : c
-      ),
-    };
-    pushLog('Early extract — expedition failed.');
+    const job = player.activeExpedition;
+    const frac = abortPayoutFrac(job);
+    const ids = job.payload.crewInstanceIds || [];
+    if (frac > 0) {
+      const res = resolveExpedition(job, { forceComplete: true, player, abortFrac: frac, rng: () => 1 });
+      finishExpeditionResult(res);
+    } else {
+      player = {
+        ...player,
+        activeExpedition: null,
+        crew: player.crew.map((c) =>
+          ids.includes(c.instanceId) ? { ...c, status: 'ready' } : c
+        ),
+      };
+      pushLog('Early extract — too soon for salvage.');
+    }
     await refreshNotifs();
   } else if (act === 'gacha' || act === 'gacha-gems') {
     doHire({ gems: act === 'gacha-gems' });
@@ -616,7 +651,7 @@ async function handleAction(act, data = {}) {
   } else if (act === 'level-crew') {
     const c = player.crew.find((x) => x.instanceId === data.id);
     if (!c) return;
-    const cost = MEDAL_LEVEL_COST(c.level);
+    const cost = medalLevelCostFor(c);
     if ((player.wallet.medals || 0) < cost) pushLog(`Need ${cost} medals to level ${c.name}.`);
     else {
       player = {
@@ -624,7 +659,7 @@ async function handleAction(act, data = {}) {
         wallet: { ...player.wallet, medals: player.wallet.medals - cost },
         crew: player.crew.map((x) =>
           x.instanceId === c.instanceId
-            ? { ...x, level: x.level + 1, power: x.power + 3 }
+            ? { ...x, level: x.level + 1, power: x.power + 3, xp: 0 }
             : x
         ),
       };
@@ -644,8 +679,9 @@ async function handleAction(act, data = {}) {
         : `Upgrade failed: ${res.reason}`);
     } else {
       player = res.player;
-      pushLog(`Upgraded ${system}. Crew slots: ${player.crewSlots}.`);
-      showToast({ title: `${system} up` });
+      const spent = res.cost?.credits ? ` (−${res.cost.credits}cr)` : '';
+      pushLog(`Upgraded ${system} to lv ${res.nextLevel}.${spent} Crew slots: ${player.crewSlots}.`);
+      showToast({ title: `${system} lv ${res.nextLevel}` });
       captureEvent('ship_upgrade', { system });
     }
   } else if (act === 'hull-buy') {
@@ -755,13 +791,19 @@ async function handleAction(act, data = {}) {
 }
 
 function logTravelResult(r) {
+  const pay = r.rewards ? formatReward(r.rewards) : '';
   if (r.combat) {
     const a = (r.combat.assistsUsed || []).join(', ') || 'none';
-    pushLog(`${r.combat.encounter.name}: ${r.combat.log} [assists: ${a}]`);
+    const hurt = r.injured ? ` · ${r.injured} injured` : '';
+    pushLog(`${r.combat.encounter.name}: ${r.combat.log} [assists: ${a}]${pay ? ` · ${pay}` : ''}${hurt}`);
+  } else if (r.already) {
+    pushLog(r.flavor || `Already logged at ${r.node.name}.`);
   } else if (r.beat) {
-    pushLog(`Story — ${r.beat.title}: ${r.beat.text}`);
+    pushLog(`Story — ${r.beat.title}: ${r.beat.text}${pay ? ` · ${pay}` : ''}`);
+  } else if (r.flavor) {
+    pushLog(`${r.kind} @ ${r.node.name}: ${r.flavor}${pay ? ` · ${pay}` : ''}`);
   } else if (r.rewards) {
-    pushLog(`${r.kind} @ ${r.node.name}: ${JSON.stringify(r.rewards)}`);
+    pushLog(`${r.kind} @ ${r.node.name}: ${pay}`);
   } else if (r.flag) {
     pushLog(`Story: ${r.flag}`);
   } else {

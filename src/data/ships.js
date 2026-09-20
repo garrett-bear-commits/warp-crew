@@ -25,6 +25,13 @@ export const SHIPS = {
     gemPrice: 800,
     creditPrice: 12000,
     fuelMaxBonus: 4,
+    upgradeCosts: {
+      engines: { credits: 320 },
+      shields: { credits: 380 },
+      cargo: { credits: 280 },
+      weapons: { credits: 450 },
+      quarters: { credits: 520 },
+    },
   },
   frigate: {
     id: 'frigate',
@@ -37,6 +44,13 @@ export const SHIPS = {
     creditPrice: 50000,
     fuelMaxBonus: 6,
     lockedUntilChapter: 4,
+    upgradeCosts: {
+      engines: { credits: 480 },
+      shields: { credits: 560 },
+      cargo: { credits: 420 },
+      weapons: { credits: 680 },
+      quarters: { credits: 740 },
+    },
   },
 };
 
