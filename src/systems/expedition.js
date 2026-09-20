@@ -5,6 +5,7 @@ import { readyCrew } from './player.js';
 import { crewPower } from './combat.js';
 import { sumPassives } from './passives.js';
 import { scaleSitePayout } from './economy.js';
+import { galaxyUnlocked } from '../data/galaxies.js';
 
 /** Test cadence — set to 360 for launch (6h) */
 export const TEST_EXPEDITION_MINUTES = 15;
@@ -37,10 +38,11 @@ export function previewExpedition(player, planetId) {
   const planet = planetById(planetId);
   const crew = pickExpeditionCrew(player, planet);
   const roleHit = planet.prefRole && crew.some((c) => c.role === planet.prefRole);
+  const sensors = Math.max(0, player?.ship?.systems?.sensors || 0) * 0.02;
   const chance = expeditionSuccessChance({
     crewPower: crewPower(crew),
     planetDifficulty: planet.difficulty,
-    gearBonus: sumPassives(crew).expeditionSuccess || 0,
+    gearBonus: (sumPassives(crew).expeditionSuccess || 0) + sensors,
     roleBonus: roleHit ? 0.06 : 0,
   });
   const win = scaleSitePayout(planet.success || { credits: 80, medals: 8, reputation: 3 }, player, {
@@ -139,9 +141,8 @@ export const PLANETS_V1 = PLANET_DEFS.map((p) => ({
 
 export function visiblePlanets(player, now = Date.now()) {
   const day = 1 + Math.floor((now - (player.createdAt || now)) / 86400000);
-  const veilOpen = Boolean(player.flags?.veil_opened || player.story?.veilUnlocked);
   return PLANETS_V1.filter((p) => {
-    if (p.sector === 'veil' && !veilOpen) return false;
+    if (p.sector && p.sector !== 'spur' && !galaxyUnlocked(player, p.sector)) return false;
     if (p.minDay && day < p.minDay) return false;
     return true;
   });

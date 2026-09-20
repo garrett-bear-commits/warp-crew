@@ -1,8 +1,31 @@
 // @ts-nocheck
-import { createCrewInstance } from '../data/crewRoster.js';
+import { createCrewInstance, recomputeCrew } from '../data/crewRoster.js';
 import { starterShip } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
 import { defaultTutorial, TUTORIAL_SCRIPT } from './tutorial.js';
+import { defaultGacha } from './gacha.js';
+
+const SAVE_VERSION = 6;
+
+function ensureShip(ship) {
+  const base = starterShip();
+  const next = { ...base, ...(ship || {}) };
+  next.systems = {
+    engines: 1,
+    shields: 1,
+    cargo: 1,
+    weapons: 1,
+    quarters: 0,
+    sensors: 0,
+    medbay: 0,
+    ...(ship?.systems || {}),
+  };
+  if (!Array.isArray(next.ownedHulls) || !next.ownedHulls.length) {
+    next.ownedHulls = [next.shipId || 'sparrow'];
+  }
+  if (next.hull == null) next.hull = 100;
+  return next;
+}
 
 export function createNewPlayer({ captainName = 'Captain' } = {}) {
   const now = Date.now();
@@ -11,7 +34,7 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     createCrewInstance('merc_bolt'),
   ];
   return {
-    version: 5,
+    version: SAVE_VERSION,
     captainName,
     createdAt: now,
     wallet: {
@@ -31,6 +54,7 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     activeExpedition: null,
     location: 'station_home',
     flags: {},
+    gacha: defaultGacha(),
     loginStreak: 0,
     lastLoginDay: null,
     dailyPullAvailable: true,
@@ -55,24 +79,29 @@ export function migratePlayer(player) {
   }
 
   const base = createNewPlayer({ captainName });
-  let crew = Array.isArray(player.crew) ? [...player.crew] : base.crew;
+  let crew = Array.isArray(player.crew) ? player.crew.map((c) => recomputeCrew(c)) : base.crew;
   let crewSlots = player.crewSlots ?? base.crewSlots;
   const tutorial = freshIntro
     ? { ...defaultTutorial(), completed: true, phase: 'done', dismissed: true }
     : { ...defaultTutorial(), ...(player.tutorial || {}) };
 
+  const veteran = (player.version || 0) < SAVE_VERSION && (jumps > 0 || combats > 0);
+  const flags = { ...(player.flags || {}) };
+  if (veteran && flags.splashSeen == null) flags.splashSeen = true;
+
   return {
     ...base,
     ...player,
     wallet: { ...base.wallet, ...(player.wallet || {}) },
-    ship: player.ship || base.ship,
+    ship: ensureShip(player.ship || base.ship),
     crew,
+    gacha: { ...defaultGacha(), ...(player.gacha || {}) },
     crewSlots: Math.max(crewSlots, crew.length, tutorial.completed ? 3 : 2),
     stats: { ...base.stats, ...(player.stats || {}) },
     story: { ...base.story, ...(player.story || {}) },
-    flags: player.flags || {},
+    flags,
     tutorial,
-    version: 5,
+    version: SAVE_VERSION,
   };
 }
 
@@ -120,7 +149,7 @@ export function grantCrewXp(player, instanceIds = [], amount = 10) {
   return {
     ...player,
     crew: player.crew.map((c) =>
-      set.has(c.instanceId) ? { ...c, xp: (c.xp || 0) + amount } : c
+      set.has(c.instanceId) ? recomputeCrew({ ...c, xp: (c.xp || 0) + amount }) : c
     ),
   };
 }

@@ -1,5 +1,5 @@
 // @ts-nocheck
-/** Currency & economy helpers for Warp Crew */
+import { getShipDef } from '../data/ships.js';
 
 export const CURRENCIES = {
   credits: { id: 'credits', name: 'Credits', soft: true },
@@ -19,6 +19,8 @@ export const REP_RANKS = [
   { min: 600, id: 'respected', label: 'Respected', fuelCut: 6 },
   { min: 1000, id: 'famous', label: 'Famous', fuelCut: 10 },
   { min: 2000, id: 'legendary', label: 'Legendary', fuelCut: 15 },
+  { min: 3500, id: 'eclipse', label: 'Eclipse-known', fuelCut: 18 },
+  { min: 5500, id: 'halo', label: 'Halo-weight', fuelCut: 22 },
 ];
 
 export function reputationRank(rep = 0) {
@@ -86,6 +88,7 @@ export function scaleSitePayout(base, player, { kind = 'trade', visits = 0 } = {
   const cargo = cargoMult(player);
   const rep = reputationTradeMult(player?.wallet?.reputation);
   const visit = visitMult(visits);
+  const hull = getShipDef(player?.ship?.shipId);
   let credits = base?.credits || 0;
   let medals = base?.medals || 0;
   let reputation = base?.reputation || 0;
@@ -93,7 +96,7 @@ export function scaleSitePayout(base, player, { kind = 'trade', visits = 0 } = {
   const fuel = base?.fuel || 0;
 
   if (kind === 'trade' || kind === 'delivery') {
-    credits = Math.floor(credits * cargo * rep);
+    credits = Math.floor(credits * cargo * rep * (1 + (hull.tradeBias || 0)));
   } else if (kind === 'salvage') {
     credits = Math.floor(credits * (1 + (cargo - 1) * 0.5));
     medals = Math.floor(medals * (1 + Math.max(0, (player?.ship?.systems?.cargo || 1) - 1) * 0.04));
@@ -117,7 +120,7 @@ export function hullRepairOffer(player) {
 }
 
 export function upgradeCost(baseCredits, level = 1) {
-  return Math.floor((baseCredits || 0) * (1 + Math.max(0, level - 1) * 0.65));
+  return Math.floor((baseCredits || 0) * Math.pow(1.22, Math.max(0, level - 1)));
 }
 
 export function systemBlurb(system, level = 1) {
@@ -127,6 +130,8 @@ export function systemBlurb(system, level = 1) {
   if (system === 'weapons') return `Combat +${(lv - 1) * 4} power · loot +${(lv - 1) * 5}%`;
   if (system === 'shields') return `Combat hull loss −${Math.round(lv * 1.5)}`;
   if (system === 'quarters') return 'Adds one crew berth (up to hull max)';
+  if (system === 'sensors') return `Expedition +${(lv) * 2}% · map intel`;
+  if (system === 'medbay') return `Injury time −${lv * 8}%`;
   return '';
 }
 
@@ -147,6 +152,8 @@ export function sellContract(rarity = 'common') {
     rare: { credits: 140, medals: 8 },
     epic: { credits: 220, medals: 14 },
     legendary: { credits: 400, medals: 24 },
+    mythic: { credits: 700, medals: 40 },
+    apex: { credits: 1200, medals: 64 },
   };
   return table[rarity] || table.common;
 }

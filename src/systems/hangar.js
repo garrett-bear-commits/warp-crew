@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { SHIPS, getShipDef } from '../data/ships.js';
+import { SHIPS, getShipDef, SHIP_SYSTEMS } from '../data/ships.js';
 import { canAfford, pay, upgradeCost } from './economy.js';
 
 export function listOwnedHulls(player) {
@@ -14,6 +14,12 @@ export function canBuyHull(player, shipId) {
   if (owned.includes(shipId)) return { ok: false, reason: 'owned' };
   if (def.lockedUntilChapter && (player.story?.chapter || 0) < def.lockedUntilChapter) {
     return { ok: false, reason: 'chapter_lock', need: def.lockedUntilChapter };
+  }
+  if (def.lockedUntilRep && (player.wallet?.reputation || 0) < def.lockedUntilRep) {
+    return { ok: false, reason: 'rep_lock', need: def.lockedUntilRep };
+  }
+  if (def.requiresHull && !owned.includes(def.requiresHull)) {
+    return { ok: false, reason: 'hull_lock', need: def.requiresHull };
   }
   return { ok: true, def };
 }
@@ -39,7 +45,7 @@ export function buyHull(player, shipId, currency = 'gems') {
     ...player.ship,
     shipId,
     ownedHulls: owned,
-    systems: { ...(player.ship.systems || {}), engines: 1, shields: 1, cargo: 1, weapons: 1, quarters: 0 },
+    systems: { ...(player.ship.systems || {}) },
   };
 
   return {
@@ -48,7 +54,7 @@ export function buyHull(player, shipId, currency = 'gems') {
       ...player,
       wallet: paid.wallet,
       ship,
-      crewSlots: def.crewSlots,
+      crewSlots: Math.max(player.crewSlots || 2, def.crewSlots),
       fuelMax: (player.fuelMax || 10) + (def.fuelMaxBonus || 0),
     },
     def,
@@ -73,21 +79,24 @@ export function nextUpgradeCost(player, system) {
   const def = getShipDef(player.ship.shipId);
   const costs = def.upgradeCosts || SHIPS.sparrow.upgradeCosts;
   if (!costs?.[system]) return null;
-  const level = player.ship?.systems?.[system] || 1;
-  return { credits: upgradeCost(costs[system].credits || 0, level), level };
+  const level = player.ship?.systems?.[system] || (SHIP_SYSTEMS.includes(system) ? 0 : 1);
+  const lv = Math.max(1, level || 1);
+  return { credits: upgradeCost(costs[system].credits || 0, lv), level: lv };
 }
 
 export function upgradeSystem(player, system) {
   const def = getShipDef(player.ship.shipId);
   const costs = def.upgradeCosts || SHIPS.sparrow.upgradeCosts;
   if (!costs?.[system]) return { ok: false, reason: 'no_upgrade' };
-  const level = player.ship?.systems?.[system] || 1;
+  const level = player.ship?.systems?.[system] || 0;
+  const from = Math.max(1, level || 1);
   const base = costs[system];
-  const cost = { credits: upgradeCost(base.credits || 0, level) };
+  const cost = { credits: upgradeCost(base.credits || 0, from) };
   if (!canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
 
   const systems = { ...(player.ship.systems || {}) };
-  systems[system] = level + 1;
+  systems[system] = (level || 0) + 1;
+  if (systems[system] < 1) systems[system] = 1;
 
   let crewSlots = player.crewSlots;
   if (system === 'quarters') {

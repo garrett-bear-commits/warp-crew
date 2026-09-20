@@ -3,8 +3,8 @@ import { createNewPlayer, migratePlayer, tickCrewStatus, grantCrewXp, applyCrewI
 import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { claimFuelRegen } from './systems/fuel.js';
 import { previewTravel, commitTravel } from './systems/travel.js';
-import { pullMerc, GACHA_COSTS } from './systems/gacha.js';
-import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, sellContract, clampFuel } from './systems/economy.js';
+import { pullOnce, pullTen, buyLuck, contractHire, rankUpCrew, levelCrew } from './systems/gacha.js';
+import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, clampFuel } from './systems/economy.js';
 import {
   startExpedition,
   resolveExpedition,
@@ -33,7 +33,6 @@ import {
   login,
 } from './shared/platform.js';
 import { renderApp } from './ui/bridge.js';
-import { medalLevelCostFor } from './data/crewRoster.js';
 import { buyHull, switchHull, upgradeSystem } from './systems/hangar.js';
 import {
   noteTutorialEvent,
@@ -64,6 +63,8 @@ let tab = 'ship';
 let pendingCombat = null;
 let selectedAssists = [];
 let selectedRoom = null;
+let selectedCrewId = null;
+let cinematic = null;
 let platformStatus = 'booting';
 let shopProducts = null;
 let artReady = false;
@@ -285,6 +286,8 @@ function render() {
     pendingCombat,
     selectedAssists,
     selectedRoom,
+    selectedCrewId,
+    cinematic,
     platformStatus,
     shopProducts,
     artReady,
@@ -365,39 +368,50 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
   pushLog('Joined Jest. Crew, shop, and log are open.');
 }
 
-function doHire({ gems = false } = {}) {
+function doHire({ gems = false, ten = false } = {}) {
   if (!isFeatureUnlocked(player, 'gacha')) {
     pushLog('Hiring opens after your first gunner signs on.');
     return false;
   }
+  if (ten) {
+    const res = pullTen(player);
+    if (!res.ok) {
+      pushLog(res.reason === 'cannot_afford' ? 'Need 900 gems for a 10-pull.' : `10-pull failed: ${res.reason}`);
+      return false;
+    }
+    player = res.player;
+    const rare = res.results.filter((r) => ['rare', 'epic', 'legendary', 'mythic', 'apex'].includes(r.rarity)).length;
+    const names = res.results.slice(0, 3).map((r) => r.instance?.name).filter(Boolean).join(', ');
+    pushLog(`10-pull: ${rare} rare+. ${names}${res.results.length > 3 ? '…' : ''}`);
+    showToast({ title: `10-pull · ${rare} rare+` });
+    sfx('coin');
+    captureEvent('gacha_10', { rare });
+    tab = 'crew';
+    return true;
+  }
   const free = !gems && player.dailyPullAvailable;
-  const cost = free ? GACHA_COSTS.dailyFree : gems ? GACHA_COSTS.gems : GACHA_COSTS.credits;
-  if (!free && !canAfford(player.wallet, cost)) {
+  const res = pullOnce(player, { gems, free });
+  if (!res.ok) {
     pushLog(gems ? 'Need 100 gems for a hire.' : 'Need credits for a pull.');
     return false;
   }
-  if (!free) player = { ...player, wallet: pay(player.wallet, cost).wallet };
-  else {
-    player = { ...player, dailyPullAvailable: false };
-    pushLog('Daily free pull used.');
-  }
-  const { instance, rarity } = pullMerc({ reputation: player.wallet.reputation });
-  if (player.crew.length < player.crewSlots) {
-    player = { ...player, crew: [...player.crew, instance] };
-    pushLog(`Hired ${instance.name} (${rarity}).`);
-    {
-      const te = noteTutorialEvent(player, 'hired');
-      player = te.player;
-    }
-    showToast({ title: `${instance.name} signs on` });
+  player = res.player;
+  const name = res.instance?.name || 'Merc';
+  if (res.kind === 'hire') {
+    pushLog(`Hired ${name} (${res.rarity}).`);
+    const te = noteTutorialEvent(player, 'hired');
+    player = te.player;
+    showToast({ title: `${name} signs on` });
+    sfx('coin');
+  } else if (res.kind === 'star') {
+    pushLog(`${name} stars up ★${res.instance.stars} (${res.rarity}).`);
+    showToast({ title: `${name} ★${res.instance.stars}` });
     sfx('coin');
   } else {
-    const sold = sellContract(rarity);
-    player = { ...player, wallet: grant(player.wallet, sold) };
-    pushLog(`Pulled ${instance.name} (${rarity}) — no slot, sold ${formatReward(sold)}.`);
-    showToast({ title: `${instance.name} sold`, rewards: sold });
+    pushLog(`Pulled ${name} (${res.rarity}) — ${res.kind === 'cap' ? 'max stars' : 'no slot'}, sold ${formatReward(res.sold)}.`);
+    showToast({ title: `${name} sold`, rewards: res.sold });
   }
-  captureEvent('gacha_pull', { rarity, free, gems });
+  captureEvent('gacha_pull', { rarity: res.rarity, free, gems, kind: res.kind });
   tab = 'crew';
   return true;
 }
@@ -648,23 +662,55 @@ async function handleAction(act, data = {}) {
   } else if (act === 'gacha' || act === 'gacha-gems') {
     doHire({ gems: act === 'gacha-gems' });
     await refreshNotifs();
-  } else if (act === 'level-crew') {
-    const c = player.crew.find((x) => x.instanceId === data.id);
-    if (!c) return;
-    const cost = medalLevelCostFor(c);
-    if ((player.wallet.medals || 0) < cost) pushLog(`Need ${cost} medals to level ${c.name}.`);
+  } else if (act === 'gacha-10') {
+    doHire({ ten: true });
+    await refreshNotifs();
+  } else if (act === 'buy-luck') {
+    const res = buyLuck(player, data.currency || 'credits');
+    if (!res.ok) pushLog(`Need ${formatReward(res.cost)} for luck.`);
     else {
-      player = {
-        ...player,
-        wallet: { ...player.wallet, medals: player.wallet.medals - cost },
-        crew: player.crew.map((x) =>
-          x.instanceId === c.instanceId
-            ? { ...x, level: x.level + 1, power: x.power + 3, xp: 0 }
-            : x
-        ),
-      };
-      pushLog(`${c.name} → Lv ${c.level + 1} (−${cost} medals).`);
-      showToast({ title: `${c.name} Lv ${c.level + 1}` });
+      player = res.player;
+      pushLog(`Luck ${res.luck}. Odds tilt.`);
+      showToast({ title: `Luck ${res.luck}` });
+    }
+  } else if (act === 'contract-hire') {
+    const res = contractHire(player, data.id);
+    if (!res.ok) {
+      pushLog(res.reason === 'cannot_afford' ? `Need ${formatReward(res.cost)} to hire.`
+        : res.reason === 'no_slot' ? 'No open berth.'
+        : res.reason === 'owned' ? 'Already on the crew.'
+        : `Hire failed: ${res.reason}`);
+    } else {
+      player = res.player;
+      pushLog(`Contract: ${res.instance.name} signs on.`);
+      showToast({ title: `${res.instance.name} signs on` });
+      sfx('coin');
+    }
+  } else if (act === 'select-crew') {
+    selectedCrewId = data.id || null;
+  } else if (act === 'close-crew') {
+    selectedCrewId = null;
+  } else if (act === 'splash-dismiss') {
+    player = { ...player, flags: { ...(player.flags || {}), splashSeen: true } };
+  } else if (act === 'cinematic-dismiss') {
+    cinematic = null;
+  } else if (act === 'rank-up') {
+    const res = rankUpCrew(player, data.id);
+    if (!res.ok) {
+      pushLog(res.reason === 'cannot_afford' ? `Need ${formatReward(res.cost)} to rank up.` : `Rank failed: ${res.reason}`);
+    } else {
+      player = res.player;
+      pushLog(`${res.crew.name} ranked up.`);
+      showToast({ title: `${res.crew.name} ranked` });
+    }
+  } else if (act === 'level-crew') {
+    const res = levelCrew(player, data.id);
+    if (!res.ok) {
+      pushLog(res.reason === 'cannot_afford' ? `Need ${res.cost?.medals} medals to level.` : `Level failed: ${res.reason}`);
+    } else {
+      player = res.player;
+      pushLog(`${res.crew.name} → Lv ${res.crew.level}.`);
+      showToast({ title: `${res.crew.name} Lv ${res.crew.level}` });
     }
   } else if (act === 'ship-upgrade') {
     if (isTutorialActive(player) && !isFeatureUnlocked(player, 'hangar')) {
@@ -695,7 +741,11 @@ async function handleAction(act, data = {}) {
         ? `Cannot afford ${data.ship} (${data.currency}).`
         : res.reason === 'chapter_lock'
           ? `Locked until story chapter ${res.need}.`
-          : `Hull buy failed: ${res.reason}`);
+          : res.reason === 'rep_lock'
+            ? `Need ${res.need} reputation.`
+            : res.reason === 'hull_lock'
+              ? `Need ${res.need} hull first.`
+              : `Hull buy failed: ${res.reason}`);
     } else {
       player = res.player;
       pushLog(`Acquired ${res.def.name}! Crew capacity ${res.def.crewSlots}.`);
@@ -781,6 +831,8 @@ async function handleAction(act, data = {}) {
     player = createNewPlayer();
     pendingCombat = null;
     selectedAssists = [];
+    selectedCrewId = null;
+    cinematic = null;
     tab = 'ship';
     showToast(null);
     pushLog('Save reset.');
@@ -800,6 +852,9 @@ function logTravelResult(r) {
     pushLog(r.flavor || `Already logged at ${r.node.name}.`);
   } else if (r.beat) {
     pushLog(`Story — ${r.beat.title}: ${r.beat.text}${pay ? ` · ${pay}` : ''}`);
+    if (r.beat.art) {
+      cinematic = { title: r.beat.title, text: r.beat.text, art: r.beat.art };
+    }
   } else if (r.flavor) {
     pushLog(`${r.kind} @ ${r.node.name}: ${r.flavor}${pay ? ` · ${pay}` : ''}`);
   } else if (r.rewards) {

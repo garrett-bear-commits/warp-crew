@@ -26,6 +26,30 @@ export const CREW_PORTRAITS = {
   merc_zephyr: artUrl('art/pixel/crew/zephyr.png'),
   merc_onyx: artUrl('art/pixel/crew/onyx.png'),
   merc_prism: artUrl('art/pixel/crew/prism.png'),
+  merc_tess: artUrl('art/pixel/crew/tess.png'),
+  merc_dax: artUrl('art/pixel/crew/dax.png'),
+  merc_nub: artUrl('art/pixel/crew/nub.png'),
+  merc_pip: artUrl('art/pixel/crew/pip.png'),
+  merc_juno: artUrl('art/pixel/crew/juno.png'),
+  merc_greaves: artUrl('art/pixel/crew/greaves.png'),
+  merc_yara: artUrl('art/pixel/crew/yara.png'),
+  merc_brink: artUrl('art/pixel/crew/brink.png'),
+  merc_oso: artUrl('art/pixel/crew/oso.png'),
+  merc_orla: artUrl('art/pixel/crew/orla.png'),
+  merc_tink: artUrl('art/pixel/crew/tink.png'),
+  merc_kal: artUrl('art/pixel/crew/kal.png'),
+  merc_vex: artUrl('art/pixel/crew/vex.png'),
+  merc_moth: artUrl('art/pixel/crew/moth.png'),
+  merc_reed: artUrl('art/pixel/crew/reed.png'),
+  merc_rune: artUrl('art/pixel/crew/rune.png'),
+  merc_ashen: artUrl('art/pixel/crew/ashen.png'),
+  merc_nyx: artUrl('art/pixel/crew/nyx.png'),
+  merc_coil: artUrl('art/pixel/crew/coil.png'),
+  merc_solace: artUrl('art/pixel/crew/solace.png'),
+  merc_harrow: artUrl('art/pixel/crew/harrow.png'),
+  merc_eclipse: artUrl('art/pixel/crew/eclipse.png'),
+  merc_archon: artUrl('art/pixel/crew/archon.png'),
+  merc_voidwake: artUrl('art/pixel/crew/voidwake.png'),
 };
 
 const ROLE_FALLBACK = {
@@ -40,8 +64,14 @@ const ROLE_FALLBACK = {
 
 export const SHIP_ART = {
   sparrow: artUrl('art/pixel/ships/sparrow.png'),
+  kestrel: artUrl('art/pixel/ships/kestrel.png'),
   corvette: artUrl('art/pixel/ships/corvette.png'),
+  clipper: artUrl('art/pixel/ships/clipper.png'),
   frigate: artUrl('art/pixel/ships/frigate.png'),
+  destroyer: artUrl('art/pixel/ships/destroyer.png'),
+  cruiser: artUrl('art/pixel/ships/cruiser.png'),
+  carrier: artUrl('art/pixel/ships/carrier.png'),
+  dreadnought: artUrl('art/pixel/ships/dreadnought.png'),
 };
 
 export const CUTAWAY_ART = artUrl('art/space/sparrow-hull-v3.png');
@@ -87,6 +117,22 @@ export const PLANET_ART = {
   ice: artUrl('art/space/planet-ice.png'),
   swarm: artUrl('art/pixel/fx/swarm.png'),
 };
+
+export const CINEMATIC_ART = {
+  splash: artUrl('art/pixel/splash.png'),
+  jump: artUrl('art/pixel/cinematic/jump.png'),
+  hire: artUrl('art/pixel/cinematic/hire.png'),
+  veil: artUrl('art/pixel/cinematic/veil.png'),
+  ember: artUrl('art/pixel/cinematic/ember.png'),
+  hollow: artUrl('art/pixel/cinematic/hollow.png'),
+  crown: artUrl('art/pixel/cinematic/crown.png'),
+};
+
+export const SPLASH_ART = CINEMATIC_ART.splash;
+
+export function cinematicArtFor(key) {
+  return CINEMATIC_ART[key] || CINEMATIC_ART.jump;
+}
 
 export function planetArtFor(key) {
   return PLANET_ART[key] || PLANET_ART.planet;

@@ -2,8 +2,9 @@
 /** Multi-node map — Spur + Veil Edge (week-of-content backbone) */
 
 import { encounterById } from '../systems/combat.js';
+import { GALAXY_NODES, GALAXY_BEATS, galaxyUnlocked } from './galaxies.js';
 
-export const NODES = {
+const BASE_NODES = {
   station_home: {
     id: 'station_home',
     name: 'Spur Anchor',
@@ -424,6 +425,8 @@ export const NODES = {
   },
 };
 
+export const NODES = { ...BASE_NODES, ...GALAXY_NODES };
+
 export const SECTOR_1 = {
   id: 'sector_spur',
   name: 'The Spur',
@@ -457,8 +460,13 @@ export function visibleNodes(player, now = Date.now()) {
       return n.id === 'station_home' || n.id === 'lane_a';
     }
     if (n.sector === 'veil' && n.id !== 'veil_gate' && !veilOpen) return false;
-    // veil_gate always visible as the unlock target once day>=2 or after rumor
     if (n.id === 'veil_gate' && day < 2 && !player.flags?.rumor_swarm) return false;
+    if (n.sector === 'ember' && n.id !== 'ember_gate' && !galaxyUnlocked(player, 'ember')) return false;
+    if (n.id === 'ember_gate' && (player.story?.chapter || 0) < 3 && !player.flags?.forge_gift && !player.flags?.ember_map) return false;
+    if (n.sector === 'hollow' && n.id !== 'hollow_mouth' && !galaxyUnlocked(player, 'hollow')) return false;
+    if (n.id === 'hollow_mouth' && !galaxyUnlocked(player, 'ember') && (player.story?.chapter || 0) < 5) return false;
+    if (n.sector === 'crown' && n.id !== 'halo_approach' && !galaxyUnlocked(player, 'crown')) return false;
+    if (n.id === 'halo_approach' && !galaxyUnlocked(player, 'hollow') && (player.story?.chapter || 0) < 6) return false;
     if (n.minDay && day < n.minDay) return false;
     return true;
   });
@@ -474,7 +482,7 @@ export function pickOutcome(outcomes, rng = Math.random) {
   return outcomes[outcomes.length - 1];
 }
 
-export const STORY_BEATS = {
+const BASE_STORY = {
   rumor_swarm: {
     title: 'Whispers of Eclipse',
     text: 'Dockworkers swear black-shelled probes have been tagging freighters. Someone is mapping the Spur.',
@@ -521,6 +529,7 @@ export const STORY_BEATS = {
     title: 'Veil Gate Access',
     text: 'Customs waves you through. Beyond the gate, space feels colder. Eclipse Scar glows on the long-range scan.',
     chapter: 3,
+    art: 'veil',
     rewards: { credits: 90, reputation: 8, medals: 6 },
   },
   scar_vision: {
@@ -579,6 +588,8 @@ export const STORY_BEATS = {
   },
 };
 
+export const STORY_BEATS = { ...BASE_STORY, ...GALAXY_BEATS };
+
 const HAZARD_BY_TYPE = {
   station: 'none',
   trade: 'low',
@@ -629,12 +640,11 @@ export function typicalPayout(n) {
 }
 
 export function nodesBySector(list) {
-  const spur = [];
-  const veil = [];
+  const buckets = { spur: [], veil: [], ember: [], hollow: [], crown: [] };
   for (const n of list) {
-    if (n.sector === 'veil') veil.push(n);
-    else spur.push(n);
+    const k = n.sector && buckets[n.sector] ? n.sector : 'spur';
+    buckets[k].push(n);
   }
-  return { spur, veil };
+  return buckets;
 }
 

@@ -5,8 +5,8 @@ import { visibleNodes, nodesBySector, nodeMeta, typicalPayout } from '../data/se
 import { EXPEDITION_SKIP_GEMS, visiblePlanets, previewExpedition, planetById } from '../systems/expedition.js';
 import { ASSISTS, listAssists, crewPower } from '../systems/combat.js';
 import { storyProgress } from '../systems/story.js';
-import { SHIPS } from '../data/ships.js';
-import { listOwnedHulls, nextUpgradeCost } from '../systems/hangar.js';
+import { SHIPS, SHIP_SYSTEMS, SYSTEM_LABEL } from '../data/ships.js';
+import { listOwnedHulls, nextUpgradeCost, canBuyHull } from '../systems/hangar.js';
 import {
   currentTutorialStep,
   weekGoals,
@@ -19,14 +19,15 @@ import {
   sessionHint,
 } from '../systems/tutorial.js';
 import { readyCrew } from '../systems/player.js';
-import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART, planetArtFor } from '../data/portraits.js';
-import { GACHA_COSTS, nextRepGate, CREW_CATALOG } from '../systems/gacha.js';
+import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
+import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY } from '../systems/gacha.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemBlurb, visitMult, reputationRank } from '../systems/economy.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS } from '../data/starterShip.js';
-import { medalLevelCostFor } from '../data/crewRoster.js';
+import { medalLevelCostFor, rankTitle, rankUpCost } from '../data/crewRoster.js';
+import { INTEL_TRACKS, ECONOMY_BEATS } from '../data/intel.js';
 import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying } from './combatView.js';
@@ -125,6 +126,8 @@ function patchShell(root, ctx) {
     pendingCombat = null,
     selectedAssists = [],
     selectedRoom = null,
+    selectedCrewId = null,
+    cinematic = null,
     shopProducts = null,
     toast = null,
     now = Date.now(),
@@ -174,11 +177,12 @@ function patchShell(root, ctx) {
   setSlot(root, 'hud', renderHud(player, fuel, chips));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
-  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, selectedAssists, step }));
+  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, selectedAssists, step, selectedCrewId, cinematic }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, hint, isHome }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
+    && !cinematic && !selectedCrewId && player.flags?.splashSeen
     && (coachStep.cta || coachStep.body);
   setSlot(root, 'coach', showCoach ? renderCoach(coachStep) : '');
 
@@ -316,14 +320,83 @@ function renderToast(toast) {
     </div>`;
 }
 
-function renderModals(player, { pendingCombat, selectedAssists, step }) {
+function renderModals(player, { pendingCombat, selectedAssists, step, selectedCrewId, cinematic }) {
+  if (!player.flags?.splashSeen) return renderSplash();
+  if (cinematic) return renderCinematic(cinematic);
   if (pendingCombat) {
     return renderCombatModal(pendingCombat, selectedAssists, isTutorialActive(player));
   }
+  if (selectedCrewId) return renderDossier(player, selectedCrewId);
   if (step?.modal === 'victory') return renderVictoryModal(player, step);
   if (step?.modal === 'recruit') return renderRecruitModal(player, step);
   if (step?.modal === 'join') return renderJoinModal(player, step);
   return '';
+}
+
+function starsHtml(n = 1) {
+  const s = Math.max(1, Math.min(5, n || 1));
+  return `<span class="stars">${'★'.repeat(s)}${'☆'.repeat(5 - s)}</span>`;
+}
+
+function renderSplash() {
+  return `
+    <div class="modal-backdrop splash-backdrop">
+      <div class="splash-card">
+        <img src="${SPLASH_ART}" alt="Warp Crew" />
+        <div class="splash-copy">
+          <div class="coach-kicker">Idle starship</div>
+          <h2>Warp Crew</h2>
+          <p>Hire mercs. Jump lanes. Outlast Eclipse.</p>
+          <button class="primary" data-act="splash-dismiss">Launch</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderCinematic(c) {
+  const src = cinematicArtFor(c.art);
+  return `
+    <div class="modal-backdrop">
+      <div class="modal panel cinematic-modal">
+        <img class="cinematic-still" src="${src}" alt="" />
+        <div class="coach-kicker">Story</div>
+        <h2>${escapeHtml(c.title || 'Story')}</h2>
+        <p class="muted">${escapeHtml(c.text || '')}</p>
+        <button class="primary" data-act="cinematic-dismiss">Continue</button>
+      </div>
+    </div>`;
+}
+
+function renderDossier(player, id) {
+  const c = (player.crew || []).find((x) => x.instanceId === id);
+  if (!c) return '';
+  const rankCost = rankUpCost(c);
+  const lvlCost = medalLevelCostFor(c);
+  const title = rankTitle(c.rank);
+  return `
+    <div class="modal-backdrop">
+      <div class="modal panel dossier">
+        <div class="sheet-head">
+          <div class="recruit-card dossier-head">
+            ${crewPortrait(c)}
+            <div>
+              <b>${escapeHtml(c.name)}</b>
+              <div><span class="tag">${escapeHtml(c.role)}</span><span class="tag">${escapeHtml(c.rarity)}</span></div>
+              ${starsHtml(c.stars)}
+              <div class="muted">${escapeHtml(title)} · Lv ${c.level} · Power ${c.power}</div>
+            </div>
+          </div>
+          <button class="icon-close" data-act="close-crew" aria-label="Close">×</button>
+        </div>
+        ${c.quote ? `<p class="quote">“${escapeHtml(c.quote)}”</p>` : ''}
+        <p class="muted">${escapeHtml(c.history || c.blurb || '')}</p>
+        <div class="muted">${escapeHtml(c.origin || '')}${c.faction ? ` · ${escapeHtml(c.faction)}` : ''}${passiveLabel(c.passive) ? ` · ${escapeHtml(passiveLabel(c.passive))}` : ''}</div>
+        <div class="row" style="margin-top:10px;flex-direction:column">
+          ${c.status !== 'expedition' ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${lvlCost} medals</button>` : ''}
+          <button data-act="rank-up" data-id="${c.instanceId}">Rank up · ${rankCost.medals} med · ${rankCost.credits}cr</button>
+        </div>
+      </div>
+    </div>`;
 }
 
 function navBtn(id, label, tab, badge, extraClass = '') {
@@ -347,6 +420,7 @@ function renderVictoryModal(player, step) {
   return `
     <div class="modal-backdrop">
       <div class="modal panel victory-modal">
+        <img class="cinematic-still" src="${cinematicArtFor('jump')}" alt="" />
         <div class="coach-kicker">${escapeHtml(step.kicker)}</div>
         <h2>${escapeHtml(step.title)}</h2>
         <p class="muted">${escapeHtml(step.body)}</p>
@@ -374,6 +448,7 @@ function renderRecruitModal(player, step) {
   return `
     <div class="modal-backdrop">
       <div class="modal panel recruit-modal">
+        <img class="cinematic-still" src="${cinematicArtFor('hire')}" alt="" />
         <div class="coach-kicker">${escapeHtml(step.kicker)}</div>
         <h2>${escapeHtml(step.title)}</h2>
         <div class="recruit-card">
@@ -497,7 +572,6 @@ function renderHangarSheet(player) {
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
   const sys = player.ship?.systems || {};
-  const systems = ['engines', 'shields', 'cargo', 'weapons', 'quarters'];
   return `
     <div class="room-sheet">
       <div class="sheet-head">
@@ -510,12 +584,14 @@ function renderHangarSheet(player) {
       ${Object.values(SHIPS).map((s) => {
         const isOwned = owned.includes(s.id);
         const isActive = shipId === s.id;
+        const check = isOwned ? { ok: true } : canBuyHull(player, s.id);
+        const lock = hullLockLabel(check, s);
         return `
           <div class="mission-card" style="margin-bottom:8px">
             <img class="ship-thumb" src="${shipArtFor(s.id)}" alt="" />
             <div>
               <b>${escapeHtml(s.name)}${isActive ? ' · ACTIVE' : isOwned ? ' · OWNED' : ''}</b>
-              <div class="muted">Crew ${s.crewSlots}–${s.maxCrewSlots}</div>
+              <div class="muted">Crew ${s.crewSlots}–${s.maxCrewSlots}${lock ? ` · ${escapeHtml(lock)}` : ''}</div>
             </div>
             ${isActive ? '<button disabled>Active</button>' : isOwned
               ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
@@ -523,19 +599,29 @@ function renderHangarSheet(player) {
           </div>`;
       }).join('')}
       <div class="muted" style="margin:8px 0 4px">Systems</div>
-      ${systems.map((id) => {
-        const lv = sys[id] || (id === 'quarters' ? 0 : 1);
+      ${SHIP_SYSTEMS.map((id) => {
+        const lv = sys[id] || 0;
         const up = nextUpgradeCost(player, id);
+        const label = SYSTEM_LABEL[id] || id;
         return `
           <div class="sys-row">
             <div>
-              <b>${escapeHtml(id)} lv ${lv}</b>
+              <b>${escapeHtml(label)} lv ${lv}</b>
               <div class="muted">${escapeHtml(systemBlurb(id, lv || 1))}</div>
             </div>
             ${up ? `<button data-act="ship-upgrade" data-system="${id}">${up.credits}cr</button>` : ''}
           </div>`;
       }).join('')}
     </div>`;
+}
+
+function hullLockLabel(check, ship) {
+  if (!check || check.ok) return '';
+  if (check.reason === 'chapter_lock') return `Ch.${check.need}+`;
+  if (check.reason === 'rep_lock') return `${check.need} rep`;
+  if (check.reason === 'hull_lock') return `Need ${SHIPS[check.need]?.name || check.need}`;
+  if (check.reason === 'owned') return '';
+  return ship.id === 'sparrow' ? '' : '';
 }
 
 function emptyHints(player, fuel, tab) {
@@ -624,7 +710,7 @@ function renderMissions(player, now) {
   const tight = isTutorialActive(player) && !isFeatureUnlocked(player, 'map_extra');
   const teachDust = player.tutorial?.ordersBeat === 'exp';
   const planetList = teachDust ? planets.filter((p) => p.id === 'dustfall') : planets;
-  const { spur, veil } = nodesBySector(nodes);
+  const { spur, veil, ember, hollow, crown } = nodesBySector(nodes);
   const rank = reputationRank(player.wallet?.reputation);
 
   const mapBlock = (title, list) => list.length ? `
@@ -638,7 +724,12 @@ function renderMissions(player, now) {
       <h2>${tight ? 'First jump' : 'Star map'}</h2>
       <div class="muted">${tight ? 'One lane is open. Jump Dust Lane.' : `${rank.label} · cargo and rep lift trade. Engines cut jump cost. Repeat visits pay less.`}</div>
       ${nodes.length === 0 ? '<div class="empty-hint">No routes — something is wrong with map data.</div>' : ''}
-      ${tight ? `<div class="map-grid">${nodes.map((n) => renderNodeCard(n, player, here, step)).join('')}</div>` : mapBlock('The Spur', spur) + mapBlock('Veil Edge', veil)}
+      ${tight ? `<div class="map-grid">${nodes.map((n) => renderNodeCard(n, player, here, step)).join('')}</div>`
+        : mapBlock('The Spur', spur)
+          + mapBlock('Veil Edge', veil)
+          + mapBlock('Ember Reach', ember)
+          + mapBlock('Hollow Expanse', hollow)
+          + mapBlock('Crown Halo', crown)}
     </div>`;
 
   const expPanel = showExp ? `
@@ -688,7 +779,7 @@ function renderPlanetCard(player, p, teachDust) {
         <b>${escapeHtml(p.name)}</b>
         <span class="tag">${escapeHtml(kind.label)}</span>
         ${p.prefRole ? `<span class="tag">${escapeHtml(p.prefRole)}</span>` : ''}
-        ${p.sector === 'veil' ? '<span class="tag">Veil</span>' : ''}
+        ${p.sector && p.sector !== 'spur' ? `<span class="tag">${escapeHtml(p.sector)}</span>` : ''}
         <div class="muted">${escapeHtml(p.blurb)}</div>
         <div class="muted">${(prev.chance * 100) | 0}% · ${mins}m · win ${escapeHtml(win)}</div>
         <div class="muted">Fail ${escapeHtml(fail)} · Going: ${escapeHtml(names)}${prev.roleHit ? ' · role match' : ''}</div>
@@ -712,6 +803,10 @@ function renderCrew(player) {
   const open = Math.max(0, player.crewSlots - player.crew.length);
   const teachHire = player.tutorial?.ordersBeat === 'hire';
   const now = Date.now();
+  const g = { ...defaultGacha(), ...(player.gacha || {}) };
+  const ownedIds = new Set((player.crew || []).map((c) => c.templateId));
+  const board = CREW_CATALOG.filter((t) => t.hireCost && !ownedIds.has(t.id) && (t.rarity === 'common' || t.rarity === 'uncommon')).slice(0, 8);
+  const pityRarePct = Math.min(100, ((g.pityRare || 0) / PITY.rareHard) * 100);
   return `
     <div class="panel">
       <div class="row" style="justify-content:space-between">
@@ -719,11 +814,20 @@ function renderCrew(player) {
       </div>
       <div class="muted">Power ${crewPower(readyCrew(player))} · ${escapeHtml(nextRepGate(player.wallet.reputation || 0).label)}${open ? ` · ${open} open` : ''}</div>
       ${canHire ? `
+        <div class="luck-meter">
+          <div class="muted">Luck ${g.luck || 0} · Rare pity ${g.pityRare || 0}/${PITY.rareHard} · Legend ${g.pityLegend || 0}/${PITY.legendHard}</div>
+          <div class="pity-bar"><span style="width:${pityRarePct}%"></span></div>
+          <div class="row hire-row">
+            <button data-act="buy-luck" data-currency="credits">Luck +1 · ${luckCreditCost(g.luck)}cr</button>
+            <button data-act="buy-luck" data-currency="gems">Luck +1 · ${luckGemCost(g.luck)}g</button>
+          </div>
+        </div>
         <div class="row hire-row">
           <button class="primary ${teachHire && free ? 'spot-glow' : ''}" data-act="gacha">
             ${free ? 'Free hire' : 'Hire 500cr'}
           </button>
           ${free ? '' : `<button data-act="gacha-gems">Hire ${GACHA_COSTS.gems.gems}g</button>`}
+          <button data-act="gacha-10">10-pull ${GACHA_COSTS.gems10.gems}g</button>
         </div>` : ''}
       ${player.crew.map((c) => {
         const cost = medalLevelCostFor(c);
@@ -738,16 +842,37 @@ function renderCrew(player) {
             <span class="tag">${escapeHtml(c.role)}</span>
             <span class="tag">${escapeHtml(c.rarity)}</span>
             <span class="tag">Lv ${c.level}</span>
+            <span class="tag">${escapeHtml(rankTitle(c.rank))}</span>
             <span class="tag ${c.status === 'injured' ? 'injured' : ''}">${escapeHtml(c.status)}</span>
+            <div>${starsHtml(c.stars)}</div>
             <div class="muted">Power ${c.power} · XP ${c.xp || 0}${hurt}${passiveLabel(c.passive) ? ` · ${escapeHtml(passiveLabel(c.passive))}` : ''}</div>
             <div class="muted">${escapeHtml(c.blurb || '')}</div>
-            ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
-              ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${cost} medals</button>`
-              : ''}
+            <div class="row" style="margin-top:6px">
+              <button data-act="select-crew" data-id="${c.instanceId}">Dossier</button>
+              ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
+                ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${cost} medals</button>`
+                : ''}
+            </div>
           </div>
         </div>`;
       }).join('') || '<div class="empty-hint">No crew — hire from the board.</div>'}
     </div>
+    ${canHire && board.length ? `
+    <div class="panel">
+      <h2>Contract board</h2>
+      <div class="muted">Direct hire. Mythics stay on the gacha.</div>
+      ${board.map((t) => `
+        <div class="crew-card">
+          <img class="portrait" src="${portraitFor(t.id, t.role)}" alt="" width="64" height="64" />
+          <div class="crew-body">
+            <b>${escapeHtml(t.name)}</b>
+            <span class="tag">${escapeHtml(t.role)}</span>
+            <span class="tag">${escapeHtml(t.rarity)}</span>
+            <div class="muted">${escapeHtml(t.blurb)}</div>
+            <button data-act="contract-hire" data-id="${t.id}">Hire ${t.hireCost.credits}cr</button>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
   `;
 }
 
@@ -765,10 +890,12 @@ function renderShop(player, shopProducts) {
   return `
     <div class="panel">
       <h2>Hangar</h2>
-      <div class="muted">Larger hulls: credits (grind) or gems (fast).</div>
+      <div class="muted">Larger hulls: credits (grind) or gems (fast). Systems never reset on a hull buy.</div>
       ${Object.values(SHIPS).map((s) => {
         const isOwned = owned.includes(s.id);
         const isActive = shipId === s.id;
+        const check = isOwned || s.id === 'sparrow' ? { ok: true } : canBuyHull(player, s.id);
+        const lock = hullLockLabel(check, s);
         return `
         <div class="mission-card">
           <img class="ship-thumb" src="${shipArtFor(s.id)}" alt="" />
@@ -778,16 +905,16 @@ function renderShop(player, shopProducts) {
             <div class="muted">Crew ${s.crewSlots}–${s.maxCrewSlots}
               ${s.gemPrice ? ` · ${s.gemPrice}g` : ''}
               ${s.creditPrice ? ` · ${s.creditPrice}cr` : ''}
-              ${s.lockedUntilChapter ? ` · Ch.${s.lockedUntilChapter}+` : ''}
+              ${lock ? ` · ${escapeHtml(lock)}` : ''}
             </div>
           </div>
           <div class="row" style="flex-direction:column;gap:4px">
             ${isActive ? '<button disabled>Active</button>' : isOwned
               ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
-              : s.id === 'sparrow' ? '<button disabled>Starter</button>' : `
+              : s.id === 'sparrow' ? '<button disabled>Starter</button>' : check.ok ? `
                 <button class="primary" data-act="hull-buy" data-ship="${s.id}" data-currency="gems">Gems</button>
                 <button data-act="hull-buy" data-ship="${s.id}" data-currency="credits">Credits</button>
-              `}
+              ` : `<button disabled>${escapeHtml(lock || 'Locked')}</button>`}
           </div>
         </div>`;
       }).join('')}
@@ -835,6 +962,25 @@ function renderLog(player, log, goals) {
       <div class="muted">${escapeHtml(rank.label)} · Streak ${player.loginStreak || 0} · Hull ${player.ship?.hull ?? 100}% · Power ${power}</div>
       <div class="muted">Collection ${collected}/${CREW_CATALOG.length} · ${escapeHtml(gate.label)}</div>
     </div>
+    <div class="panel">
+      <h2>Economy spine</h2>
+      ${ECONOMY_BEATS.map((b) => `
+        <div class="intel-card">
+          <b>${escapeHtml(b.title)}</b>
+          <div class="muted">${escapeHtml(b.blurb)}</div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="panel">
+      <h2>Intel board</h2>
+      <div class="muted">Fast-follow. Charted, not shipped. The four IAP SKUs stay the cash shop.</div>
+      ${INTEL_TRACKS.map((t) => `
+        <div class="intel-card">
+          <b>${escapeHtml(t.title)}</b>
+          <span class="tag">${escapeHtml(t.eta)}</span>
+          <div class="muted">${escapeHtml(t.blurb)}</div>
+        </div>
+      `).join('')}
     <div class="panel">
       <h2>Week goals · Day ${goals.careerDay}</h2>
       <div class="muted">${goalsDone}/${goals.goals.length} complete${nextGoal ? ` · next: ${escapeHtml(nextGoal.label)}` : ''}</div>

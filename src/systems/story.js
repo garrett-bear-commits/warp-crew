@@ -18,6 +18,15 @@ export function applyStoryFlag(player, flag) {
   if (flag === 'veil_opened') {
     story.veilUnlocked = true;
   }
+  if (flag === 'ember_opened' || flag === 'forge_gift' || flag === 'ember_map') {
+    story.emberUnlocked = true;
+  }
+  if (flag === 'hollow_opened') {
+    story.hollowUnlocked = true;
+  }
+  if (flag === 'crown_opened') {
+    story.crownUnlocked = true;
+  }
   const rewards = beat
     ? {
         credits: beat.rewards?.credits ?? 40,
@@ -50,6 +59,9 @@ export function storyProgress(player) {
     done,
     total,
     veilUnlocked: Boolean(player.story?.veilUnlocked || flags.veil_opened),
+    emberUnlocked: Boolean(player.story?.emberUnlocked || flags.ember_opened),
+    hollowUnlocked: Boolean(player.story?.hollowUnlocked || flags.hollow_opened),
+    crownUnlocked: Boolean(player.story?.crownUnlocked || flags.crown_opened),
     beats: Object.entries(STORY_BEATS).map(([id, b]) => ({
       id,
       ...b,

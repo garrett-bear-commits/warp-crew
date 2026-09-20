@@ -2,6 +2,7 @@
 /** Sum crew passives. Templates define them; combat/travel/expeditions consume them. */
 
 import { engineFuelCut } from './economy.js';
+import { getShipDef } from '../data/ships.js';
 
 const KEYS = [
   'tradeCredits',
@@ -50,12 +51,13 @@ export function combatBonuses(player, encounter) {
   const weapons = player.ship?.systems?.weapons || 1;
   const weaponPow = (weapons - 1) * 4;
   const critPow = Math.round(pass.critChance * 40);
+  const hullBias = Math.round((getShipDef(player.ship?.shipId).weaponBias || 0) * 40);
   let enemyScale = 1;
-  if (encounter?.id && /pirate|corsair|scrapper/.test(encounter.id)) {
+  if (encounter?.id && /pirate|corsair|scrapper|raider/.test(encounter.id)) {
     enemyScale = Math.max(0.7, 1 - (pass.pirateResist || 0));
   }
   return {
-    extraPower: weaponPow + critPow,
+    extraPower: weaponPow + critPow + hullBias,
     enemyScale,
     pass,
   };
@@ -81,7 +83,8 @@ export function repairHull(player, amount = 25) {
 
 export function injuryMinutesFor(player, base = 20) {
   const cut = readyPassives(player).assistCharge || 0;
-  return Math.max(8, Math.round((base || 20) * (1 - cut * 1.5)));
+  const med = Math.max(0, player?.ship?.systems?.medbay || 0);
+  return Math.max(6, Math.round((base || 20) * (1 - cut * 1.5) * (1 - med * 0.08)));
 }
 
 export function passiveLabel(passive = {}) {

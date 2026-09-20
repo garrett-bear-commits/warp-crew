@@ -172,6 +172,42 @@ export const ENCOUNTERS_V1 = [
     win: 'The echo folds. A gem-bright core in the wrecklight.',
     fail: 'It does not chase. That is worse.',
   },
+  {
+    id: 'ember_raider',
+    name: 'Ember Raider',
+    power: 38,
+    rewards: { credits: 170, medals: 14, reputation: 6 },
+    blurb: 'Heat-shield paint. They board while the hull is still glowing.',
+    win: 'The raider peels. Slag-scored plate and a pay chest.',
+    fail: 'They weld a hole in cargo and laugh in the heat.',
+  },
+  {
+    id: 'hollow_shade',
+    name: 'Hollow Shade',
+    power: 52,
+    rewards: { credits: 220, medals: 20, reputation: 10 },
+    blurb: 'It only exists in peripheral vision. Do not look away on purpose.',
+    win: 'The shade unthreads. Cold medals where a body should be.',
+    fail: 'It writes a name on the hull. Yours, misspelled.',
+  },
+  {
+    id: 'crown_warden',
+    name: 'Crown Warden',
+    power: 64,
+    rewards: { credits: 280, medals: 24, reputation: 12 },
+    blurb: 'Gold customs with real guns. Reputation is a boarding pass.',
+    win: 'The warden salutes and drops a gilt crate. You lived through manners.',
+    fail: 'A verdict round kisses the engines. You limp, fined in hull.',
+  },
+  {
+    id: 'eclipse_throne',
+    name: 'Eclipse Throne',
+    power: 84,
+    rewards: { credits: 420, medals: 36, reputation: 18, gems: 8 },
+    blurb: 'The Swarm wearing a halo. End of the mapped war.',
+    win: 'The throne cracks. A core ticks like a second heart.',
+    fail: 'It does not kill you. It files you. You leave marked.',
+  },
 ];
 
 export function encounterById(id) {
