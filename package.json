@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host",
     "test": "node test/timer.test.mjs && node test/fuel.test.mjs && node test/economy.test.mjs && node test/daily.test.mjs && node test/travel_phase_a.test.mjs && node test/platform_iap.test.mjs && node test/phase_c.test.mjs && node test/tutorial_week.test.mjs && node test/sanity.mjs",
-    "test:ship": "node test/ship_layout.test.mjs && node test/ship_pathing.test.mjs && node test/crew_animation.test.mjs",
+    "test:ship": "node test/ship_layout.test.mjs && node test/ship_pathing.test.mjs && node test/crew_animation.test.mjs && node test/ship_view.test.mjs",
     "start": "vite --host --port 5173",
     "build:pages": "GITHUB_PAGES=1 vite build"
   },
