@@ -9,6 +9,7 @@ This directory contains both current product evidence and historical build notes
 - [Outcome requirements](19-outcome-requirements.md) — completion criteria and required proof for the active overhaul goal.
 - [Approved product direction](design/20-product-direction-draft.md) — living ship first, short contract routes, away expeditions, and fully earnable functional power.
 - [Ship and animation foundation](design/21-ship-animation-foundation.md) — exact first-package geometry, interaction, and Ninefold rendering contract.
+- [Ship and animation QA](qa/2026-09-21-ship-animation-foundation.md) — automated results, 390×844 captures, hit ownership, and remaining device gates.
 - [Jest platform and monetization research](research/2026-09-21-jest-platform-monetization.md) — current platform contracts and gaps that constrain future designs.
 
 These files describe the current build and the evidence needed to improve it. They do not authorize a particular redesign or live monetization model.

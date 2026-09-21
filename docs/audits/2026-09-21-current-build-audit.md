@@ -11,6 +11,12 @@ Warp Crew has crossed from prototype into a recognizable game, but it is not yet
 
 The build is a useful foundation. It should be refined in place rather than discarded.
 
+## Package follow-up
+
+The isolated ship-and-animation package implements the first recommended work package without changing the economy or daily loop. It replaces the four coarse Sparrow regions with nine art-aligned compartments, derives pathing and input from one layout manifest, renders cropped four-direction frames at a 52px phone height, removes synthetic crew bobbing, enforces 44px ship controls, and adds a development geometry overlay. See [the package QA report](../qa/2026-09-21-ship-animation-foundation.md).
+
+This follow-up does not erase the audit's remaining tutorial, core-loop, content-expression, monetization, persistence, or real-device findings.
+
 ## Evidence summary
 
 - Production build: PASS (`npm run build`; 42 modules, 198.63 kB JS before gzip).

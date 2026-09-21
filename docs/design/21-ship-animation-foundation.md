@@ -1,6 +1,6 @@
 # Ship and animation foundation
 
-Status: first implementation package specification  
+Status: implemented and desktop-phone verified in isolated worktree; integration and real-device review pending  
 Parent direction: [Warp Crew product direction](20-product-direction-draft.md)  
 Art inspected: `public/art/space/sparrow-hull-v3.png` at 1152 by 1728 and `public/art/char/walk-4dir.png` at 384 by 384
 
@@ -9,6 +9,8 @@ Art inspected: `public/art/space/sparrow-hull-v3.png` at 1152 by 1728 and `publi
 The Sparrow home becomes a trustworthy, legible phone interaction surface. Each visible compartment owns its own tap region and crew destination. Crew use the actual four-direction walk frames at a readable size with a stable foot anchor and no synthetic bobbing.
 
 This package does not redesign the daily loop, combat rules, store, or economy. It creates the spatial and animation foundation those packages will use.
+
+Implementation evidence: [Ship and animation QA](../qa/2026-09-21-ship-animation-foundation.md)
 
 ## Visual interpretation of the current Sparrow art
 
@@ -153,4 +155,3 @@ At 390 by 844 CSS pixels, capture:
 7. a touch-target overlay or browser measurement confirming the minimum target.
 
 Acceptance requires comparing these captures with the pre-change audit, not merely confirming that the page renders.
-

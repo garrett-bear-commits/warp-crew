@@ -34,7 +34,7 @@
 - Produces: `SPARROW_LAYOUT`, `ROOMS`, `roomById(id)`, `roomAtExact(x, y)`, `pointInPolygon(x, y, points)`, `validateSparrowLayout()`.
 - Preserves: `HULL_PX`, `HALLWAYS`, `ROOM_GRAPH`, `DOOR_PTS`, `FURNITURE`, `THRUSTERS`, `homeRoomId()`, `doorPoint()`, `pathRooms()`, and `roomAt()` as compatibility exports until Task 2 migrates callers.
 
-- [ ] **Step 1: Write the failing manifest test**
+- [x] **Step 1: Write the failing manifest test**
 
 ```js
 import {
@@ -61,12 +61,12 @@ if (roomAtExact(50, 64) !== null) throw new Error('central spine must not select
 console.log('ship_layout.test.mjs OK');
 ```
 
-- [ ] **Step 2: Run the test and verify the missing exports fail**
+- [x] **Step 2: Run the test and verify the missing exports fail**
 
 Run: `node test/ship_layout.test.mjs`  
 Expected: FAIL because `SPARROW_LAYOUT` is not exported.
 
-- [ ] **Step 3: Implement the manifest and exact hit testing**
+- [x] **Step 3: Implement the manifest and exact hit testing**
 
 Use these exact room, door, hall, blocker, and effect records as the first calibrated manifest:
 
@@ -157,14 +157,14 @@ export function roomAtExact(x, y) {
 
 `validateSparrowLayout()` must return string errors for duplicate IDs, polygons with fewer than three points, coordinates outside 0–100, missing or mismatched doors, unknown systems, work anchors outside their room, and room-center overlap. It must not throw so the test can report all defects together.
 
-- [ ] **Step 4: Add and run the focused script**
+- [x] **Step 4: Add and run the focused script**
 
 Add `"test:ship": "node test/ship_layout.test.mjs"` to `scripts` in `package.json`.
 
 Run: `npm run test:ship`  
 Expected: `ship_layout.test.mjs OK`.
 
-- [ ] **Step 5: Commit the manifest slice**
+- [x] **Step 5: Commit the manifest slice**
 
 ```sh
 git add src/data/starterShip.js test/ship_layout.test.mjs package.json
@@ -184,7 +184,7 @@ git commit -m "feat: define Sparrow room manifest"
 - Consumes: `SPARROW_LAYOUT`, `roomById()`, `roomAtExact()` from Task 1.
 - Produces: `findPath(x0, y0, x1, y1)`, `isWalkablePct(x, y)`, `nearestWalkableInRoom(roomId, seed)`, and manifest-derived `pathRooms(from, to)`.
 
-- [ ] **Step 1: Write the failing all-rooms reachability test**
+- [x] **Step 1: Write the failing all-rooms reachability test**
 
 ```js
 import { SPARROW_LAYOUT } from '../src/data/starterShip.js';
@@ -205,12 +205,12 @@ for (const from of SPARROW_LAYOUT.rooms) {
 console.log('ship_pathing.test.mjs OK');
 ```
 
-- [ ] **Step 2: Run the test and verify it fails on the new rooms**
+- [x] **Step 2: Run the test and verify it fails on the new rooms**
 
 Run: `node test/ship_pathing.test.mjs`  
 Expected: FAIL because the grid still derives connectivity from the four-room graph.
 
-- [ ] **Step 3: Build walkability from the manifest**
+- [x] **Step 3: Build walkability from the manifest**
 
 Update `navGrid.js` so `cellWalkable()` uses `room.walkBounds`, `SPARROW_LAYOUT.halls`, and `SPARROW_LAYOUT.blockers`. Replace the hardcoded room-name loop in `inDoor()` with `SPARROW_LAYOUT.doors`.
 
@@ -233,7 +233,7 @@ export function pathRooms(from, to) {
 
 Update `crewWalk.js` in the same slice only enough to consume coordinate waypoints rather than treating every route hop as a room ID. A corridor coordinate must leave `a.room` unchanged until `door-enter`.
 
-- [ ] **Step 4: Run layout and path tests**
+- [x] **Step 4: Run layout and path tests**
 
 Run: `node test/ship_layout.test.mjs`  
 Expected: PASS.
@@ -241,7 +241,7 @@ Expected: PASS.
 Run: `node test/ship_pathing.test.mjs`  
 Expected: `ship_pathing.test.mjs OK`.
 
-- [ ] **Step 5: Commit the pathing slice**
+- [x] **Step 5: Commit the pathing slice**
 
 ```sh
 git add src/data/starterShip.js src/data/navGrid.js src/ui/crewWalk.js test/ship_pathing.test.mjs package.json
@@ -258,7 +258,7 @@ git commit -m "feat: route crew through Sparrow manifest"
 **Interfaces:**
 - Produces: `DIRECTION_ROW`, `ANIMATION_PROFILES`, `animationProfileFor(bodyFamily)`, `walkFrameSource(direction, frame, profile)`, and `walkFrameDestination(footX, footY, profile, displayHeight)`.
 
-- [ ] **Step 1: Write the failing animation contract test**
+- [x] **Step 1: Write the failing animation contract test**
 
 ```js
 import {
@@ -285,12 +285,12 @@ if (profile.displayHeight < 44) throw new Error('phone sprite too small');
 console.log('crew_animation.test.mjs OK');
 ```
 
-- [ ] **Step 2: Run the test and verify the module is missing**
+- [x] **Step 2: Run the test and verify the module is missing**
 
 Run: `node test/crew_animation.test.mjs`  
 Expected: FAIL with module-not-found for `crewAnimation.js`.
 
-- [ ] **Step 3: Implement the pure module**
+- [x] **Step 3: Implement the pure module**
 
 ```js
 export const DIRECTION_ROW = Object.freeze({ down: 0, left: 1, right: 2, up: 3 });
@@ -335,12 +335,12 @@ export function walkFrameDestination(footX, footY, profile = animationProfileFor
 }
 ```
 
-- [ ] **Step 4: Run the animation test**
+- [x] **Step 4: Run the animation test**
 
 Run: `node test/crew_animation.test.mjs`  
 Expected: `crew_animation.test.mjs OK`.
 
-- [ ] **Step 5: Commit the animation contract**
+- [x] **Step 5: Commit the animation contract**
 
 ```sh
 git add src/ui/crewAnimation.js test/crew_animation.test.mjs package.json
@@ -357,25 +357,38 @@ git commit -m "feat: add anchored crew animation profiles"
 
 **Interfaces:**
 - Consumes: animation profile and frame helpers from Task 3.
-- Produces: `walkAssetFor(templateId, role, bodyFamily)` returning `{ image, profile }` and a canvas renderer whose path coordinate is the foot position.
+- Produces: `walkAssetFor(templateId, role, bodyFamily)` returning `{ image, profile }`, `crewPoseForActor(actor, width, height, profile)`, and a canvas renderer whose path coordinate is the foot position.
 
-- [ ] **Step 1: Extend the test with a source scan that forbids synthetic bobbing**
+- [x] **Step 1: Extend the test with grounded pose behavior**
 
 ```js
-import fs from 'node:fs';
+import { crewPoseForActor } from '../src/ui/crewAnimation.js';
 
-const walkSource = fs.readFileSync(new URL('../src/ui/crewWalk.js', import.meta.url), 'utf8');
-for (const forbidden of ['Math.sin(clock * 16', 'Math.sin(clock * 8', '+ bob']) {
-  if (walkSource.includes(forbidden)) throw new Error(`synthetic bob remains: ${forbidden}`);
+const actor = { x: 50, y: 40, dir: 'down', frame: 0, state: 'walk' };
+const expectedFoot = { x: 195, y: 240 };
+for (const direction of ['down', 'left', 'right', 'up']) {
+  for (const state of ['walk', 'idle', 'doing']) {
+    for (let frame = 0; frame < 4; frame++) {
+      const pose = crewPoseForActor({ ...actor, dir: direction, frame, state }, 390, 600, profile);
+      if (pose.foot.x !== expectedFoot.x || pose.foot.y !== expectedFoot.y) {
+        throw new Error(`${direction}/${state}/${frame} moved feet to ${pose.foot.x},${pose.foot.y}`);
+      }
+      const anchoredX = pose.destination.x + profile.footAnchor.x * pose.destination.scale;
+      const anchoredY = pose.destination.y + profile.footAnchor.y * pose.destination.scale;
+      if (Math.abs(anchoredX - expectedFoot.x) > 0.001 || Math.abs(anchoredY - expectedFoot.y) > 0.001) {
+        throw new Error(`${direction}/${state}/${frame} destination is not grounded`);
+      }
+    }
+  }
 }
 ```
 
-- [ ] **Step 2: Run the test and verify it detects the current bob**
+- [x] **Step 2: Run the test and verify the pose helper is missing**
 
 Run: `node test/crew_animation.test.mjs`  
-Expected: FAIL with `synthetic bob remains`.
+Expected: FAIL because `crewPoseForActor` is not exported.
 
-- [ ] **Step 3: Replace full-cell drawing with profile drawing**
+- [x] **Step 3: Replace full-cell drawing with profile drawing**
 
 In `crewArt.js`, add:
 
@@ -399,6 +412,17 @@ In `crewWalk.js`:
 - remove `SPRITE`, the local `DIR_ROW`, and the `bob` expression;
 - stop advancing walk frames while idle or doing unless that state has a compatible authored sheet.
 
+Implement and consume this pure pose boundary in `crewAnimation.js`:
+
+```js
+export function crewPoseForActor(actor, width, height, profile = animationProfileFor()) {
+  const foot = { x: actor.x / 100 * width, y: actor.y / 100 * height };
+  const source = walkFrameSource(actor.dir, actor.state === 'walk' ? actor.frame : 0, profile);
+  const destination = walkFrameDestination(foot.x, foot.y, profile);
+  return { foot, source, destination };
+}
+```
+
 The draw call becomes:
 
 ```js
@@ -408,7 +432,7 @@ const dest = walkFrameDestination(x, y, asset.profile);
 g.drawImage(asset.image, source.sx, source.sy, source.sw, source.sh, dest.x, dest.y, dest.width, dest.height);
 ```
 
-- [ ] **Step 4: Run focused tests and build**
+- [x] **Step 4: Run focused tests and build**
 
 Run: `node test/crew_animation.test.mjs`  
 Expected: PASS.
@@ -419,7 +443,7 @@ Expected: PASS.
 Run: `npm run build`  
 Expected: Vite production build exits 0.
 
-- [ ] **Step 5: Commit the renderer slice**
+- [x] **Step 5: Commit the renderer slice**
 
 ```sh
 git add src/ui/crewArt.js src/ui/crewWalk.js src/ui/style.css test/crew_animation.test.mjs
@@ -439,7 +463,7 @@ git commit -m "fix: render grounded four-direction crew"
 - Consumes: `SPARROW_LAYOUT.rooms` from Task 1.
 - Produces: `polygonCss(points)`, `roomStyle(room)`, and `renderRoomHotspot({ room, selected, alert, level })`.
 
-- [ ] **Step 1: Write the failing view-helper test**
+- [x] **Step 1: Write the failing view-helper test**
 
 ```js
 import { SPARROW_LAYOUT } from '../src/data/starterShip.js';
@@ -456,12 +480,12 @@ if (!html.includes('clip-path:')) throw new Error('missing polygon style');
 console.log('ship_view.test.mjs OK');
 ```
 
-- [ ] **Step 2: Run the test and verify the module is missing**
+- [x] **Step 2: Run the test and verify the module is missing**
 
 Run: `node test/ship_view.test.mjs`  
 Expected: FAIL with module-not-found for `shipView.js`.
 
-- [ ] **Step 3: Implement view helpers and wire `bridge.js`**
+- [x] **Step 3: Implement view helpers and wire `bridge.js`**
 
 `polygonCss()` must serialize every point as `${x}% ${y}%`. `roomStyle()` must return full-layer positioning plus `clip-path`, so polygons stay in source-image coordinates:
 
@@ -485,11 +509,11 @@ Replace `renderHotspots()` with a map through `renderRoomHotspot()`. Update `roo
 
 The player should never lose access to an existing Sparrow system because the room model became more precise.
 
-- [ ] **Step 4: Make labels selected/contextual and targets measurable**
+- [x] **Step 4: Make labels selected/contextual and targets measurable**
 
 In CSS, render each hotspot as a full-layer clipped button. Hide `.room-tag` by default; show it for `.selected`, `.has-alert`, and keyboard focus. Set the label to at least 16px and a minimum 44px visual/touch box through its positioned label container. Retain a visible focus outline.
 
-- [ ] **Step 5: Run the view, layout, and build checks**
+- [x] **Step 5: Run the view, layout, and build checks**
 
 Run: `node test/ship_view.test.mjs`  
 Expected: PASS.
@@ -500,7 +524,7 @@ Expected: PASS.
 Run: `npm run build`  
 Expected: PASS.
 
-- [ ] **Step 6: Commit the interaction slice**
+- [x] **Step 6: Commit the interaction slice**
 
 ```sh
 git add src/ui/shipView.js src/ui/bridge.js src/ui/style.css test/ship_view.test.mjs package.json
@@ -520,7 +544,7 @@ git commit -m "feat: align Sparrow interactions to rooms"
 - Consumes: the complete `SPARROW_LAYOUT` manifest.
 - Produces: `shipDebugEnabled({ dev, search })` and `renderShipDebug(layout)`.
 
-- [ ] **Step 1: Write the failing debug test**
+- [x] **Step 1: Write the failing debug test**
 
 ```js
 import { SPARROW_LAYOUT } from '../src/data/starterShip.js';
@@ -538,12 +562,12 @@ for (const door of SPARROW_LAYOUT.doors) {
 console.log('ship_debug.test.mjs OK');
 ```
 
-- [ ] **Step 2: Run the test and verify the module is missing**
+- [x] **Step 2: Run the test and verify the module is missing**
 
 Run: `node test/ship_debug.test.mjs`  
 Expected: FAIL with module-not-found for `shipDebug.js`.
 
-- [ ] **Step 3: Implement a development-only SVG overlay**
+- [x] **Step 3: Implement a development-only SVG overlay**
 
 `shipDebugEnabled()` returns `dev && new URLSearchParams(search).get('shipDebug') === '1'`. `renderShipDebug()` returns an SVG with:
 
@@ -554,7 +578,7 @@ Expected: FAIL with module-not-found for `shipDebug.js`.
 
 Mount it inside `.ship-fit` only when `import.meta.env.DEV` and the query flag are both true. Give the SVG `pointer-events: none` so it cannot change hit testing.
 
-- [ ] **Step 4: Run focused checks**
+- [x] **Step 4: Run focused checks**
 
 Run: `node test/ship_debug.test.mjs`  
 Expected: PASS.
@@ -562,7 +586,7 @@ Expected: PASS.
 Run: `npm run build`  
 Expected: PASS and no production-only code path enables the overlay.
 
-- [ ] **Step 5: Commit the debug tooling**
+- [x] **Step 5: Commit the debug tooling**
 
 ```sh
 git add src/ui/shipDebug.js src/ui/bridge.js src/ui/style.css test/ship_debug.test.mjs package.json
@@ -574,52 +598,57 @@ git commit -m "dev: add Sparrow geometry overlay"
 **Files:**
 - Modify: `src/ui/style.css`
 - Modify: `src/ui/crewWalk.js`
-- Create: `test/mobile_ship_contract.test.mjs`
-- Modify: `package.json`
+- Modify: `src/ui/crewAnimation.js`
+- Modify: `test/crew_animation.test.mjs`
 
 **Interfaces:**
 - Consumes: rendered ship, hotspots, and animation profiles from Tasks 3–6.
-- Produces: 44px interactive HUD and room-sheet controls, a stable 390 by 844 ship layout, and a nonessential-effects switch for reduced motion.
+- Produces: 44px interactive HUD and room-sheet controls, a stable 390 by 844 ship layout, and `motionPolicy(reduced)` for nonessential effects.
 
-- [ ] **Step 1: Write the failing source contract test**
+- [x] **Step 1: Write the failing motion-policy test**
 
 ```js
-import fs from 'node:fs';
+import { motionPolicy } from '../src/ui/crewAnimation.js';
 
-const css = fs.readFileSync(new URL('../src/ui/style.css', import.meta.url), 'utf8');
-const walk = fs.readFileSync(new URL('../src/ui/crewWalk.js', import.meta.url), 'utf8');
-if (!/\.hud-chip[\s\S]*?min-height:\s*44px/.test(css)) throw new Error('HUD target below 44px');
-if (!/prefers-reduced-motion:[\s]*reduce/.test(css)) throw new Error('reduced motion query missing');
-if (!walk.includes('matchMedia')) throw new Error('canvas reduced-motion detection missing');
-console.log('mobile_ship_contract.test.mjs OK');
+const normal = motionPolicy(false);
+if (!normal.animateFrames || !normal.thrusterParticles) throw new Error('normal motion disabled');
+const reduced = motionPolicy(true);
+if (reduced.animateFrames || reduced.thrusterParticles) throw new Error('reduced motion still decorative');
 ```
 
-- [ ] **Step 2: Run the test and verify the current 36px HUD fails**
+- [x] **Step 2: Run the test and inspect the current computed target size**
 
-Run: `node test/mobile_ship_contract.test.mjs`  
-Expected: FAIL with `HUD target below 44px`.
+Run: `node test/crew_animation.test.mjs`  
+Expected: FAIL because `motionPolicy` is not exported.
 
-- [ ] **Step 3: Implement mobile and reduced-motion constraints**
+In a live 390 by 844 browser, read `getBoundingClientRect().height` for `.hud-chip`, `.room-sheet button`, and `.icon-close`.  
+Expected before CSS changes: at least `.hud-chip` reports 36, proving the phone target failure through rendered behavior.
+
+- [x] **Step 3: Implement mobile and reduced-motion constraints**
 
 - Change `.hud-chip` minimum height from 36px to 44px.
 - Keep `.ship-fit` within the remaining stage and prevent the selected room sheet from obscuring the selected compartment.
 - Give every `.room-sheet button` and `.icon-close` at least a 44px hit box.
 - Add a `matchMedia('(prefers-reduced-motion: reduce)')` listener in `crewWalk.js`.
+- Implement `motionPolicy(reduced)` to return `{ animateFrames: !reduced, thrusterParticles: !reduced }`, and make the canvas consume that policy.
 - When reduced motion is active, do not spawn thruster particles and render the actor's current direction at frame zero; path position still updates so state remains accurate.
 - Remove `.crew-sprite` from active CSS if no DOM sprite caller remains after the canvas migration.
 
-- [ ] **Step 4: Run mobile contract and build checks**
+- [x] **Step 4: Run motion, computed-style, and build checks**
 
-Run: `node test/mobile_ship_contract.test.mjs`  
+Run: `node test/crew_animation.test.mjs`  
 Expected: PASS.
+
+In the same live 390 by 844 browser, read the three computed bounding boxes again.  
+Expected: every interactive target is at least 44px high and the selected compartment remains visible above its sheet.
 
 Run: `npm run build`  
 Expected: PASS.
 
-- [ ] **Step 5: Commit the mobile slice**
+- [x] **Step 5: Commit the mobile slice**
 
 ```sh
-git add src/ui/style.css src/ui/crewWalk.js test/mobile_ship_contract.test.mjs package.json
+git add src/ui/style.css src/ui/crewWalk.js src/ui/crewAnimation.js test/crew_animation.test.mjs
 git commit -m "fix: enforce mobile ship interaction sizing"
 ```
 
@@ -638,7 +667,7 @@ git commit -m "fix: enforce mobile ship interaction sizing"
 - Consumes: the implemented package and all focused tests.
 - Produces: revision-stamped automated results and phone visual evidence; no deployment artifact.
 
-- [ ] **Step 1: Run every focused test separately**
+- [x] **Step 1: Run every focused test separately**
 
 Run: `node test/ship_layout.test.mjs`  
 Expected: PASS.
@@ -655,10 +684,7 @@ Expected: PASS.
 Run: `node test/ship_debug.test.mjs`  
 Expected: PASS.
 
-Run: `node test/mobile_ship_contract.test.mjs`  
-Expected: PASS.
-
-- [ ] **Step 2: Run broad regression checks**
+- [x] **Step 2: Run broad regression checks**
 
 Run: `node test/sanity.mjs`  
 Expected: PASS with the current content totals.
@@ -669,7 +695,7 @@ Expected: PASS.
 Run: `npm test`  
 Expected before owning packages reconcile them: the two already-audited historical failures may remain in `phase_c.test.mjs` and `tutorial_week.test.mjs`; no new failure is accepted. Record exact output rather than labeling the entire suite green.
 
-- [ ] **Step 3: Capture the required 390 by 844 states**
+- [x] **Step 3: Capture the required 390 by 844 states**
 
 Run the Vite development server, open the game at 390 by 844, and save:
 
@@ -680,7 +706,7 @@ Run the Vite development server, open the game at 390 by 844, and save:
 
 Inspect every image, not only its existence. Confirm room overlays align to visible floor plates, selected labels are readable, crew are at least 44px tall, feet remain grounded, and no sheet blocks its selected room.
 
-- [ ] **Step 4: Perform touch and animation checks**
+- [x] **Step 4: Perform touch and animation checks**
 
 At 390 by 844:
 
@@ -692,11 +718,11 @@ At 390 by 844:
 
 Record pass/fail and any corrected manifest coordinates in `docs/qa/2026-09-21-ship-animation-foundation.md`.
 
-- [ ] **Step 5: Update audit and spec status truthfully**
+- [x] **Step 5: Update audit and spec status truthfully**
 
 Mark only proven findings as resolved. Keep body-family art, full real-device performance, and later ship hulls in Not Verified. Add the implementation revision and commands actually run to the QA report.
 
-- [ ] **Step 6: Commit the verified evidence**
+- [x] **Step 6: Commit the verified evidence**
 
 ```sh
 git add docs/audits/2026-09-21-current-build-audit.md docs/design/21-ship-animation-foundation.md docs/qa
