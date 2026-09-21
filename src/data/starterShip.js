@@ -150,13 +150,25 @@ function doorForRoom(roomId) {
   return SPARROW_LAYOUT.doors.find((door) => door.roomId === roomId) || null;
 }
 
-export function doorPoint(a) {
-  return doorForRoom(a)?.spine || null;
+export function doorPoint(a, b) {
+  if (!b) return doorForRoom(a)?.spine || null;
+  const fromDoor = doorForRoom(a);
+  const toDoor = doorForRoom(b);
+  if (!fromDoor || !toDoor) return null;
+  return fromDoor.spine;
 }
 
 export function pathRooms(from, to) {
   if (from === to) return [];
-  return ROOMS.some((candidate) => candidate.id === to) ? [to] : [];
+  const fromDoor = doorForRoom(from);
+  const toDoor = doorForRoom(to);
+  if (!fromDoor || !toDoor) return [];
+  return [
+    { ...fromDoor.room, room: from, via: 'door-exit' },
+    { ...fromDoor.spine, room: null, via: 'spine' },
+    { ...toDoor.spine, room: null, via: 'spine' },
+    { ...toDoor.room, room: to, via: 'door-enter' },
+  ];
 }
 
 export function walkWaypoints(fromId, toId) {

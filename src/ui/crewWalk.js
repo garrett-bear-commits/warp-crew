@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ROOMS, roomById, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAt, pathRooms, doorPoint } from '../data/starterShip.js';
+import { ROOMS, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAtExact, pathRooms } from '../data/starterShip.js';
 import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
 import { sheetFor, walkSheetFor, WALK_CELL, WALK_FRAMES } from './crewArt.js';
 import { onTick } from './stageLoop.js';
@@ -62,10 +62,13 @@ function spawn(crew) {
   return a;
 }
 
-function appendPath(pts, x0, y0, x1, y1, roomHint) {
+function appendPath(pts, x0, y0, x1, y1, roomHint, via = null) {
   const seg = findPath(x0, y0, x1, y1);
   for (const p of seg) {
     pts.push({ x: p.x, y: p.y, room: p.room || roomHint });
+  }
+  if (pts.length && via) {
+    pts[pts.length - 1] = { ...pts[pts.length - 1], room: roomHint, via };
   }
 }
 
@@ -77,22 +80,12 @@ function beginWalk(a, destId) {
   let room = a.room;
 
   if (destId !== room) {
-    const hops = pathRooms(room, destId);
-    for (const next of hops) {
-      const door = doorPoint(room, next);
-      if (door) {
-        appendPath(pts, x, y, door.x, door.y, room);
-        pts.push({ x: door.x, y: door.y, room: next, via: 'door' });
-        x = door.x;
-        y = door.y;
-        room = next;
-      } else {
-        const mid = nearestWalkableInRoom(next, a.jitter);
-        appendPath(pts, x, y, mid.x, mid.y, next);
-        x = mid.x;
-        y = mid.y;
-        room = next;
-      }
+    const waypoints = pathRooms(room, destId);
+    for (const waypoint of waypoints) {
+      appendPath(pts, x, y, waypoint.x, waypoint.y, waypoint.room, waypoint.via);
+      x = waypoint.x;
+      y = waypoint.y;
+      if (waypoint.via === 'door-enter') room = destId;
     }
   }
   appendPath(pts, x, y, dest.x, dest.y, destId);
@@ -139,8 +132,8 @@ function stepAgent(a, dt) {
   if (d <= ARRIVE) {
     a.x = tgt.x;
     a.y = tgt.y;
-    if (tgt.via === 'door') a.room = tgt.room;
-    else a.room = tgt.room || roomAt(a.x, a.y) || a.room;
+    if (tgt.via === 'door-enter') a.room = tgt.room;
+    else a.room = tgt.room || roomAtExact(a.x, a.y)?.id || a.room;
     a.path.shift();
     if (!a.path.length) {
       a.state = 'doing';
@@ -158,7 +151,7 @@ function stepAgent(a, dt) {
   a.y = clamped.y;
   a.dir = faceFrom(ux, uy);
   a.frame = (a.frame + dt * a.fps) % WALK_FRAMES;
-  a.room = roomAt(a.x, a.y) || a.room;
+  a.room = roomAtExact(a.x, a.y)?.id || a.room;
 }
 
 function resize() {

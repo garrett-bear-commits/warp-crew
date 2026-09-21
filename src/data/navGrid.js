@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Collision grid + A* for the Sparrow cutaway. 4-connected, no corner cut. */
 
-import { ROOMS, DOOR_PTS, FURNITURE, HALLWAYS, roomAt } from './starterShip.js';
+import { SPARROW_LAYOUT, roomAtExact } from './starterShip.js';
 
 export const COLS = 72;
 export const ROWS = 128;
@@ -16,11 +16,13 @@ function idx(x, y) {
 }
 
 function inRect(x, y, r, inset) {
+  const width = r.width ?? r.w;
+  const height = r.height ?? r.h;
   return (
     x >= r.left + inset &&
-    x <= r.left + r.w - inset &&
+    x <= r.left + width - inset &&
     y >= r.top + inset &&
-    y <= r.top + r.h - inset
+    y <= r.top + height - inset
   );
 }
 
@@ -40,34 +42,29 @@ function distSeg(px, py, ax, ay, bx, by) {
 }
 
 function inHall(x, y) {
-  for (const h of HALLWAYS || []) {
+  for (const h of SPARROW_LAYOUT.halls) {
     if (inRect(x, y, h, 0.2)) return true;
   }
   return false;
 }
 
 function inDoor(x, y) {
-  for (const d of Object.values(DOOR_PTS)) {
-    if (Math.hypot(x - d.x, y - d.y) < DOOR_R) return true;
-  }
-  for (const r of ROOMS) {
-    for (const nid of ['engineering', 'cargo', 'engines', 'bridge']) {
-      const key = r.id < nid ? `${r.id}|${nid}` : `${nid}|${r.id}`;
-      const d = DOOR_PTS[key];
-      if (!d) continue;
-      const cx = r.left + r.w * 0.5;
-      const cy = r.top + r.h * 0.5;
-      if (distSeg(x, y, d.x, d.y, cx, cy) < DOOR_R && Math.hypot(x - d.x, y - d.y) < 10) return true;
-    }
+  for (const door of SPARROW_LAYOUT.doors) {
+    if (distSeg(x, y, door.room.x, door.room.y, door.spine.x, door.spine.y) < DOOR_R) return true;
   }
   return false;
 }
 
+function inBlocker(x, y, blocker) {
+  if (blocker.shape === 'rect') return inRect(x, y, blocker, 0);
+  return inEllipse(x, y, blocker);
+}
+
 function cellWalkable(xPct, yPct) {
-  if (FURNITURE.some((e) => inEllipse(xPct, yPct, e))) return false;
+  if (SPARROW_LAYOUT.blockers.some((blocker) => inBlocker(xPct, yPct, blocker))) return false;
   if (inHall(xPct, yPct)) return true;
-  for (const r of ROOMS) {
-    if (inRect(xPct, yPct, r, INSET)) return true;
+  for (const room of SPARROW_LAYOUT.rooms) {
+    if (inRect(xPct, yPct, room.walkBounds, INSET)) return true;
   }
   return inDoor(xPct, yPct);
 }
@@ -188,7 +185,7 @@ export function findPath(x0, y0, x1, y1) {
   const sy = Math.max(0, Math.min(ROWS - 1, ((a.y / 100) * ROWS) | 0));
   const gx = Math.max(0, Math.min(COLS - 1, ((b.x / 100) * COLS) | 0));
   const gy = Math.max(0, Math.min(ROWS - 1, ((b.y / 100) * ROWS) | 0));
-  if (sx === gx && sy === gy) return [{ x: b.x, y: b.y, room: roomAt(b.x, b.y) }];
+  if (sx === gx && sy === gy) return [{ x: b.x, y: b.y, room: roomAtExact(b.x, b.y)?.id || null }];
 
   const open = new Heap();
   const gScore = new Float32Array(COLS * ROWS);
@@ -225,7 +222,7 @@ export function findPath(x0, y0, x1, y1) {
     }
   }
 
-  if (!found) return [{ x: b.x, y: b.y, room: roomAt(b.x, b.y) }];
+  if (!found) return [{ x: b.x, y: b.y, room: roomAtExact(b.x, b.y)?.id || null }];
 
   const cells = [];
   let i = idx(gx, gy);
@@ -237,16 +234,16 @@ export function findPath(x0, y0, x1, y1) {
   const pts = cells.map((ci) => {
     const x = ((ci % COLS) + 0.5) / COLS * 100;
     const y = (((ci / COLS) | 0) + 0.5) / ROWS * 100;
-    return { x, y, room: roomAt(x, y) };
+    return { x, y, room: roomAtExact(x, y)?.id || null };
   });
-  pts[pts.length - 1] = { x: b.x, y: b.y, room: roomAt(b.x, b.y) };
+  pts[pts.length - 1] = { x: b.x, y: b.y, room: roomAtExact(b.x, b.y)?.id || null };
   return stringPull(pts);
 }
 
 export function nearestWalkableInRoom(roomId, jitter = 0) {
-  const r = ROOMS.find((x) => x.id === roomId) || ROOMS[0];
-  const x = r.walkX + (jitter - 0.5) * 5;
-  const y = r.walkY + (jitter - 0.35) * 2.4;
+  const r = SPARROW_LAYOUT.rooms.find((room) => room.id === roomId) || SPARROW_LAYOUT.rooms[0];
+  const x = r.workAnchor.x + (jitter - 0.5) * 3;
+  const y = r.workAnchor.y + (jitter - 0.35) * 1.6;
   const c = clampWalkable(x, y);
   return { ...c, room: roomId };
 }
