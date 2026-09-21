@@ -4,6 +4,7 @@ import {
   weekGoals,
   currentTutorialStep,
   defaultTutorial,
+  completeTutorial,
 } from '../src/systems/tutorial.js';
 import { visibleNodes, STORY_BEATS, NODES } from '../src/data/sectors.js';
 import { visiblePlanets, PLANETS_V1 } from '../src/systems/expedition.js';
@@ -15,16 +16,19 @@ if (!currentTutorialStep(p)) throw new Error('tutorial should show');
 
 let r = noteTutorialEvent(p, 'travel_success');
 p = r.player;
-if (p.crewSlots < 3) throw new Error('slot3 after travel');
+if (p.crewSlots !== 2) throw new Error('travel must not open third berth before combat');
 if (!p.tutorial.firstTravel) throw new Error('firstTravel flag');
 
 r = noteTutorialEvent(p, 'combat_done');
 p = r.player;
+if (p.crewSlots < 3) throw new Error('slot3 after combat');
+if (p.tutorial.phase !== 'victory') throw new Error('victory phase after combat');
 // hire third
 p = { ...p, crew: [...p.crew, { ...p.crew[0], instanceId: 'x3' }] };
-r = noteTutorialEvent(p, 'hired');
+r = noteTutorialEvent(p, 'recruited');
 p = r.player;
 if (!p.tutorial.hiredThird) throw new Error('hiredThird');
+p = completeTutorial(p, { registered: false });
 
 r = noteTutorialEvent(p, 'expedition_start');
 p = r.player;
@@ -54,7 +58,7 @@ const beats = Object.keys(STORY_BEATS).length;
 if (beats < 10) throw new Error('story beats ' + beats);
 
 const g = weekGoals(p);
-if (g.goals.length !== 7) throw new Error('week goals');
+if (g.goals.length !== 4) throw new Error('week goals');
 
 const nodeCount = Object.keys(NODES).length;
 if (nodeCount < 18) throw new Error('nodes ' + nodeCount);
