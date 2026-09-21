@@ -13,7 +13,7 @@ The build is a useful foundation. It should be refined in place rather than disc
 
 ## Package follow-up
 
-The isolated ship-and-animation package implements the first recommended work package without changing the economy or daily loop. It replaces the four coarse Sparrow regions with nine art-aligned compartments, derives pathing and input from one layout manifest, renders cropped four-direction frames at a 52px phone height, removes synthetic crew bobbing, enforces 44px ship controls, and adds a development geometry overlay. See [the package QA report](../qa/2026-09-21-ship-animation-foundation.md).
+The isolated ship-and-animation package implements the first recommended work package without changing the economy or daily loop. It replaces the four coarse Sparrow regions with nine art-aligned compartments, derives pathing and input from one layout manifest, renders cropped four-direction frames at a 52px phone height, removes synthetic crew bobbing, enforces 44px ship controls, and adds a development geometry overlay. It also reconciles the two stale baseline progression tests with the current hull and tutorial rules; the complete default test chain now passes. See [the package QA report](../qa/2026-09-21-ship-animation-foundation.md).
 
 This follow-up does not erase the audit's remaining tutorial, core-loop, content-expression, monetization, persistence, or real-device findings.
 
@@ -21,10 +21,11 @@ This follow-up does not erase the audit's remaining tutorial, core-loop, content
 
 - Production build: PASS (`npm run build`; 42 modules, 198.63 kB JS before gzip).
 - Comprehensive current sanity harness: PASS (`node test/sanity.mjs`; 46 crew, 51 nodes, 34 planets, 30 story beats, 16 encounters).
-- Default test command: FAIL.
+- Default test command at the audited baseline revision: FAIL.
   - `test/phase_c.test.mjs` expects a Corvette to be purchasable without the new chapter and prerequisite-hull gates.
   - `test/tutorial_week.test.mjs` expects the third berth after `travel_success`; the current tutorial awards it after the scripted first combat.
   - These are stale expectations. The newer sanity harness explicitly verifies the newer rules.
+- Default test command on the ship-and-animation package branch: PASS after updating those stale tests to exercise the current gates and event sequence.
 - CSS audit:
   - 10 distinct pixel font sizes; only 3 are on the requested 16/18/20/28/40+ scale.
   - 19 declarations are below 16px; the smallest is 10px.

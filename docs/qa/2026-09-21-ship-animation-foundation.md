@@ -1,6 +1,6 @@
 # Ship and animation foundation QA
 
-Status: package PASS with known baseline test failures and remaining real-device gates  
+Status: package PASS with remaining real-device gates
 Baseline code: `56693f4a6ea0cb7dce25c670e677d43a56db95e5`  
 Approved documentation commit: `4e34e2e`  
 Implementation commits inspected: `a3aa7b5`, `c4b2613`, `1295fe8`, `4b5e8ef`, `8bb3eea`, `dc1cad1`, `d268cb5`  
@@ -54,11 +54,16 @@ Result:
 - JavaScript 206.29 kB before gzip, 66.48 kB gzip;
 - build completed successfully.
 
-### Default chained suite — KNOWN BASE RED
+### Default chained suite — PASS
 
 Command: `npm test`
 
-The timer, fuel, economy, daily, travel, and platform/IAP scripts pass. The chain stops in `test/phase_c.test.mjs` because that historical test buys the Corvette without its current chapter gate. This is the same pre-package failure recorded in the baseline audit. The chain therefore does not reach the separately known obsolete `tutorial_week.test.mjs` expectation. No new package-owned failure appeared.
+All chained scripts pass: timer, fuel, economy, daily, travel, platform/IAP, Phase C progression, tutorial/week progression, and the broad sanity harness.
+
+The two stale baseline expectations were reconciled without relaxing the current rules:
+
+- the Phase C test now earns the chapter, reputation, and prerequisite-hull gates before purchasing the Corvette;
+- the tutorial test now verifies that the third berth unlocks after the scripted first combat, records the current `recruited` event, and completes the tutorial before asserting post-tutorial week progression.
 
 ## Phone interaction evidence
 
@@ -118,4 +123,3 @@ The proof uses the shipped `walk-4dir.png` plus the production `walkFrameSource(
 6. Add distinct alien, droid, broad, small, and exceptional body-family art; this package creates the profile seam but deliberately retains the current fallback art.
 7. Remove or redesign the daily/tutorial cards in their owning package; they still obscure substantial screen space.
 8. Reconcile the two historical default-suite expectations in their owning progression and tutorial packages.
-
