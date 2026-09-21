@@ -2,6 +2,7 @@
 import { recolor, recolorHair, bodyMaps, hairRamp, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS } from '../shared/recolor.js';
 import { CREW_LOOKS, lookIdFor } from '../data/looks.js';
 import { artUrl } from '../shared/artUrl.js';
+import { animationProfileFor } from './crewAnimation.js';
 
 const SRC_W = 96;
 const SRC_H = 64;
@@ -209,4 +210,11 @@ export function sheetFor(templateId, role) {
 export function walkSheetFor(templateId, role) {
   const id = lookIdFor(templateId, role);
   return walkImgs[id] || walkImgs.merc_rex || null;
+}
+
+export function walkAssetFor(templateId, role, bodyFamily = 'standard_humanoid') {
+  return {
+    image: walkSheetFor(templateId, role),
+    profile: animationProfileFor(bodyFamily),
+  };
 }

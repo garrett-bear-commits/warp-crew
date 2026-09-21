@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { ROOMS, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAtExact, pathRooms } from '../data/starterShip.js';
 import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
-import { sheetFor, walkSheetFor, WALK_CELL, WALK_FRAMES } from './crewArt.js';
+import { sheetFor, walkAssetFor, WALK_FRAMES } from './crewArt.js';
+import { crewPoseForActor } from './crewAnimation.js';
 import { onTick } from './stageLoop.js';
 
 const agents = new Map();
@@ -17,8 +18,6 @@ const particles = [];
 
 const WALK_SPEED = 9;
 const ARRIVE = 1.2;
-const SPRITE = 26;
-const DIR_ROW = { down: 0, left: 1, right: 2, up: 3 };
 
 function hash01(s) {
   let h = 2166136261;
@@ -46,6 +45,7 @@ function spawn(crew) {
     id: crew.instanceId,
     templateId: crew.templateId,
     role: crew.role,
+    bodyFamily: crew.bodyFamily || 'standard_humanoid',
     home,
     room: home,
     x: pos.x,
@@ -114,7 +114,6 @@ function stepAgent(a, dt) {
   }
   if (a.state === 'doing') {
     a.timer -= dt;
-    a.frame = (a.frame + dt * 3) % WALK_FRAMES;
     if (a.timer <= 0) {
       const goHome = a.room !== a.home && a.jitter + (clock % 3) * 0.1 > 0.55;
       beginWalk(a, goHome || battle ? a.home : pickTask(a));
@@ -238,31 +237,35 @@ function drawThrusters(g, dt) {
 }
 
 function drawAgent(g, a) {
-  const img = walkSheetFor(a.templateId, a.role);
-  const x = (a.x / 100) * w;
-  const y = (a.y / 100) * h;
-  const sz = Math.max(20, Math.min(SPRITE, h * 0.042));
-  const bob = a.state === 'walk' ? Math.sin(clock * 16 + a.jitter * 8) * 1.1 : a.state === 'doing' ? Math.sin(clock * 8 + a.jitter) * 1.4 : 0;
+  const asset = walkAssetFor(a.templateId, a.role, a.bodyFamily);
+  const pose = crewPoseForActor(a, w, h, asset.profile);
+  const { foot, source, destination } = pose;
   g.save();
   g.fillStyle = 'rgba(0,0,0,0.35)';
   g.beginPath();
-  g.ellipse(x, y + 1, sz * 0.18, sz * 0.07, 0, 0, Math.PI * 2);
+  g.ellipse(
+    foot.x,
+    foot.y + asset.profile.shadow.offsetY,
+    asset.profile.shadow.width / 2,
+    asset.profile.shadow.height / 2,
+    0,
+    0,
+    Math.PI * 2
+  );
   g.fill();
 
-  const row = DIR_ROW[a.dir] || 0;
-  const col = a.state === 'walk' ? a.frame | 0 : a.state === 'doing' ? (a.frame | 0) % 2 : 0;
-  if (img && img.complete && img.naturalWidth) {
+  if (asset.image && asset.image.complete && asset.image.naturalWidth) {
     g.imageSmoothingEnabled = false;
     g.drawImage(
-      img,
-      col * WALK_CELL,
-      row * WALK_CELL,
-      WALK_CELL,
-      WALK_CELL,
-      x - sz / 2,
-      y - sz + 3 + bob,
-      sz,
-      sz
+      asset.image,
+      source.sx,
+      source.sy,
+      source.sw,
+      source.sh,
+      destination.x,
+      destination.y,
+      destination.width,
+      destination.height
     );
   } else {
     const sheet = sheetFor(a.templateId, a.role);
@@ -275,14 +278,19 @@ function drawAgent(g, a) {
         0,
         iw,
         iw,
-        x - sz / 2,
-        y - sz + 3 + bob,
-        sz,
-        sz
+        destination.x,
+        destination.y,
+        destination.width,
+        destination.height
       );
     } else {
       g.fillStyle = '#5ce1ff';
-      g.fillRect(x - sz * 0.22, y - sz * 0.7 + bob, sz * 0.44, sz * 0.7);
+      g.fillRect(
+        destination.x + destination.width * 0.28,
+        destination.y + destination.height * 0.3,
+        destination.width * 0.44,
+        destination.height * 0.7
+      );
     }
   }
   g.restore();
@@ -345,6 +353,7 @@ export function syncCrewLayer(el, player) {
     const a = agents.get(c.instanceId);
     a.templateId = c.templateId;
     a.role = c.role;
+    a.bodyFamily = c.bodyFamily || 'standard_humanoid';
     a.home = homeRoomId(c.role);
   }
   for (const [id] of agents) {

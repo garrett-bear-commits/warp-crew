@@ -1,5 +1,6 @@
 import {
   ANIMATION_PROFILES,
+  crewPoseForActor,
   walkFrameDestination,
   walkFrameSource,
 } from '../src/ui/crewAnimation.js';
@@ -33,5 +34,31 @@ if (Math.abs(destination.y + profile.footAnchor.y * destination.scale - 200) > 0
   throw new Error('foot y moved');
 }
 if (profile.displayHeight < 44) throw new Error('phone sprite too small');
+
+const actor = { x: 50, y: 40, dir: 'down', frame: 0, state: 'walk' };
+const expectedFoot = { x: 195, y: 240 };
+for (const direction of ['down', 'left', 'right', 'up']) {
+  for (const state of ['walk', 'idle', 'doing']) {
+    for (let frame = 0; frame < 4; frame++) {
+      const pose = crewPoseForActor(
+        { ...actor, dir: direction, frame, state },
+        390,
+        600,
+        profile
+      );
+      if (pose.foot.x !== expectedFoot.x || pose.foot.y !== expectedFoot.y) {
+        throw new Error(`${direction}/${state}/${frame} moved feet to ${pose.foot.x},${pose.foot.y}`);
+      }
+      const anchoredX = pose.destination.x + profile.footAnchor.x * pose.destination.scale;
+      const anchoredY = pose.destination.y + profile.footAnchor.y * pose.destination.scale;
+      if (
+        Math.abs(anchoredX - expectedFoot.x) > 0.001
+        || Math.abs(anchoredY - expectedFoot.y) > 0.001
+      ) {
+        throw new Error(`${direction}/${state}/${frame} destination is not grounded`);
+      }
+    }
+  }
+}
 
 console.log('crew_animation.test.mjs OK');

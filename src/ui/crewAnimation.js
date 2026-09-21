@@ -45,3 +45,17 @@ export function walkFrameDestination(
     scale,
   };
 }
+
+export function crewPoseForActor(actor, width, height, profile = animationProfileFor()) {
+  const foot = {
+    x: actor.x / 100 * width,
+    y: actor.y / 100 * height,
+  };
+  const source = walkFrameSource(
+    actor.dir,
+    actor.state === 'walk' ? actor.frame : 0,
+    profile
+  );
+  const destination = walkFrameDestination(foot.x, foot.y, profile);
+  return { foot, source, destination };
+}
