@@ -157,6 +157,33 @@ button.hud-chip {
   inset: 0;
   z-index: 4;
 }
+.ship-debug {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 7;
+  pointer-events: none;
+  overflow: visible;
+}
+.ship-debug .debug-room { fill: rgba(0, 220, 255, 0.10); stroke: #00dcff; stroke-width: 0.35; }
+.ship-debug .debug-walk { fill: none; stroke: #78ff8b; stroke-width: 0.22; stroke-dasharray: 1 0.8; }
+.ship-debug .debug-hall { fill: rgba(120, 255, 139, 0.14); stroke: #78ff8b; stroke-width: 0.22; }
+.ship-debug .debug-door { stroke: #ffe16b; stroke-width: 0.45; }
+.ship-debug .debug-door-point { fill: #ffe16b; }
+.ship-debug .debug-work { fill: #ffffff; stroke: #07101a; stroke-width: 0.25; }
+.ship-debug .debug-blocker { fill: rgba(255, 70, 90, 0.28); stroke: #ff465a; stroke-width: 0.25; }
+.ship-debug .debug-effect { fill: #ff9f43; stroke: #ffffff; stroke-width: 0.2; }
+.ship-debug text {
+  fill: #ffffff;
+  stroke: #05080f;
+  stroke-width: 0.22;
+  paint-order: stroke fill;
+  font-family: var(--font-display);
+  font-size: 2.2px;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
 .hotspot {
   position: absolute;
   border: 1px solid transparent;

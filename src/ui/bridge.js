@@ -26,7 +26,7 @@ import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
 import { INTEL_TRACKS } from '../data/intel.js';
 import { planetType } from '../data/planets.js';
-import { ROOMS } from '../data/starterShip.js';
+import { ROOMS, SPARROW_LAYOUT } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost } from '../data/crewRoster.js';
 import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
@@ -34,6 +34,7 @@ import { attachCombat, isBattlePlaying } from './combatView.js';
 import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
 import { renderRoomHotspot } from './shipView.js';
+import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 
 const NAV_ICO = {
   ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
@@ -93,6 +94,10 @@ function bindOnce(root) {
 }
 
 function buildShell() {
+  const showShipDebug = shipDebugEnabled({
+    dev: import.meta.env.DEV,
+    search: window.location.search,
+  });
   return `
     <div class="wc-shell tab-home">
       <div class="hud-bar" data-slot="hud"></div>
@@ -105,6 +110,7 @@ function buildShell() {
           <img class="sparrow-hull" src="${SPACE_ART.hull}" alt="" />
           <canvas class="crew-canvas" data-slot="crew"></canvas>
           <div class="hotspot-layer" data-slot="hotspots"></div>
+          ${showShipDebug ? renderShipDebug(SPARROW_LAYOUT) : ''}
         </div>
         <canvas class="combat-canvas" data-slot="combat"></canvas>
         <div data-slot="overlays"></div>
