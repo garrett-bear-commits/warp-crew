@@ -2,7 +2,7 @@
 import { ROOMS, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAtExact, pathRooms } from '../data/starterShip.js';
 import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
 import { sheetFor, walkAssetFor, WALK_FRAMES } from './crewArt.js';
-import { crewPoseForActor } from './crewAnimation.js';
+import { crewPoseForActor, motionPolicy } from './crewAnimation.js';
 import { onTick } from './stageLoop.js';
 
 const agents = new Map();
@@ -14,6 +14,8 @@ let dpr = 1;
 let clock = 0;
 let started = false;
 let battle = false;
+let reducedMotion = false;
+let motionQuery = null;
 const particles = [];
 
 const WALK_SPEED = 9;
@@ -106,7 +108,7 @@ function faceFrom(dx, dy) {
   return dy < 0 ? 'up' : 'down';
 }
 
-function stepAgent(a, dt) {
+function stepAgent(a, dt, animateFrames = true) {
   if (a.state === 'idle') {
     a.timer -= dt;
     if (a.timer <= 0) beginWalk(a, pickTask(a));
@@ -149,7 +151,7 @@ function stepAgent(a, dt) {
   a.x = clamped.x;
   a.y = clamped.y;
   a.dir = faceFrom(ux, uy);
-  a.frame = (a.frame + dt * a.fps) % WALK_FRAMES;
+  a.frame = animateFrames ? (a.frame + dt * a.fps) % WALK_FRAMES : 0;
   a.room = roomAtExact(a.x, a.y)?.id || a.room;
 }
 
@@ -188,9 +190,10 @@ function spawnThrust(dt) {
   }
 }
 
-function drawThrusters(g, dt) {
-  spawnThrust(dt);
-  const pulse = 0.55 + Math.sin(clock * 14) * 0.25;
+function drawThrusters(g, dt, policy) {
+  if (policy.thrusterParticles) spawnThrust(dt);
+  else particles.length = 0;
+  const pulse = policy.thrusterParticles ? 0.55 + Math.sin(clock * 14) * 0.25 : 0.7;
   for (const t of THRUSTERS) {
     const px = (t.x / 100) * w;
     const py = (t.y / 100) * h;
@@ -300,7 +303,8 @@ function tick(sim, dt) {
   if (!canvas || !ctx || !w) return;
   if (!canvas.isConnected) return;
   clock += sim;
-  for (const a of agents.values()) stepAgent(a, sim);
+  const policy = motionPolicy(reducedMotion);
+  for (const a of agents.values()) stepAgent(a, sim, policy.animateFrames);
   const list = [...agents.values()];
   for (let i = 0; i < list.length; i++) {
     for (let j = i + 1; j < list.length; j++) {
@@ -321,7 +325,12 @@ function tick(sim, dt) {
   g.clearRect(0, 0, w, h);
   list.sort((p, q) => p.y - q.y);
   for (const a of list) drawAgent(g, a);
-  drawThrusters(g, dt);
+  drawThrusters(g, dt, policy);
+}
+
+function setReducedMotion(event) {
+  reducedMotion = Boolean(event?.matches);
+  if (reducedMotion) particles.length = 0;
 }
 
 export function setBattleStations(on) {
@@ -362,6 +371,11 @@ export function syncCrewLayer(el, player) {
   }
   if (!started) {
     started = true;
+    if (typeof window.matchMedia === 'function') {
+      motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+      setReducedMotion(motionQuery);
+      motionQuery.addEventListener?.('change', setReducedMotion);
+    }
     onTick(tick);
     window.addEventListener('resize', resize);
   }

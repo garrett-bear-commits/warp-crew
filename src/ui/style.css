@@ -101,7 +101,7 @@ button.hud-chip {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
+  min-height: 44px;
   padding: 4px 8px;
   width: 100%;
   background: transparent;
@@ -385,7 +385,7 @@ button.hud-chip {
   right: 10px;
   top: 36px;
   z-index: 6;
-  min-height: 32px;
+  min-height: 44px;
   padding: 4px 12px;
   font-family: var(--font-display);
   font-size: 12px;
@@ -416,6 +416,12 @@ button.hud-chip {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+.room-sheet[data-room-position="lower"] {
+  top: 8px;
+  bottom: auto;
+  max-height: min(42vh, 360px);
+}
+.room-sheet .sheet-actions button { min-height: 44px; }
 .room-sheet h2 { margin: 0 0 4px; font-size: 18px; }
 .sheet-head {
   display: flex;

@@ -1,6 +1,7 @@
 import {
   ANIMATION_PROFILES,
   crewPoseForActor,
+  motionPolicy,
   walkFrameDestination,
   walkFrameSource,
 } from '../src/ui/crewAnimation.js';
@@ -59,6 +60,15 @@ for (const direction of ['down', 'left', 'right', 'up']) {
       }
     }
   }
+}
+
+const normalMotion = motionPolicy(false);
+if (!normalMotion.animateFrames || !normalMotion.thrusterParticles) {
+  throw new Error('normal motion disabled');
+}
+const reducedMotion = motionPolicy(true);
+if (reducedMotion.animateFrames || reducedMotion.thrusterParticles) {
+  throw new Error('reduced motion still decorative');
 }
 
 console.log('crew_animation.test.mjs OK');

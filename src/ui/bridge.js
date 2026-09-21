@@ -495,7 +495,7 @@ function renderRoomSheet(player, room, fuel, now) {
     ? `Lv ${sys}${room.system ? ` · ${escapeHtml(systemStat(room.system, sys))}` : ''}`
     : assigned ? escapeHtml(assigned.role) : 'Empty';
   return `
-    <div class="room-sheet">
+    <div class="room-sheet" data-room-position="${room.labelAnchor.y >= 55 ? 'lower' : 'upper'}">
       <div class="sheet-head">
         <div>
           <h2>${escapeHtml(room.name)}</h2>

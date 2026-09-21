@@ -59,3 +59,10 @@ export function crewPoseForActor(actor, width, height, profile = animationProfil
   const destination = walkFrameDestination(foot.x, foot.y, profile);
   return { foot, source, destination };
 }
+
+export function motionPolicy(reduced = false) {
+  return {
+    animateFrames: !reduced,
+    thrusterParticles: !reduced,
+  };
+}
