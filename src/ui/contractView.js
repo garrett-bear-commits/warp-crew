@@ -18,7 +18,7 @@ export function renderMissionSwitcher(view = 'contracts') {
 
 export function renderContractBoard(model = {}) {
   return `<section class="contract-board" aria-label="Contract Board"><h2>Contracts</h2>${(model.offers || []).map((offer) => {
-    const label = `${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, ${rewardLabel(offer)}`;
+    const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, ${rewardLabel(offer)}`;
     return `<article class="contract-card" data-profile="${e(offer.profile)}">
       <p class="contract-profile"><span aria-hidden="true">${profileIcon(offer)}</span> ${e(profileLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
       <h3>${e(offer.title)}</h3><p>${e(offer.brief)}</p>
@@ -47,8 +47,8 @@ export function renderActiveContract(model = {}) {
     ${model.crewLabel ? `<p>Crew: ${e(model.crewLabel)}</p>` : ''}${trait(model.favoredTrait)}
     ${model.result ? `<p class="contract-consequence">${e(model.result.summary)}</p><p>${e(model.result.rewardLabel)}</p>` : ''}
     ${model.combat ? renderCombatOrders(model.combat) : ''}
-    ${(model.actions || []).map((action) => `<div class="route-action">${reason(action.consequence)}${reason(action.reason)}<button type="button" class="${action.primary ? 'primary' : ''}" data-act="contract-action" data-action="${e(action.id)}" data-revision="${e(model.revision)}" ${action.enabled ? '' : 'disabled'}>${e(action.label)}</button></div>`).join('')}
-    ${model.abandon ? `<button type="button" class="ghost" data-act="contract-abandon" data-revision="${e(model.revision)}" ${model.abandon.enabled ? '' : 'disabled'}>${e(model.abandon.label)}</button>${reason(model.abandon.consequence)}` : ''}
+    ${(model.actions || []).map((action) => `<div class="route-action">${reason(action.consequence)}${reason(action.reason)}<button type="button" class="${action.primary ? 'primary' : ''}" data-act="contract-action" data-action="${e(action.id)}" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}" ${action.enabled ? '' : 'disabled'}>${e(action.label)}</button></div>`).join('')}
+    ${model.abandon ? `<button type="button" class="ghost" data-act="contract-abandon" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}" ${model.abandon.enabled ? '' : 'disabled'}>${e(model.abandon.label)}</button>${reason(model.abandon.consequence)}` : ''}
   </section>`;
 }
 
@@ -59,7 +59,7 @@ export function renderCombatOrders(model = {}) {
       <h3>${e(order.name)}${order.recommended ? ' · Recommended' : ''}</h3>
       <p>${e(model.guaranteed ? 'Guaranteed' : order.chanceLabel)} · ${e(order.costLabel)}</p>
       ${reason(order.rewardLabel)}${reason(order.consequence)}${reason(order.reason)}
-      <button type="button" data-act="combat-order" data-order="${e(order.id)}" ${order.enabled ? '' : 'disabled'} aria-label="${e(`${order.name}, ${model.guaranteed ? 'Guaranteed' : order.chanceLabel}, ${order.costLabel}, ${order.consequence}`)}">Choose ${e(order.name)}</button>
+      <button type="button" data-act="combat-order" data-order="${e(order.id)}" ${order.enabled ? '' : 'disabled'} aria-label="${e(`Choose ${order.name}, ${model.guaranteed ? 'Guaranteed' : order.chanceLabel}, ${order.costLabel}, ${order.consequence}`)}">Choose ${e(order.name)}</button>
     </article>`).join('')}</section>`;
 }
 

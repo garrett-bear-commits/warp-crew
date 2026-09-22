@@ -67,4 +67,23 @@ const awayView = renderMissions(player, Date.now(), { missionView: 'away' });
 assert.ok(awayView.includes('data-act="exp-choose"') && !awayView.includes('data-act="travel-to"') && !awayView.includes('data-act="exp-start"'));
 const combatModal = renderCombatModal({ title: 'Pirate', guaranteed: true, orders: [{ id: 'brace', name: 'Brace', enabled: true, costLabel: 'Free', consequence: 'No injury' }] });
 assert.ok(combatModal.includes('data-order="brace"') && !combatModal.includes('data-assist=') && !combatModal.includes('Sure'));
+
+// Catches rebinding a rendered revision to a different acceptance, or unescaped IDs.
+const sameRevisionRoute = { title: 'Repeat contract', stage: 'briefing', revision: 0, actions: [{ id: 'launch', label: 'Launch · 1F', enabled: true }], abandon: { label: 'Abandon contract', enabled: true } };
+const firstAcceptance = renderActiveContract({ ...sameRevisionRoute, acceptanceId: 'accepted-first' });
+const secondAcceptance = renderActiveContract({ ...sameRevisionRoute, acceptanceId: 'accepted-"second<&' });
+for (const action of ['contract-action', 'contract-abandon']) {
+  const firstControl = firstAcceptance.match(new RegExp(`<button[^>]*data-act="${action}"[^>]*>`))?.[0];
+  const secondControl = secondAcceptance.match(new RegExp(`<button[^>]*data-act="${action}"[^>]*>`))?.[0];
+  assert.ok(firstControl?.includes('data-revision="0"'));
+  assert.ok(secondControl?.includes('data-revision="0"'));
+  assert.ok(firstControl?.includes('data-acceptance-id="accepted-first"'), `${action} must carry the first rendered acceptance`);
+  assert.ok(secondControl?.includes('data-acceptance-id="accepted-&quot;second&lt;&amp;"'), `${action} must carry the second rendered acceptance, escaped`);
+  assert.ok(!secondControl?.includes('accepted-first'));
+}
+
+// Catches aria-label replacing the visible action, breaking label-in-name access.
+assert.ok(board.includes('aria-label="Review Reliable, Quiet Freight, 2F, Low danger, Credits"'));
+assert.ok(orders.includes('aria-label="Choose Brace, Guaranteed, Free, Half hull loss · no injury"'));
+assert.ok(orders.includes('aria-label="Choose Burn, Guaranteed, 1F, Normal hull loss"'));
 console.log('contract_ui.test.mjs OK');
