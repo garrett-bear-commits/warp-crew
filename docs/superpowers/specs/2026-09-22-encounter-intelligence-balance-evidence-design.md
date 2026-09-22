@@ -1,6 +1,6 @@
 # Encounter intelligence and balance evidence
 
-Status: proposed package for owner review
+Status: approved for implementation by owner on 2026-09-22
 
 Date: 2026-09-22
 
