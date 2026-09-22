@@ -3,13 +3,16 @@
 
 import { visibleNodes, NODES } from '../data/sectors.js';
 import { CONTRACT_PROFILES, combatWeight, qualifiesForProfile, storySalvageWeight } from '../data/contracts.js';
-import { dayKey } from './daily.js';
 import { fuelCostFor } from './passives.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
 export function contractDayKey(now = Date.now()) {
-  return dayKey(now);
+  const d = new Date(now);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export function careerBand(player) {
