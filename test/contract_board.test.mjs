@@ -1,8 +1,11 @@
 import { createNewPlayer } from '../src/systems/player.js';
-import { generateContractBoard, ensureContractBoard, reviewContractOffer } from '../src/systems/contracts.js';
+import { contractDayKey, generateContractBoard, ensureContractBoard, reviewContractOffer } from '../src/systems/contracts.js';
 
 // Catches nondeterministic selection, missing profile coverage, incomplete card data,
 // and replacing a saved same-day board.
+// Catches using UTC midnight instead of the player's local calendar day.
+const localLateNight = new Date(2026, 8, 21, 23, 30);
+if (contractDayKey(localLateNight) !== '2026-09-21') throw new Error('contract day must use local date');
 const now = Date.UTC(2026, 8, 21, 12);
 const player = { ...createNewPlayer(), createdAt: now - 86400000, tutorial: { script: 3, completed: true, phase: 'done' } };
 const a = generateContractBoard(player, now);
