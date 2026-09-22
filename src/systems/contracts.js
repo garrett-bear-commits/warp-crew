@@ -8,6 +8,7 @@ import { grant, scaleSitePayout } from './economy.js';
 import { spendFuel } from './fuel.js';
 import { fuelCostFor, combatBonuses, hullAfterCombat, injuryMinutesFor, tradePayout } from './passives.js';
 import { applyStoryFlag } from './story.js';
+import { normalizeContractState as normalizeSavedContractState, validContractResult } from './contractState.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -147,15 +148,12 @@ export function tutorialDistressOffer(player) {
     brief: 'A freighter is calling for help beneath a pirate signal.',
     beats: 2,
     beatLabel: '2 beats',
-    normalFuel: 2,
+    normalFuel: 1,
     danger: 'Guarded',
     rewardFamily: 'credits, medals, and reputation',
     favoredTrait: { kind: 'role', id: 'engineer', label: 'Engineer', why: 'An engineer keeps a rescue run together.' },
   };
 }
-
-const CONTRACT_STAGES = new Set(['briefing', 'choice', 'confrontation', 'return', 'claimed']);
-const CONTRACT_PROFILES_IDS = new Set(['reliable', 'risky', 'strange', 'distress']);
 
 function normalizeRewards(rewards = {}) {
   return {
@@ -285,9 +283,14 @@ export function acceptContract(player, offerId) {
   }
   const node = NODES[offer.destinationId];
   if (!node) return { ok: false, reason: 'unknown_destination', player };
+  if (offer.profile === 'distress' && (player.tutorial?.firstCombat || player.tutorial?.hiredThird || player.tutorial?.completed || player.tutorial?.dismissed)) {
+    return { ok: false, reason: 'tutorial_already_resolved', player };
+  }
 
   const routeSeed = hashSeed(`${offer.id}:${offer.destinationId}:${offer.profile}`);
-  const content = snapshotRouteContent(offer, routeSeed);
+  const content = offer.profile === 'distress'
+    ? { routeOutcome: { kind: 'combat', encounter: 'pirate_scout' }, secureOutcome: { kind: 'combat', encounter: 'pirate_scout' }, encounterId: 'pirate_scout', storyFlag: null }
+    : snapshotRouteContent(offer, routeSeed);
   const acceptanceSequence = Number.isSafeInteger(player?.contractAcceptanceSequence)
     ? player.contractAcceptanceSequence + 1
     : 1;
@@ -334,7 +337,7 @@ function actionPreview(player, contract, action) {
     return {
       ok: true,
       cost: { fuel: contractFuelCost(player) },
-      consequence: { nextStage: 'choice' },
+      consequence: { nextStage: contract.profile === 'distress' ? 'confrontation' : 'choice' },
     };
   }
   if (contract.stage === 'choice' && (action?.id === 'secure' || action?.id === 'push')) {
@@ -524,7 +527,7 @@ export function commitContractAction(player, preview, { rng = Math.random } = {}
   };
 
   if (contract.stage === 'briefing') {
-    nextContract.stage = 'choice';
+    nextContract.stage = current.consequence.nextStage;
   } else if (contract.stage === 'choice') {
     nextContract.choiceId = preview.action.id;
     nextContract.stage = current.consequence.nextStage;
@@ -583,6 +586,7 @@ export function claimContractReward(player) {
   nextPlayer = {
     ...nextPlayer,
     wallet,
+    flags: contract.profile === 'distress' ? { ...nextPlayer.flags, sparrowFirstRepair: true } : nextPlayer.flags,
     location: contract.destinationId,
     stats: {
       ...player.stats,
@@ -609,6 +613,7 @@ export function claimContractReward(player) {
 export function abandonContract(player, expectedRevision, expectedAcceptanceId = null) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'no_active_contract', player };
+  if (contract.profile === 'distress') return { ok: false, reason: 'tutorial_contract_required', player };
   const token = typeof expectedRevision === 'object' && expectedRevision
     ? expectedRevision
     : { revision: expectedRevision, acceptanceId: expectedAcceptanceId };
@@ -626,77 +631,6 @@ export function abandonContract(player, expectedRevision, expectedAcceptanceId =
   };
 }
 
-function validContractResult(result) {
-  const rewards = result?.rewards;
-  return Boolean(
-    result
-    && typeof result.success === 'boolean'
-    && rewards
-    && ['credits', 'medals', 'reputation', 'gems', 'fuel'].every((key) => (
-      typeof rewards[key] === 'number' && Number.isFinite(rewards[key])
-    ))
-    && typeof result.hullLoss === 'number'
-    && Number.isFinite(result.hullLoss)
-    && (result.injuredCrewId == null || typeof result.injuredCrewId === 'string')
-    && (result.storyFlag == null || typeof result.storyFlag === 'string')
-    && typeof result.summary === 'string'
-  );
-}
-
 export function normalizeContractState(player) {
-  const contract = player?.activeContract;
-  if (!contract) return player;
-  const encounterValid = contract.encounterId == null || encounterById(contract.encounterId).id === contract.encounterId;
-  const favoredTraitValid = Boolean(
-    contract.favoredTrait
-    && ['role', 'system'].includes(contract.favoredTrait.kind)
-    && typeof contract.favoredTrait.id === 'string'
-    && typeof contract.favoredTrait.label === 'string'
-  );
-  const routeOutcomeValid = Boolean(contract.routeOutcome && typeof contract.routeOutcome.kind === 'string');
-  const secureOutcomeValid = Boolean(contract.secureOutcome && typeof contract.secureOutcome.kind === 'string');
-  const valid = Boolean(
-    typeof contract.id === 'string'
-    && typeof contract.acceptanceId === 'string'
-    && contract.acceptanceId.length > 0
-    && typeof contract.offerId === 'string'
-    && typeof contract.boardDay === 'string'
-    && CONTRACT_PROFILES_IDS.has(contract.profile)
-    && typeof contract.title === 'string'
-    && NODES[contract.destinationId]
-    && favoredTraitValid
-    && routeOutcomeValid
-    && secureOutcomeValid
-    && CONTRACT_STAGES.has(contract.stage)
-    && Number.isInteger(contract.revision)
-    && contract.revision >= 0
-    && Number.isInteger(contract.routeSeed)
-    && encounterValid
-    && (contract.choiceId == null || typeof contract.choiceId === 'string')
-    && (contract.storyFlag == null || typeof contract.storyFlag === 'string')
-    && (contract.orderId == null || ['brace', 'burn', 'board'].includes(contract.orderId))
-    && (contract.stage !== 'confrontation' || contract.encounterId)
-    && (contract.stage !== 'return' || validContractResult(contract.result))
-  );
-  if (!valid) {
-    return {
-      ...player,
-      activeContract: null,
-      recoveryEvents: [
-        ...(player?.recoveryEvents || []),
-        { event: 'contract_recovered', reason: 'invalid_contract_state' },
-      ],
-    };
-  }
-  return {
-    ...player,
-    activeContract: {
-      ...contract,
-      choiceId: contract.choiceId || null,
-      encounterId: contract.encounterId || null,
-      orderId: contract.orderId || null,
-      result: contract.result || null,
-      fuelSpent: Number(contract.fuelSpent) || 0,
-    },
-  };
+  return normalizeSavedContractState(player, { nodes: NODES, encounterById });
 }

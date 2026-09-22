@@ -2,12 +2,15 @@
 import { createCrewInstance, recomputeCrew } from '../data/crewRoster.js';
 import { starterShip, getShipDef } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
-import { defaultTutorial, TUTORIAL_SCRIPT } from './tutorial.js';
+import { defaultTutorial, migrateTutorialV3 } from './tutorial.js';
+import { normalizeContractState } from './contractState.js';
+import { NODES } from '../data/sectors.js';
+import { encounterById } from './combat.js';
 import { defaultGacha } from './gacha.js';
 import { berthsFor, fuelMaxFor, fuelRateFor, parkOverflowToReserve } from './hangar.js';
 import { clampFuel } from './economy.js';
 
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 
 function ensureShip(ship) {
   const base = starterShip();
@@ -55,13 +58,16 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     reserve: [],
     iapFulfilled: [],
     activeExpedition: null,
+    contractBoard: null,
+    activeContract: null,
+    dailyLoop: { dayKey: null, contract: false, improve: false, away: false },
     location: 'station_home',
     flags: {},
     gacha: defaultGacha(),
     loginStreak: 0,
     lastLoginDay: null,
     dailyPullAvailable: true,
-    stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {} },
+    stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {}, contractsCompleted: 0, contractsByProfile: { reliable: 0, risky: 0, strange: 0 } },
     story: { chapter: 0, eclipseIntro: false },
     tutorial: defaultTutorial(),
   };
@@ -72,35 +78,11 @@ export function migratePlayer(player) {
   const captainName = player.captainName || 'Captain';
   const jumps = player.stats?.jumps || 0;
   const combats = player.stats?.combatsWon || 0;
-  const script = player.tutorial?.script;
-  const freshIntro =
-    (player.version || 0) < 5 || script !== TUTORIAL_SCRIPT;
-
-  // Zero-progress careers re-enter the v2 intro, but keep any wallet / IAP.
-  if (freshIntro && jumps === 0 && combats === 0) {
-    const fresh = createNewPlayer({ captainName });
-    return {
-      ...fresh,
-      createdAt: player.createdAt || fresh.createdAt,
-      wallet: {
-        ...fresh.wallet,
-        credits: Math.max(fresh.wallet.credits, player.wallet?.credits || 0),
-        fuel: Math.max(fresh.wallet.fuel, player.wallet?.fuel || 0),
-        gems: Math.max(fresh.wallet.gems, player.wallet?.gems || 0),
-        medals: Math.max(fresh.wallet.medals, player.wallet?.medals || 0),
-        reputation: Math.max(fresh.wallet.reputation, player.wallet?.reputation || 0),
-      },
-      iapFulfilled: [...(player.iapFulfilled || [])],
-    };
-  }
-
   const base = createNewPlayer({ captainName });
   let crew = Array.isArray(player.crew) ? player.crew.map((c) => recomputeCrew(c)) : base.crew;
   let reserve = Array.isArray(player.reserve) ? player.reserve.map((c) => recomputeCrew(c)) : [];
   let crewSlots = player.crewSlots ?? base.crewSlots;
-  const tutorial = freshIntro
-    ? { ...defaultTutorial(), completed: true, phase: 'done', dismissed: true }
-    : { ...defaultTutorial(), ...(player.tutorial || {}) };
+  const tutorial = migrateTutorialV3(player).tutorial;
 
   const veteran = (player.version || 0) < SAVE_VERSION && (jumps > 0 || combats > 0);
   const flags = { ...(player.flags || {}) };
@@ -122,7 +104,8 @@ export function migratePlayer(player) {
     reserve,
     gacha: { ...defaultGacha(), ...(player.gacha || {}) },
     crewSlots,
-    stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) } },
+    stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) }, contractsByProfile: { ...base.stats.contractsByProfile, ...(player.stats?.contractsByProfile || {}) } },
+    dailyLoop: { ...base.dailyLoop, ...(player.dailyLoop || {}) },
     story,
     flags,
     tutorial,
@@ -140,7 +123,7 @@ export function migratePlayer(player) {
   next.fuelMax = fuelMaxFor(next, def);
   next.fuelRatePerHour = fuelRateFor(next, def);
   next.wallet = clampFuel(next.wallet, next.fuelMax);
-  return next;
+  return normalizeContractState(next, { nodes: NODES, encounterById });
 }
 
 export function assignedCrew(player) {
