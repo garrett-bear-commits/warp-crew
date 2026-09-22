@@ -14,6 +14,109 @@ export const ASSISTS = {
 /** Free assists, but you only get two per fight so they stay a choice. */
 export const ASSIST_CAP = 2;
 
+/**
+ * The single consequential command offered by contract combat.  Keep these
+ * values in one place so previews and resolution cannot drift apart.
+ */
+export const COMBAT_ORDERS = {
+  brace: {
+    id: 'brace',
+    name: 'Brace',
+    extraFuel: 0,
+    powerBonus: 0,
+    powerScale: 1,
+    preventsInjury: true,
+    failureHullScale: 0.5,
+  },
+  burn: {
+    id: 'burn',
+    name: 'Burn',
+    extraFuel: 1,
+    powerBonus: 12,
+    powerScale: 1,
+  },
+  board: {
+    id: 'board',
+    name: 'Board',
+    extraFuel: 0,
+    powerBonus: 0,
+    powerScale: 0.9,
+    rewardScale: 1.25,
+    forcesFailureInjury: true,
+  },
+};
+
+export function listCombatOrders({ tutorial = false } = {}) {
+  const orders = Object.values(COMBAT_ORDERS);
+  return tutorial ? orders.filter((order) => order.id === 'brace') : orders;
+}
+
+export function previewCombatOrder({
+  playerPower,
+  enemyPower,
+  orderId,
+  fuel = 0,
+  tutorial = false,
+} = {}) {
+  const order = COMBAT_ORDERS[orderId];
+  if (!order) return { orderId, enabled: false, reason: 'unknown_order' };
+  const effectivePower = Math.floor((Number(playerPower) || 0) * order.powerScale) + order.powerBonus;
+  const enabled = fuel >= order.extraFuel && (!tutorial || order.id === 'brace');
+  return {
+    ...order,
+    orderId: order.id,
+    effectivePower,
+    chance: tutorial ? 1 : combatWinChance(effectivePower, enemyPower),
+    enabled,
+    fuel: order.extraFuel,
+    rewardScale: order.rewardScale || 1,
+  };
+}
+
+export function resolveCombatOrder({
+  playerPower,
+  enemyPower,
+  orderId,
+  encounter = null,
+  rng = Math.random,
+  fuel = 0,
+  tutorialGuaranteed = false,
+} = {}) {
+  const preview = previewCombatOrder({
+    playerPower,
+    enemyPower,
+    orderId,
+    fuel,
+    tutorial: tutorialGuaranteed,
+  });
+  if (!preview.enabled) return { ...preview, success: false, rewards: { credits: 0, medals: 0, reputation: 0 } };
+
+  const result = resolveCombat({
+    playerPower: preview.effectivePower,
+    enemyPower,
+    encounter,
+    rng,
+    tutorialGuaranteed,
+  });
+  if (result.success && preview.rewardScale !== 1) {
+    result.rewards = {
+      ...result.rewards,
+      credits: Math.floor((result.rewards.credits || 0) * preview.rewardScale),
+      medals: Math.floor((result.rewards.medals || 0) * preview.rewardScale),
+    };
+  }
+  return {
+    ...result,
+    orderId,
+    extraFuel: preview.extraFuel,
+    effectivePower: preview.effectivePower,
+    preventsInjury: Boolean(preview.preventsInjury),
+    failureHullScale: preview.failureHullScale,
+    forcesFailureInjury: Boolean(preview.forcesFailureInjury),
+    rewardScale: preview.rewardScale,
+  };
+}
+
 export function crewPower(crewList = []) {
   return (crewList || []).reduce((s, c) => s + (c.power || 10), 0);
 }
