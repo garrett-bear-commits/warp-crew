@@ -14,6 +14,8 @@ This directory contains both current product evidence and historical build notes
 - [Contract route and first-session loop specification](superpowers/specs/2026-09-21-contract-route-loop-design.md) — approved route, tutorial, combat-order, expedition-choice, migration, telemetry, and QA requirements; implementation evidence and remaining content gates are below.
 - [Contract route implementation plan](superpowers/plans/2026-09-21-contract-route-loop.md) — nine-task package and verification contract.
 - [Contract route runtime QA](qa/2026-09-21-contract-route-loop.md) — reproducible 390×844 and 360×800 desktop browser measurements, reload and migration evidence, QA-found fixes, and outstanding authored tells, reward-band presentation, economy, and device gates.
+- [Stopping-point handoff](handoffs/2026-09-21-stopping-point.md) — reviewed implementation SHA, verification summary, public QA links, deliberate open gates, and tomorrow's resume sequence.
+- [Next-work checklist](NEXT.md) — device verification, design decisions, implementation candidates, and claims that remain prohibited.
 
 These files describe the current build and the evidence needed to improve it. They do not authorize a particular redesign or live monetization model.
 

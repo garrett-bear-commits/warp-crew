@@ -1,7 +1,7 @@
 # Warp Crew overhaul outcome requirements
 
 Status: active completion contract  
-Revision baseline: `56693f4a6ea0cb7dce25c670e677d43a56db95e5`
+Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 
 ## Purpose
 
