@@ -32,14 +32,40 @@ function alertLabel(alert) {
   return '';
 }
 
-export function renderRoomHotspot({ room, selected = false, alert = '', level = null }) {
+function contractSignalLabel(signal) {
+  if (signal === 'route') return 'route active';
+  if (signal === 'return') return 'reward ready';
+  return '';
+}
+
+export function contractShipSignals(player) {
+  const stage = player?.activeContract?.stage;
+  return {
+    operationsActive: Boolean(stage && stage !== 'return' && stage !== 'claimed'),
+    cargoReady: stage === 'return',
+    firstRepairLit: player?.flags?.sparrowFirstRepair === true,
+  };
+}
+
+export function renderShipFeedback(signals = {}) {
+  if (!signals.firstRepairLit) return '';
+  return `
+    <div class="sparrow-first-repair is-lit" role="img" aria-label="Sparrow repair online">
+      <span class="repair-light" aria-hidden="true"></span>
+      <span class="repair-prop" aria-hidden="true"></span>
+    </div>`;
+}
+
+export function renderRoomHotspot({ room, selected = false, alert = '', signal = '', level = null }) {
   const tag = level == null ? room.label : `${room.label} ${level}`;
-  const state = alertLabel(alert);
+  const state = contractSignalLabel(signal) || alertLabel(alert);
   const aria = [room.label, level == null ? '' : `level ${level}`, state].filter(Boolean).join(', ');
   const classes = [
     'hotspot',
     selected ? 'selected' : '',
     alert ? 'has-alert' : '',
+    signal === 'route' ? 'contract-route' : '',
+    signal === 'return' ? 'contract-return' : '',
   ].filter(Boolean).join(' ');
   return `
     <button class="${classes}"
@@ -48,5 +74,6 @@ export function renderRoomHotspot({ room, selected = false, alert = '', level = 
       aria-label="${escapeHtml(aria)}">
       <span class="room-tag">${escapeHtml(tag)}</span>
       ${alert ? `<span class="pip ${escapeHtml(alert)}"></span>` : ''}
+      ${signal ? `<span class="ship-signal" aria-hidden="true">${signal === 'route' ? 'ROUTE' : 'REWARD'}</span>` : ''}
     </button>`;
 }

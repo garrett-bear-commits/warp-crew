@@ -211,6 +211,29 @@ button.hud-chip {
 }
 .hotspot .pip.good { background: var(--good); }
 .hotspot .pip.warn { background: var(--warn); }
+.hotspot .ship-signal {
+  position: absolute;
+  left: var(--label-x);
+  top: calc(var(--label-y) + 24px);
+  transform: translateX(-50%);
+  min-width: 52px;
+  padding: 3px 6px;
+  border: 1px solid rgba(92, 225, 255, 0.72);
+  border-radius: 999px;
+  background: rgba(7, 9, 14, 0.88);
+  color: var(--cyan);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+.hotspot.contract-route { background: rgba(92, 225, 255, 0.08); }
+.hotspot.contract-return { background: rgba(82, 211, 136, 0.12); }
+.hotspot.contract-return .ship-signal {
+  border-color: rgba(82, 211, 136, 0.78);
+  color: var(--good);
+}
 .hotspot .room-tag {
   position: absolute;
   left: var(--label-x);
@@ -1084,6 +1107,41 @@ button:focus-visible {
   filter: drop-shadow(0 0 18px rgba(80, 190, 255, 0.10));
 }
 
+.ship-feedback-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.sparrow-first-repair {
+  position: absolute;
+  left: 66%;
+  top: 82%;
+  width: 34px;
+  height: 26px;
+}
+.sparrow-first-repair .repair-light {
+  position: absolute;
+  left: 12px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 5px var(--good), 0 0 14px rgba(82, 211, 136, 0.8);
+}
+.sparrow-first-repair .repair-prop {
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: 3px;
+  height: 8px;
+  border: 2px solid rgba(197, 211, 228, 0.92);
+  border-top-color: var(--good);
+  border-radius: 2px;
+  background: rgba(7, 9, 14, 0.9);
+}
+
 .crew-sprite {
   position: absolute;
   width: 32px;
@@ -1210,16 +1268,14 @@ button:focus-visible {
   z-index: 2;
 }
 .victory-modal,
-.recruit-modal,
-.join-modal {
+.recruit-modal {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 18px 16px 16px;
 }
 .victory-modal h2,
-.recruit-modal h2,
-.join-modal h2 {
+.recruit-modal h2 {
   color: var(--text);
   font-size: 22px;
   letter-spacing: 0.02em;
@@ -1231,9 +1287,7 @@ button:focus-visible {
   margin: 4px 0 8px;
 }
 .victory-modal .primary,
-.recruit-modal .primary,
-.join-modal .primary,
-.join-modal button {
+.recruit-modal .primary {
   width: 100%;
 }
 .recruit-card {
@@ -1251,12 +1305,6 @@ button:focus-visible {
   width: 72px;
   height: 72px;
 }
-.join-modal p {
-  margin: 0;
-  color: var(--text);
-  line-height: 1.45;
-}
-
 [data-slot="toast"] {
   position: absolute;
   left: 10px;

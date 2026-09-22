@@ -31,7 +31,7 @@ import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying } from './combatView.js';
 import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
-import { renderRoomHotspot } from './shipView.js';
+import { contractShipSignals, renderRoomHotspot, renderShipFeedback } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
@@ -137,6 +137,7 @@ function buildShell() {
         <div class="stage-hud" data-slot="stage-hud"></div>
         <div class="ship-fit">
           <img class="sparrow-hull" src="${SPACE_ART.hull}" alt="" />
+          <div class="ship-feedback-layer" data-slot="ship-feedback"></div>
           <canvas class="crew-canvas" data-slot="crew"></canvas>
           <div class="hotspot-layer" data-slot="hotspots"></div>
           ${showShipDebug ? renderShipDebug(SPARROW_LAYOUT) : ''}
@@ -219,6 +220,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
   setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));
+  setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
@@ -301,14 +303,19 @@ function renderNav(tab, player, expReady, tabs, step) {
   }).join('');
 }
 
-function renderHotspots(player, fuel, expReady, selectedRoom) {
+export function renderHotspots(player, fuel, expReady, selectedRoom) {
+  const signals = contractShipSignals(player);
   return ROOMS.map((r) => {
     const pip = roomPip(r, player, fuel, expReady);
+    const signal = r.id === 'operations' && signals.operationsActive
+      ? 'route'
+      : r.id === 'cargo' && signals.cargoReady ? 'return' : '';
     const sys = r.system ? player.ship?.systems?.[r.system] || 0 : null;
     return renderRoomHotspot({
       room: r,
       selected: selectedRoom === r.id,
       alert: pip,
+      signal,
       level: sys,
     });
   }).join('');
@@ -377,7 +384,6 @@ function renderModals(player, { pendingCombat, combatOrders, contractReview, awa
   if (selectedCrewId) return renderDossier(player, selectedCrewId);
   if (step?.modal === 'victory') return renderVictoryModal(player, step);
   if (step?.modal === 'recruit') return renderRecruitModal(player, step);
-  if (step?.modal === 'join') return renderJoinModal(player, step);
   return '';
 }
 
@@ -500,22 +506,7 @@ function renderRecruitModal(player, step) {
             <div class="muted">Crew ${player.crew.length}/${player.crewSlots}</div>
           </div>
         </div>
-        <button class="primary" data-act="tutorial-to-join">${escapeHtml(step.cta)}</button>
-      </div>
-    </div>`;
-}
-
-function renderJoinModal(player, step) {
-  const names = (player.crew || []).map((c) => c.name).slice(0, 3).join(', ');
-  return `
-    <div class="modal-backdrop">
-      <div class="modal panel join-modal">
-        <div class="coach-kicker">${escapeHtml(step.kicker)}</div>
-        <h2>${escapeHtml(step.title)}</h2>
-        <p>${escapeHtml(step.body)}</p>
-        <p class="muted">${escapeHtml(names)} are waiting on a save.</p>
-        <button class="primary" data-act="tutorial-join">${escapeHtml(step.cta)}</button>
-        <button data-act="tutorial-skip-join">Play as guest</button>
+        <button class="primary" data-act="tutorial-draw">${escapeHtml(step.cta)}</button>
       </div>
     </div>`;
 }
@@ -915,6 +906,10 @@ function renderCrew(player) {
   `;
 }
 
+export function renderPlatformLoginEntry() {
+  return `<button data-act="prompt-login" style="margin-top:8px">Optional Jest sign-in</button>`;
+}
+
 function renderShop(player, shopProducts) {
   const SKU_COPY = {
     wc_fuel_5: { name: 'Fuel ×5', blurb: 'Jump five times' },
@@ -982,7 +977,7 @@ function renderShop(player, shopProducts) {
           <button class="primary" data-act="iap-buy" data-sku="${p.sku}">${p.price != null ? `$${p.price}` : 'Buy'}</button>
         </div>
       `).join('')}
-      <button data-act="prompt-login" style="margin-top:8px">Register</button>
+      ${renderPlatformLoginEntry()}
       ${qa ? `
       <div class="row" style="margin-top:8px">
         <button data-act="qa-gems">QA +100 gems</button>

@@ -47,6 +47,7 @@ const beforeClaim = player.wallet.credits;
 act('contract-claim', identity());
 assert.equal(player.wallet.credits, beforeClaim + 120);
 assert.equal(player.tutorial.phase, 'recruit');
+assert.equal(player.flags.sparrowFirstRepair, true, 'first tutorial claim lights the Sparrow repair');
 assert.equal(player.dailyLoop.contract, true);
 assert.equal(act('contract-claim', stale).ok, false);
 act('tutorial-draw');

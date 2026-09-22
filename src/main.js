@@ -39,12 +39,11 @@ import {
   isTutorialActive,
   isTabUnlocked,
   isFeatureUnlocked,
-  completeTutorial,
   preferredTab,
   skipOrders,
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
-import { stopCrewSim } from './ui/crewWalk.js';
+import { holdCrewForDeparture, moveCrewToDeparture, stopCrewSim } from './ui/crewWalk.js';
 import { playCombat, isBattlePlaying } from './ui/combatView.js';
 import { sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
@@ -64,6 +63,7 @@ let shopProducts = null;
 let artReady = false;
 let toast = null;
 let toastTimer = 0;
+let departureInFlight = false;
 
 function showToast(next) {
   toast = next || null;
@@ -315,11 +315,6 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
       _jestRegistered: Boolean(registered),
       captainName: username || player.captainName,
     };
-    if (isTutorialActive(player) || player.tutorial?.phase === 'join') {
-      player = completeTutorial(player, { registered: Boolean(registered) });
-      tab = 'ship';
-      captureEvent('tutorial_complete', { joined: Boolean(registered) });
-    }
   };
 
   if (jp?.registered) {
@@ -331,7 +326,7 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
   if (isReal()) {
     const { loginButtonAction } = showRegistrationOverlay({
       theme: 'dark',
-      message: 'Save Warp Crew progress! {{registrationCode}} is my code.',
+      message: 'Optional Jest sign-in. {{registrationCode}} is my code.',
       entryPayload: { reason },
       onClose: () => {},
     });
@@ -340,9 +335,9 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
       const after = getJestPlayer();
       if (after?.registered) {
         finish(true, after?.username);
-        pushLog('Registered on Jest. Crew, shop, and log are open.');
+        pushLog('Signed in to Jest.');
       } else {
-        pushLog('Join closed — you can still play as guest.');
+        pushLog('Sign-in closed.');
       }
     } catch {
       pushLog('Login flow closed.');
@@ -354,7 +349,7 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
   await login();
   const after = getJestPlayer();
   finish(true, after?.username);
-  pushLog('Joined Jest. Crew, shop, and log are open.');
+  pushLog('Signed in to Jest.');
 }
 
 function doHire({ gems = false, ten = false } = {}) {
@@ -409,7 +404,7 @@ function doHire({ gems = false, ten = false } = {}) {
 }
 
 async function handleAction(act, data = {}) {
-  if (isBattlePlaying()) return;
+  if (isBattlePlaying() || departureInFlight) return;
   // Tutorial CTAs navigate to or invoke the same production actions as the board.
   if (['tutorial-next', 'tutorial-go', 'tutorial-jump'].includes(act)) {
     const phase = player.tutorial?.phase;
@@ -423,20 +418,38 @@ async function handleAction(act, data = {}) {
   }
   const transition = sessionAction(player, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId }, act, data);
   if (transition) {
+    const departure = transition.effect?.kind === 'expedition';
+    const publishSessionResult = (result) => {
+      player = result.player;
+      sessionUi = { ...sessionUi, ...result.ui };
+      if ('pendingCombat' in result.ui) pendingCombat = result.ui.pendingCombat;
+      if ('tab' in result.ui) tab = result.ui.tab;
+      if ('selectedRoom' in result.ui) selectedRoom = result.ui.selectedRoom;
+      if ('selectedCrewId' in result.ui) selectedCrewId = result.ui.selectedCrewId;
+      render();
+    };
     const committed = persistSessionTransition(transition, {
       save: writeSave,
       publish: (result) => {
-        player = result.player;
-        sessionUi = { ...sessionUi, ...result.ui };
-        if ('pendingCombat' in result.ui) pendingCombat = result.ui.pendingCombat;
-        if ('tab' in result.ui) tab = result.ui.tab;
-        if ('selectedRoom' in result.ui) selectedRoom = result.ui.selectedRoom;
-        if ('selectedCrewId' in result.ui) selectedCrewId = result.ui.selectedCrewId;
-        render();
+        if (departure) {
+          departureInFlight = true;
+          holdCrewForDeparture(transition.effect.crewInstanceIds);
+        }
+        publishSessionResult(result);
       },
       capture: captureEvent,
       animate: (effect) => {
         if (effect.result) logTravelResult(effect.result);
+        if (effect.kind === 'expedition') {
+          const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+          moveCrewToDeparture(player, effect.crewInstanceIds, {
+            reducedMotion,
+            onDone: () => {
+              departureInFlight = false;
+              render();
+            },
+          });
+        }
         if (effect.kind === 'combat') {
           if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
             showToast({ title: effect.win ? 'Victory' : 'Hull holds' });
@@ -678,14 +691,10 @@ async function handleAction(act, data = {}) {
       showToast({ title: 'Purchase applied' });
       sfx('coin');
       captureEvent('iap_success', { sku });
-      const jp = getJestPlayer();
-      if (jp && !jp.registered) {
-        pushLog('Tip: register to keep purchases across devices.');
-      }
       await refreshNotifs();
     }
-  } else if (act === 'prompt-login' || act === 'tutorial-join') {
-    await handleJoinJest({ reason: act === 'tutorial-join' ? 'tutorial_peak' : 'shop_prompt' });
+  } else if (act === 'prompt-login') {
+    await handleJoinJest({ reason: 'shop_prompt' });
   } else if (act === 'tutorial-dismiss') {
     player = dismissTutorial(player);
     if (player.tutorial?.completed) {

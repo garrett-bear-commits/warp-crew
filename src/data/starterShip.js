@@ -86,6 +86,10 @@ export const SPARROW_LAYOUT = {
       { x: 67.5, y: 91.2 },
     ],
   },
+  anchors: {
+    cargoDeparture: { x: 45, y: 69 },
+    airlock: { x: 47, y: 64 },
+  },
 };
 
 export const ROOMS = SPARROW_LAYOUT.rooms;
@@ -238,6 +242,12 @@ export function validateSparrowLayout() {
       if (!point || point.x < 0 || point.x > 100 || point.y < 0 || point.y > 100) {
         errors.push(`${door.id} coordinate outside hull`);
       }
+    }
+  }
+
+  for (const [id, anchor] of Object.entries(SPARROW_LAYOUT.anchors || {})) {
+    if (!anchor || anchor.x < 0 || anchor.x > 100 || anchor.y < 0 || anchor.y > 100) {
+      errors.push(`${id} anchor outside hull`);
     }
   }
 

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ROOMS, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAtExact, pathRooms } from '../data/starterShip.js';
+import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAtExact, pathRooms } from '../data/starterShip.js';
 import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
 import { sheetFor, walkAssetFor, WALK_FRAMES } from './crewArt.js';
 import { crewPoseForActor, motionPolicy } from './crewAnimation.js';
@@ -16,10 +16,45 @@ let started = false;
 let battle = false;
 let reducedMotion = false;
 let motionQuery = null;
+let activeDeparture = null;
 const particles = [];
 
 const WALK_SPEED = 9;
 const ARRIVE = 1.2;
+
+const readyForShipTask = (crew) => !['expedition', 'injured', 'reserve'].includes(crew.status);
+
+export function crewTargetStates(player, {
+  departingCrewInstanceIds = [],
+  reducedMotion: immediate = false,
+} = {}) {
+  const crew = player?.crew || [];
+  if (departingCrewInstanceIds.length) {
+    const byId = new Map(crew.map((member) => [member.instanceId, member]));
+    return departingCrewInstanceIds.filter((id) => byId.has(id)).map((crewInstanceId) => ({
+      crewInstanceId,
+      mode: 'expedition-departure',
+      roomId: 'cargo',
+      anchors: [
+        { ...SPARROW_LAYOUT.anchors.cargoDeparture },
+        { ...SPARROW_LAYOUT.anchors.airlock },
+      ],
+      immediate,
+    }));
+  }
+  if (!['briefing', 'choice'].includes(player?.activeContract?.stage)) return [];
+  const routeRooms = ['bridge', 'engineering'];
+  return crew.filter(readyForShipTask).slice(0, routeRooms.length).map((member, index) => {
+    const room = ROOMS.find((candidate) => candidate.id === routeRooms[index]);
+    return {
+      crewInstanceId: member.instanceId,
+      mode: 'contract-station',
+      roomId: room.id,
+      anchors: [{ ...room.workAnchor }],
+      immediate,
+    };
+  });
+}
 
 function hash01(s) {
   let h = 2166136261;
@@ -59,6 +94,7 @@ function spawn(crew) {
     jitter,
     frame: 0,
     fps: 7,
+    assignment: null,
   };
   agents.set(a.id, a);
   return a;
@@ -102,6 +138,55 @@ function beginWalk(a, destId) {
   a.timer = 0;
 }
 
+function assignmentKey(target) {
+  return `${target.mode}:${target.roomId}`;
+}
+
+function finishDepartureActor(a) {
+  if (!activeDeparture || !a.assignment?.startsWith('expedition-departure')) return;
+  a.assignment = 'departure-complete';
+  activeDeparture.pending.delete(a.id);
+  if (activeDeparture.pending.size) return;
+  const done = activeDeparture.onDone;
+  activeDeparture = null;
+  done?.();
+}
+
+function beginAuthoredTarget(a, target) {
+  a.assignment = assignmentKey(target);
+  const final = target.anchors.at(-1);
+  if (target.immediate) {
+    a.x = final.x;
+    a.y = final.y;
+    a.room = target.roomId;
+    a.path = [];
+    a.state = 'doing';
+    a.timer = Infinity;
+    a.frame = 0;
+    return;
+  }
+
+  const pts = [];
+  let x = a.x;
+  let y = a.y;
+  if (a.room !== target.roomId) {
+    for (const waypoint of pathRooms(a.room, target.roomId)) {
+      appendPath(pts, x, y, waypoint.x, waypoint.y, waypoint.room, waypoint.via);
+      x = waypoint.x;
+      y = waypoint.y;
+    }
+  }
+  for (const anchor of target.anchors) {
+    appendPath(pts, x, y, anchor.x, anchor.y, target.roomId);
+    pts.push({ ...anchor, room: target.roomId, via: 'authored-anchor' });
+    x = anchor.x;
+    y = anchor.y;
+  }
+  a.path = pts;
+  a.state = pts.length ? 'walk' : 'doing';
+  a.timer = pts.length ? 0 : Infinity;
+}
+
 function faceFrom(dx, dy) {
   if (Math.abs(dx) > Math.abs(dy) * 0.85) return dx < 0 ? 'left' : 'right';
   if (Math.abs(dy) < 0.04) return dx < 0 ? 'left' : 'right';
@@ -115,6 +200,7 @@ function stepAgent(a, dt, animateFrames = true) {
     return;
   }
   if (a.state === 'doing') {
+    if (a.assignment) return;
     a.timer -= dt;
     if (a.timer <= 0) {
       const goHome = a.room !== a.home && a.jitter + (clock % 3) * 0.1 > 0.55;
@@ -126,7 +212,8 @@ function stepAgent(a, dt, animateFrames = true) {
   const tgt = a.path[0];
   if (!tgt) {
     a.state = 'doing';
-    a.timer = battle ? 3.2 : 1.8 + a.jitter * 2.0;
+    a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
+    finishDepartureActor(a);
     return;
   }
   const d = dist(a, tgt);
@@ -138,7 +225,8 @@ function stepAgent(a, dt, animateFrames = true) {
     a.path.shift();
     if (!a.path.length) {
       a.state = 'doing';
-      a.timer = battle ? 3.2 : 1.8 + a.jitter * 2.0;
+      a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
+      finishDepartureActor(a);
     }
     return;
   }
@@ -344,6 +432,37 @@ export function stopCrewSim() {
   ctx = null;
 }
 
+export function holdCrewForDeparture(crewInstanceIds) {
+  for (const id of crewInstanceIds || []) {
+    const a = agents.get(id);
+    if (a) a.assignment = 'expedition-departure:held';
+  }
+}
+
+export function moveCrewToDeparture(player, crewInstanceIds, {
+  reducedMotion: immediate = reducedMotion,
+  onDone,
+} = {}) {
+  const targets = crewTargetStates(player, {
+    departingCrewInstanceIds: crewInstanceIds,
+    reducedMotion: immediate,
+  });
+  const visible = targets.filter((target) => agents.has(target.crewInstanceId));
+  if (immediate) particles.length = 0;
+  if (!visible.length || immediate) {
+    for (const target of visible) beginAuthoredTarget(agents.get(target.crewInstanceId), target);
+    for (const target of visible) agents.get(target.crewInstanceId).assignment = 'departure-complete';
+    onDone?.();
+    return targets;
+  }
+  activeDeparture = {
+    pending: new Set(visible.map((target) => target.crewInstanceId)),
+    onDone,
+  };
+  for (const target of visible) beginAuthoredTarget(agents.get(target.crewInstanceId), target);
+  return targets;
+}
+
 export function syncCrewLayer(el, player) {
   if (!el) return;
   if (el.tagName === 'CANVAS') {
@@ -356,7 +475,8 @@ export function syncCrewLayer(el, player) {
   }
   const live = new Set();
   for (const c of player.crew || []) {
-    if (c.status === 'expedition') continue;
+    const retainedDeparture = agents.get(c.instanceId)?.assignment?.startsWith('expedition-departure');
+    if (c.status === 'expedition' && !retainedDeparture) continue;
     live.add(c.instanceId);
     if (!agents.has(c.instanceId)) spawn(c);
     const a = agents.get(c.instanceId);
@@ -369,13 +489,24 @@ export function syncCrewLayer(el, player) {
     if (live.has(id)) continue;
     agents.delete(id);
   }
+  if (!started && typeof window.matchMedia === 'function') {
+    motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReducedMotion(motionQuery);
+    motionQuery.addEventListener?.('change', setReducedMotion);
+  }
+  const targets = new Map(crewTargetStates(player, { reducedMotion }).map((target) => [target.crewInstanceId, target]));
+  for (const [id, a] of agents) {
+    if (a.assignment?.startsWith('expedition-departure')) continue;
+    const target = targets.get(id);
+    if (target && a.assignment !== assignmentKey(target)) beginAuthoredTarget(a, target);
+    else if (!target && a.assignment?.startsWith('contract-station')) {
+      a.assignment = null;
+      a.state = 'idle';
+      a.timer = 0;
+    }
+  }
   if (!started) {
     started = true;
-    if (typeof window.matchMedia === 'function') {
-      motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-      setReducedMotion(motionQuery);
-      motionQuery.addEventListener?.('change', setReducedMotion);
-    }
     onTick(tick);
     window.addEventListener('resize', resize);
   }
