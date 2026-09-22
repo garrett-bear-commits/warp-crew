@@ -1,0 +1,308 @@
+// Session orchestration: pure transitions, followed by one durable publication boundary.
+import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, reviewContractOffer, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract } from './contracts.js';
+import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
+import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
+import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
+import { readyCrew } from './player.js';
+import { previewTravel, commitTravel } from './travel.js';
+import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
+import { nextUpgradeCost, upgradeSystem } from './hangar.js';
+import { levelCrew, rankUpCrew } from './gacha.js';
+import { medalLevelCostFor } from '../data/crewRoster.js';
+import { ROOMS } from '../data/starterShip.js';
+import { portraitFor } from '../data/portraits.js';
+import { NODES } from '../data/sectors.js';
+import { canAfford, formatReward } from './economy.js';
+
+export function prepareSession(player, now = Date.now()) {
+  let next = ensureDailyLoop(player, now);
+  const early = isTutorialActive(next) && ['distress', 'launch', 'order', 'return', 'recruit'].includes(next.tutorial.phase);
+  if (early && !next.contractBoard && !next.activeContract) {
+    next = { ...next, contractBoard: { dayKey: next.dailyLoop.dayKey, offers: [tutorialDistressOffer(next)], completedOfferIds: [] } };
+  } else if (!early && !next.activeContract && next.contractBoard?.offers.some(x => x.profile === 'distress')) {
+    next = { ...next, contractBoard: generateContractBoard(next, now) };
+  } else if (!early) next = ensureContractBoard(next, now).player;
+  return next;
+}
+
+const event = (name, fields) => ({ event: name, fields });
+const fromAnalytics = ({ event: name, ...fields }) => event(name, fields);
+const elapsed = (started, now) => Math.max(0, Math.floor((now - (started || now)) / 1000));
+const traitMatch = (player, trait) => trait?.kind === 'role'
+  ? readyCrew(player).some(c => c.role === trait.id) : (player.ship?.systems?.[trait?.id] || 0) > 0;
+const validIdentity = (contract, data) => contract && data.revision != null
+  && String(contract.revision) === String(data.revision) && contract.acceptanceId === data.acceptanceId;
+
+export function improvementFocus(player) {
+  const base = { tab: 'ship', selectedRoom: null, selectedCrewId: null };
+  if ((player.ship?.hull ?? 100) < 70) return { ...base, selectedRoom: 'engineering' };
+  for (const room of ROOMS) {
+    const cost = room.system && nextUpgradeCost(player, room.system);
+    if (cost && canAfford(player.wallet, { credits: cost.credits })) return { ...base, selectedRoom: room.id };
+  }
+  const crew = player.crew.find(c => canAfford(player.wallet, { medals: medalLevelCostFor(c) }));
+  if (crew) return { ...base, tab: 'crew', selectedCrewId: crew.instanceId };
+  return { ...base, tab: 'missions', missionView: 'away' };
+}
+
+function orderDisplay(id, preview, encounter, guaranteed) {
+  return {
+    id, name: id[0].toUpperCase() + id.slice(1), enabled: Boolean(preview.ok ?? preview.enabled),
+    chance: preview.consequence?.chance ?? preview.chance,
+    chanceLabel: guaranteed ? 'Guaranteed' : `${Math.round((preview.consequence?.chance ?? preview.chance ?? 0) * 100)}%`,
+    costLabel: `${preview.cost?.fuel ?? preview.fuel ?? 0}F extra`,
+    rewardLabel: id === 'board' ? 'Victory: +25% credits and medals' : 'Normal payout',
+    consequence: id === 'brace' ? 'Failure: half hull loss · no crew injury' : id === 'board' ? '−10% effective power · failure injures one crew member' : '+12 effective power · normal failure hull loss and injury',
+    reason: preview.reason || '', recommended: id === 'brace',
+  };
+}
+
+function combatModel(encounter, orders, guaranteed, extra = {}) {
+  return { title: encounter.name, guaranteed, orders, canCancel: !guaranteed,
+    tell: { label: encounter.name, text: encounter.blurb, reason: 'Brace is recommended for hull and crew protection.' }, ...extra };
+}
+
+export function sessionModels(player, ui = {}, now = Date.now()) {
+  const contract = player.activeContract;
+  const models = { missionView: ui.missionView || 'contracts', dailyPlan: dailyPlan(player, now),
+    contractBoard: player.contractBoard, activeContractView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {} };
+  if (ui.reviewedOfferId) {
+    const review = reviewContractOffer(player, ui.reviewedOfferId);
+    if (review.ok) models.contractReview = { ...review, destinationName: NODES[review.offer.destinationId]?.name,
+      enabled: !contract && !player.contractBoard.completedOfferIds.includes(review.offer.id) };
+  }
+  if (contract) {
+    const labels = { launch: 'Launch', secure: 'Secure the contract', push: 'Push the signal' };
+    const ids = contract.stage === 'briefing' ? ['launch'] : contract.stage === 'choice' ? ['secure', 'push'] : [];
+    const actions = ids.map(id => {
+      const preview = previewContractAction(player, { id });
+      models.contractPreviews[id] = preview;
+      return { id, label: `${labels[id]} · ${preview.cost.fuel}F`, enabled: preview.ok, primary: id !== 'push', reason: preview.reason,
+        consequence: id === 'secure' ? 'Lower-variance route outcome.' : id === 'push' ? 'Pursue the stronger reward opportunity.' : 'Spend fuel and depart.' };
+    });
+    if (contract.stage === 'return') actions.push({ id: 'claim', label: 'Bring it aboard', enabled: true, primary: true });
+    models.activeContractView = { ...contract, actions,
+      crewLabel: readyCrew(player).map(c => c.name).join(', ') || 'No ready crew',
+      result: contract.result ? { ...contract.result, rewardLabel: formatReward(contract.result.rewards) } : null,
+      abandon: contract.profile === 'distress' ? null : { enabled: true, label: contract.stage === 'briefing' ? 'Abandon' : 'Break contract', consequence: 'No pending reward. Spent fuel is not refunded.' },
+    };
+    if (contract.stage === 'confrontation') {
+      const encounter = encounterById(contract.encounterId);
+      const guaranteed = contract.profile === 'distress';
+      const orders = listCombatOrders({ tutorial: guaranteed }).map(({ id, extraFuel }) => {
+        const preview = previewContractAction(player, { id: 'order', orderId: id });
+        models.contractPreviews[`order:${id}`] = preview;
+        // Keep consequence facts visible even when the wallet cannot pay. The
+        // actual cached preview remains disabled and is the only commit token.
+        const facts = !preview.ok && preview.reason === 'not_enough_fuel'
+          ? { ...previewContractAction({ ...player, wallet: { ...player.wallet, fuel: extraFuel } }, { id: 'order', orderId: id }), ok: false, reason: preview.reason }
+          : preview;
+        return orderDisplay(id, facts, encounter, guaranteed);
+      });
+      models.activeContractView.combat = combatModel(encounter, orders, guaranteed, { action: 'contract-order', revision: contract.revision, acceptanceId: contract.acceptanceId });
+    }
+  }
+  if (ui.pendingCombat) {
+    const preview = ui.pendingCombat;
+    const orders = listCombatOrders().map(({ id }) => orderDisplay(id, previewCombatOrder({
+      playerPower: preview.playerPower, enemyPower: preview.encounter.power, orderId: id,
+      fuel: player.wallet.fuel - preview.fuelCost, tutorial: preview.tutorialFight,
+    }), preview.encounter, preview.tutorialFight));
+    models.combatOrders = combatModel(preview.encounter, orders, preview.tutorialFight);
+  }
+  if (ui.selectedExpeditionId) {
+    const id = ui.selectedExpeditionId;
+    const planet = visiblePlanets(player, now).find(p => p.id === id);
+    if (planet) {
+      const selectedIds = ui.selectedExpeditionCrewIds || [];
+      const validation = validateExpeditionParty(player, id, selectedIds, now);
+      // Never pass a missing/invalid selection to the legacy recommendation fallback.
+      const preview = validation.ok ? previewExpedition(player, id, selectedIds, now) : null;
+      const options = expeditionCrewOptions(player, id, now).map(crew => ({ ...crew, portrait: portraitFor(crew.templateId, crew.role) }));
+      models.awayPicker = { destination: planet, cap: expeditionPartySize(player), selectedIds, options,
+        chance: preview?.chance, chanceLabel: preview ? `${Math.round(preview.chance * 100)}%` : 'Select ready crew',
+        successReward: preview ? formatReward(preview.win) : 'Select crew to preview',
+        failureReward: preview ? formatReward(preview.fail) : 'Select crew to preview',
+        injuryRisk: 'Failure injures the away team.', returnLabel: new Date(now + planet.minutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        opportunityCost: `${preview?.crew.map(c => c.name).join(', ') || 'Selected crew'} unavailable for contracts until return.`,
+        enabled: validation.ok && !player.activeExpedition && isFeatureUnlocked(player, 'expeditions'), reason: validation.reason };
+    }
+  }
+  return models;
+}
+
+export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rng = Math.random } = {}) {
+  const before = player;
+  const events = [];
+  const nextUi = {};
+  let effect = null;
+  const fail = reason => ({ ok: false, reason, player: before });
+  const tutorial = (name, payload) => { player = noteTutorialEvent(player, name, payload).player; };
+  const milestone = name => {
+    const prior = ensureDailyLoop(before, now).dailyLoop[name] === true;
+    player = markDailyMilestone(player, name, now);
+    if (!prior) events.push(event('daily_plan_progress', { day: player.dailyLoop.dayKey, milestone: name, completedCount: dailyPlan(player, now).completed }));
+  };
+  const boardSeen = () => {
+    const board = player.contractBoard;
+    if (board?.offers.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: board.offers.map(x => x.destinationId), completedCount: board.completedOfferIds.length }));
+  };
+  if (act === 'mission-view' || act === 'goto-contracts' || act === 'goto-away' || act === 'goto-missions') {
+    const view = act === 'mission-view' ? data.view : act === 'goto-away' ? 'away' : 'contracts';
+    if (!['contracts', 'away', 'explore'].includes(view)) return fail('unknown_mission_view');
+    if (isTutorialActive(player) && view === 'explore') return fail('tutorial_contract_required');
+    player = prepareSession(player, now);
+    Object.assign(nextUi, { tab: 'missions', missionView: view, selectedRoom: null });
+    if (view === 'contracts') boardSeen();
+  } else if (act === 'daily-improve') {
+    Object.assign(nextUi, improvementFocus(player));
+  } else if (act === 'contract-review') {
+    const review = reviewContractOffer(player, data.offer);
+    if (!review.ok || player.activeContract || player.contractBoard.completedOfferIds.includes(data.offer)) return fail(review.reason || 'offer_unavailable');
+    nextUi.reviewedOfferId = data.offer;
+    events.push(event('contract_reviewed', { offerId: data.offer, profile: review.offer.profile, destination: review.offer.destinationId, fuel: review.cost.fuel, traitMatch: traitMatch(player, review.favoredTrait) }));
+    tutorial('contract_reviewed', { offerId: data.offer });
+  } else if (act === 'contract-review-close') nextUi.reviewedOfferId = null;
+  else if (act === 'contract-accept') {
+    const res = acceptContract(player, data.offer);
+    if (!res.ok) return res;
+    player = res.player;
+    events.push(fromAnalytics({ ...res.analytics, traitMatch: traitMatch(player, player.activeContract.favoredTrait) }));
+    tutorial('contract_accepted');
+    Object.assign(nextUi, { reviewedOfferId: null, tab: 'missions', selectedRoom: null, missionView: player.tutorial.phase === 'away' ? 'away' : 'contracts' });
+  } else if (['contract-action', 'contract-order', 'contract-claim', 'contract-abandon', 'contract-abandon-confirm'].includes(act)) {
+    const contract = player.activeContract;
+    if (!validIdentity(contract, data)) return fail('stale_contract_action');
+    if (act === 'contract-abandon' && contract.stage !== 'briefing') {
+      if (contract.profile === 'distress') return fail('tutorial_contract_required');
+      nextUi.confirmAbandon = { revision: contract.revision, acceptanceId: contract.acceptanceId };
+    } else if (act.startsWith('contract-abandon')) {
+      if (act === 'contract-abandon-confirm' && !validIdentity(contract, ui.confirmAbandon || {})) return fail('stale_contract_action');
+      const res = abandonContract(player, { revision: Number(data.revision), acceptanceId: data.acceptanceId });
+      if (!res.ok) return res;
+      player = res.player;
+      events.push(fromAnalytics(res.analytics));
+      Object.assign(nextUi, { tab: 'ship', selectedRoom: null, confirmAbandon: null });
+    } else if (act === 'contract-claim' || data.action === 'claim') {
+      const res = claimContractReward(player);
+      if (!res.ok) return res;
+      player = { ...res.player, dailyLoop: ensureDailyLoop(before, now).dailyLoop };
+      milestone('contract');
+      events.push(fromAnalytics(res.analytics));
+      tutorial('contract_claimed');
+      Object.assign(nextUi, improvementFocus(player));
+    } else {
+      const action = act === 'contract-order' ? { id: 'order', orderId: data.order } : { id: data.action };
+      const key = action.id === 'order' ? `order:${action.orderId}` : action.id;
+      const preview = ui.contractPreviews?.[key] || previewContractAction(player, action);
+      const res = commitContractAction(player, preview, { rng });
+      if (!res.ok) return res;
+      player = res.player;
+      events.push(fromAnalytics(res.analytics));
+      if (act === 'contract-order') {
+        events.push(event('combat_order_selected', { encounter: contract.encounterId, order: data.order, shownChance: preview.consequence.chance, extraFuel: preview.cost.fuel }));
+        tutorial('combat_order_done');
+        effect = { kind: 'combat', preview: { encounter: encounterById(contract.encounterId) }, win: res.result.success };
+      } else if (action.id === 'launch') { tutorial('contract_launched'); effect = { kind: 'launch' }; }
+      if (player.activeContract.stage === 'return') {
+        const result = player.activeContract.result;
+        events.push(event('contract_resolved', { profile: contract.profile, success: result.success, beats: contract.beats, order: player.activeContract.orderId, ...result.rewards, hullLoss: result.hullLoss, injury: result.injuredCrewId }));
+        Object.assign(nextUi, { tab: 'ship', selectedRoom: 'cargo' });
+      }
+    }
+  } else if (act === 'contract-abandon-cancel') nextUi.confirmAbandon = null;
+  else if (act === 'exp-choose') {
+    if (!isFeatureUnlocked(player, 'expeditions')) return fail('expeditions_locked');
+    if (!visiblePlanets(player, now).some(p => p.id === data.planet) || (isTutorialActive(player) && data.planet !== 'dustfall')) return fail('unknown_planet');
+    if (player.activeExpedition) return fail('expedition_active');
+    Object.assign(nextUi, { selectedExpeditionId: data.planet, selectedExpeditionCrewIds: recommendedExpeditionCrewIds(player, data.planet, now) });
+  } else if (act === 'exp-crew-toggle') {
+    const id = ui.selectedExpeditionId;
+    if (!id || !expeditionCrewOptions(player, id, now).some(c => c.id === data.id)) return fail('unavailable_crew');
+    const selected = ui.selectedExpeditionCrewIds || [];
+    const ids = selected.includes(data.id) ? selected.filter(x => x !== data.id) : [...selected, data.id];
+    if (ids.length > expeditionPartySize(player)) return fail('party_cap');
+    nextUi.selectedExpeditionCrewIds = ids;
+    const valid = validateExpeditionParty(player, id, ids, now);
+    const preview = valid.ok ? previewExpedition(player, id, ids, now) : null;
+    events.push(event('expedition_party_changed', { destination: id, partySize: ids.length, roleMatch: Boolean(preview?.roleHit), shownChance: preview?.chance ?? null }));
+  } else if (act === 'exp-picker-close') {
+    Object.assign(nextUi, { selectedExpeditionId: null, selectedExpeditionCrewIds: [] });
+  } else if (act === 'exp-start' || act === 'exp-launch') {
+    if (!isFeatureUnlocked(player, 'expeditions')) return fail('expeditions_locked');
+    if (player.activeExpedition) return fail('expedition_active');
+    if (data.planet !== ui.selectedExpeditionId || !visiblePlanets(player, now).some(p => p.id === data.planet)
+      || (isTutorialActive(player) && data.planet !== 'dustfall')) return fail('unknown_planet');
+    const ids = ui.selectedExpeditionCrewIds || [];
+    const valid = validateExpeditionParty(player, data.planet, ids, now);
+    if (!valid.ok) return fail(valid.reason);
+    const preview = previewExpedition(player, data.planet, ids, now);
+    const job = startExpedition({ planetId: data.planet, crewInstanceIds: ids, minutes: preview.planet.minutes, successChance: preview.chance, roleHit: preview.roleHit, startedAt: now });
+    player = { ...player, activeExpedition: job, crew: player.crew.map(c => ids.includes(c.instanceId) ? { ...c, status: 'expedition' } : c) };
+    tutorial('expedition_start');
+    milestone('away');
+    events.push(event('expedition_start', { planet: data.planet }));
+    Object.assign(nextUi, { selectedExpeditionId: null, selectedExpeditionCrewIds: [], tab: 'ship', selectedRoom: null });
+    effect = { kind: 'expedition', crewInstanceIds: [...ids] };
+  } else if (act === 'tutorial-draw') {
+    const res = grantTutorialRecruit(player);
+    if (!res.instance || res.player === player) return fail('recruit_unavailable');
+    player = res.player;
+    tutorial('recruited');
+    Object.assign(nextUi, { tab: 'missions', missionView: 'contracts', selectedRoom: null });
+    player = prepareSession(player, now);
+    boardSeen();
+  } else if (['ship-upgrade', 'level-crew', 'rank-up'].includes(act)) {
+    if (isTutorialActive(player)) return fail('improvements_locked');
+    const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);
+    if (!res.ok) return res;
+    player = res.player;
+    milestone('improve');
+    if (act === 'ship-upgrade') events.push(event('ship_upgrade', { system: data.system }));
+  } else if (act === 'travel-to') {
+    if (player.activeContract) return fail('active_contract');
+    if (isTutorialActive(player)) return fail('tutorial_contract_required');
+    if (ui.pendingCombat) return fail('combat_pending');
+    const preview = previewTravel(player, data.node, { rng });
+    if (!preview.ok) return fail(preview.reason);
+    if (preview.needsAssists) nextUi.pendingCombat = preview;
+    else {
+      const res = commitTravel(player, preview, { rng });
+      if (!res.ok) return res;
+      player = res.player;
+      tutorial('travel_success');
+      events.push(event('travel', { node: data.node, kind: res.result.kind }));
+      effect = { kind: 'travel', result: res.result };
+    }
+  } else if (act === 'combat-order') {
+    if (!ui.pendingCombat || player.activeContract) return fail('no_pending_combat');
+    const preview = ui.pendingCombat;
+    const shown = sessionModels(player, ui, now).combatOrders.orders.find(x => x.id === data.order);
+    if (!shown?.enabled) return fail('order_unavailable');
+    const res = commitTravel(player, preview, { orderId: data.order, rng });
+    if (!res.ok) return res;
+    player = res.player;
+    tutorial('travel_success');
+    Object.assign(nextUi, { pendingCombat: null, tab: 'ship', selectedRoom: null });
+    events.push(event('combat_order_selected', { encounter: preview.encounter.id, order: data.order, shownChance: shown.chance, extraFuel: data.order === 'burn' ? 1 : 0 }));
+    events.push(event('combat', { success: res.result.combat.success, encounter: preview.encounter.id }));
+    effect = { kind: 'combat', preview, win: res.result.combat.success, result: res.result };
+  } else if (act === 'combat-cancel') {
+    if (ui.pendingCombat?.tutorialFight) return fail('tutorial_contract_required');
+    nextUi.pendingCombat = null;
+  } else return null;
+  if (before.tutorial?.phase !== player.tutorial?.phase) events.push(event('tutorial_stage', { script: 3, phase: player.tutorial.phase, elapsedSeconds: elapsed(player.createdAt, now) }));
+  return { ok: true, player, ui: nextUi, events, effect };
+}
+
+export function persistSessionTransition(result, { save, publish, capture, animate }) {
+  if (!result?.ok) return result;
+  // writeSave returns false on quota/security failure. Never publish an uncommitted result.
+  let saved = false;
+  try { saved = save(result.player) === true; } catch { /* leave the live session unchanged */ }
+  if (!saved) return { ok: false, reason: 'save_failed' };
+  publish(result);
+  for (const item of result.events) capture?.(item.event, item.fields);
+  if (result.effect) animate?.(result.effect);
+  return result;
+}

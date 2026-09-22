@@ -59,7 +59,7 @@ export function renderCombatOrders(model = {}) {
       <h3>${e(order.name)}${order.recommended ? ' · Recommended' : ''}</h3>
       <p>${e(model.guaranteed ? 'Guaranteed' : order.chanceLabel)} · ${e(order.costLabel)}</p>
       ${reason(order.rewardLabel)}${reason(order.consequence)}${reason(order.reason)}
-      <button type="button" data-act="combat-order" data-order="${e(order.id)}" ${order.enabled ? '' : 'disabled'} aria-label="${e(`Choose ${order.name}, ${model.guaranteed ? 'Guaranteed' : order.chanceLabel}, ${order.costLabel}, ${order.consequence}`)}">Choose ${e(order.name)}</button>
+      <button type="button" data-act="${e(model.action || 'combat-order')}" data-order="${e(order.id)}" ${model.acceptanceId ? `data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}"` : ''} ${order.enabled ? '' : 'disabled'} aria-label="${e(`Choose ${order.name}, ${model.guaranteed ? 'Guaranteed' : order.chanceLabel}, ${order.costLabel}, ${order.consequence}`)}">Choose ${e(order.name)}</button>
     </article>`).join('')}</section>`;
 }
 

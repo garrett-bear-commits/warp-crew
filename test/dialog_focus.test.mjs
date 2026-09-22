@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { syncDialogFocus, trapDialogKey } from '../src/ui/bridge.js';
+// Minimal DOM boundary: catches lost triggering-card focus, lost selection focus on
+// rerender, and Tab escaping a modal. The production focus logic runs unchanged.
+const doc = { activeElement: null };
+const button = dataset => ({ dataset, disabled: false, focus() { doc.activeElement = this; } });
+const trigger = button({ act: 'contract-review', offer: 'offer_1' });
+const close = button({ act: 'contract-review-close' });
+const accept = button({ act: 'contract-accept', offer: 'offer_1' });
+let dialog = null;
+const root = { ownerDocument: doc, querySelector: () => dialog, querySelectorAll: () => [trigger] };
+trigger.focus();
+const first = { querySelectorAll: () => [close, accept], contains: el => [close, accept].includes(el) };
+dialog = first;
+syncDialogFocus(root, null, trigger);
+assert.equal(doc.activeElement, close);
+accept.focus();
+let prevented = false;
+trapDialogKey(root, { key: 'Tab', shiftKey: false, preventDefault() { prevented = true; } });
+assert.equal(doc.activeElement, close);
+assert.equal(prevented, true);
+trapDialogKey(root, { key: 'Tab', shiftKey: true, preventDefault() {} });
+assert.equal(doc.activeElement, accept);
+const newAccept = button({ act: 'contract-accept', offer: 'offer_1' });
+dialog = { querySelectorAll: () => [close, newAccept], contains: el => [close, newAccept].includes(el) };
+syncDialogFocus(root, first, accept);
+assert.equal(doc.activeElement, newAccept);
+dialog = null;
+syncDialogFocus(root, first, newAccept);
+assert.equal(doc.activeElement, trigger);
+console.log('dialog_focus.test.mjs OK');

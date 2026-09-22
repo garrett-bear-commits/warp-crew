@@ -388,53 +388,10 @@ export function skipOrders(player) {
 
 /** Post-intro coach (expedition then hire). Null when the day loop is taught. */
 export function ordersStep(player) {
-  if (isTutorialActive(player)) return null;
-  const beat = player.tutorial?.ordersBeat;
-  if (beat === 'exp') {
-    return {
-      title: 'Dustfall',
-      body: 'Send two crew. They work while you jump.',
-      cta: 'Missions',
-      tab: 'ship',
-      spotlight: 'nav-missions',
-      kicker: '',
-      act: 'goto-missions',
-    };
-  }
-  if (beat === 'hire') {
-    return {
-      title: 'Free hire',
-      body: 'Fourth berth is open.',
-      cta: 'Crew',
-      tab: 'ship',
-      spotlight: 'nav-crew',
-      kicker: '',
-      act: 'goto-crew',
-    };
-  }
   return null;
 }
 
 /** Compact home chip after the day-loop lesson. */
 export function sessionHint(player, { fuel, now = Date.now() } = {}) {
-  if (isTutorialActive(player) || player.tutorial?.ordersBeat === 'exp' || player.tutorial?.ordersBeat === 'hire') {
-    return null;
-  }
-  const expReady = Boolean(player.activeExpedition && player.activeExpedition.endAt <= now);
-  if (fuel?.pendingWhole) {
-    return { title: 'Claim fuel', act: 'claim', kicker: '' };
-  }
-  if (expReady) {
-    return { title: 'Expedition back', act: 'goto-missions', kicker: '' };
-  }
-  if (player.dailyPullAvailable && player.crew.length < player.crewSlots) {
-    return { title: 'Free hire', act: 'goto-crew', kicker: '' };
-  }
-  if ((player.ship?.hull ?? 100) < 40) {
-    return { title: 'Repair hull', act: 'select-room', room: 'engineering', kicker: '' };
-  }
-  if ((fuel?.current || 0) > 0) {
-    return { title: 'Jump', act: 'goto-missions', kicker: '' };
-  }
-  return { title: 'Shop', act: 'goto-shop', kicker: '' };
+  return null;
 }

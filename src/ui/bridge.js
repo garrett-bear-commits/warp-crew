@@ -15,8 +15,6 @@ import {
   hudChips,
   isTutorialActive,
   tutorialPhase,
-  ordersStep,
-  sessionHint,
 } from '../systems/tutorial.js';
 import { readyCrew, fightingCrew } from '../systems/player.js';
 import { portraitFor, shipArtFor, SPACE_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
@@ -35,7 +33,8 @@ import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
 import { renderRoomHotspot } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
-import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker } from './contractView.js';
+import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
+import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
 
 const NAV_ICO = {
   ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
@@ -56,6 +55,8 @@ const NODE_KIND_ART = {
 
 export function renderApp(root, ctx) {
   if (!root || !ctx?.player) return;
+  const priorDialog = root.querySelector('[role="dialog"]');
+  const priorFocus = root.ownerDocument.activeElement;
   root._wcHandlers = ctx.handlers;
   if (!root.querySelector('.wc-shell') || !root.querySelector('[data-slot="coach"]')) {
     root._wcBound = false;
@@ -63,11 +64,42 @@ export function renderApp(root, ctx) {
   }
   bindOnce(root);
   patchShell(root, ctx);
+  syncDialogFocus(root, priorDialog, priorFocus);
+}
+
+const dialogButtons = dialog => [...dialog.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), [tabindex="0"]')];
+const sameAction = (element, data) => data?.act && Object.entries(data).every(([key, value]) => element.dataset?.[key] === value);
+
+export function syncDialogFocus(root, priorDialog, priorFocus) {
+  const dialog = root.querySelector('[role="dialog"]');
+  if (dialog && dialog !== priorDialog) {
+    if (!priorDialog) root._wcDialogReturn = { ...priorFocus?.dataset };
+    const controls = dialogButtons(dialog);
+    const replacement = priorDialog && controls.find(element => sameAction(element, priorFocus?.dataset));
+    (replacement || controls[0])?.focus();
+  } else if (!dialog && priorDialog) {
+    const trigger = [...root.querySelectorAll('[data-act]')].find(element => sameAction(element, root._wcDialogReturn));
+    trigger?.focus();
+    root._wcDialogReturn = null;
+  }
+}
+
+export function trapDialogKey(root, ev) {
+  const dialog = root.querySelector('[role="dialog"]');
+  if (!dialog || ev.key !== 'Tab') return;
+  const controls = dialogButtons(dialog);
+  if (!controls.length) return;
+  const active = root.ownerDocument.activeElement;
+  if (!dialog.contains(active) || (ev.shiftKey && active === controls[0]) || (!ev.shiftKey && active === controls.at(-1))) {
+    ev.preventDefault();
+    (ev.shiftKey ? controls.at(-1) : controls[0]).focus();
+  }
 }
 
 function bindOnce(root) {
   if (root._wcBound) return;
   root._wcBound = true;
+  root.addEventListener('keydown', ev => trapDialogKey(root, ev));
   startStageLoop();
   root.addEventListener('pointerdown', () => unlockSfx(), { once: true });
   root.addEventListener('click', (ev) => {
@@ -148,8 +180,6 @@ function patchShell(root, ctx) {
   const hullPct = Math.max(0, Math.min(100, player.ship?.hull ?? 100));
   const shieldPct = Math.min(100, 60 + (player.ship.systems?.shields || 1) * 10);
   const step = currentTutorialStep(player);
-  const orders = ordersStep(player);
-  const hint = sessionHint(player, { fuel, now });
   const phase = tutorialPhase(player);
   const goals = weekGoals(player);
   const expReady = Boolean(player.activeExpedition && player.activeExpedition.endAt <= now);
@@ -157,7 +187,7 @@ function patchShell(root, ctx) {
   const chips = hudChips(player);
   const tabs = unlockedTabs(player);
   const fighting = isBattlePlaying();
-  let coachStep = step && !step.modal ? step : orders;
+  let coachStep = step && !step.modal ? step : null;
   if (coachStep && coachStep.act === 'goto-missions' && tab === 'missions') {
     coachStep = {
       ...coachStep,
@@ -187,14 +217,14 @@ function patchShell(root, ctx) {
   setSlot(root, 'hud', renderHud(player, fuel, chips));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
-  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic }));
+  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));
-  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, hint, isHome }));
+  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
     && tab !== 'missions' && !cinematic && !selectedCrewId && player.flags?.splashSeen
     && (coachStep.cta || coachStep.body);
-  setSlot(root, 'coach', showCoach ? renderCoach(coachStep) : '');
+  setSlot(root, 'coach', showCoach ? renderSessionGuidance(player, now) : '');
 
   attachSpace(root.querySelector('[data-slot="space"]'));
   attachCombat(root.querySelector('[data-slot="combat"]'), root.querySelector('.stage'));
@@ -284,13 +314,13 @@ function renderHotspots(player, fuel, expReady, selectedRoom) {
   }).join('');
 }
 
-function renderOverlays(player, { step, selectedRoom, fuel, now, tab, hint, isHome }) {
+function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome }) {
   const def = SHIPS[player.ship?.shipId] || SHIPS.sparrow;
   const room = ROOMS.find((r) => r.id === selectedRoom);
   const showHangar = isFeatureUnlocked(player, 'hangar');
   return `
       ${!selectedRoom && showHangar ? `<button class="ship-chip" data-act="select-room" data-room="hangar">${escapeHtml(def.name)}</button>` : ''}
-      ${isHome && !selectedRoom && hint ? `<button class="next-chip" data-act="${hint.act}" ${hint.room ? `data-room="${hint.room}"` : ''}>${escapeHtml(hint.title)}</button>` : ''}
+      ${isHome && !selectedRoom && !isTutorialActive(player) ? renderSessionGuidance(player, now) : ''}
       ${room ? renderRoomSheet(player, room, fuel, now) : ''}
       ${selectedRoom === 'hangar' && showHangar ? renderHangarSheet(player) : ''}
   `;
@@ -307,6 +337,10 @@ function renderCoach(step) {
       ${step.cta ? `<button class="primary" data-act="${act}">${escapeHtml(step.cta)}</button>` : ''}
       ${step.act && !isTutorialCta(step) ? '<button data-act="orders-skip">Got it</button>' : ''}
     </div>`;
+}
+
+export function renderSessionGuidance(player, now = Date.now()) {
+  return isTutorialActive(player) ? renderCoach(currentTutorialStep(player)) : renderDailyPlan(dailyPlan(player, now));
 }
 
 function isTutorialCta(step) {
@@ -331,9 +365,10 @@ function renderToast(toast) {
     </div>`;
 }
 
-function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic }) {
+function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon }) {
   if (!player.flags?.splashSeen) return renderSplash();
   if (cinematic) return renderCinematic(cinematic);
+  if (confirmAbandon) return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Break contract"><h2>Break contract?</h2><p>No pending reward. Fuel already spent is not refunded.</p><button data-act="contract-abandon-confirm" data-revision="${escapeHtml(confirmAbandon.revision)}" data-acceptance-id="${escapeHtml(confirmAbandon.acceptanceId)}">Break contract</button><button data-act="contract-abandon-cancel">Keep contract</button></section></div>`;
   if (pendingCombat) {
     return renderCombatModal(combatOrders || { title: pendingCombat.encounter?.name, orders: [], canCancel: !isTutorialActive(player) });
   }
@@ -485,7 +520,7 @@ function renderJoinModal(player, step) {
     </div>`;
 }
 
-function renderRoomSheet(player, room, fuel, now) {
+export function renderRoomSheet(player, room, fuel, now) {
   const assigned = room.role
     ? player.crew.find((x) => x.role === room.role && x.status !== 'expedition')
     : null;
@@ -516,6 +551,7 @@ function renderRoomSheet(player, room, fuel, now) {
 }
 
 function fuelBuyButtons(player) {
+  if (isTutorialActive(player)) return '';
   const fuel = player.wallet?.fuel || 0;
   const fuelMax = player.fuelMax || 10;
   const room = Math.max(0, fuelMax - fuel);
@@ -532,7 +568,9 @@ function roomActions(room, player) {
   const crewOpen = isFeatureUnlocked(player, 'nav_crew');
   const offer = hullRepairOffer(player);
   if (room.id === 'bridge') {
-    return '<button class="primary" data-act="goto-missions">Jump</button>';
+    return player.tutorial?.phase === 'distress'
+      ? '<button class="primary" data-act="contract-review" data-offer="offer_tutorial_distress" data-spot-target="bridge-alert">Review distress contract</button>'
+      : '<button class="primary" data-act="goto-contracts">Contracts</button>';
   }
   if (room.id === 'operations') {
     const sensors = nextUpgradeCost(player, 'sensors');
@@ -561,9 +599,11 @@ function roomActions(room, player) {
       ${hangar && weapons ? `<button data-act="ship-upgrade" data-system="weapons">Weapons ${weapons.level} · ${weapons.credits}cr</button>` : ''}`;
   }
   if (room.id === 'cargo') {
+    const contract = player.activeContract;
+    if (contract?.stage === 'return') return `<p>${escapeHtml(contract.result.summary)}</p><p>${escapeHtml(formatReward(contract.result.rewards))}</p><button class="primary" data-act="contract-claim" data-revision="${escapeHtml(contract.revision)}" data-acceptance-id="${escapeHtml(contract.acceptanceId)}">Bring it aboard</button>`;
     const cg = nextUpgradeCost(player, 'cargo');
     return `
-      <button class="primary" data-act="goto-missions">${hangar ? 'Expeditions' : 'Jump'}</button>
+      <button class="primary" data-act="goto-away">Away teams</button>
       ${fuelBuyButtons(player)}
       ${hangar && cg ? `<button data-act="ship-upgrade" data-system="cargo">Cargo ${cg.level} · ${cg.credits}cr</button>` : ''}`;
   }
@@ -959,6 +999,7 @@ function renderLog(player, log, goals) {
   const collected = new Set((player.crew || []).map((c) => c.templateId)).size;
   const rank = reputationRank(player.wallet.reputation || 0);
   return `
+    <div class="panel"><h2>Daily plan · ${dailyPlan(player).completed}/3</h2>${['contract', 'improve', 'away'].map(id => `<p>${ensureDailyLoop(player).dailyLoop[id] ? '✓' : '○'} ${escapeHtml(id)}</p>`).join('')}</div>
     <div class="panel">
       <h2>Career</h2>
       <div class="muted">${escapeHtml(rank.label)} · Ch.${prog.chapter} · ${collected} mercs · ${goalsDone}/${goals.goals.length} week</div>
