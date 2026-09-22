@@ -6,7 +6,8 @@ import {
   renderDepartureStatus,
   renderShipFeedback,
 } from '../src/ui/shipView.js';
-import { renderHotspots, renderPlatformLoginEntry } from '../src/ui/bridge.js';
+import { renderHotspots, renderMissions, renderPlatformLoginEntry } from '../src/ui/bridge.js';
+import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 import {
   crewTargetStates,
   departureActionBlocked,
@@ -217,14 +218,33 @@ syncCrewLayer(canvas, readyPlayer);
 holdCrewForDeparture(selectedIds);
 syncCrewLayer(canvas, awayPlayer);
 let changedMotionCompletions = 0;
+let changedMotionAirlockFeet = [];
+let changedMotionActorsRemoved = false;
 moveCrewToDeparture(awayPlayer, selectedIds, {
   reducedMotion: false,
-  onDone: () => { changedMotionCompletions++; syncCrewLayer(canvas, awayPlayer); },
+  onDone: () => {
+    changedMotionCompletions++;
+    shadowFeet.length = 0;
+    runFrame();
+    changedMotionAirlockFeet = shadowFeet.filter(([x, y]) => (
+      Math.abs(x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001
+      && Math.abs(y - (SPARROW_LAYOUT.anchors.airlock.y + 1)) < 0.001
+    ));
+    syncCrewLayer(canvas, awayPlayer);
+    shadowFeet.length = 0;
+    runFrame();
+    changedMotionActorsRemoved = !shadowFeet.some(([x, y]) => (
+      Math.abs(x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001
+      && Math.abs(y - (SPARROW_LAYOUT.anchors.airlock.y + 1)) < 0.001
+    ));
+  },
 });
 for (let i = 0; i < 4; i++) runFrame();
 assert.equal(changedMotionCompletions, 0, 'animated departure remains in flight');
 motion.set(true);
 assert.equal(changedMotionCompletions, 1, 'motion change snaps and completes departure');
+assert.equal(changedMotionAirlockFeet.length, selectedIds.length, 'all departing actors reach the authored Airlock final anchor');
+assert.equal(changedMotionActorsRemoved, true, 'completed departure actors are removed from the away-state canvas');
 motion.set(true);
 assert.equal(changedMotionCompletions, 1, 'motion change completion is exact once');
 
@@ -248,10 +268,31 @@ assert.equal(departureActionBlocked('select-room'), false);
 assert.equal(departureActionBlocked('close-toast'), false);
 assert.equal(departureActionBlocked('exp-start'), true);
 assert.equal(departureActionBlocked('exp-launch'), true);
+assert.equal(departureActionBlocked('exp-claim'), true);
+assert.equal(departureActionBlocked('exp-skip'), true);
+assert.equal(departureActionBlocked('exp-abort'), true);
 const departureStatus = renderDepartureStatus(true);
 assert.match(departureStatus, /role="status"/);
 assert.match(departureStatus, /aria-live="polite"/);
+assert.match(departureStatus, /id="departure-status-message"/);
 assert.match(departureStatus, /Away team boarding through Cargo/);
 assert.equal(renderDepartureStatus(false), '');
+
+const activeExpeditionPlayer = completeFreshTutorial();
+const departingAway = renderMissions(activeExpeditionPlayer, Date.now(), {
+  missionView: 'away',
+  departureInFlight: true,
+});
+const settledAway = renderMissions(activeExpeditionPlayer, Date.now(), {
+  missionView: 'away',
+  departureInFlight: false,
+});
+for (const action of ['exp-claim', 'exp-skip', 'exp-abort']) {
+  const control = departingAway.match(new RegExp(`<button[^>]*data-act="${action}"[^>]*>`))?.[0];
+  assert.ok(control?.includes('disabled'), `${action} is visibly disabled while departure is active`);
+  assert.ok(control?.includes('aria-describedby="departure-status-message"'), `${action} is explained by departure status`);
+  const settledControl = settledAway.match(new RegExp(`<button[^>]*data-act="${action}"[^>]*>`))?.[0];
+  assert.equal(settledControl?.includes('disabled'), false, `${action} is restored after departure completes`);
+}
 
 console.log('contract_ship_feedback.test.mjs OK');

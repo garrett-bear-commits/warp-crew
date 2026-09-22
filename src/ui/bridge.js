@@ -26,7 +26,7 @@ import { INTEL_TRACKS } from '../data/intel.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS, SPARROW_LAYOUT } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost } from '../data/crewRoster.js';
-import { syncCrewLayer } from './crewWalk.js';
+import { departureActionBlocked, syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying } from './combatView.js';
 import { unlockSfx } from './juice.js';
@@ -751,14 +751,17 @@ export function renderMissions(player, now, model = {}) {
   const expPanel = showExp ? `
     <div class="panel away-view">
       <h2>Away</h2>
-      ${exp ? renderActiveExpedition(player, exp, now) : planetList.map((p) => renderPlanetCard(player, p, teachDust)).join('')}
+      ${exp ? renderActiveExpedition(player, exp, now, model.departureInFlight) : planetList.map((p) => renderPlanetCard(player, p, teachDust)).join('')}
     </div>` : '<section class="panel away-view"><h2>Away</h2><p>Continue your first contract to unlock expeditions.</p></section>';
   return switcher + (view === 'away' ? expPanel : mapPanel);
 }
 
-function renderActiveExpedition(player, exp, now) {
+function renderActiveExpedition(player, exp, now, departureInFlight = false) {
   const planet = planetById(exp.payload.planetId);
   const kind = planetType(planet);
+  const departureLock = (action) => departureInFlight && departureActionBlocked(action)
+    ? 'disabled aria-describedby="departure-status-message"'
+    : '';
   const names = (exp.payload.crewInstanceIds || [])
     .map((id) => player.crew.find((c) => c.instanceId === id)?.name)
     .filter(Boolean)
@@ -772,9 +775,9 @@ function renderActiveExpedition(player, exp, now) {
         <div class="muted">${escapeHtml(names || 'crew out')}</div>
       </div>
       <div class="row" style="flex-direction:column;gap:6px">
-        <button data-act="exp-claim">Claim</button>
-        <button class="primary" data-act="exp-skip">Skip ${EXPEDITION_SKIP_GEMS}g</button>
-        <button class="danger" data-act="exp-abort">Extract</button>
+        <button data-act="exp-claim" ${departureLock('exp-claim')}>Claim</button>
+        <button class="primary" data-act="exp-skip" ${departureLock('exp-skip')}>Skip ${EXPEDITION_SKIP_GEMS}g</button>
+        <button class="danger" data-act="exp-abort" ${departureLock('exp-abort')}>Extract</button>
       </div>
     </div>
   `;

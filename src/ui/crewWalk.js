@@ -25,7 +25,7 @@ const ARRIVE = 1.2;
 const readyForShipTask = (crew) => !['expedition', 'injured', 'reserve'].includes(crew.status);
 
 export function departureActionBlocked(action) {
-  return action === 'exp-start' || action === 'exp-launch';
+  return ['exp-start', 'exp-launch', 'exp-claim', 'exp-skip', 'exp-abort'].includes(action);
 }
 
 export function crewTargetStates(player, {

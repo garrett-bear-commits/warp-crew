@@ -58,7 +58,7 @@ export function renderShipFeedback(signals = {}) {
 
 export function renderDepartureStatus(active) {
   if (!active) return '';
-  return '<div class="departure-status" role="status" aria-live="polite">Away team boarding through Cargo…</div>';
+  return '<div class="departure-status" id="departure-status-message" role="status" aria-live="polite">Away team boarding through Cargo…</div>';
 }
 
 export function renderRoomHotspot({ room, selected = false, alert = '', signal = '', level = null }) {
