@@ -78,6 +78,11 @@ assert.equal(act('exp-start', { planet: 'other' }).ok, false);
 act('exp-start', { planet: 'dustfall' });
 assert.deepEqual(player.activeExpedition.payload.crewInstanceIds, [chosen]);
 assert.equal(player.activeExpedition.payload.successChance, chance);
+assert.equal(sessionAction(player, {
+  ...ui,
+  selectedExpeditionId: 'dustfall',
+  selectedExpeditionCrewIds: [chosen],
+}, 'exp-start', { planet: 'dustfall' }).reason, 'expedition_active');
 assert.equal(player.tutorial.phase, 'done');
 assert.equal(player.dailyLoop.away, true);
 assert.equal(ui.tab, 'ship');

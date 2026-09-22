@@ -24,6 +24,10 @@ const ARRIVE = 1.2;
 
 const readyForShipTask = (crew) => !['expedition', 'injured', 'reserve'].includes(crew.status);
 
+export function departureActionBlocked(action) {
+  return action === 'exp-start' || action === 'exp-launch';
+}
+
 export function crewTargetStates(player, {
   departingCrewInstanceIds = [],
   reducedMotion: immediate = false,
@@ -95,6 +99,7 @@ function spawn(crew) {
     frame: 0,
     fps: 7,
     assignment: null,
+    authoredTarget: null,
   };
   agents.set(a.id, a);
   return a;
@@ -139,12 +144,13 @@ function beginWalk(a, destId) {
 }
 
 function assignmentKey(target) {
-  return `${target.mode}:${target.roomId}`;
+  return `${target.mode}:${target.roomId}:${target.immediate ? 'immediate' : 'animated'}`;
 }
 
 function finishDepartureActor(a) {
-  if (!activeDeparture || !a.assignment?.startsWith('expedition-departure')) return;
+  if (!activeDeparture?.pending.has(a.id)) return;
   a.assignment = 'departure-complete';
+  a.authoredTarget = null;
   activeDeparture.pending.delete(a.id);
   if (activeDeparture.pending.size) return;
   const done = activeDeparture.onDone;
@@ -154,6 +160,7 @@ function finishDepartureActor(a) {
 
 function beginAuthoredTarget(a, target) {
   a.assignment = assignmentKey(target);
+  a.authoredTarget = target;
   const final = target.anchors.at(-1);
   if (target.immediate) {
     a.x = final.x;
@@ -417,8 +424,31 @@ function tick(sim, dt) {
 }
 
 function setReducedMotion(event) {
-  reducedMotion = Boolean(event?.matches);
-  if (reducedMotion) particles.length = 0;
+  const next = Boolean(event?.matches);
+  reducedMotion = next;
+  if (next) {
+    particles.length = 0;
+    const departureIds = activeDeparture ? [...activeDeparture.pending] : [];
+    for (const id of departureIds) {
+      const a = agents.get(id);
+      if (a?.authoredTarget) beginAuthoredTarget(a, { ...a.authoredTarget, immediate: true });
+    }
+    for (const a of agents.values()) {
+      if (a.assignment?.startsWith('contract-station') && a.authoredTarget) {
+        beginAuthoredTarget(a, { ...a.authoredTarget, immediate: true });
+      }
+    }
+    for (const id of departureIds) {
+      const a = agents.get(id);
+      if (a) finishDepartureActor(a);
+    }
+    return;
+  }
+  for (const a of agents.values()) {
+    if (!a.assignment?.startsWith('contract-station') || !a.authoredTarget) continue;
+    a.authoredTarget = { ...a.authoredTarget, immediate: false };
+    a.assignment = assignmentKey(a.authoredTarget);
+  }
 }
 
 export function setBattleStations(on) {
@@ -449,9 +479,7 @@ export function moveCrewToDeparture(player, crewInstanceIds, {
   });
   const visible = targets.filter((target) => agents.has(target.crewInstanceId));
   if (immediate) particles.length = 0;
-  if (!visible.length || immediate) {
-    for (const target of visible) beginAuthoredTarget(agents.get(target.crewInstanceId), target);
-    for (const target of visible) agents.get(target.crewInstanceId).assignment = 'departure-complete';
+  if (!visible.length) {
     onDone?.();
     return targets;
   }
@@ -460,6 +488,9 @@ export function moveCrewToDeparture(player, crewInstanceIds, {
     onDone,
   };
   for (const target of visible) beginAuthoredTarget(agents.get(target.crewInstanceId), target);
+  if (immediate) {
+    for (const target of visible) finishDepartureActor(agents.get(target.crewInstanceId));
+  }
   return targets;
 }
 
@@ -501,6 +532,7 @@ export function syncCrewLayer(el, player) {
     if (target && a.assignment !== assignmentKey(target)) beginAuthoredTarget(a, target);
     else if (!target && a.assignment?.startsWith('contract-station')) {
       a.assignment = null;
+      a.authoredTarget = null;
       a.state = 'idle';
       a.timer = 0;
     }

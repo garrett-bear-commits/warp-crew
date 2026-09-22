@@ -1313,6 +1313,27 @@ button:focus-visible {
   z-index: 28;
   pointer-events: none;
 }
+
+[data-slot="departure-status"] {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(70px + env(safe-area-inset-bottom));
+  z-index: 27;
+  pointer-events: none;
+}
+.departure-status {
+  width: fit-content;
+  margin: 0 auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(92, 225, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(7, 9, 14, 0.92);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
+}
 [data-slot="toast"] .reward-toast { pointer-events: auto; }
 .reward-toast {
   display: flex;

@@ -43,7 +43,7 @@ import {
   skipOrders,
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
-import { holdCrewForDeparture, moveCrewToDeparture, stopCrewSim } from './ui/crewWalk.js';
+import { departureActionBlocked, holdCrewForDeparture, moveCrewToDeparture, stopCrewSim } from './ui/crewWalk.js';
 import { playCombat, isBattlePlaying } from './ui/combatView.js';
 import { sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
@@ -290,6 +290,7 @@ function render() {
     shopProducts,
     artReady,
     toast,
+    departureInFlight,
     handlers: {
       setTab: (t) => {
         if (isBattlePlaying()) return;
@@ -404,7 +405,7 @@ function doHire({ gems = false, ten = false } = {}) {
 }
 
 async function handleAction(act, data = {}) {
-  if (isBattlePlaying() || departureInFlight) return;
+  if (isBattlePlaying() || (departureInFlight && departureActionBlocked(act))) return;
   // Tutorial CTAs navigate to or invoke the same production actions as the board.
   if (['tutorial-next', 'tutorial-go', 'tutorial-jump'].includes(act)) {
     const phase = player.tutorial?.phase;

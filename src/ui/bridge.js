@@ -31,7 +31,7 @@ import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying } from './combatView.js';
 import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
-import { contractShipSignals, renderRoomHotspot, renderShipFeedback } from './shipView.js';
+import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
@@ -148,6 +148,7 @@ function buildShell() {
       <div class="detail-scroll" data-slot="detail"></div>
       <nav class="bottom-nav" data-slot="nav"></nav>
       <div data-slot="toast"></div>
+      <div data-slot="departure-status"></div>
       <div data-slot="coach"></div>
       <div data-slot="modal"></div>
     </div>
@@ -173,6 +174,7 @@ function patchShell(root, ctx) {
     cinematic = null,
     shopProducts = null,
     toast = null,
+    departureInFlight = false,
     now = Date.now(),
   } = ctx;
   const fuel = fuelStatus(player, now);
@@ -212,6 +214,7 @@ function patchShell(root, ctx) {
   root.querySelector('.wc-shell')?.classList.toggle('tab-home', isHome);
   root.querySelector('.wc-shell')?.classList.toggle('in-battle', fighting);
   root.querySelector('.wc-shell')?.setAttribute('data-phase', phase);
+  root.querySelector('.wc-shell')?.setAttribute('aria-busy', departureInFlight ? 'true' : 'false');
   root.querySelector('.bottom-nav')?.style.setProperty('--nav-cols', String(tabs.length));
   root.querySelector('.hud-bar')?.style.setProperty('--hud-cols', String(chips.length));
 
@@ -223,6 +226,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
+  setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
     && tab !== 'missions' && !cinematic && !selectedCrewId && player.flags?.splashSeen
     && (coachStep.cta || coachStep.body);

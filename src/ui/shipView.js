@@ -56,6 +56,11 @@ export function renderShipFeedback(signals = {}) {
     </div>`;
 }
 
+export function renderDepartureStatus(active) {
+  if (!active) return '';
+  return '<div class="departure-status" role="status" aria-live="polite">Away team boarding through Cargo…</div>';
+}
+
 export function renderRoomHotspot({ room, selected = false, alert = '', signal = '', level = null }) {
   const tag = level == null ? room.label : `${room.label} ${level}`;
   const state = contractSignalLabel(signal) || alertLabel(alert);
