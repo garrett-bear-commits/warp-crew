@@ -686,10 +686,10 @@
               "disabled": false,
               "x": 182.90625,
               "y": 266.125,
-              "width": 137.65625,
+              "width": 130.796875,
               "height": 55.1875,
               "bottom": 321.3125,
-              "right": 320.5625,
+              "right": 313.703125,
               "clip": {
                 "left": 10,
                 "top": 66,
@@ -710,7 +710,7 @@
             },
             {
               "text": "Bring it aboard",
-              "fontSize": 16,
+              "fontSize": 15,
               "source": "control",
               "action": "contract-claim"
             },
@@ -756,7 +756,7 @@
           },
           "scrollWidth": 390,
           "reduced": false,
-          "pass": true
+          "pass": false
         },
         {
           "label": "three-card-board",
@@ -1894,10 +1894,10 @@
               "disabled": false,
               "x": 192.5,
               "y": 266.125,
-              "width": 137.65625,
+              "width": 130.796875,
               "height": 55.1875,
               "bottom": 321.3125,
-              "right": 330.15625,
+              "right": 323.296875,
               "clip": {
                 "left": 10,
                 "top": 66,
@@ -1918,7 +1918,7 @@
             },
             {
               "text": "Bring it aboard",
-              "fontSize": 16,
+              "fontSize": 15,
               "source": "control",
               "action": "contract-claim"
             },
@@ -1964,7 +1964,7 @@
           },
           "scrollWidth": 390,
           "reduced": false,
-          "pass": true
+          "pass": false
         },
         {
           "label": "away-destinations",
@@ -3579,20 +3579,20 @@
           "labels": [
             {
               "text": "Cargo Hold 1",
-              "x": 89.203125,
-              "y": 489.359375,
-              "right": 193.765625,
-              "bottom": 533.359375,
+              "x": 89.484375,
+              "y": 489.078125,
+              "right": 194.046875,
+              "bottom": 533.078125,
               "width": 104.5625,
               "height": 44,
               "clip": {
-                "left": 0,
-                "top": 58,
-                "right": 390,
-                "bottom": 779
+                "left": 99.453125,
+                "top": 458.29875000000004,
+                "right": 183.53437499999998,
+                "bottom": 564.42875
               },
               "pointerEvents": "none",
-              "fullyVisible": true
+              "fullyVisible": false
             }
           ]
         },
@@ -3601,37 +3601,37 @@
           "labels": [
             {
               "text": "Operations 0",
-              "x": 93.3359375,
-              "y": 277.09375,
-              "right": 201.1015625,
-              "bottom": 321.09375,
+              "x": 93.5859375,
+              "y": 277.453125,
+              "right": 201.3515625,
+              "bottom": 321.453125,
               "width": 107.765625,
               "height": 44,
               "clip": {
-                "left": 0,
-                "top": 58,
-                "right": 390,
-                "bottom": 779
+                "left": 110.91875000000002,
+                "top": 252.671875,
+                "right": 183.53437499999998,
+                "bottom": 345.535625
               },
               "pointerEvents": "none",
-              "fullyVisible": true
+              "fullyVisible": false
             },
             {
               "text": "Cargo Hold 1",
-              "x": 89.203125,
-              "y": 489.359375,
-              "right": 193.765625,
-              "bottom": 533.359375,
+              "x": 89.484375,
+              "y": 489.078125,
+              "right": 194.046875,
+              "bottom": 533.078125,
               "width": 104.5625,
               "height": 44,
               "clip": {
-                "left": 0,
-                "top": 58,
-                "right": 390,
-                "bottom": 779
+                "left": 99.453125,
+                "top": 458.29875000000004,
+                "right": 183.53437499999998,
+                "bottom": 564.42875
               },
               "pointerEvents": "none",
-              "fullyVisible": true
+              "fullyVisible": false
             }
           ]
         }
@@ -4236,10 +4236,10 @@
               "disabled": false,
               "x": 182.90625,
               "y": 289.3125,
-              "width": 137.65625,
+              "width": 130.796875,
               "height": 55.1875,
               "bottom": 344.5,
-              "right": 320.5625,
+              "right": 313.703125,
               "clip": {
                 "left": 10,
                 "top": 66,
@@ -4260,7 +4260,7 @@
             },
             {
               "text": "Bring it aboard",
-              "fontSize": 16,
+              "fontSize": 15,
               "source": "control",
               "action": "contract-claim"
             },
@@ -4306,7 +4306,7 @@
           },
           "scrollWidth": 360,
           "reduced": false,
-          "pass": true
+          "pass": false
         },
         {
           "label": "three-card-board",
@@ -5444,10 +5444,10 @@
               "disabled": false,
               "x": 192.5,
               "y": 289.3125,
-              "width": 137.65625,
+              "width": 130.796875,
               "height": 55.1875,
               "bottom": 344.5,
-              "right": 330.15625,
+              "right": 323.296875,
               "clip": {
                 "left": 10,
                 "top": 66,
@@ -5468,7 +5468,7 @@
             },
             {
               "text": "Bring it aboard",
-              "fontSize": 16,
+              "fontSize": 15,
               "source": "control",
               "action": "contract-claim"
             },
@@ -5514,7 +5514,7 @@
           },
           "scrollWidth": 360,
           "reduced": false,
-          "pass": true
+          "pass": false
         },
         {
           "label": "away-destinations",
@@ -7129,20 +7129,20 @@
           "labels": [
             {
               "text": "Cargo Hold 1",
-              "x": 78.3125,
-              "y": 461.6875,
-              "right": 182.875,
-              "bottom": 505.6875,
+              "x": 78.59375,
+              "y": 461.40625,
+              "right": 183.15625,
+              "bottom": 505.40625,
               "width": 104.5625,
               "height": 44,
               "clip": {
-                "left": 0,
-                "top": 58,
-                "right": 360,
-                "bottom": 735
+                "left": 91.79296875,
+                "top": 433.86187500000005,
+                "right": 169.40828125,
+                "bottom": 533.514375
               },
               "pointerEvents": "none",
-              "fullyVisible": true
+              "fullyVisible": false
             }
           ]
         },
@@ -7151,37 +7151,37 @@
           "labels": [
             {
               "text": "Operations 0",
-              "x": 82.0078125,
-              "y": 262.375,
-              "right": 189.7734375,
-              "bottom": 306.375,
+              "x": 82.2578125,
+              "y": 262.734375,
+              "right": 190.0234375,
+              "bottom": 306.734375,
               "width": 107.765625,
               "height": 44,
               "clip": {
-                "left": 0,
-                "top": 58,
-                "right": 360,
-                "bottom": 735
+                "left": 102.37687500000001,
+                "top": 240.78515625,
+                "right": 169.40828125,
+                "bottom": 327.98109375
               },
               "pointerEvents": "none",
-              "fullyVisible": true
+              "fullyVisible": false
             },
             {
               "text": "Cargo Hold 1",
-              "x": 78.3125,
-              "y": 461.6875,
-              "right": 182.875,
-              "bottom": 505.6875,
+              "x": 78.59375,
+              "y": 461.40625,
+              "right": 183.15625,
+              "bottom": 505.40625,
               "width": 104.5625,
               "height": 44,
               "clip": {
-                "left": 0,
-                "top": 58,
-                "right": 360,
-                "bottom": 735
+                "left": 91.79296875,
+                "top": 433.86187500000005,
+                "right": 169.40828125,
+                "bottom": 533.514375
               },
               "pointerEvents": "none",
-              "fullyVisible": true
+              "fullyVisible": false
             }
           ]
         }
@@ -7254,7 +7254,166 @@
       "exceptions": []
     }
   ],
-  "failures": [],
+  "failures": [
+    {
+      "viewport": "390x844",
+      "label": "tutorial-cargo-claim",
+      "message": "text Bring it aboard: 15px"
+    },
+    {
+      "viewport": "390x844",
+      "label": "normal-cargo-claim",
+      "message": "text Bring it aboard: 15px"
+    },
+    {
+      "viewport": "390x844",
+      "label": "room-label",
+      "state": "daily-plan",
+      "message": "clipped Cargo Hold 1",
+      "evidence": {
+        "text": "Cargo Hold 1",
+        "x": 89.484375,
+        "y": 489.078125,
+        "right": 194.046875,
+        "bottom": 533.078125,
+        "width": 104.5625,
+        "height": 44,
+        "clip": {
+          "left": 99.453125,
+          "top": 458.29875000000004,
+          "right": 183.53437499999998,
+          "bottom": 564.42875
+        },
+        "pointerEvents": "none",
+        "fullyVisible": false
+      }
+    },
+    {
+      "viewport": "390x844",
+      "label": "room-label",
+      "state": "improvement-ready",
+      "message": "clipped Operations 0",
+      "evidence": {
+        "text": "Operations 0",
+        "x": 93.5859375,
+        "y": 277.453125,
+        "right": 201.3515625,
+        "bottom": 321.453125,
+        "width": 107.765625,
+        "height": 44,
+        "clip": {
+          "left": 110.91875000000002,
+          "top": 252.671875,
+          "right": 183.53437499999998,
+          "bottom": 345.535625
+        },
+        "pointerEvents": "none",
+        "fullyVisible": false
+      }
+    },
+    {
+      "viewport": "390x844",
+      "label": "room-label",
+      "state": "improvement-ready",
+      "message": "clipped Cargo Hold 1",
+      "evidence": {
+        "text": "Cargo Hold 1",
+        "x": 89.484375,
+        "y": 489.078125,
+        "right": 194.046875,
+        "bottom": 533.078125,
+        "width": 104.5625,
+        "height": 44,
+        "clip": {
+          "left": 99.453125,
+          "top": 458.29875000000004,
+          "right": 183.53437499999998,
+          "bottom": 564.42875
+        },
+        "pointerEvents": "none",
+        "fullyVisible": false
+      }
+    },
+    {
+      "viewport": "360x800",
+      "label": "tutorial-cargo-claim",
+      "message": "text Bring it aboard: 15px"
+    },
+    {
+      "viewport": "360x800",
+      "label": "normal-cargo-claim",
+      "message": "text Bring it aboard: 15px"
+    },
+    {
+      "viewport": "360x800",
+      "label": "room-label",
+      "state": "daily-plan",
+      "message": "clipped Cargo Hold 1",
+      "evidence": {
+        "text": "Cargo Hold 1",
+        "x": 78.59375,
+        "y": 461.40625,
+        "right": 183.15625,
+        "bottom": 505.40625,
+        "width": 104.5625,
+        "height": 44,
+        "clip": {
+          "left": 91.79296875,
+          "top": 433.86187500000005,
+          "right": 169.40828125,
+          "bottom": 533.514375
+        },
+        "pointerEvents": "none",
+        "fullyVisible": false
+      }
+    },
+    {
+      "viewport": "360x800",
+      "label": "room-label",
+      "state": "improvement-ready",
+      "message": "clipped Operations 0",
+      "evidence": {
+        "text": "Operations 0",
+        "x": 82.2578125,
+        "y": 262.734375,
+        "right": 190.0234375,
+        "bottom": 306.734375,
+        "width": 107.765625,
+        "height": 44,
+        "clip": {
+          "left": 102.37687500000001,
+          "top": 240.78515625,
+          "right": 169.40828125,
+          "bottom": 327.98109375
+        },
+        "pointerEvents": "none",
+        "fullyVisible": false
+      }
+    },
+    {
+      "viewport": "360x800",
+      "label": "room-label",
+      "state": "improvement-ready",
+      "message": "clipped Cargo Hold 1",
+      "evidence": {
+        "text": "Cargo Hold 1",
+        "x": 78.59375,
+        "y": 461.40625,
+        "right": 183.15625,
+        "bottom": 505.40625,
+        "width": 104.5625,
+        "height": 44,
+        "clip": {
+          "left": 91.79296875,
+          "top": 433.86187500000005,
+          "right": 169.40828125,
+          "bottom": 533.514375
+        },
+        "pointerEvents": "none",
+        "fullyVisible": false
+      }
+    }
+  ],
   "reducedMotion": [
     {
       "viewport": "390x844",

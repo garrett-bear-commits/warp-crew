@@ -115,7 +115,7 @@ async function openPage(width, height, reduced = false) {
         const fullyVisible=box.x>=clip.left-1 && box.right<=clip.right+1 && box.y>=clip.top-1 && box.bottom<=clip.bottom+1;
         return {label:el.getAttribute('aria-label')||el.innerText, action:el.dataset.act||el.dataset.tab, disabled:el.disabled, ...box, clip, fullyVisible, reachable, targetPass:box.width>=44 && box.height>=44};
       });
-      const text = [...(scope.matches('.daily-plan-chip')?[scope]:[]),...scope.querySelectorAll('p, h2, h3, dt, dd, .party-row strong, .party-row span span, .sheet-actions p, .mission-card b, .mission-card .muted')].filter(el=>el.getBoundingClientRect().width).map(el=>({text:el.innerText,fontSize:parseFloat(getComputedStyle(el).fontSize)}));
+      const text = [...new Set([...buttons,...scope.querySelectorAll('p, h2, h3, dt, dd, .party-row strong, .party-row span span, .sheet-actions p, .mission-card b, .mission-card .muted')])].filter(el=>el.getBoundingClientRect().width).map(el=>({text:el.innerText||el.value||el.getAttribute('aria-label'),fontSize:parseFloat(getComputedStyle(el).fontSize),source:buttons.includes(el)?'control':'content',action:el.dataset.act||el.dataset.tab||null}));
       const sheets=[...document.querySelectorAll('.contract-sheet,.room-sheet')].map(el=>({ ...rect(el), scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,withinViewport:el.getBoundingClientRect().y>=0 && el.getBoundingClientRect().bottom<=navTop && el.getBoundingClientRect().x>=0 && el.getBoundingClientRect().right<=innerWidth }));
       for(const el of document.querySelectorAll('*')) { if(el.scrollTop) el.scrollTop=0; if(el.scrollLeft) el.scrollLeft=0; }
       const ship=document.querySelector('.ship-fit');
@@ -128,6 +128,7 @@ async function openPage(width, height, reduced = false) {
       ...measurement.text.filter(x=>x.fontSize<16).map(x=>`text ${x.text}: ${x.fontSize}px`),
       ...measurement.sheets.filter(x=>!x.withinViewport).map(x=>`sheet outside safe navigation region: ${JSON.stringify(x)}`),
     ];
+    assert.equal(measurement.text.filter(x=>x.source==='control').length,measurement.targets.length,`${label}: every measured control has a font sample`);
     report.failures.push(...checks.map(message=>({viewport:`${width}x${height}`,label,message})));
     return {label,...measurement,pass:checks.length===0};
   }
@@ -142,6 +143,28 @@ async function run(width,height) {
   report.scenarios.push(scenario);
   const observe=async(label,root,name)=>{scenario.measurements.push(await page.measure(label,root)); if(name) scenario.captures.push(await page.capture(name));};
   const supplementary=name=>`contracts-runtime/${name}-${width}x${height}.png`;
+  async function checkRoomLabels(label) {
+    const labels=await page.evaluate(`(()=>[...document.querySelectorAll('.room-tag')].filter(el=>Number(getComputedStyle(el).opacity)>0).map(el=>{
+      const b=el.getBoundingClientRect();
+      const box={x:b.x,y:b.y,right:b.right,bottom:b.bottom,width:b.width,height:b.height};
+      const clip={left:0,top:0,right:innerWidth,bottom:document.querySelector('.bottom-nav').getBoundingClientRect().top};
+      for(let p=el.parentElement;p;p=p.parentElement){
+        const s=getComputedStyle(p),r=p.getBoundingClientRect();
+        if(/hidden|clip|scroll|auto/.test(s.overflowX)){clip.left=Math.max(clip.left,r.left);clip.right=Math.min(clip.right,r.right);}
+        if(/hidden|clip|scroll|auto/.test(s.overflowY)){clip.top=Math.max(clip.top,r.top);clip.bottom=Math.min(clip.bottom,r.bottom);}
+        if(s.clipPath.startsWith('polygon(')){
+          const points=s.clipPath.match(/-?[\\d.]+/g).map(Number),xs=points.filter((_,i)=>i%2===0),ys=points.filter((_,i)=>i%2===1);
+          clip.left=Math.max(clip.left,r.left+Math.min(...xs)/100*r.width);clip.right=Math.min(clip.right,r.left+Math.max(...xs)/100*r.width);
+          clip.top=Math.max(clip.top,r.top+Math.min(...ys)/100*r.height);clip.bottom=Math.min(clip.bottom,r.top+Math.max(...ys)/100*r.height);
+        }
+      }
+      return {text:el.innerText,...box,clip,pointerEvents:getComputedStyle(el).pointerEvents,fullyVisible:b.x>=clip.left-1&&b.right<=clip.right+1&&b.y>=clip.top-1&&b.bottom<=clip.bottom+1};
+    }))()`);
+    (scenario.roomLabels??=[]).push({label,labels});
+    assert.ok(labels.length>0,'expected a visible room label');
+    assert.ok(labels.every(value=>value.pointerEvents==='none'),'room labels cannot steal hotspot input');
+    for(const value of labels) if(!value.fullyVisible) report.failures.push({viewport:scenario.viewport,label:'room-label',state:label,message:`clipped ${value.text}`,evidence:value});
+  }
   const phase=async()=>scenario.phases.push((await page.state()).tutorial.phase);
   await phase();
   await page.click('[data-tab="missions"]');
@@ -238,9 +261,11 @@ async function run(width,height) {
   scenario.away={job:away.activeExpedition,crew:away.crew.map(x=>({id:x.instanceId,status:x.status})),wallet:away.wallet,daily:away.dailyLoop};
   await page.click('[data-tab="ship"]');
   await observe('daily-plan','.daily-plan-chip',width===390?'daily-plan-390x844.png':supplementary('daily-plan'));
+  await checkRoomLabels('daily-plan');
   const ship=scenario.measurements.at(-1).ship;
   assert.ok(ship.x>=0 && ship.right<=width, 'daily chip preserves full ship horizontal bounds');
   await page.click('[data-act="daily-improve"]');
+  await checkRoomLabels('improvement-ready');
   scenario.captures.push(await page.capture(supplementary('improvement-ready')));
   const improveBefore=await page.state();
   await page.click('.room-sheet [data-act="ship-upgrade"]');

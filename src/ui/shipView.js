@@ -77,8 +77,9 @@ export function renderRoomHotspot({ room, selected = false, alert = '', signal =
       data-act="select-room" data-room="${escapeHtml(room.id)}"
       style="${roomStyle(room)}"
       aria-label="${escapeHtml(aria)}">
-      <span class="room-tag">${escapeHtml(tag)}</span>
       ${alert ? `<span class="pip ${escapeHtml(alert)}"></span>` : ''}
       ${signal ? `<span class="ship-signal" aria-hidden="true">${signal === 'route' ? 'ROUTE' : 'REWARD'}</span>` : ''}
-    </button>`;
+    </button>
+    <span class="room-tag" data-room-label="${escapeHtml(room.id)}" aria-hidden="true"
+      style="--label-x:${room.labelAnchor.x}%;--label-y:${room.labelAnchor.y}%">${escapeHtml(tag)}</span>`;
 }
