@@ -3,7 +3,7 @@ import { fuelStatus } from '../systems/fuel.js';
 import { formatDuration } from '../shared/timer.js';
 import { visibleNodes, nodesBySector, nodeMeta, typicalPayout } from '../data/sectors.js';
 import { EXPEDITION_SKIP_GEMS, visiblePlanets, previewExpedition, planetById } from '../systems/expedition.js';
-import { ASSISTS, listAssists, crewPower, combatWinChance, ASSIST_CAP } from '../systems/combat.js';
+import { crewPower } from '../systems/combat.js';
 import { storyProgress } from '../systems/story.js';
 import { SHIPS, SHIP_SYSTEMS, SYSTEM_LABEL } from '../data/ships.js';
 import { listOwnedHulls, nextUpgradeCost, canBuyHull } from '../systems/hangar.js';
@@ -19,7 +19,7 @@ import {
   sessionHint,
 } from '../systems/tutorial.js';
 import { readyCrew, fightingCrew } from '../systems/player.js';
-import { portraitFor, shipArtFor, SPACE_ART, SWARM_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
+import { portraitFor, shipArtFor, SPACE_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
 import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP } from '../systems/gacha.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
@@ -35,6 +35,7 @@ import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
 import { renderRoomHotspot } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
+import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker } from './contractView.js';
 
 const NAV_ICO = {
   ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
@@ -86,10 +87,6 @@ function bindOnce(root) {
       handlers.onAction('close-crew');
       return;
     }
-    const assistBtn = ev.target.closest('[data-assist]');
-    if (assistBtn && root.contains(assistBtn)) {
-      handlers.toggleAssist(assistBtn.getAttribute('data-assist'));
-    }
   });
 }
 
@@ -135,7 +132,9 @@ function patchShell(root, ctx) {
     log,
     tab,
     pendingCombat = null,
-    selectedAssists = [],
+    combatOrders = null,
+    contractReview = null,
+    awayPicker = null,
     selectedRoom = null,
     selectedCrewId = null,
     cinematic = null,
@@ -188,12 +187,12 @@ function patchShell(root, ctx) {
   setSlot(root, 'hud', renderHud(player, fuel, chips));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
-  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, selectedAssists, step, selectedCrewId, cinematic }));
+  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, hint, isHome }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
-    && !cinematic && !selectedCrewId && player.flags?.splashSeen
+    && tab !== 'missions' && !cinematic && !selectedCrewId && player.flags?.splashSeen
     && (coachStep.cta || coachStep.body);
   setSlot(root, 'coach', showCoach ? renderCoach(coachStep) : '');
 
@@ -203,7 +202,7 @@ function patchShell(root, ctx) {
 
   if (!isHome) {
     const detail = `${emptyHints(player, fuel, tab)}
-          ${tab === 'missions' ? renderMissions(player, now) : ''}
+          ${tab === 'missions' ? renderMissions(player, now, ctx) : ''}
           ${tab === 'crew' ? renderCrew(player) : ''}
           ${tab === 'shop' ? renderShop(player, shopProducts) : ''}
           ${tab === 'log' ? renderLog(player, log, goals) : ''}`;
@@ -332,12 +331,14 @@ function renderToast(toast) {
     </div>`;
 }
 
-function renderModals(player, { pendingCombat, selectedAssists, step, selectedCrewId, cinematic }) {
+function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic }) {
   if (!player.flags?.splashSeen) return renderSplash();
   if (cinematic) return renderCinematic(cinematic);
   if (pendingCombat) {
-    return renderCombatModal(pendingCombat, selectedAssists, isTutorialActive(player));
+    return renderCombatModal(combatOrders || { title: pendingCombat.encounter?.name, orders: [], canCancel: !isTutorialActive(player) });
   }
+  if (contractReview) return renderContractReview(contractReview);
+  if (awayPicker) return renderAwayPicker(awayPicker);
   if (selectedCrewId) return renderDossier(player, selectedCrewId);
   if (step?.modal === 'victory') return renderVictoryModal(player, step);
   if (step?.modal === 'recruit') return renderRecruitModal(player, step);
@@ -643,46 +644,11 @@ function emptyHints(player, fuel, tab) {
   return `<div class="empty-hint">${bits.map(escapeHtml).join(' ')}</div>`;
 }
 
-function renderCombatModal(pending, selectedAssists, tutorial = false) {
-  const assists = listAssists({ tutorial });
-  const assistPower = selectedAssists.reduce((s, id) => s + (ASSISTS[id]?.power || 0), 0);
-  const you = (pending.playerPower || 0) + assistPower;
-  const them = pending.encounter.power;
-  const odds = tutorial ? 1 : combatWinChance(you, them);
-  const pct = Math.round(odds * 100);
-  const tone = tutorial || pct >= 58 ? 'good' : pct >= 42 ? 'mid' : 'bad';
-  const art = SPACE_ART.pirate || SWARM_ART;
-  const win = pending.encounter.rewards ? formatReward(pending.encounter.rewards) : '';
-  return `
-    <div class="modal-backdrop combat-backdrop">
-      <div class="combat-sheet">
-        <div class="combat-head">
-          <img class="swarm-art" src="${art}" alt="" />
-          <div>
-            <h2>${escapeHtml(pending.encounter.name)}</h2>
-            <div class="muted">${escapeHtml(pending.node.name)} · −${pending.fuelCost}F${win ? ` · ${escapeHtml(win)}` : ''}</div>
-          </div>
-        </div>
-        <div class="odds-row ${tone}">
-          <span>You ${you}</span>
-          <b class="odds">${tutorial ? 'Sure' : pct + '%'}</b>
-          <span>Them ${them}</span>
-        </div>
-        <div class="odds-bar ${tone}"><span style="width:${tutorial ? 100 : pct}%"></span></div>
-        ${tutorial ? '' : `<div class="muted">Pick up to ${ASSIST_CAP}</div>`}
-        <div class="row">
-          ${assists.map((a) => `
-            <button data-assist="${a.id}" class="${selectedAssists.includes(a.id) ? 'primary' : ''}">
-              ${escapeHtml(a.name)} +${a.power}
-            </button>
-          `).join('')}
-        </div>
-        <div class="row" style="margin-top:12px">
-          <button class="primary spot-glow" data-act="combat-confirm" data-spot-target="combat-engage">Engage</button>
-          ${tutorial ? '' : '<button data-act="combat-cancel">Abort</button>'}
-        </div>
-      </div>
-    </div>`;
+export function renderCombatModal(model = {}) {
+  return `<div class="modal-backdrop combat-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Combat orders">
+    ${renderCombatOrders(model)}
+    ${model.canCancel ? '<button type="button" data-act="combat-cancel">Abort</button>' : ''}
+  </section></div>`;
 }
 
 function renderNodeCard(n, player, here, step) {
@@ -698,7 +664,7 @@ function renderNodeCard(n, player, here, step) {
   return `
     <button class="map-node hazard-${meta.hazard}${worn} ${hereCls} ${spot}" data-act="travel-to" data-node="${n.id}"
       data-spot-target="node-${n.id}"
-      ${n.id === here ? 'disabled' : ''}>
+      ${n.id === here || player.activeContract ? 'disabled' : ''} ${player.activeContract ? 'aria-describedby="explore-contract-lock"' : ''}>
       <img class="node-thumb" src="${art}" alt="" />
       <span class="map-title">${escapeHtml(n.name)}</span>
       <span class="map-meta">${cost}F · ${escapeHtml(hint)}${decay}</span>
@@ -707,7 +673,16 @@ function renderNodeCard(n, player, here, step) {
   `;
 }
 
-function renderMissions(player, now) {
+export function renderMissions(player, now, model = {}) {
+  const view = ['contracts', 'away', 'explore'].includes(model.missionView) ? model.missionView : 'contracts';
+  const switcher = renderMissionSwitcher(view);
+  if (view === 'contracts') {
+    const board = model.contractBoard || player.contractBoard || { offers: [] };
+    const content = player.activeContract
+      ? renderActiveContract(model.activeContractView || player.activeContract)
+      : renderContractBoard({ ...board, offers: (board.offers || []).map((offer) => ({ ...offer, completed: offer.completed || (board.completedOfferIds || []).includes(offer.id) })) });
+    return switcher + content;
+  }
   const exp = player.activeExpedition;
   const here = player.location;
   const nodes = visibleNodes(player, now);
@@ -715,7 +690,7 @@ function renderMissions(player, now) {
   const showExp = isFeatureUnlocked(player, 'expeditions');
   const step = currentTutorialStep(player);
   const tight = isTutorialActive(player) && !isFeatureUnlocked(player, 'map_extra');
-  const teachDust = player.tutorial?.ordersBeat === 'exp';
+  const teachDust = isTutorialActive(player);
   const planetList = teachDust ? planets.filter((p) => p.id === 'dustfall') : planets;
   const { spur, veil, ember, hollow, crown } = nodesBySector(nodes);
 
@@ -727,7 +702,8 @@ function renderMissions(player, now) {
 
   const mapPanel = `
     <div class="panel">
-      <h2>${tight ? 'Jump' : 'Map'}</h2>
+      <h2>Explore</h2>
+      ${player.activeContract ? '<p class="contract-consequence" id="explore-contract-lock">Finish or abandon the active contract first.</p>' : ''}
       ${nodes.length === 0 ? '<div class="empty-hint">No routes.</div>' : ''}
       ${tight ? `<div class="map-grid">${nodes.map((n) => renderNodeCard(n, player, here, step)).join('')}</div>`
         : mapBlock('Spur', spur)
@@ -738,11 +714,11 @@ function renderMissions(player, now) {
     </div>`;
 
   const expPanel = showExp ? `
-    <div class="panel">
-      <h2>Expeditions</h2>
+    <div class="panel away-view">
+      <h2>Away</h2>
       ${exp ? renderActiveExpedition(player, exp, now) : planetList.map((p) => renderPlanetCard(player, p, teachDust)).join('')}
-    </div>` : '';
-  return teachDust ? expPanel + mapPanel : mapPanel + expPanel;
+    </div>` : '<section class="panel away-view"><h2>Away</h2><p>Continue your first contract to unlock expeditions.</p></section>';
+  return switcher + (view === 'away' ? expPanel : mapPanel);
 }
 
 function renderActiveExpedition(player, exp, now) {
@@ -772,17 +748,20 @@ function renderActiveExpedition(player, exp, now) {
 function renderPlanetCard(player, p, teachDust) {
   const prev = previewExpedition(player, p.id);
   const kind = planetType(p);
-  const names = prev.crew.map((c) => c.name).join(', ') || '—';
   const win = formatReward(prev.win);
+  const fail = formatReward(prev.fail);
   const mins = p.minutes || 15;
   return `
     <div class="mission-card ${teachDust && p.id === 'dustfall' ? 'spot-glow' : ''}">
       <img class="planet-art" src="${planetArtFor(kind.art)}" alt="" />
       <div>
         <b>${escapeHtml(p.name)}</b>
-        <div class="muted">${(prev.chance * 100) | 0}% · ${mins}m · ${escapeHtml(win)} · ${escapeHtml(names)}</div>
+        <p>Preferred role: ${escapeHtml(p.prefRole || 'Any')}</p>
+        <p>Recommended crew: ${(prev.chance * 100) | 0}% success · ${mins}m</p>
+        <p>Success: ${escapeHtml(win)} · Failure: ${escapeHtml(fail)}</p>
+        <p>Injury risk: crew may return injured on failure.</p>
       </div>
-      <button class="primary" data-act="exp-start" data-planet="${p.id}" data-spot-target="exp-${p.id}" ${prev.crew.length ? '' : 'disabled'}>Launch</button>
+      <button class="primary" data-act="exp-choose" data-planet="${p.id}" data-spot-target="exp-${p.id}" ${prev.crew.length ? '' : 'disabled'}>Choose crew</button>
     </div>
   `;
 }
