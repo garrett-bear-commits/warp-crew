@@ -17,6 +17,7 @@ let battle = false;
 let reducedMotion = false;
 let motionQuery = null;
 let activeDeparture = null;
+const arrivals = new Map();
 const particles = [];
 
 const WALK_SPEED = 9;
@@ -158,6 +159,18 @@ function finishDepartureActor(a) {
   done?.();
 }
 
+function finishAuthoredActor(a) {
+  finishDepartureActor(a);
+  if (!arrivals.has(a.id)) return;
+  const done = arrivals.get(a.id);
+  arrivals.delete(a.id);
+  a.assignment = null;
+  a.authoredTarget = null;
+  a.state = 'doing';
+  a.timer = 3;
+  done?.();
+}
+
 function beginAuthoredTarget(a, target) {
   a.assignment = assignmentKey(target);
   a.authoredTarget = target;
@@ -220,7 +233,7 @@ function stepAgent(a, dt, animateFrames = true) {
   if (!tgt) {
     a.state = 'doing';
     a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
-    finishDepartureActor(a);
+    finishAuthoredActor(a);
     return;
   }
   const d = dist(a, tgt);
@@ -233,7 +246,7 @@ function stepAgent(a, dt, animateFrames = true) {
     if (!a.path.length) {
       a.state = 'doing';
       a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
-      finishDepartureActor(a);
+      finishAuthoredActor(a);
     }
     return;
   }
@@ -409,6 +422,7 @@ function tick(sim, dt) {
     for (let j = i + 1; j < list.length; j++) {
       const a = list[i];
       const b = list[j];
+      if ([a, b].some(actor => actor.assignment?.startsWith('expedition-departure') || actor.assignment?.startsWith('crew-arrival') || actor.assignment === 'departure-complete')) continue;
       const d = dist(a, b);
       if (d < 4 && d > 0.01) {
         const push = ((4 - d) / 4) * 0.28;
@@ -438,8 +452,9 @@ function setReducedMotion(event) {
       if (a?.authoredTarget) beginAuthoredTarget(a, { ...a.authoredTarget, immediate: true });
     }
     for (const a of agents.values()) {
-      if (a.assignment?.startsWith('contract-station') && a.authoredTarget) {
+      if ((a.assignment?.startsWith('contract-station') || a.assignment?.startsWith('crew-arrival')) && a.authoredTarget) {
         beginAuthoredTarget(a, { ...a.authoredTarget, immediate: true });
+        if (arrivals.has(a.id)) finishAuthoredActor(a);
       }
     }
     for (const id of departureIds) {
@@ -458,7 +473,10 @@ function setReducedMotion(event) {
 export function setBattleStations(on) {
   battle = Boolean(on);
   if (!battle) return;
-  for (const a of agents.values()) beginWalk(a, a.home);
+  for (const a of agents.values()) {
+    if (a.assignment?.startsWith('expedition-departure') || a.assignment === 'departure-complete' || a.assignment?.startsWith('crew-arrival')) continue;
+    beginWalk(a, a.home);
+  }
 }
 
 export function stopCrewSim() {
@@ -471,6 +489,28 @@ export function holdCrewForDeparture(crewInstanceIds) {
     const a = agents.get(id);
     if (a) a.assignment = 'expedition-departure:held';
   }
+}
+
+export function holdCrewForArrival(player, crewInstanceId) {
+  const member = player.crew.find(crew => crew.instanceId === crewInstanceId);
+  if (!member) return;
+  const actor = agents.get(crewInstanceId) || spawn(member);
+  Object.assign(actor, SPARROW_LAYOUT.anchors.airlock, {
+    room: 'cargo', path: [], state: 'doing', timer: Infinity,
+    assignment: 'crew-arrival:held', authoredTarget: null,
+  });
+}
+
+export function moveCrewToArrival(player, crewInstanceId, { onDone, reducedMotion: immediate = reducedMotion } = {}) {
+  const actor = agents.get(crewInstanceId);
+  if (!actor) { onDone?.(); return; }
+  const room = ROOMS.find(candidate => candidate.id === 'workshop');
+  arrivals.set(crewInstanceId, onDone);
+  beginAuthoredTarget(actor, {
+    crewInstanceId, mode: 'crew-arrival', roomId: room.id,
+    anchors: [{ ...room.workAnchor }], immediate,
+  });
+  if (immediate) finishAuthoredActor(actor);
 }
 
 export function moveCrewToDeparture(player, crewInstanceIds, {
@@ -531,7 +571,7 @@ export function syncCrewLayer(el, player) {
   }
   const targets = new Map(crewTargetStates(player, { reducedMotion }).map((target) => [target.crewInstanceId, target]));
   for (const [id, a] of agents) {
-    if (a.assignment?.startsWith('expedition-departure')) continue;
+    if (a.assignment?.startsWith('expedition-departure') || a.assignment?.startsWith('crew-arrival')) continue;
     const target = targets.get(id);
     if (target && a.assignment !== assignmentKey(target)) beginAuthoredTarget(a, target);
     else if (!target && a.assignment?.startsWith('contract-station')) {

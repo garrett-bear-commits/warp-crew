@@ -77,8 +77,11 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
     const actions = ids.map(id => {
       const preview = previewContractAction(player, { id });
       models.contractPreviews[id] = preview;
+      const consequence = preview.consequence;
+      const combatChoice = consequence?.encounterName
+        ? `${consequence.encounterName} · power ${consequence.encounterPower} · victory ${formatReward(consequence.encounterRewards)}. ${consequence.sameEncounter ? 'Same encounter and payout on both paths.' : contract.profile === 'risky' ? id === 'secure' ? 'Lower-power confrontation.' : 'Higher-power confrontation.' : 'Combat confrontation.'}` : null;
       return { id, label: `${labels[id]} · ${preview.cost.fuel}F`, enabled: preview.ok, primary: id !== 'push', reason: preview.reason,
-        consequence: id === 'secure' ? 'Lower-variance route outcome.' : id === 'push' ? 'Pursue the stronger reward opportunity.' : 'Spend fuel and depart.' };
+        consequence: combatChoice || (id === 'secure' ? 'Resolve the secured route outcome.' : id === 'push' ? 'Follow the signal to its snapshotted discovery.' : 'Spend fuel and depart.') };
     });
     if (contract.stage === 'return') actions.push({ id: 'claim', label: 'Bring it aboard', enabled: true, primary: true });
     models.activeContractView = { ...contract, actions,
@@ -145,7 +148,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   };
   const boardSeen = () => {
     const board = player.contractBoard;
-    if (!player.activeContract && board?.offers.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: board.offers.map(x => x.destinationId), completedCount: board.completedOfferIds.length }));
+    if (!player.activeContract && board?.offers.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: board.offers.map(x => x.destinationId), completedCount: board.offers.filter(x => board.completedOfferIds.includes(x.id)).length }));
   };
   if (act === 'mission-view' || act === 'goto-contracts' || act === 'goto-away' || act === 'goto-missions') {
     const view = act === 'mission-view' ? data.view : act === 'goto-away' ? 'away' : 'contracts';
@@ -203,10 +206,14 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
         events.push(event('combat_order_selected', { encounter: contract.encounterId, order: data.order, shownChance: preview.consequence.chance, extraFuel: preview.cost.fuel }));
         tutorial('combat_order_done');
         effect = { kind: 'combat', preview: { encounter: encounterById(contract.encounterId) }, win: res.result.success };
-      } else if (action.id === 'launch') { tutorial('contract_launched'); effect = { kind: 'launch' }; }
+      } else if (action.id === 'launch') {
+        tutorial('contract_launched');
+        effect = { kind: 'launch' };
+        Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
+      }
       if (player.activeContract.stage === 'return') {
         const result = player.activeContract.result;
-        events.push(event('contract_resolved', { profile: contract.profile, success: result.success, beats: contract.beats, order: player.activeContract.orderId, ...result.rewards, hullLoss: result.hullLoss, injury: result.injuredCrewId }));
+        events.push(event('contract_resolved', { profile: contract.profile, success: result.success, beats: player.activeContract.revision, order: player.activeContract.orderId, ...result.rewards, hullLoss: result.hullLoss, injury: result.injuredCrewId }));
         Object.assign(nextUi, { tab: 'ship', selectedRoom: 'cargo' });
       }
     }
@@ -249,9 +256,9 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     if (!res.instance || res.player === player) return fail('recruit_unavailable');
     player = res.player;
     tutorial('recruited');
-    Object.assign(nextUi, { tab: 'missions', missionView: 'contracts', selectedRoom: null });
+    Object.assign(nextUi, { tab: 'ship', missionView: 'contracts', selectedRoom: null });
+    effect = { kind: 'crew-arrival', crewInstanceId: res.instance.instanceId };
     player = prepareSession(player, now);
-    boardSeen();
   } else if (['ship-upgrade', 'level-crew', 'rank-up'].includes(act)) {
     if (isTutorialActive(player)) return fail('improvements_locked');
     const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);

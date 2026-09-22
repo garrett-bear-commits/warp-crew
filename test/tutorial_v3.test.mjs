@@ -73,7 +73,7 @@ for (const action of [null, { id: 'launch' }, { id: 'push' }, { id: 'order', ord
 }
 const invalidCases = [
   { stage: 'teleporting' }, { acceptanceId: '' }, { secureOutcome: null },
-  { routeOutcome: null }, { destinationId: 'missing' }, { encounterId: 'missing' },
+  { routeOutcome: null }, { destinationId: 'missing' }, { stage: 'confrontation', encounterId: 'missing' },
   { orderId: 'cheat' }, { revision: -1 },
   { result: { ...route.activeContract.result, rewards: { ...route.activeContract.result.rewards, credits: '100' } } },
   { result: { ...route.activeContract.result, hullLoss: Infinity } },

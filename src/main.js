@@ -43,7 +43,8 @@ import {
   skipOrders,
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
-import { departureActionBlocked, holdCrewForDeparture, moveCrewToDeparture, stopCrewSim } from './ui/crewWalk.js';
+import { departureActionBlocked, holdCrewForDeparture, moveCrewToDeparture, holdCrewForArrival, moveCrewToArrival, stopCrewSim } from './ui/crewWalk.js';
+import { playLaunch } from './ui/spaceFlight.js';
 import { playCombat, isBattlePlaying } from './ui/combatView.js';
 import { sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
@@ -64,6 +65,7 @@ let artReady = false;
 let toast = null;
 let toastTimer = 0;
 let departureInFlight = false;
+let shipSequence = null;
 
 function showToast(next) {
   toast = next || null;
@@ -291,6 +293,7 @@ function render() {
     artReady,
     toast,
     departureInFlight,
+    shipSequence,
     handlers: {
       setTab: (t) => {
         if (isBattlePlaying()) return;
@@ -436,11 +439,19 @@ async function handleAction(act, data = {}) {
           departureInFlight = true;
           holdCrewForDeparture(transition.effect.crewInstanceIds);
         }
+        if (result.effect?.kind === 'crew-arrival') holdCrewForArrival(result.player, result.effect.crewInstanceId);
+        if (['launch', 'crew-arrival'].includes(result.effect?.kind)) shipSequence = result.effect.kind;
         publishSessionResult(result);
       },
       capture: captureEvent,
       animate: (effect) => {
         if (effect.result) logTravelResult(effect.result);
+        if (effect.kind === 'launch') {
+          playLaunch({ onDone: () => { if (shipSequence === 'launch') shipSequence = null; render(); } });
+        }
+        if (effect.kind === 'crew-arrival') {
+          moveCrewToArrival(player, effect.crewInstanceId, { onDone: () => { if (shipSequence === 'crew-arrival') shipSequence = null; render(); } });
+        }
         if (effect.kind === 'expedition') {
           const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
           moveCrewToDeparture(player, effect.crewInstanceIds, {

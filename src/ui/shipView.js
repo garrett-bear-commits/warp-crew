@@ -61,6 +61,12 @@ export function renderDepartureStatus(active) {
   return '<div class="departure-status" id="departure-status-message" role="status" aria-live="polite">Away team boarding through Cargo…</div>';
 }
 
+export function renderShipSequence(sequence) {
+  const message = sequence === 'launch' ? 'Sparrow launched · en route'
+    : sequence === 'crew-arrival' ? 'Jen aboard · heading to Workshop' : '';
+  return message ? `<div class="ship-sequence-status" role="status" aria-live="polite">${message}</div>` : '';
+}
+
 export function renderRoomHotspot({ room, selected = false, alert = '', signal = '', level = null }) {
   const tag = level == null ? room.label : `${room.label} ${level}`;
   const state = contractSignalLabel(signal) || alertLabel(alert);

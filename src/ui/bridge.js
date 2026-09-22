@@ -31,7 +31,7 @@ import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying } from './combatView.js';
 import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
-import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback } from './shipView.js';
+import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
@@ -141,6 +141,7 @@ function buildShell() {
           <canvas class="space-canvas" data-slot="space"></canvas>
         </div>
         <div class="stage-hud" data-slot="stage-hud"></div>
+        <div data-slot="ship-sequence"></div>
         <div class="ship-fit">
           <img class="sparrow-hull" src="${SPACE_ART.hull}" alt="" />
           <div class="ship-feedback-layer" data-slot="ship-feedback"></div>
@@ -226,6 +227,7 @@ function patchShell(root, ctx) {
 
   setSlot(root, 'hud', renderHud(player, fuel, chips));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct));
+  setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
   setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));

@@ -14,9 +14,12 @@ import {
   holdCrewForDeparture,
   moveCrewToDeparture,
   syncCrewLayer,
+  setBattleStations,
 } from '../src/ui/crewWalk.js';
 import { stopStageLoop } from '../src/ui/stageLoop.js';
 import { attachSpace, stopSpace } from '../src/ui/spaceFlight.js';
+import * as crewPresentation from '../src/ui/crewWalk.js';
+import * as flightPresentation from '../src/ui/spaceFlight.js';
 
 // Catches losing the ship-space indication for an active/returned route or
 // failing to render the durable first Sparrow repair after the route clears.
@@ -198,11 +201,36 @@ syncCrewLayer(canvas, readyPlayer);
 holdCrewForDeparture(selectedIds);
 syncCrewLayer(canvas, awayPlayer);
 let normalCompletions = 0;
+let completionAirlockIds = [];
+const interruptedAirlock = new Set();
+let interruptedAfterArrival = false;
 moveCrewToDeparture(awayPlayer, selectedIds, {
   reducedMotion: false,
-  onDone: () => { normalCompletions++; syncCrewLayer(canvas, awayPlayer); },
+  onDone: () => {
+    normalCompletions++;
+    shadowFeet.length = 0;
+    runFrame();
+    completionAirlockIds = shadowFeet.filter(foot => Math.abs(foot.x - 47) < 0.001 && Math.abs(foot.y - 65) < 0.001).map(foot => foot.crewInstanceId);
+    syncCrewLayer(canvas, awayPlayer);
+  },
 });
+setBattleStations(true);
+for (let i = 0; i < 400 && !normalCompletions; i++) {
+  shadowFeet.length = 0;
+  runFrame();
+  for (const foot of shadowFeet) {
+    if (Math.abs(foot.x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001
+      && Math.abs(foot.y - (SPARROW_LAYOUT.anchors.airlock.y + 1)) < 0.001) interruptedAirlock.add(foot.crewInstanceId);
+  }
+  if (interruptedAirlock.size && !interruptedAfterArrival) {
+    interruptedAfterArrival = true;
+    setBattleStations(true);
+  }
+}
+assert.deepEqual([...interruptedAirlock].sort(), [...selectedIds].sort(), `combat cannot redirect departing actors away from Airlock (${normalCompletions}; ${JSON.stringify(shadowFeet)})`);
+assert.deepEqual(completionAirlockIds.sort(), [...selectedIds].sort(), 'early arrivals retain Airlock ownership until all selected actors finish');
 runUntil(() => normalCompletions === 1);
+setBattleStations(false);
 for (let i = 0; i < 5; i++) runFrame();
 assert.equal(normalCompletions, 1, 'normal departure completes exactly once');
 
@@ -211,12 +239,14 @@ syncCrewLayer(canvas, readyPlayer);
 holdCrewForDeparture(selectedIds);
 syncCrewLayer(canvas, awayPlayer);
 let initialReducedCompletions = 0;
+setBattleStations(true);
 const reducedPlan = moveCrewToDeparture(awayPlayer, selectedIds, {
   reducedMotion: true,
   onDone: () => { initialReducedCompletions++; syncCrewLayer(canvas, awayPlayer); },
 });
 assert.equal(initialReducedCompletions, 1, 'initial reduced motion completes immediately');
 assert.deepEqual(reducedPlan.map((target) => target.crewInstanceId), selectedIds);
+setBattleStations(false);
 
 motion.set(false);
 syncCrewLayer(canvas, readyPlayer);
@@ -280,6 +310,37 @@ motion.set(false);
 for (let i = 0; i < 100; i++) { shadowFeet.length = 0; runFrame(); }
 assert.notDeepEqual([...shadowFeet].sort((a, b) => a.crewInstanceId.localeCompare(b.crewInstanceId)), staticFeet, 'normal ambient crew movement resumes');
 
+// Committed recruitment must first materialize this exact actor at Airlock,
+// retain that ownership across renders/combat, then finish at Workshop once.
+const jen = { instanceId: 'arriving-jen', templateId: 'merc_jen', role: 'gunner', status: 'ready' };
+const recruited = { ...readyPlayer, crew: [...crew, jen] };
+let arrivalCompletions = 0;
+crewPresentation.holdCrewForArrival(recruited, jen.instanceId);
+syncCrewLayer(canvas, recruited);
+shadowFeet.length = 0;
+runFrame();
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 47, y: 65 }, 'Jen appears at authored Airlock');
+crewPresentation.moveCrewToArrival(recruited, jen.instanceId, { onDone: () => arrivalCompletions++ });
+setBattleStations(true);
+syncCrewLayer(canvas, recruited);
+runUntil(() => arrivalCompletions === 1);
+shadowFeet.length = 0;
+runFrame();
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 64, y: 52 }, 'Jen walks to authored Workshop');
+setBattleStations(false);
+motion.set(true);
+const reducedJen = { ...jen, instanceId: 'arriving-jen-reduced' };
+const reducedRecruit = { ...readyPlayer, crew: [...crew, reducedJen] };
+crewPresentation.holdCrewForArrival(reducedRecruit, reducedJen.instanceId);
+syncCrewLayer(canvas, reducedRecruit);
+crewPresentation.moveCrewToArrival(reducedRecruit, reducedJen.instanceId, { onDone: () => arrivalCompletions++ });
+shadowFeet.length = 0;
+runFrame();
+assert.equal(arrivalCompletions, 2, 'reduced arrival completes exactly once');
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === reducedJen.instanceId), { crewInstanceId: reducedJen.instanceId, x: 64, y: 52 }, 'reduced Jen snaps to the same Workshop anchor');
+motion.set(true);
+assert.equal(arrivalCompletions, 2);
+
 globalThis.Image = class { complete = true; naturalWidth = 64; naturalHeight = 64; };
 const spaceDraws = [];
 const spaceContext = {
@@ -290,7 +351,8 @@ const spaceContext = {
   rotate(...args) { spaceDraws.push(['rotate', ...args]); },
   drawImage(image, ...args) { spaceDraws.push(['image', image.src, ...args]); },
 };
-attachSpace({ ...canvas, getContext: () => spaceContext });
+const spaceCanvas = { ...canvas, dataset: {}, getContext: () => spaceContext };
+attachSpace(spaceCanvas);
 motion.set(true);
 runFrame();
 const staticSpace = structuredClone(spaceDraws);
@@ -299,6 +361,21 @@ assert.deepEqual(spaceDraws, staticSpace, 'reduced motion freezes stars, bodies 
 motion.set(false);
 runFrame();
 assert.notDeepEqual(spaceDraws, staticSpace, 'normal space drift resumes');
+let flightCompletions = 0;
+flightPresentation.playLaunch({ onDone: () => flightCompletions++ });
+assert.equal(spaceCanvas.dataset.flight, 'departing', 'launch enters visible flight state');
+runFrame();
+assert.ok(spaceDraws.some(draw => draw[0] === 'rect' && draw[3] < 5 && draw[4] > draw[3] * 2), 'normal launch draws travel streaks');
+runUntil(() => flightCompletions === 1);
+assert.equal(spaceCanvas.dataset.flight, '', 'flight ends once');
+motion.set(true);
+runFrame();
+const beforeReducedLaunch = structuredClone(spaceDraws);
+flightPresentation.playLaunch({ onDone: () => flightCompletions++ });
+assert.equal(spaceCanvas.dataset.flight, 'static', 'reduced launch retains visible state');
+for (let i = 0; i < 5; i++) runFrame();
+assert.deepEqual(spaceDraws, beforeReducedLaunch, 'reduced launch has no decorative travel');
+runUntil(() => flightCompletions === 2);
 stopSpace();
 stopStageLoop();
 

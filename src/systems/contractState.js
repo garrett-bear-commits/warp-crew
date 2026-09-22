@@ -23,7 +23,10 @@ export function validContractResult(result) {
 export function normalizeContractState(player, { nodes, encounterById }) {
   const contract = player?.activeContract;
   if (!contract) return player;
-  const encounterValid = contract.encounterId == null || encounterById(contract.encounterId).id === contract.encounterId;
+  // A resolved payout is self-contained. Catalog retirement must not destroy
+  // the committed result merely because the battle can no longer be replayed.
+  const encounterValid = contract.stage === 'return'
+    || contract.encounterId == null || encounterById(contract.encounterId).id === contract.encounterId;
   const favoredTraitValid = Boolean(
     contract.favoredTrait
     && ['role', 'system'].includes(contract.favoredTrait.kind)
@@ -56,9 +59,25 @@ export function normalizeContractState(player, { nodes, encounterById }) {
     && (contract.stage !== 'return' || validContractResult(contract.result))
   );
   if (!valid) {
+    const tutorial = player.tutorial;
+    const recoveringTutorial = contract.profile === 'distress' && tutorial?.script === 3 && !tutorial.completed && !tutorial.dismissed;
+    const alreadyRewarded = (player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress') || player.flags?.sparrowFirstRepair;
+    const recoveryPhase = tutorial?.hiredThird ? 'choose' : alreadyRewarded || tutorial?.firstCombat ? 'recruit' : 'distress';
     return {
       ...player,
       activeContract: null,
+      ...(recoveringTutorial ? {
+        tutorial: {
+          ...tutorial,
+          phase: recoveryPhase,
+          // Retain paid launch credit without refunding currency. A new
+          // acceptance consumes this marker, preserving its own fresh identity.
+          contractRecoveryFuelSpent: recoveryPhase === 'distress'
+            ? Math.max(tutorial.firstTravel ? 1 : 0, Number.isFinite(contract.fuelSpent) ? Math.max(0, contract.fuelSpent) : 0) : 0,
+          slot3Unlocked: recoveryPhase === 'recruit' || recoveryPhase === 'choose' || tutorial.slot3Unlocked,
+        },
+        crewSlots: recoveryPhase === 'recruit' || recoveryPhase === 'choose' ? Math.max(3, player.crewSlots || 2) : player.crewSlots,
+      } : {}),
       recoveryEvents: [
         ...(player?.recoveryEvents || []),
         { event: 'contract_recovered', reason: 'invalid_contract_state' },

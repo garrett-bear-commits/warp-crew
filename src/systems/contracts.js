@@ -9,6 +9,7 @@ import { spendFuel } from './fuel.js';
 import { fuelCostFor, combatBonuses, hullAfterCombat, injuryMinutesFor, tradePayout } from './passives.js';
 import { applyStoryFlag } from './story.js';
 import { normalizeContractState as normalizeSavedContractState, validContractResult } from './contractState.js';
+import { grantCrewXp } from './player.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -81,9 +82,10 @@ function dangerFor(profile, node) {
 }
 
 function offerFor(profile, node, boardDay, rng) {
-  const beats = pick(profile.routeLengths, rng);
+  // Preserve the existing board seed stream; length now follows route content.
+  rng();
   const normalFuel = 2;
-  return {
+  const offer = {
     id: `offer_${boardDay}_${profile.id}`,
     profile: profile.id,
     icon: profile.icon,
@@ -92,11 +94,23 @@ function offerFor(profile, node, boardDay, rng) {
     destinationId: node.id,
     destinationName: node.name,
     normalFuel,
-    beats,
-    beatLabel: `${beats} beats`,
     rewardFamily: profile.rewardFamily,
     danger: dangerFor(profile, node),
     favoredTrait: { ...profile.favoredTrait },
+  };
+  return withRouteSnapshot(offer);
+}
+
+function withRouteSnapshot(offer) {
+  const routeSeed = hashSeed(`${offer.id}:${offer.destinationId}:${offer.profile}`);
+  const content = snapshotRouteContent(offer, routeSeed);
+  const secureBeats = offer.profile === 'risky' ? 3 : 2;
+  const pushBeats = content.encounterId ? 3 : 2;
+  return {
+    ...offer,
+    routeContent: { ...content, destinationId: offer.destinationId, routeSeed },
+    beats: Math.max(secureBeats, pushBeats),
+    beatLabel: secureBeats === pushBeats ? `${secureBeats} beats` : '2–3 beats',
   };
 }
 
@@ -109,13 +123,19 @@ export function generateContractBoard(player, now = Date.now()) {
     const candidates = candidatesFor(profile, nodes);
     return offerFor(profile, pick(candidates, rng) || fallbackFor(profile), boardDay, rng);
   });
-  return { dayKey: boardDay, offers, completedOfferIds: [] };
+  // This is a durable claim ledger, including previous local dates. Clock or
+  // timezone recovery may revisit a day, but cannot reopen its claimed offers.
+  return { dayKey: boardDay, offers, completedOfferIds: [...new Set(player?.contractBoard?.completedOfferIds || [])] };
 }
 
 export function ensureContractBoard(player, now = Date.now()) {
   const boardDay = contractDayKey(now);
   const saved = player?.contractBoard;
   if (saved && (saved.dayKey === boardDay || player?.activeContract)) {
+    if (!player.activeContract && saved.offers.some(offer => offer.profile !== 'distress' && !offer.routeContent)) {
+      const board = { ...saved, offers: saved.offers.map(offer => offer.profile !== 'distress' && !offer.routeContent ? withRouteSnapshot(offer) : offer) };
+      return { player: { ...player, contractBoard: board }, board, refreshed: false };
+    }
     return { player, board: saved, refreshed: false };
   }
   const board = generateContractBoard(player, now);
@@ -187,6 +207,17 @@ function preferredOutcomes(offer, node) {
 
 function snapshotRouteContent(offer, routeSeed) {
   const node = NODES[offer.destinationId];
+  if (offer.profile === 'risky') {
+    const combats = (node?.outcomes || []).filter(outcome => outcome.kind === 'combat')
+      .sort((a, b) => encounterById(a.encounter).power - encounterById(b.encounter).power
+        || a.encounter.localeCompare(b.encounter));
+    if (combats.length) return {
+      routeOutcome: { ...combats.at(-1) },
+      secureOutcome: { ...combats[0] },
+      encounterId: combats.at(-1).encounter,
+      storyFlag: null,
+    };
+  }
   const outcomes = preferredOutcomes(offer, node);
   const routeOutcome = outcomes[deterministicIndex(routeSeed, outcomes.length, 'outcome')] || { kind: 'arrive' };
   let secureOutcomes = (node?.outcomes || []).filter((outcome) => (
@@ -290,7 +321,8 @@ export function acceptContract(player, offerId) {
   const routeSeed = hashSeed(`${offer.id}:${offer.destinationId}:${offer.profile}`);
   const content = offer.profile === 'distress'
     ? { routeOutcome: { kind: 'combat', encounter: 'pirate_scout' }, secureOutcome: { kind: 'combat', encounter: 'pirate_scout' }, encounterId: 'pirate_scout', storyFlag: null }
-    : snapshotRouteContent(offer, routeSeed);
+    : offer.routeContent?.destinationId === offer.destinationId
+      ? offer.routeContent : snapshotRouteContent(offer, routeSeed);
   const acceptanceSequence = Number.isSafeInteger(player?.contractAcceptanceSequence)
     ? player.contractAcceptanceSequence + 1
     : 1;
@@ -315,12 +347,16 @@ export function acceptContract(player, offerId) {
     secureOutcome: content.secureOutcome,
     storyFlag: content.storyFlag,
     beats: offer.beats,
-    fuelSpent: 0,
+    fuelSpent: offer.profile === 'distress' ? player.tutorial?.contractRecoveryFuelSpent || 0 : 0,
     acceptedAt: Date.now(),
   };
   return {
     ok: true,
-    player: { ...player, contractAcceptanceSequence: acceptanceSequence, activeContract },
+    player: {
+      ...player, contractAcceptanceSequence: acceptanceSequence, activeContract,
+      tutorial: offer.profile === 'distress' && player.tutorial?.contractRecoveryFuelSpent
+        ? { ...player.tutorial, contractRecoveryFuelSpent: 0 } : player.tutorial,
+    },
     analytics: analyticsEvent('contract_accepted', {
       offerId: offer.id,
       profile: offer.profile,
@@ -336,17 +372,30 @@ function actionPreview(player, contract, action) {
     if (!readyContractCrew(player).length) return { ok: false, reason: 'no_ready_crew' };
     return {
       ok: true,
-      cost: { fuel: contractFuelCost(player) },
+      cost: { fuel: contract.profile === 'distress' ? Math.max(0, contractFuelCost(player) - contract.fuelSpent) : contractFuelCost(player) },
       consequence: { nextStage: contract.profile === 'distress' ? 'confrontation' : 'choice' },
     };
   }
   if (contract.stage === 'choice' && (action?.id === 'secure' || action?.id === 'push')) {
     let nextStage = 'return';
     if (contract.profile === 'risky' || (action.id === 'push' && contract.encounterId)) nextStage = 'confrontation';
+    const selected = action.id === 'secure' ? contract.secureOutcome : contract.routeOutcome;
+    const encounterId = contract.profile === 'risky'
+      ? (selected.kind === 'combat' ? selected.encounter : contract.encounterId)
+      : nextStage === 'confrontation' ? contract.encounterId : null;
+    const encounter = encounterId ? encounterById(encounterId) : null;
+    const sameEncounter = contract.profile === 'risky'
+      && (contract.secureOutcome.kind !== 'combat' || contract.secureOutcome.encounter === contract.routeOutcome.encounter);
     return {
       ok: true,
       cost: { fuel: contractFuelCost(player) },
-      consequence: { nextStage, strongerReward: action.id === 'push' },
+      consequence: {
+        nextStage, encounterId, encounterName: encounter?.name || null,
+        encounterPower: encounter?.power || null,
+        encounterRewards: encounter ? normalizeRewards(scaleSitePayout(encounter.rewards, player, { kind: 'combat', visits: player.stats?.visits?.[contract.destinationId] || 0 })) : null,
+        sameEncounter,
+        strongerReward: contract.profile === 'risky' && action.id === 'push' && !sameEncounter,
+      },
     };
   }
   if (contract.stage === 'confrontation' && action?.id === 'order') {
@@ -482,6 +531,11 @@ function resolveContractCombat(player, contract, orderId, rng) {
     }
   }
 
+  if (combat.success && contract.profile !== 'distress') {
+    nextPlayer = grantCrewXp(nextPlayer, crew.map(member => member.instanceId), 10);
+    nextPlayer = { ...nextPlayer, stats: { ...nextPlayer.stats, combatsWon: (nextPlayer.stats?.combatsWon || 0) + 1 } };
+  }
+
   return {
     player: nextPlayer,
     result: {
@@ -531,11 +585,13 @@ export function commitContractAction(player, preview, { rng = Math.random } = {}
   } else if (contract.stage === 'choice') {
     nextContract.choiceId = preview.action.id;
     nextContract.stage = current.consequence.nextStage;
+    if (nextContract.stage === 'confrontation') nextContract.encounterId = current.consequence.encounterId;
     if (nextContract.stage === 'return') {
       const outcome = preview.action.id === 'secure' ? nextContract.secureOutcome : nextContract.routeOutcome;
       nextContract.result = routeReward(nextPlayer, nextContract, outcome);
     }
   } else if (contract.stage === 'confrontation') {
+    nextContract.participantIds = readyContractCrew(nextPlayer).map(member => member.instanceId);
     const resolved = resolveContractCombat(nextPlayer, nextContract, preview.action.orderId, rng);
     nextPlayer = resolved.player;
     nextContract.stage = 'return';
@@ -591,6 +647,7 @@ export function claimContractReward(player) {
     stats: {
       ...player.stats,
       visits,
+      jumps: (player.stats?.jumps || 0) + 1,
       contractsCompleted: (player?.stats?.contractsCompleted || 0) + 1,
       contractsByProfile,
     },

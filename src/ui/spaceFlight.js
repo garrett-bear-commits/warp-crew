@@ -10,6 +10,13 @@ let dpr = 1;
 let started = false;
 let motionQuery = null;
 let clock = 0;
+let launch = null;
+
+/** Presentation only; callers invoke this after the launch save commits. */
+export function playLaunch({ onDone } = {}) {
+  launch = { remaining: 1.8, onDone };
+  if (canvas) canvas.dataset.flight = motionQuery?.matches ? 'static' : 'departing';
+}
 
 const stars = [];
 const rocks = [];
@@ -123,8 +130,19 @@ function makeBody(kind) {
 
 function tick(sim, dt) {
   if (!canvas || !ctx || !w) return;
+  if (launch) {
+    launch.remaining -= dt;
+    canvas.dataset.flight = motionQuery?.matches ? 'static' : 'departing';
+    if (launch.remaining <= 0) {
+      const done = launch.onDone;
+      launch = null;
+      canvas.dataset.flight = '';
+      done?.();
+    }
+  }
   // Keep drawing loaded art and resizes, but freeze decorative ambient travel.
   if (motionQuery?.matches) dt = 0;
+  else if (launch) dt *= 6;
   clock += dt;
   const g = ctx;
   g.clearRect(0, 0, w, h);
@@ -146,7 +164,7 @@ function tick(sim, dt) {
     const a = 0.28 + s.z * 0.7;
     g.globalAlpha = a;
     const sz = s.s * (0.6 + s.z * 0.8);
-    g.fillRect(s.x, s.y, sz, sz);
+    g.fillRect(s.x, s.y, sz, launch && !motionQuery?.matches ? sz * 6 : sz);
   }
   g.globalAlpha = 1;
 
