@@ -5,6 +5,9 @@
 - Reviewed gameplay HEAD: `9b9585ea794120696913216a2763c563a4ba7753`
 - Base: `4e34e2e972d66c2f583215fd7f822a41dbadf479`
 - Integration branch: `codex/contract-route-overhaul`
+- Draft PR: <https://github.com/garrett-bear-commits/warp-crew/pull/1>
+- QA deployment: `gh-pages@fcab3f1` from source `codex/contract-route-overhaul@9bec3a2`
+- Deployment workflow: GitHub Pages run `35690544860` — successful
 - Public QA target: <https://garrett-bear-commits.github.io/warp-crew/>
 - Fresh-save QA: <https://garrett-bear-commits.github.io/warp-crew/?fresh=1>
 - QA hub: <https://garrett-bear-commits.github.io/warp-crew/qa.html>
@@ -47,7 +50,7 @@ Evidence: [Contract route runtime QA](../qa/2026-09-21-contract-route-loop.md), 
 
 ## Resume tomorrow
 
-1. Verify the public GitHub Pages build on a fresh save and record the deployed commit in this handoff if it differs.
+1. Re-open the public GitHub Pages fresh-save build and record any overnight/device-only difference from `gh-pages@fcab3f1`.
 2. Run the first physical-device pass on one iPhone and one Android: fresh tutorial, Risky route, return claim, Jen arrival, selected Away crew, reduced motion, and reload.
 3. Write and approve the encounter-tell/recommendation roster before adding content.
 4. Specify literal reward bands and build the deterministic 30-day economy simulator before changing reward or monetization values.
