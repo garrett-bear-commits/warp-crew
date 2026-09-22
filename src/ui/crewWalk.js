@@ -338,6 +338,7 @@ function drawAgent(g, a) {
   const asset = walkAssetFor(a.templateId, a.role, a.bodyFamily);
   const pose = crewPoseForActor(a, w, h, asset.profile);
   const { foot, source, destination } = pose;
+  g.__wcActorInstanceId = a.id;
   g.save();
   g.fillStyle = 'rgba(0,0,0,0.35)';
   g.beginPath();
@@ -392,6 +393,7 @@ function drawAgent(g, a) {
     }
   }
   g.restore();
+  g.__wcActorInstanceId = null;
 }
 
 function tick(sim, dt) {

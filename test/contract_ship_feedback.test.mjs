@@ -159,7 +159,11 @@ const context = {
   fill() {}, fillRect() {}, drawImage() {}, moveTo() {}, lineTo() {}, closePath() {},
   createRadialGradient: () => gradient,
   createLinearGradient: () => gradient,
-  ellipse(x, y, rx, ry) { if (rx === 9 && ry === 2.5) shadowFeet.push([x, y]); },
+  ellipse(x, y, rx, ry) {
+    if (rx === 9 && ry === 2.5) {
+      shadowFeet.push({ crewInstanceId: this.__wcActorInstanceId ?? null, x, y });
+    }
+  },
   imageSmoothingEnabled: false,
 };
 const canvas = {
@@ -218,33 +222,36 @@ syncCrewLayer(canvas, readyPlayer);
 holdCrewForDeparture(selectedIds);
 syncCrewLayer(canvas, awayPlayer);
 let changedMotionCompletions = 0;
-let changedMotionAirlockFeet = [];
-let changedMotionActorsRemoved = false;
+let changedMotionAirlockIds = [];
+let changedMotionFollowingFrameIds = [];
 moveCrewToDeparture(awayPlayer, selectedIds, {
   reducedMotion: false,
   onDone: () => {
     changedMotionCompletions++;
     shadowFeet.length = 0;
     runFrame();
-    changedMotionAirlockFeet = shadowFeet.filter(([x, y]) => (
+    changedMotionAirlockIds = shadowFeet.filter(({ x, y }) => (
       Math.abs(x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001
       && Math.abs(y - (SPARROW_LAYOUT.anchors.airlock.y + 1)) < 0.001
-    ));
+    )).map(({ crewInstanceId }) => crewInstanceId);
     syncCrewLayer(canvas, awayPlayer);
     shadowFeet.length = 0;
     runFrame();
-    changedMotionActorsRemoved = !shadowFeet.some(([x, y]) => (
-      Math.abs(x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001
-      && Math.abs(y - (SPARROW_LAYOUT.anchors.airlock.y + 1)) < 0.001
-    ));
+    changedMotionFollowingFrameIds = shadowFeet.map(({ crewInstanceId }) => crewInstanceId);
   },
 });
 for (let i = 0; i < 4; i++) runFrame();
 assert.equal(changedMotionCompletions, 0, 'animated departure remains in flight');
 motion.set(true);
 assert.equal(changedMotionCompletions, 1, 'motion change snaps and completes departure');
-assert.equal(changedMotionAirlockFeet.length, selectedIds.length, 'all departing actors reach the authored Airlock final anchor');
-assert.equal(changedMotionActorsRemoved, true, 'completed departure actors are removed from the away-state canvas');
+assert.deepEqual(
+  [...changedMotionAirlockIds].sort(),
+  [...selectedIds].sort(),
+  'the exact selected actors reach the authored Airlock final anchor',
+);
+for (const id of selectedIds) {
+  assert.equal(changedMotionFollowingFrameIds.includes(id), false, `${id} is removed from the following away-state frame`);
+}
 motion.set(true);
 assert.equal(changedMotionCompletions, 1, 'motion change completion is exact once');
 
@@ -254,8 +261,8 @@ runFrame();
 motion.set(true);
 shadowFeet.length = 0;
 runFrame();
-assert.ok(shadowFeet.some(([x, y]) => Math.abs(x - 56) < 0.001 && Math.abs(y - 21) < 0.001), `Bridge actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
-assert.ok(shadowFeet.some(([x, y]) => Math.abs(x - 56) < 0.001 && Math.abs(y - 85) < 0.001), `Engineering actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
+assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 21) < 0.001), `Bridge actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
+assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 85) < 0.001), `Engineering actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
 stopStageLoop();
 
 const loginEntry = renderPlatformLoginEntry();
