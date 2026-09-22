@@ -23,6 +23,15 @@ export function validContractResult(result) {
 export function normalizeContractState(player, { nodes, encounterById }) {
   const contract = player?.activeContract;
   if (!contract) return player;
+  // Profile is itself validated data, not tutorial identity. Keep recovery
+  // available if it is lost, with a coherent acceptance fallback for a lost offer ID.
+  const tutorialContractId = `contract_${contract.boardDay}_distress`;
+  const tutorialIdentity = contract.offerId === 'offer_tutorial_distress'
+    || (contract.id === tutorialContractId
+      && typeof contract.acceptanceId === 'string'
+      && contract.acceptanceId.startsWith(`${tutorialContractId}:`)
+      && /^[1-9]\d*$/.test(contract.acceptanceId.slice(tutorialContractId.length + 1))
+      && contract.destinationId === 'lane_a');
   // A resolved payout is self-contained. Catalog retirement must not destroy
   // the committed result merely because the battle can no longer be replayed.
   const encounterValid = contract.stage === 'return'
@@ -42,6 +51,7 @@ export function normalizeContractState(player, { nodes, encounterById }) {
     && typeof contract.offerId === 'string'
     && typeof contract.boardDay === 'string'
     && CONTRACT_PROFILES_IDS.has(contract.profile)
+    && (!tutorialIdentity || contract.profile === 'distress')
     && typeof contract.title === 'string'
     && nodes[contract.destinationId]
     && favoredTraitValid
@@ -60,7 +70,7 @@ export function normalizeContractState(player, { nodes, encounterById }) {
   );
   if (!valid) {
     const tutorial = player.tutorial;
-    const recoveringTutorial = contract.profile === 'distress' && tutorial?.script === 3 && !tutorial.completed && !tutorial.dismissed;
+    const recoveringTutorial = tutorialIdentity && tutorial?.script === 3 && !tutorial.completed && !tutorial.dismissed;
     const alreadyRewarded = (player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress') || player.flags?.sparrowFirstRepair;
     const recoveryPhase = tutorial?.hiredThird ? 'choose' : alreadyRewarded || tutorial?.firstCombat ? 'recruit' : 'distress';
     return {

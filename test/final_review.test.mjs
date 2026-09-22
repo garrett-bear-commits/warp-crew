@@ -81,6 +81,83 @@ test('invalid pre-result tutorial routes recover playably without repeating laun
   }
 });
 
+for (const profile of [undefined, 'unknown_profile', 'risky']) {
+  test(`tutorial confrontation recovers from ${profile ?? 'missing'} profile without charging launch twice`, () => {
+    for (const identitySource of ['offer', 'acceptance']) {
+      let player = tutorialAt('confrontation');
+      const oldIdentity = identity(player);
+      const fuel = player.wallet.fuel;
+      if (profile === undefined) delete player.activeContract.profile;
+      else player.activeContract.profile = profile;
+      if (identitySource === 'acceptance') delete player.activeContract.offerId;
+      player = reload(player);
+      assert.equal(player.activeContract, null, `${identitySource}: reject invalid tutorial profile`);
+      assert.equal(player.tutorial.phase, 'distress', `${identitySource}: restore playable tutorial review`);
+      assert.equal(player.wallet.fuel, fuel);
+      assert.equal(sessionAction(player, {}, 'contract-order', { order: 'brace', ...oldIdentity }, { now }).ok, false);
+      for (const act of ['contract-review', 'contract-accept']) {
+        const result = sessionAction(player, {}, act, { offer: 'offer_tutorial_distress' }, { now });
+        assert.equal(result.ok, true, result.reason);
+        player = result.player;
+      }
+      assert.notEqual(player.activeContract.acceptanceId, oldIdentity.acceptanceId);
+      player = reload(player);
+      const launched = sessionAction(player, {}, 'contract-action', { action: 'launch', ...identity(player) }, { now });
+      assert.equal(launched.ok, true, launched.reason);
+      player = launched.player;
+      assert.equal(player.wallet.fuel, fuel, 'replayed launch consumes durable paid-fuel credit');
+      player = sessionAction(player, {}, 'contract-order', { order: 'brace', ...identity(player) }, { now }).player;
+      const claimIdentity = identity(player);
+      player = sessionAction(reload(player), {}, 'contract-claim', claimIdentity, { now }).player;
+      assert.equal(player.wallet.credits, 200);
+      assert.equal(player.tutorial.phase, 'recruit');
+      assert.equal(sessionAction(reload(player), {}, 'contract-claim', claimIdentity, { now }).ok, false);
+      assert.equal(player.wallet.fuel, fuel);
+    }
+  });
+
+  test(`tutorial return with ${profile ?? 'missing'} profile recovers safely without duplicate reward`, () => {
+    for (const identitySource of ['offer', 'acceptance']) {
+      let player = tutorialAt('return');
+      const oldIdentity = identity(player);
+      const wallet = { ...player.wallet };
+      if (profile === undefined) delete player.activeContract.profile;
+      else player.activeContract.profile = profile;
+      if (identitySource === 'acceptance') delete player.activeContract.offerId;
+      player = reload(player);
+      assert.equal(player.activeContract, null, `${identitySource}: discard rejected result without fabricating reward`);
+      assert.equal(player.tutorial.phase, 'recruit', `${identitySource}: already-fought tutorial must not stall at return`);
+      assert.equal(player.crewSlots, 3);
+      assert.deepEqual(player.wallet, wallet);
+      assert.equal(sessionAction(player, {}, 'contract-claim', oldIdentity, { now }).ok, false);
+      assert.equal(acceptContract(player, 'offer_tutorial_distress').reason, 'tutorial_already_resolved');
+      const recruited = sessionAction(player, {}, 'tutorial-draw', {}, { now });
+      assert.equal(recruited.ok, true, recruited.reason);
+      player = reload(recruited.player);
+      assert.equal(player.tutorial.phase, 'choose');
+      assert.equal(player.crew.filter(c => c.templateId === 'merc_jen').length, 1);
+      assert.deepEqual(player.wallet, wallet);
+      assert.equal(sessionAction(player, {}, 'contract-claim', oldIdentity, { now }).ok, false);
+    }
+  });
+}
+
+test('invalid normal contracts at the tutorial destination do not reconcile tutorial phase or fuel', () => {
+  for (const profile of [undefined, 'unknown_profile', 'distress']) {
+    let player = accepted('risky', 'lane_a');
+    player.tutorial = { ...createNewPlayer().tutorial, phase: 'away', firstTravel: true, firstCombat: true, hiredThird: true };
+    const tutorial = structuredClone(player.tutorial);
+    const wallet = { ...player.wallet };
+    player.activeContract.profile = profile;
+    player.activeContract.encounterId = 'removed_encounter';
+    player.activeContract.fuelSpent = 1;
+    player = reload(player);
+    assert.equal(player.activeContract, null);
+    assert.deepEqual(player.tutorial, tutorial, 'profile and destination alone are not tutorial identity');
+    assert.deepEqual(player.wallet, wallet);
+  }
+});
+
 test('Risky branches snapshot low and high authored destination encounters and disclose fallback', () => {
   // Danger Belt authors Eclipse Probe (20) and Pirate Wing (22).
   const player = step(accepted('risky', 'danger_belt'), 'launch');
