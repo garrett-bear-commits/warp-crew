@@ -92,7 +92,7 @@ The baseline combines multiple visible compartments into four large rectangles. 
 
 ![After: larger grounded crew and compartment-aligned interactions](artifacts/ship-after-390x844.png)
 
-The runtime view now shows 52px cropped crew anchored at their feet. Persistent room labels are absent until selection, alert, or keyboard focus. The later tutorial package still owns the large bottom coach card.
+This package's captured runtime shows 52px cropped crew anchored at their feet. Persistent room labels are absent until selection, alert, or keyboard focus. The large bottom coach visible in this historical capture was subsequently replaced by the [contract-route package](2026-09-21-contract-route-loop.md); completed tutorials now show only the compact daily-plan chip.
 
 ### Geometry overlay
 
@@ -121,5 +121,5 @@ The proof uses the shipped `walk-4dir.png` plus the production `walkFrameSource(
 4. Exercise OS-level reduced motion; its policy is automated, but the actual media-query transition was not captured.
 5. Calibrate room polygons if real-device taps reveal edge ambiguity.
 6. Add distinct alien, droid, broad, small, and exceptional body-family art; this package creates the profile seam but deliberately retains the current fallback art.
-7. Remove or redesign the daily/tutorial cards in their owning package; they still obscure substantial screen space.
-8. Reconcile the two historical default-suite expectations in their owning progression and tutorial packages.
+7. Historical follow-up, addressed by the contract-route package: the post-tutorial coach is replaced by a compact daily-plan chip, with phone-sized layout measurements.
+8. Historical follow-up, addressed in this package: the two baseline suite expectations were reconciled as recorded above. Current full-suite evidence is in the contract-route report.

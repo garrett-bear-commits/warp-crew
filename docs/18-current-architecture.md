@@ -90,7 +90,7 @@ A safe evolution path is to extract one surface at a time behind a stable view-m
 
 ### Ship geometry and movement
 
-`src/data/starterShip.js` defines four coarse rooms against a 1152 by 1728 hull coordinate space. `src/data/navGrid.js` converts room, furniture, hallway, and door information into a 72 by 128 path grid. `src/ui/crewWalk.js` maintains actors, chooses destinations, runs paths, picks animation direction, and draws crew.
+`src/data/starterShip.js` now defines nine art-aligned rooms, hit polygons, walk bounds, authored doors, work anchors, and Cargo/Airlock anchors against a 1152 by 1728 hull coordinate space. `src/data/navGrid.js` converts the shared manifest into a 72 by 128 path grid. `src/ui/crewWalk.js` maintains actors, authored departure/arrival ownership, destinations, paths, animation direction, and drawing. The original four-room layout is historical.
 
 The four-direction sheet contract is already explicit in `src/ui/crewArt.js`:
 
@@ -98,7 +98,7 @@ The four-direction sheet contract is already explicit in `src/ui/crewArt.js`:
 - four frames per direction;
 - 96 by 96 source cells.
 
-The current rendering shrinks full cells too aggressively and adds a separate sinusoidal vertical offset. A replacement must preserve direction/path behavior while introducing authored crop, foot anchor, draw scale, and body-family metadata. Movement must not synthesize vertical bobbing on top of the actual frames.
+The ship foundation replaced tiny full-cell rendering and synthetic vertical bobbing with authored crops, stable foot anchors, 52px draw height, and a body-family profile seam. Direction/path semantics remain intact. Representative body-family art and physical-device evidence remain open; see the [ship QA](qa/2026-09-21-ship-animation-foundation.md).
 
 ## Authority and trust model
 
@@ -114,13 +114,13 @@ The current rendering shrinks full cells too aggressively and adds a separate si
 
 ## Test topology
 
-The repository uses direct Node assertion scripts rather than a test runner:
+The repository uses direct Node assertion scripts and Node's built-in test runner for final-review regressions:
 
 - focused rule tests cover timers, fuel, economy, daily login, travel, and platform/IAP mocks;
 - phase tests cover earlier feature expectations;
 - `test/sanity.mjs` provides the broadest current invariant coverage across content, progression, tutorial, combat, expeditions, ships, gacha, and IAP grants.
 
-The default `npm test` chain stops at the first failing script. At the inspected revision, two historical expectations conflict with newer behavior. Both need a product-rule decision and then reconciliation; they must not simply be weakened until green.
+The default `npm test` chain stops at the first failing script. Two conflicting baseline expectations were reconciled against the approved progression/tutorial rules in the ship package. Current `test:ship`, `test:loop`, and default gates cover the foundation and contract-route regressions; [contract QA](qa/2026-09-21-contract-route-loop.md) records their evidence and remaining device/content gaps.
 
 ## Safe change sequence
 
@@ -143,4 +143,3 @@ npm test
 ```
 
 Interpret each result against its actual coverage. A passing build proves bundling, not phone usability; the sanity script proves only the encoded invariants; and the chained suite can contain obsolete product expectations.
-

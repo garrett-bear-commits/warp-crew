@@ -5,6 +5,8 @@ Revision: `56693f4a6ea0cb7dce25c670e677d43a56db95e5`
 Audit viewport: 390 x 844 CSS pixels  
 Audit date: 2026-09-21
 
+Historical scope: findings below describe the revision stamped above. The [ship foundation](../qa/2026-09-21-ship-animation-foundation.md) and [contract-route QA](../qa/2026-09-21-contract-route-loop.md) supersede its coarse hitboxes, tiny/bobbing crew, post-tutorial coach, additive-assist/automatic-party, and stale-test findings. Device, economy, authority, and broader content findings remain open unless those reports explicitly close them.
+
 ## Verdict
 
 Warp Crew has crossed from prototype into a recognizable game, but it is not yet a polished phone game. The strongest work is the ship-as-home fantasy, content breadth, short first combat, and the amount of progression already represented in data. The weakest work is the bridge between those systems and the player: text and characters are too small, the ship art and interaction geometry disagree, the repeatable decisions are shallow, and the documentation and tests no longer describe one coherent product.

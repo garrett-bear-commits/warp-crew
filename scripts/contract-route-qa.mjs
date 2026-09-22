@@ -10,6 +10,8 @@ import { createNewPlayer } from '../src/systems/player.js';
 
 const url = process.env.QA_URL || 'http://127.0.0.1:5199/';
 const endpoint = process.env.QA_CDP || 'http://127.0.0.1:9339';
+const finalReviewOnly = process.argv.includes('--final-review-only');
+const reportName = finalReviewOnly ? 'final-review-measurements.json' : 'contract-route-measurements.json';
 const artifactRoot = new URL('../docs/qa/artifacts/', import.meta.url);
 const evidenceRoot = new URL('contracts-runtime/', artifactRoot);
 await mkdir(evidenceRoot, { recursive: true });
@@ -71,7 +73,7 @@ async function openPage(width, height, reduced = false) {
   const state = () => evaluate(`JSON.parse(localStorage.getItem('warpcrew.save.v2')).player`);
   async function click(selector) {
     await until(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
-    const point = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if(el.disabled) throw Error('disabled: '+el.outerHTML); el.scrollIntoView({block:'center'}); const r=el.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()`);
+    const point = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if(el.disabled) throw Error('disabled: '+el.outerHTML); el.scrollIntoView({block:'center'}); const r=el.getBoundingClientRect(); const x=r.x+r.width/2,y=r.y+r.height/2; const hit=document.elementFromPoint(x,y); if(hit!==el&&!el.contains(hit))throw Error('click blocked '+${JSON.stringify(selector)}+' by '+hit?.outerHTML); return {x,y}; })()`);
     await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 });
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 });
     await wait(220);
@@ -293,7 +295,90 @@ async function run(width,height) {
   return scenario;
 }
 
+async function runFinalReview(width, height, reduced) {
+  const page = await openPage(width, height, reduced);
+  const scenario = { viewport: `${width}x${height}`, reduced, captures: [], measurements: [] };
+  report.scenarios.push(scenario);
+  const capture = async name => scenario.captures.push(await page.capture(`contracts-runtime/final-${name}-${reduced ? 'reduced-' : ''}${width}x${height}.png`));
+  await page.click('[data-tab="missions"]');
+  await page.click('[data-act="contract-review"]');
+  await page.click('[data-act="contract-accept"]');
+  const beforeLaunch = await page.state();
+  await page.click('[data-action="launch"]');
+  scenario.launch = await page.evaluate(`({ shipVisible:document.querySelector('.wc-shell').classList.contains('tab-home'), flight:document.querySelector('.space-canvas').dataset.flight, message:document.querySelector('[data-slot="ship-sequence"]').innerText, saved:JSON.parse(localStorage.getItem('warpcrew.save.v2')).player.activeContract.stage })`);
+  assert.equal(scenario.launch.shipVisible, true);
+  assert.equal(scenario.launch.flight, reduced ? 'static' : 'departing');
+  assert.equal(scenario.launch.saved, 'confrontation');
+  assert.match(scenario.launch.message, /Sparrow launched/);
+  assert.equal((await page.state()).wallet.fuel, beforeLaunch.wallet.fuel - 1);
+  await capture('launch');
+  if (reduced) {
+    scenario.staticLaunch = await page.evaluate(`(async()=>{const el=document.querySelector('.space-canvas');const before=el.toDataURL();await new Promise(r=>setTimeout(r,200));return before===el.toDataURL()})()`);
+    assert.equal(scenario.staticLaunch, true);
+  }
+  await page.click('[data-tab="missions"]');
+  await page.click('[data-order="brace"]');
+  await page.until('!document.querySelector(".combat-canvas.is-live") && Boolean(document.querySelector("[data-act=contract-claim]"))');
+  await page.click('[data-act="contract-claim"]');
+  await page.click('[data-act="close-room"]');
+  await page.evaluate(`{
+    window.__arrivalFeet={};
+    const original=CanvasRenderingContext2D.prototype.ellipse;
+    CanvasRenderingContext2D.prototype.ellipse=function(x,y,...args){
+      const id=this.__wcActorInstanceId;
+      if(id&&this.canvas.classList.contains('crew-canvas')){
+        const r=this.canvas.getBoundingClientRect();
+        const feet=window.__arrivalFeet[id]??=[];
+        if(feet.length<5000)feet.push({x:x/r.width*100,y:(y-1)/r.height*100});
+      }
+      return original.call(this,x,y,...args);
+    };
+  }`);
+  await page.click('[data-act="tutorial-go"]');
+  const afterRecruit = await page.state();
+  const jen = afterRecruit.crew.find(c => c.templateId === 'merc_jen');
+  assert.equal(afterRecruit.tutorial.phase, 'choose');
+  assert.ok(jen);
+  assert.equal(await page.evaluate(`document.querySelector('.wc-shell').classList.contains('tab-home')`), true);
+  await capture('jen-arrival');
+  await page.until(`(window.__arrivalFeet[${JSON.stringify(jen.instanceId)}]||[]).some(p=>Math.abs(p.x-64)<0.01&&Math.abs(p.y-51)<0.01)`);
+  scenario.jen = { id: jen.instanceId, positions: await page.evaluate(`window.__arrivalFeet[${JSON.stringify(jen.instanceId)}]`) };
+  if (!reduced) assert.ok(scenario.jen.positions.some(p => Math.abs(p.x-47)<1 && Math.abs(p.y-64)<1), 'Jen begins at Airlock');
+  assert.ok(scenario.jen.positions.some(p => Math.abs(p.x-64)<0.01 && Math.abs(p.y-51)<0.01), 'Jen reaches Workshop');
+  await capture('jen-workshop');
+  // Force the existing Broken Belt destination to exercise both authored fights.
+  const branchSeed = await page.state();
+  const risky = branchSeed.contractBoard.offers.find(o => o.profile === 'risky');
+  risky.destinationId = 'danger_belt';
+  risky.destinationName = 'Broken Belt';
+  delete risky.routeContent;
+  await page.evaluate(`localStorage.setItem('warpcrew.save.v2',${JSON.stringify(JSON.stringify({ player: branchSeed, savedAt: now }))})`);
+  await page.send('Page.reload');
+  await page.until('Boolean(document.querySelector("[data-tab]"))');
+  await page.click('[data-tab="missions"]');
+  await page.click('.contract-card[data-profile="risky"] [data-act="contract-review"]');
+  await page.click('[data-act="contract-accept"]');
+  await page.click('[data-view="contracts"]');
+  await page.click('[data-action="launch"]');
+  await page.click('[data-tab="missions"]');
+  await page.click('[data-view="contracts"]');
+  scenario.measurements.push(await page.measure('risky-branches', '.route-stage'));
+  scenario.branchCopy = await page.evaluate(`document.querySelector('.route-stage').innerText`);
+  assert.match(scenario.branchCopy, /Eclipse Probe/);
+  assert.match(scenario.branchCopy, /Pirate Wing/);
+  await capture('risky-branches');
+  scenario.exceptions = page.errors;
+  assert.equal(page.errors.length, 0);
+  await page.close();
+}
+
 try {
+  if (finalReviewOnly) {
+    for (const [width, height] of [[390,844],[360,800]]) for (const reduced of [false,true]) {
+      console.log(`Final review ${width}x${height} reduced=${reduced}`);
+      await runFinalReview(width, height, reduced);
+    }
+  } else {
   for(const [width,height] of (process.argv.includes('--reduced-only')?[]:[[390,844],[360,800]])) {
     console.log(`Running ${width}x${height}`);
     await run(width,height);
@@ -334,13 +419,14 @@ try {
   assert.equal(reduced.errors.length,0,'reduced runtime has no uncaught exceptions');
   await reduced.close();
   }
+  }
 } catch(error) {
   report.error=error.stack;
   console.error(error);
   process.exitCode=1;
 } finally {
   for(const page of openPages) await page.close().catch(()=>{});
-  await writeFile(new URL('contract-route-measurements.json',evidenceRoot),JSON.stringify(report,null,2)+'\n');
+  await writeFile(new URL(reportName,evidenceRoot),JSON.stringify(report,null,2)+'\n');
   console.log(`Measured failures: ${report.failures.length}; scenarios: ${report.scenarios.length}`);
   if(report.failures.length && !process.argv.includes('--record')) process.exitCode=1;
 }

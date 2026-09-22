@@ -1,0 +1,2600 @@
+{
+  "url": "http://127.0.0.1:5201/",
+  "browser": {
+    "Browser": "Chrome/153.0.8010.53",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "V8-Version": "15.3.76.13",
+    "WebKit-Version": "537.36 (@792bf6722e73a45aa9e47c163b9901bdc17f3230)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:9341/devtools/browser/7abbfb59-ba28-42a9-be85-726bea180700"
+  },
+  "seed": {
+    "version": 7,
+    "captainName": "Captain",
+    "createdAt": 1790017200000,
+    "wallet": {
+      "credits": 80,
+      "fuel": 8,
+      "gems": 0,
+      "medals": 0,
+      "reputation": 0
+    },
+    "fuelMax": 10,
+    "fuelRatePerHour": 1,
+    "fuelClaimAt": 1790017200000,
+    "ship": {
+      "shipId": "sparrow",
+      "systems": {
+        "engines": 1,
+        "shields": 1,
+        "cargo": 1,
+        "weapons": 1,
+        "quarters": 0,
+        "sensors": 0,
+        "medbay": 0
+      },
+      "cosmetics": {},
+      "ownedHulls": [
+        "sparrow"
+      ],
+      "hull": 100
+    },
+    "crewSlots": 2,
+    "crew": [
+      {
+        "instanceId": "qa-crew-0",
+        "templateId": "merc_rex",
+        "name": "Rex Vale",
+        "role": "pilot",
+        "rarity": "common",
+        "species": "human",
+        "faction": "haulers",
+        "origin": "Spur Anchor",
+        "quote": "Lane’s dirty. Hands aren’t.",
+        "history": "Rex flew meal-packs for a Spur co-op until a Swarm probe tagged his convoy. He kept the Sparrow airborne and never went back to scheduled runs.",
+        "passive": {
+          "fuelCostReduce": 0
+        },
+        "level": 1,
+        "stars": 1,
+        "rank": 1,
+        "copies": 1,
+        "xp": 0,
+        "power": 10,
+        "status": "ready",
+        "injuredUntil": 0,
+        "blurb": "Ex-hauler pilot. Steady hands."
+      },
+      {
+        "instanceId": "qa-crew-1",
+        "templateId": "merc_bolt",
+        "name": "Bolt",
+        "role": "engineer",
+        "rarity": "common",
+        "species": "droid",
+        "faction": "yard",
+        "origin": "Null Scrapyard",
+        "quote": "If it rattles, I named it.",
+        "history": "A scrap-yard chassis with three owners and one personality core that refuses a factory reset. Bolts talk while they weld. The welds hold.",
+        "passive": {
+          "repairBonus": 0.05
+        },
+        "level": 1,
+        "stars": 1,
+        "rank": 1,
+        "copies": 1,
+        "xp": 0,
+        "power": 10,
+        "status": "ready",
+        "injuredUntil": 0,
+        "blurb": "Refurbished yard droid."
+      }
+    ],
+    "reserve": [],
+    "iapFulfilled": [],
+    "activeExpedition": null,
+    "contractBoard": null,
+    "activeContract": null,
+    "dailyLoop": {
+      "dayKey": null,
+      "contract": false,
+      "improve": false,
+      "away": false
+    },
+    "location": "station_home",
+    "flags": {
+      "splashSeen": true
+    },
+    "gacha": {
+      "pityRare": 0,
+      "pityLegend": 0,
+      "luck": 0,
+      "pulls": 0,
+      "lastRarity": null
+    },
+    "loginStreak": 1,
+    "lastLoginDay": "2026-09-21",
+    "dailyPullAvailable": true,
+    "stats": {
+      "jumps": 0,
+      "combatsWon": 0,
+      "expeditions": 0,
+      "visits": {},
+      "planetRuns": {},
+      "contractsCompleted": 0,
+      "contractsByProfile": {
+        "reliable": 0,
+        "risky": 0,
+        "strange": 0
+      }
+    },
+    "story": {
+      "chapter": 0,
+      "eclipseIntro": false
+    },
+    "tutorial": {
+      "script": 3,
+      "phase": "distress",
+      "completed": false,
+      "dismissed": false,
+      "firstTravel": false,
+      "firstCombat": false,
+      "firstExpedition": false,
+      "hiredThird": false,
+      "slot3Unlocked": false,
+      "slot4Unlocked": false,
+      "jestPrompted": false,
+      "lastRewards": null,
+      "recruit": null,
+      "ordersBeat": null
+    }
+  },
+  "fixedNow": 1790017200000,
+  "timezone": "America/Los_Angeles",
+  "deviceScaleFactor": 1,
+  "scenarios": [
+    {
+      "viewport": "390x844",
+      "reduced": false,
+      "captures": [
+        "contracts-runtime/final-launch-390x844.png",
+        "contracts-runtime/final-jen-arrival-390x844.png",
+        "contracts-runtime/final-jen-workshop-390x844.png",
+        "contracts-runtime/final-risky-branches-390x844.png"
+      ],
+      "measurements": [
+        {
+          "label": "risky-branches",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Secure the contract · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 362.765625,
+              "width": 332,
+              "height": 44,
+              "bottom": 406.765625,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Push the signal · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 477.140625,
+              "width": 332,
+              "height": 44,
+              "bottom": 521.140625,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 537.140625,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 581.140625,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Secure the contract · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Push the signal · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Break contract",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-abandon"
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "choice",
+              "fontSize": 17,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Eclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Pirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        }
+      ],
+      "launch": {
+        "shipVisible": true,
+        "flight": "departing",
+        "message": "Sparrow launched · en route",
+        "saved": "confrontation"
+      },
+      "jen": {
+        "id": "merc_jen_0cyk5rc",
+        "positions": [
+          {
+            "x": 47,
+            "y": 64
+          },
+          {
+            "x": 46.52777777777778,
+            "y": 63.671875
+          },
+          {
+            "x": 46.674478311878175,
+            "y": 63.70457122752945
+          },
+          {
+            "x": 46.82117884597858,
+            "y": 63.73726745505891
+          },
+          {
+            "x": 46.967000933767,
+            "y": 63.76976789679477
+          },
+          {
+            "x": 48,
+            "y": 64
+          },
+          {
+            "x": 47.91666666666667,
+            "y": 63.671875
+          },
+          {
+            "x": 47.952421848978915,
+            "y": 63.525889874258304
+          },
+          {
+            "x": 47.98817703129115,
+            "y": 63.379904748516616
+          },
+          {
+            "x": 48.02371811071531,
+            "y": 63.2347937852045
+          },
+          {
+            "x": 48.059473293027544,
+            "y": 63.0888086594628
+          },
+          {
+            "x": 48.0950143724517,
+            "y": 62.9436976961507
+          },
+          {
+            "x": 48.13076955476394,
+            "y": 62.797712570409004
+          },
+          {
+            "x": 48.16652473707619,
+            "y": 62.6517274446673
+          },
+          {
+            "x": 48.20206581650034,
+            "y": 62.5066164813552
+          },
+          {
+            "x": 48.238035101700675,
+            "y": 62.35975719318392
+          },
+          {
+            "x": 48.27357618112481,
+            "y": 62.21464622987182
+          },
+          {
+            "x": 48.30933136343705,
+            "y": 62.068661104130115
+          },
+          {
+            "x": 48.3448724428612,
+            "y": 61.923550140818016
+          },
+          {
+            "x": 48.38062762517345,
+            "y": 61.77756501507632
+          },
+          {
+            "x": 48.4163828074857,
+            "y": 61.63157988933462
+          },
+          {
+            "x": 48.45213798979794,
+            "y": 61.48559476359292
+          },
+          {
+            "x": 48.487679069222075,
+            "y": 61.34048380028082
+          },
+          {
+            "x": 48.52343425153432,
+            "y": 61.19449867453912
+          },
+          {
+            "x": 48.55918943384657,
+            "y": 61.04851354879742
+          },
+          {
+            "x": 48.59473051327071,
+            "y": 60.903402585485324
+          },
+          {
+            "x": 48.63027159269486,
+            "y": 60.758291622173225
+          },
+          {
+            "x": 48.666240877895206,
+            "y": 60.61143233400193
+          },
+          {
+            "x": 48.70178195731934,
+            "y": 60.46632137068983
+          },
+          {
+            "x": 48.73732303674349,
+            "y": 60.32121040737772
+          },
+          {
+            "x": 48.77307821905573,
+            "y": 60.17522528163604
+          },
+          {
+            "x": 48.80883340136798,
+            "y": 60.029240155894335
+          },
+          {
+            "x": 48.84458858368022,
+            "y": 59.88325503015264
+          },
+          {
+            "x": 48.880343765992464,
+            "y": 59.73726990441094
+          },
+          {
+            "x": 48.915884845416606,
+            "y": 59.59215894109884
+          },
+          {
+            "x": 48.95164002772885,
+            "y": 59.44617381535714
+          },
+          {
+            "x": 48.987181107153,
+            "y": 59.301062852045035
+          },
+          {
+            "x": 49.02293628946524,
+            "y": 59.15507772630334
+          },
+          {
+            "x": 49.05847736888939,
+            "y": 59.009966762991226
+          },
+          {
+            "x": 49.09444665408973,
+            "y": 58.863107474819955
+          },
+          {
+            "x": 49.12998773351387,
+            "y": 58.717996511507856
+          },
+          {
+            "x": 49.165742915826115,
+            "y": 58.57201138576615
+          },
+          {
+            "x": 49.201283995250265,
+            "y": 58.42690042245404
+          },
+          {
+            "x": 49.23703917756251,
+            "y": 58.28091529671235
+          },
+          {
+            "x": 49.27258025698666,
+            "y": 58.135804333400245
+          },
+          {
+            "x": 49.3083354392989,
+            "y": 57.98981920765854
+          },
+          {
+            "x": 49.344090621611144,
+            "y": 57.84383408191685
+          },
+          {
+            "x": 49.37984580392339,
+            "y": 57.69784895617516
+          },
+          {
+            "x": 49.41560098623563,
+            "y": 57.55186383043346
+          },
+          {
+            "x": 49.45114206565977,
+            "y": 57.406752867121355
+          },
+          {
+            "x": 49.48689724797202,
+            "y": 57.26076774137966
+          },
+          {
+            "x": 49.52243832739616,
+            "y": 57.11565677806756
+          },
+          {
+            "x": 49.558193509708396,
+            "y": 56.96967165232586
+          },
+          {
+            "x": 49.59373458913255,
+            "y": 56.82456068901375
+          },
+          {
+            "x": 49.62948977144479,
+            "y": 56.67857556327206
+          },
+          {
+            "x": 49.66503085086894,
+            "y": 56.53346459995995
+          },
+          {
+            "x": 49.701000136069275,
+            "y": 56.38660531178867
+          },
+          {
+            "x": 49.73654121549342,
+            "y": 56.241494348476564
+          },
+          {
+            "x": 49.77229639780566,
+            "y": 56.095509222734876
+          },
+          {
+            "x": 49.80783747722981,
+            "y": 55.95039825942276
+          },
+          {
+            "x": 49.843592659542054,
+            "y": 55.80441313368107
+          },
+          {
+            "x": 49.8793478418543,
+            "y": 55.65842800793938
+          },
+          {
+            "x": 49.91488892127844,
+            "y": 55.513317044627264
+          },
+          {
+            "x": 49.95064410359068,
+            "y": 55.36733191888557
+          },
+          {
+            "x": 49.98639928590293,
+            "y": 55.22134679314388
+          },
+          {
+            "x": 50.02194036532707,
+            "y": 55.07623582983177
+          },
+          {
+            "x": 50.05769554763931,
+            "y": 54.930250704090064
+          },
+          {
+            "x": 50.09345072995156,
+            "y": 54.78426557834838
+          },
+          {
+            "x": 50.1292059122638,
+            "y": 54.63828045260668
+          },
+          {
+            "x": 50.164746991687934,
+            "y": 54.493169489294566
+          },
+          {
+            "x": 50.200288071112084,
+            "y": 54.34805852598247
+          },
+          {
+            "x": 50.23625735631243,
+            "y": 54.201199237811196
+          },
+          {
+            "x": 50.27179843573657,
+            "y": 54.05608827449908
+          },
+          {
+            "x": 50.307553618048814,
+            "y": 53.91010314875738
+          },
+          {
+            "x": 50.34309469747297,
+            "y": 53.76499218544528
+          },
+          {
+            "x": 50.37884987978521,
+            "y": 53.619007059703584
+          },
+          {
+            "x": 50.41460506209745,
+            "y": 53.47302193396188
+          },
+          {
+            "x": 50.45014614152159,
+            "y": 53.32791097064978
+          },
+          {
+            "x": 50.485901323833836,
+            "y": 53.181925844908086
+          },
+          {
+            "x": 50.52144240325798,
+            "y": 53.03681488159599
+          },
+          {
+            "x": 50.55719758557022,
+            "y": 52.890829755854284
+          },
+          {
+            "x": 50.59295276788247,
+            "y": 52.74484463011259
+          },
+          {
+            "x": 50.62849384730661,
+            "y": 52.59973366680049
+          },
+          {
+            "x": 50.664463132506945,
+            "y": 52.4528743786292
+          },
+          {
+            "x": 50.700004211931095,
+            "y": 52.3077634153171
+          },
+          {
+            "x": 50.73554529135523,
+            "y": 52.162652452004984
+          },
+          {
+            "x": 50.77130047366748,
+            "y": 52.0166673262633
+          },
+          {
+            "x": 50.807055655979724,
+            "y": 51.8706822005216
+          },
+          {
+            "x": 50.84259673540388,
+            "y": 51.725571237209486
+          },
+          {
+            "x": 50.87835191771612,
+            "y": 51.579586111467805
+          },
+          {
+            "x": 50.91410710002836,
+            "y": 51.4336009857261
+          },
+          {
+            "x": 50.9496481794525,
+            "y": 51.28849002241399
+          },
+          {
+            "x": 50.985403361764746,
+            "y": 51.1425048966723
+          },
+          {
+            "x": 51.021158544077,
+            "y": 50.996519770930604
+          },
+          {
+            "x": 51.05669962350113,
+            "y": 50.85140880761849
+          },
+          {
+            "x": 51.09245480581337,
+            "y": 50.7054236818768
+          },
+          {
+            "x": 51.12799588523752,
+            "y": 50.5603127185647
+          },
+          {
+            "x": 51.163965170437855,
+            "y": 50.41345343039342
+          },
+          {
+            "x": 51.199506249862004,
+            "y": 50.268342467081304
+          },
+          {
+            "x": 51.23526143217425,
+            "y": 50.122357341339615
+          },
+          {
+            "x": 51.27080251159839,
+            "y": 49.9772463780275
+          },
+          {
+            "x": 51.30677179679872,
+            "y": 49.83038708985623
+          },
+          {
+            "x": 51.34231287622287,
+            "y": 49.685276126544125
+          },
+          {
+            "x": 51.37806805853512,
+            "y": 49.53929100080242
+          },
+          {
+            "x": 51.41360913795926,
+            "y": 49.39418003749033
+          },
+          {
+            "x": 51.449364320271506,
+            "y": 49.24819491174863
+          },
+          {
+            "x": 51.48511950258376,
+            "y": 49.102209786006924
+          },
+          {
+            "x": 51.52066058200789,
+            "y": 48.95709882269483
+          },
+          {
+            "x": 51.55641576432014,
+            "y": 48.81111369695313
+          },
+          {
+            "x": 51.59195684374428,
+            "y": 48.66600273364102
+          },
+          {
+            "x": 51.627712026056514,
+            "y": 48.52001760789934
+          },
+          {
+            "x": 51.663467208368765,
+            "y": 48.37403248215763
+          },
+          {
+            "x": 51.69922239068101,
+            "y": 48.228047356415935
+          },
+          {
+            "x": 51.73476347010515,
+            "y": 48.08293639310385
+          },
+          {
+            "x": 52,
+            "y": 47
+          },
+          {
+            "x": 52.083333333333336,
+            "y": 47.265625
+          },
+          {
+            "x": 52.23221044047679,
+            "y": 47.244992574825226
+          },
+          {
+            "x": 52.38108754762026,
+            "y": 47.22436014965045
+          },
+          {
+            "x": 52.52996465476375,
+            "y": 47.20372772447567
+          },
+          {
+            "x": 52.677950282223705,
+            "y": 47.18321884675704
+          },
+          {
+            "x": 52.82593590968367,
+            "y": 47.162709969038396
+          },
+          {
+            "x": 54,
+            "y": 47
+          },
+          {
+            "x": 53.47222222222222,
+            "y": 47.265625
+          },
+          {
+            "x": 53.61387457360913,
+            "y": 47.31587140630496
+          },
+          {
+            "x": 53.75467870732306,
+            "y": 47.36581693592544
+          },
+          {
+            "x": 53.89633105870995,
+            "y": 47.4160633422304
+          },
+          {
+            "x": 54.03798341009686,
+            "y": 47.466309748535345
+          },
+          {
+            "x": 54.179635761483766,
+            "y": 47.516556154840295
+          },
+          {
+            "x": 54.32043989519768,
+            "y": 47.56650168446078
+          },
+          {
+            "x": 54.46209224658459,
+            "y": 47.616748090765725
+          },
+          {
+            "x": 54.603744597971506,
+            "y": 47.66699449707068
+          },
+          {
+            "x": 54.74454873168541,
+            "y": 47.71694002669117
+          },
+          {
+            "x": 54.88535286539934,
+            "y": 47.766885556311664
+          },
+          {
+            "x": 55.02700521678625,
+            "y": 47.817131962616614
+          },
+          {
+            "x": 55.16865756817314,
+            "y": 47.867378368921564
+          },
+          {
+            "x": 55.310309919560055,
+            "y": 47.91762477522651
+          },
+          {
+            "x": 55.451114053273976,
+            "y": 47.96757030484701
+          },
+          {
+            "x": 55.592766404660864,
+            "y": 48.01781671115196
+          },
+          {
+            "x": 55.73441875604777,
+            "y": 48.06806311745691
+          },
+          {
+            "x": 55.8752228897617,
+            "y": 48.1180086470774
+          },
+          {
+            "x": 56.01687524114859,
+            "y": 48.16825505338235
+          },
+          {
+            "x": 56.1585275925355,
+            "y": 48.2185014596873
+          },
+          {
+            "x": 56.300179943922416,
+            "y": 48.268747865992246
+          },
+          {
+            "x": 56.44098407763632,
+            "y": 48.31869339561274
+          },
+          {
+            "x": 56.58263642902324,
+            "y": 48.36893980191769
+          },
+          {
+            "x": 56.72344056273716,
+            "y": 48.41888533153819
+          },
+          {
+            "x": 56.86509291412405,
+            "y": 48.469131737843135
+          },
+          {
+            "x": 57.00589704783797,
+            "y": 48.51907726746363
+          },
+          {
+            "x": 57.147549399224886,
+            "y": 48.56932367376858
+          },
+          {
+            "x": 57.289201750611774,
+            "y": 48.61957008007353
+          },
+          {
+            "x": 57.430005884325695,
+            "y": 48.66951560969403
+          },
+          {
+            "x": 57.572506453385586,
+            "y": 48.720062892683444
+          },
+          {
+            "x": 57.7133105870995,
+            "y": 48.770008422303924
+          },
+          {
+            "x": 57.854114720813435,
+            "y": 48.81995395192441
+          },
+          {
+            "x": 57.99576707220033,
+            "y": 48.87020035822937
+          },
+          {
+            "x": 58.137419423587225,
+            "y": 48.92044676453432
+          },
+          {
+            "x": 58.27822355730115,
+            "y": 48.97039229415481
+          },
+          {
+            "x": 58.41987590868807,
+            "y": 49.02063870045977
+          },
+          {
+            "x": 58.561528260074944,
+            "y": 49.07088510676471
+          },
+          {
+            "x": 58.70233239378888,
+            "y": 49.120830636385215
+          },
+          {
+            "x": 58.843984745175796,
+            "y": 49.17107704269016
+          },
+          {
+            "x": 58.98478887888972,
+            "y": 49.22102257231065
+          },
+          {
+            "x": 59.12728944794958,
+            "y": 49.27156985530005
+          },
+          {
+            "x": 59.268093581663514,
+            "y": 49.32151538492055
+          },
+          {
+            "x": 59.40889771537744,
+            "y": 49.37146091454105
+          },
+          {
+            "x": 59.551398284437305,
+            "y": 49.42200819753045
+          },
+          {
+            "x": 59.69220241815124,
+            "y": 49.47195372715095
+          },
+          {
+            "x": 59.83385476953813,
+            "y": 49.5222001334559
+          },
+          {
+            "x": 59.975507120925045,
+            "y": 49.57244653976085
+          },
+          {
+            "x": 60.116311254638966,
+            "y": 49.62239206938134
+          },
+          {
+            "x": 60.257963606025854,
+            "y": 49.67263847568629
+          },
+          {
+            "x": 60.39876773973978,
+            "y": 49.72258400530679
+          },
+          {
+            "x": 60.54042009112669,
+            "y": 49.772830411611736
+          },
+          {
+            "x": 60.68207244251358,
+            "y": 49.823076817916686
+          },
+          {
+            "x": 60.8228765762275,
+            "y": 49.87302234753717
+          },
+          {
+            "x": 60.96452892761442,
+            "y": 49.92326875384212
+          },
+          {
+            "x": 61.106181279001305,
+            "y": 49.97351516014707
+          },
+          {
+            "x": 61.247833630388214,
+            "y": 50.023761566452016
+          },
+          {
+            "x": 61.388637764102135,
+            "y": 50.07370709607252
+          },
+          {
+            "x": 61.52944189781607,
+            "y": 50.12365262569302
+          },
+          {
+            "x": 61.67194246687594,
+            "y": 50.17419990868242
+          },
+          {
+            "x": 61.81274660058986,
+            "y": 50.22414543830291
+          },
+          {
+            "x": 61.95439895197675,
+            "y": 50.274391844607855
+          },
+          {
+            "x": 62.095203085690684,
+            "y": 50.32433737422834
+          },
+          {
+            "x": 62.2368554370776,
+            "y": 50.3745837805333
+          },
+          {
+            "x": 62.378507788464475,
+            "y": 50.42483018683826
+          },
+          {
+            "x": 62.52016013985139,
+            "y": 50.4750765931432
+          },
+          {
+            "x": 62.66096427356532,
+            "y": 50.525022122763694
+          },
+          {
+            "x": 62.802616624952215,
+            "y": 50.57526852906864
+          },
+          {
+            "x": 62.94426897633911,
+            "y": 50.625514935373594
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          }
+        ]
+      },
+      "branchCopy": "Belt Intercept\n\nchoice\n\nCrew: Rex Vale, Bolt, Jen Park\n\nFavored: Gunner · A gunner turns a dangerous contract into a payout.\n\nEclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.\n\nSecure the contract · 1F\n\nPirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.\n\nPush the signal · 1F\nBreak contract\n\nNo pending reward. Spent fuel is not refunded.",
+      "exceptions": []
+    },
+    {
+      "viewport": "390x844",
+      "reduced": true,
+      "captures": [
+        "contracts-runtime/final-launch-reduced-390x844.png",
+        "contracts-runtime/final-jen-arrival-reduced-390x844.png",
+        "contracts-runtime/final-jen-workshop-reduced-390x844.png",
+        "contracts-runtime/final-risky-branches-reduced-390x844.png"
+      ],
+      "measurements": [
+        {
+          "label": "risky-branches",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Secure the contract · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 362.765625,
+              "width": 332,
+              "height": 44,
+              "bottom": 406.765625,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Push the signal · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 477.140625,
+              "width": 332,
+              "height": 44,
+              "bottom": 521.140625,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 537.140625,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 581.140625,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Secure the contract · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Push the signal · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Break contract",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-abandon"
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "choice",
+              "fontSize": 17,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Eclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Pirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": true,
+          "pass": true
+        }
+      ],
+      "launch": {
+        "shipVisible": true,
+        "flight": "static",
+        "message": "Sparrow launched · en route",
+        "saved": "confrontation"
+      },
+      "staticLaunch": true,
+      "jen": {
+        "id": "merc_jen_0cyk5rc",
+        "positions": [
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          }
+        ]
+      },
+      "branchCopy": "Belt Intercept\n\nchoice\n\nCrew: Rex Vale, Bolt, Jen Park\n\nFavored: Gunner · A gunner turns a dangerous contract into a payout.\n\nEclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.\n\nSecure the contract · 1F\n\nPirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.\n\nPush the signal · 1F\nBreak contract\n\nNo pending reward. Spent fuel is not refunded.",
+      "exceptions": []
+    },
+    {
+      "viewport": "360x800",
+      "reduced": false,
+      "captures": [
+        "contracts-runtime/final-launch-360x800.png",
+        "contracts-runtime/final-jen-arrival-360x800.png",
+        "contracts-runtime/final-jen-workshop-360x800.png",
+        "contracts-runtime/final-risky-branches-360x800.png"
+      ],
+      "measurements": [
+        {
+          "label": "risky-branches",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Secure the contract · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 362.765625,
+              "width": 302,
+              "height": 44,
+              "bottom": 406.765625,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Push the signal · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 477.140625,
+              "width": 302,
+              "height": 44,
+              "bottom": 521.140625,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 537.140625,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 581.140625,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Secure the contract · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Push the signal · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Break contract",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-abandon"
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "choice",
+              "fontSize": 17,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Eclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Pirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        }
+      ],
+      "launch": {
+        "shipVisible": true,
+        "flight": "departing",
+        "message": "Sparrow launched · en route",
+        "saved": "confrontation"
+      },
+      "jen": {
+        "id": "merc_jen_0cyk5rc",
+        "positions": [
+          {
+            "x": 47,
+            "y": 64
+          },
+          {
+            "x": 46.52777777777778,
+            "y": 63.671875
+          },
+          {
+            "x": 46.674478311878175,
+            "y": 63.70457122752945
+          },
+          {
+            "x": 46.8203003996666,
+            "y": 63.73707166926531
+          },
+          {
+            "x": 46.96612248745502,
+            "y": 63.769572111001175
+          },
+          {
+            "x": 48,
+            "y": 64
+          },
+          {
+            "x": 47.91666666666667,
+            "y": 63.671875
+          },
+          {
+            "x": 47.95242184897891,
+            "y": 63.525889874258304
+          },
+          {
+            "x": 47.98817703129116,
+            "y": 63.379904748516616
+          },
+          {
+            "x": 48.02371811071531,
+            "y": 63.2347937852045
+          },
+          {
+            "x": 48.05947329302755,
+            "y": 63.0888086594628
+          },
+          {
+            "x": 48.09501437245169,
+            "y": 62.9436976961507
+          },
+          {
+            "x": 48.13076955476394,
+            "y": 62.797712570409004
+          },
+          {
+            "x": 48.16631063418807,
+            "y": 62.652601607096905
+          },
+          {
+            "x": 48.20206581650032,
+            "y": 62.5066164813552
+          },
+          {
+            "x": 48.237820998812566,
+            "y": 62.360631355613506
+          },
+          {
+            "x": 48.2733620782367,
+            "y": 62.21552039230141
+          },
+          {
+            "x": 48.30911726054895,
+            "y": 62.06953526655972
+          },
+          {
+            "x": 48.3448724428612,
+            "y": 61.92355014081801
+          },
+          {
+            "x": 48.38062762517344,
+            "y": 61.777565015076306
+          },
+          {
+            "x": 48.41616870459758,
+            "y": 61.63245405176422
+          },
+          {
+            "x": 48.45192388690983,
+            "y": 61.48646892602251
+          },
+          {
+            "x": 48.48767906922207,
+            "y": 61.34048380028081
+          },
+          {
+            "x": 48.52322014864621,
+            "y": 61.19537283696872
+          },
+          {
+            "x": 48.55897533095846,
+            "y": 61.04938771122701
+          },
+          {
+            "x": 48.5947305132707,
+            "y": 60.903402585485324
+          },
+          {
+            "x": 48.63027159269484,
+            "y": 60.758291622173225
+          },
+          {
+            "x": 48.66602677500709,
+            "y": 60.612306496431515
+          },
+          {
+            "x": 48.70178195731933,
+            "y": 60.466321370689826
+          },
+          {
+            "x": 48.73732303674347,
+            "y": 60.32121040737772
+          },
+          {
+            "x": 48.77307821905571,
+            "y": 60.17522528163602
+          },
+          {
+            "x": 48.80883340136795,
+            "y": 60.02924015589433
+          },
+          {
+            "x": 48.8443744807921,
+            "y": 59.88412919258222
+          },
+          {
+            "x": 48.88012966310434,
+            "y": 59.73814406684051
+          },
+          {
+            "x": 48.915670742528484,
+            "y": 59.59303310352841
+          },
+          {
+            "x": 48.95142592484073,
+            "y": 59.447047977786724
+          },
+          {
+            "x": 48.98718110715297,
+            "y": 59.301062852045014
+          },
+          {
+            "x": 49.02272218657711,
+            "y": 59.15595188873293
+          },
+          {
+            "x": 49.058477368889356,
+            "y": 59.009966762991226
+          },
+          {
+            "x": 49.0942325512016,
+            "y": 58.863981637249516
+          },
+          {
+            "x": 49.129987733513836,
+            "y": 58.71799651150783
+          },
+          {
+            "x": 49.165528812937985,
+            "y": 58.57288554819573
+          },
+          {
+            "x": 49.20128399525023,
+            "y": 58.42690042245402
+          },
+          {
+            "x": 49.23703917756247,
+            "y": 58.28091529671233
+          },
+          {
+            "x": 49.272580256986615,
+            "y": 58.13580433340023
+          },
+          {
+            "x": 49.30833543929886,
+            "y": 57.989819207658535
+          },
+          {
+            "x": 49.343876518723,
+            "y": 57.844708244346435
+          },
+          {
+            "x": 49.379631701035244,
+            "y": 57.69872311860473
+          },
+          {
+            "x": 49.41538688334749,
+            "y": 57.55273799286304
+          },
+          {
+            "x": 49.45092796277163,
+            "y": 57.40762702955094
+          },
+          {
+            "x": 49.48668314508387,
+            "y": 57.261641903809235
+          },
+          {
+            "x": 49.52222422450802,
+            "y": 57.11653094049712
+          },
+          {
+            "x": 49.557979406820266,
+            "y": 56.97054581475543
+          },
+          {
+            "x": 49.59373458913251,
+            "y": 56.82456068901374
+          },
+          {
+            "x": 49.629275668556666,
+            "y": 56.67944972570162
+          },
+          {
+            "x": 49.665244953756996,
+            "y": 56.53259043753035
+          },
+          {
+            "x": 49.70078603318114,
+            "y": 56.38747947421825
+          },
+          {
+            "x": 49.73654121549338,
+            "y": 56.241494348476536
+          },
+          {
+            "x": 49.772082294917524,
+            "y": 56.09638338516444
+          },
+          {
+            "x": 49.80783747722977,
+            "y": 55.95039825942275
+          },
+          {
+            "x": 49.843378556653924,
+            "y": 55.80528729611064
+          },
+          {
+            "x": 49.87934784185425,
+            "y": 55.65842800793936
+          },
+          {
+            "x": 49.9148889212784,
+            "y": 55.51331704462725
+          },
+          {
+            "x": 49.95064410359064,
+            "y": 55.367331918885554
+          },
+          {
+            "x": 49.98639928590288,
+            "y": 55.22134679314385
+          },
+          {
+            "x": 50.02194036532702,
+            "y": 55.07623582983175
+          },
+          {
+            "x": 50.05769554763927,
+            "y": 54.93025070409006
+          },
+          {
+            "x": 50.09323662706341,
+            "y": 54.78513974077796
+          },
+          {
+            "x": 50.128991809375655,
+            "y": 54.639154615036254
+          },
+          {
+            "x": 50.164746991687906,
+            "y": 54.49316948929456
+          },
+          {
+            "x": 50.20028807111204,
+            "y": 54.34805852598246
+          },
+          {
+            "x": 50.23604325342429,
+            "y": 54.20207340024077
+          },
+          {
+            "x": 50.27179843573653,
+            "y": 54.05608827449906
+          },
+          {
+            "x": 50.30733951516066,
+            "y": 53.91097731118696
+          },
+          {
+            "x": 50.34288059458481,
+            "y": 53.765866347874855
+          },
+          {
+            "x": 50.37884987978516,
+            "y": 53.61900705970357
+          },
+          {
+            "x": 50.41460506209741,
+            "y": 53.473021933961874
+          },
+          {
+            "x": 50.45014614152154,
+            "y": 53.327910970649775
+          },
+          {
+            "x": 50.4856872209457,
+            "y": 53.18280000733767
+          },
+          {
+            "x": 50.521442403257936,
+            "y": 53.03681488159597
+          },
+          {
+            "x": 50.55719758557018,
+            "y": 52.89082975585428
+          },
+          {
+            "x": 50.59273866499433,
+            "y": 52.74571879254217
+          },
+          {
+            "x": 50.62849384730658,
+            "y": 52.599733666800475
+          },
+          {
+            "x": 50.664249029618816,
+            "y": 52.45374854105877
+          },
+          {
+            "x": 50.699790109042965,
+            "y": 52.30863757774667
+          },
+          {
+            "x": 50.73554529135521,
+            "y": 52.16265245200498
+          },
+          {
+            "x": 50.771300473667445,
+            "y": 52.016667326263274
+          },
+          {
+            "x": 50.806841553091594,
+            "y": 51.871556362951175
+          },
+          {
+            "x": 50.842596735403845,
+            "y": 51.72557123720948
+          },
+          {
+            "x": 50.87835191771609,
+            "y": 51.579586111467776
+          },
+          {
+            "x": 50.914107100028325,
+            "y": 51.43360098572608
+          },
+          {
+            "x": 50.94964817945248,
+            "y": 51.28849002241398
+          },
+          {
+            "x": 50.98540336176471,
+            "y": 51.14250489667228
+          },
+          {
+            "x": 51.02094444118887,
+            "y": 50.99739393336018
+          },
+          {
+            "x": 51.05691372638921,
+            "y": 50.850534645188894
+          },
+          {
+            "x": 51.09245480581335,
+            "y": 50.705423681876795
+          },
+          {
+            "x": 51.127995885237496,
+            "y": 50.560312718564695
+          },
+          {
+            "x": 51.16375106754973,
+            "y": 50.41432759282299
+          },
+          {
+            "x": 51.19929214697388,
+            "y": 50.26921662951088
+          },
+          {
+            "x": 51.23504732928613,
+            "y": 50.1232315037692
+          },
+          {
+            "x": 51.270802511598376,
+            "y": 49.977246378027495
+          },
+          {
+            "x": 51.30655769391061,
+            "y": 49.8312612522858
+          },
+          {
+            "x": 51.34209877333477,
+            "y": 49.68615028897369
+          },
+          {
+            "x": 51.37785395564701,
+            "y": 49.540165163232004
+          },
+          {
+            "x": 51.41360913795926,
+            "y": 49.3941800374903
+          },
+          {
+            "x": 51.44915021738341,
+            "y": 49.249069074178195
+          },
+          {
+            "x": 51.48490539969565,
+            "y": 49.1030839484365
+          },
+          {
+            "x": 51.52066058200789,
+            "y": 48.95709882269481
+          },
+          {
+            "x": 51.55620166143204,
+            "y": 48.811987859382704
+          },
+          {
+            "x": 51.59195684374428,
+            "y": 48.666002733641
+          },
+          {
+            "x": 51.627497923168434,
+            "y": 48.52089177032891
+          },
+          {
+            "x": 51.66325310548066,
+            "y": 48.374906644587206
+          },
+          {
+            "x": 51.699008287792914,
+            "y": 48.22892151884551
+          },
+          {
+            "x": 51.73476347010516,
+            "y": 48.08293639310382
+          },
+          {
+            "x": 52,
+            "y": 47
+          },
+          {
+            "x": 52.083333333333336,
+            "y": 47.265625
+          },
+          {
+            "x": 52.23221044047679,
+            "y": 47.244992574825226
+          },
+          {
+            "x": 52.380196067936765,
+            "y": 47.224483697106585
+          },
+          {
+            "x": 52.52907317508024,
+            "y": 47.20385127193181
+          },
+          {
+            "x": 52.6770588025402,
+            "y": 47.18334239421318
+          },
+          {
+            "x": 52.82593590968367,
+            "y": 47.1627099690384
+          },
+          {
+            "x": 54,
+            "y": 47
+          },
+          {
+            "x": 53.47222222222222,
+            "y": 47.265625
+          },
+          {
+            "x": 53.61387457360913,
+            "y": 47.31587140630496
+          },
+          {
+            "x": 53.75467870732306,
+            "y": 47.365816935925444
+          },
+          {
+            "x": 53.895482841036966,
+            "y": 47.41576246554593
+          },
+          {
+            "x": 54.03713519242388,
+            "y": 47.46600887185089
+          },
+          {
+            "x": 54.17878754381079,
+            "y": 47.51625527815583
+          },
+          {
+            "x": 54.32043989519768,
+            "y": 47.56650168446078
+          },
+          {
+            "x": 54.4612440289116,
+            "y": 47.616447214081276
+          },
+          {
+            "x": 54.60289638029852,
+            "y": 47.66669362038623
+          },
+          {
+            "x": 54.744548731685406,
+            "y": 47.71694002669118
+          },
+          {
+            "x": 54.886201083072315,
+            "y": 47.767186432996134
+          },
+          {
+            "x": 55.02700521678624,
+            "y": 47.81713196261663
+          },
+          {
+            "x": 55.16865756817313,
+            "y": 47.86737836892157
+          },
+          {
+            "x": 55.30946170188707,
+            "y": 47.91732389854206
+          },
+          {
+            "x": 55.45111405327396,
+            "y": 47.96757030484702
+          },
+          {
+            "x": 55.59276640466086,
+            "y": 48.01781671115196
+          },
+          {
+            "x": 55.733570538374785,
+            "y": 48.06776224077245
+          },
+          {
+            "x": 55.8752228897617,
+            "y": 48.11800864707741
+          },
+          {
+            "x": 56.016875241148576,
+            "y": 48.16825505338236
+          },
+          {
+            "x": 56.15767937486251,
+            "y": 48.218200583002854
+          },
+          {
+            "x": 56.29933172624943,
+            "y": 48.268446989307805
+          },
+          {
+            "x": 56.440135859963334,
+            "y": 48.3183925189283
+          },
+          {
+            "x": 56.58178821135025,
+            "y": 48.36863892523324
+          },
+          {
+            "x": 56.723440562737146,
+            "y": 48.41888533153819
+          },
+          {
+            "x": 56.864244696451074,
+            "y": 48.46883086115867
+          },
+          {
+            "x": 57.00589704783797,
+            "y": 48.51907726746363
+          },
+          {
+            "x": 57.147549399224886,
+            "y": 48.56932367376858
+          },
+          {
+            "x": 57.2883535329388,
+            "y": 48.61926920338907
+          },
+          {
+            "x": 57.43000588432571,
+            "y": 48.66951560969402
+          },
+          {
+            "x": 57.57165823571262,
+            "y": 48.71976201599897
+          },
+          {
+            "x": 57.71331058709951,
+            "y": 48.77000842230392
+          },
+          {
+            "x": 57.854114720813435,
+            "y": 48.81995395192441
+          },
+          {
+            "x": 57.995767072200344,
+            "y": 48.87020035822937
+          },
+          {
+            "x": 58.13657120591426,
+            "y": 48.92014588784985
+          },
+          {
+            "x": 58.27822355730117,
+            "y": 48.9703922941548
+          },
+          {
+            "x": 58.41902769101509,
+            "y": 49.02033782377529
+          },
+          {
+            "x": 58.561528260074965,
+            "y": 49.070885106764706
+          },
+          {
+            "x": 58.70233239378889,
+            "y": 49.12083063638519
+          },
+          {
+            "x": 58.8439847451758,
+            "y": 49.17107704269015
+          },
+          {
+            "x": 58.98478887888972,
+            "y": 49.22102257231064
+          },
+          {
+            "x": 59.126441230276626,
+            "y": 49.27126897861559
+          },
+          {
+            "x": 59.267245363990554,
+            "y": 49.32121450823608
+          },
+          {
+            "x": 59.40889771537744,
+            "y": 49.37146091454104
+          },
+          {
+            "x": 59.55055006676435,
+            "y": 49.42170732084598
+          },
+          {
+            "x": 59.69135420047827,
+            "y": 49.47165285046647
+          },
+          {
+            "x": 59.83300655186517,
+            "y": 49.521899256771434
+          },
+          {
+            "x": 59.97465890325208,
+            "y": 49.57214566307638
+          },
+          {
+            "x": 60.11546303696601,
+            "y": 49.622091192696864
+          },
+          {
+            "x": 60.257963606025875,
+            "y": 49.672638475686284
+          },
+          {
+            "x": 60.3987677397398,
+            "y": 49.72258400530678
+          },
+          {
+            "x": 60.53957187345374,
+            "y": 49.77252953492727
+          },
+          {
+            "x": 60.681224224840626,
+            "y": 49.82277594123223
+          },
+          {
+            "x": 60.82287657622752,
+            "y": 49.873022347537166
+          },
+          {
+            "x": 60.96452892761444,
+            "y": 49.92326875384212
+          },
+          {
+            "x": 61.10533306132835,
+            "y": 49.97321428346261
+          },
+          {
+            "x": 61.24698541271526,
+            "y": 50.02346068976756
+          },
+          {
+            "x": 61.38863776410217,
+            "y": 50.0737070960725
+          },
+          {
+            "x": 61.529441897816085,
+            "y": 50.12365262569299
+          },
+          {
+            "x": 61.671094249202994,
+            "y": 50.17389903199795
+          },
+          {
+            "x": 61.81189838291692,
+            "y": 50.22384456161845
+          },
+          {
+            "x": 61.9543989519768,
+            "y": 50.274391844607855
+          },
+          {
+            "x": 62.09520308569072,
+            "y": 50.32433737422834
+          },
+          {
+            "x": 62.23685543707763,
+            "y": 50.3745837805333
+          },
+          {
+            "x": 62.37765957079154,
+            "y": 50.42452931015379
+          },
+          {
+            "x": 62.518463704505464,
+            "y": 50.47447483977429
+          },
+          {
+            "x": 62.660964273565355,
+            "y": 50.525022122763694
+          },
+          {
+            "x": 62.80176840727927,
+            "y": 50.57496765238418
+          },
+          {
+            "x": 62.94342075866618,
+            "y": 50.625214058689124
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          }
+        ]
+      },
+      "branchCopy": "Belt Intercept\n\nchoice\n\nCrew: Rex Vale, Bolt, Jen Park\n\nFavored: Gunner · A gunner turns a dangerous contract into a payout.\n\nEclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.\n\nSecure the contract · 1F\n\nPirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.\n\nPush the signal · 1F\nBreak contract\n\nNo pending reward. Spent fuel is not refunded.",
+      "exceptions": []
+    },
+    {
+      "viewport": "360x800",
+      "reduced": true,
+      "captures": [
+        "contracts-runtime/final-launch-reduced-360x800.png",
+        "contracts-runtime/final-jen-arrival-reduced-360x800.png",
+        "contracts-runtime/final-jen-workshop-reduced-360x800.png",
+        "contracts-runtime/final-risky-branches-reduced-360x800.png"
+      ],
+      "measurements": [
+        {
+          "label": "risky-branches",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Secure the contract · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 362.765625,
+              "width": 302,
+              "height": 44,
+              "bottom": 406.765625,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Push the signal · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 477.140625,
+              "width": 302,
+              "height": 44,
+              "bottom": 521.140625,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 537.140625,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 581.140625,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Secure the contract · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Push the signal · 1F",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-action"
+            },
+            {
+              "text": "Break contract",
+              "fontSize": 16,
+              "source": "control",
+              "action": "contract-abandon"
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "choice",
+              "fontSize": 17,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Eclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "Pirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16,
+              "source": "content",
+              "action": null
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": true,
+          "pass": true
+        }
+      ],
+      "launch": {
+        "shipVisible": true,
+        "flight": "static",
+        "message": "Sparrow launched · en route",
+        "saved": "confrontation"
+      },
+      "staticLaunch": true,
+      "jen": {
+        "id": "merc_jen_0cyk5rc",
+        "positions": [
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          },
+          {
+            "x": 64,
+            "y": 51
+          }
+        ]
+      },
+      "branchCopy": "Belt Intercept\n\nchoice\n\nCrew: Rex Vale, Bolt, Jen Park\n\nFavored: Gunner · A gunner turns a dangerous contract into a payout.\n\nEclipse Probe · power 20 · victory 60cr · 6 med · 3 rep. Lower-power confrontation.\n\nSecure the contract · 1F\n\nPirate Wing · power 22 · victory 80cr · 5 med · 2 rep. Higher-power confrontation.\n\nPush the signal · 1F\nBreak contract\n\nNo pending reward. Spent fuel is not refunded.",
+      "exceptions": []
+    }
+  ],
+  "failures": []
+}

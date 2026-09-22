@@ -4,6 +4,29 @@ Status: automated and desktop-emulated runtime checks pass; package content and 
 
 This report covers the approved [specification](../superpowers/specs/2026-09-21-contract-route-loop-design.md) and [implementation plan](../superpowers/plans/2026-09-21-contract-route-loop.md). It is not real-device QA, economy approval, or deployment approval.
 
+## Final-review corrections
+
+Implementation: `36e372e61b2a03bd0e02051b59385a50910120c7`, based on `757875d39513b1680b7a0f848cdd31bdc8666188`. The Task 9 measurements and screenshots in the remaining sections are a historical snapshot of that earlier implementation; they were not broadly recaptured for this focused pass. Its blanket invalid-encounter recovery description is superseded below.
+
+- Completed offer IDs persist across local-day replacement, including A → B → A and migration, while each day's board still refreshes normally.
+- A valid stored return no longer requires its retired encounter. Invalid pre-result distress snapshots reset to playable review; their paid launch credit is carried into a fresh acceptance without refunding currency or repeating the spend. Already-resolved/rewarded tutorials continue to recruitment instead of replaying a reward.
+- Risky Secure chooses the destination's lowest-power authored combat encounter, and Push its highest-power encounter, with deterministic ID tie-breaking. Branches show encounter, power, and existing victory payout. A one-encounter destination explicitly says both paths share the encounter/payout. Broken Belt's Eclipse Probe (20, 60cr/6med/3rep) and Pirate Wing (22, 80cr/5med/2rep) illustrate why the UI says lower/higher **power**, not universally higher rewards in every currency. No rewards or multipliers were invented.
+- A successful non-tutorial combat now commits one `combatsWon` and 10 XP for its actual participants with the saved resolution; failures/tutorial combat grant neither. Claim records one jump/route completion. Replays cannot repeat those changes. Participant IDs remain in the saved combat snapshot.
+- Battle stations and collision separation preserve authored departure ownership. Initialized RAF tests prove the exact selected actors reach Airlock and disappear once, including reduced motion. Committed launch now shows the Sparrow with normal flight streaks or static reduced-motion emphasis; committed Jen recruitment shows Airlock → Workshop movement or the same final snap.
+- Card beat labels derive from the stored branches (including honest `2–3 beats`), legacy board labels are repaired without changing offer identity, and resolution telemetry records the actual committed action count.
+
+Fresh gates passed: `npm run test:loop` (12 invocations, including eight final-review cases), `npm run test:ship` (five suites), `npm test` (11 invocations), `npm run build`, and `git diff --check`. Build: 51 modules; `index-BHOXgIFD.css` 30.94 kB / gzip 7.20; `index-Ci18ZLzt.js` 256.77 kB / gzip 82.59. `dist` remains uncommitted.
+
+Targeted production-browser command (same dedicated-profile procedure as below, ports 5201/9341 for this run):
+
+```sh
+QA_URL=http://127.0.0.1:5201/ QA_CDP=http://127.0.0.1:9341 node scripts/contract-route-qa.mjs --final-review-only
+```
+
+[Final-review measurements](artifacts/contracts-runtime/final-review-measurements.json) record four passing Chrome 153.0.8010.53 scenarios: normal/reduced at 390×844 and 360×800; zero measured failures or uncaught exceptions. Every launch had saved `confrontation` and the correct one-fuel debit before its visible flight state. Actual Jen actor feet start at `(47,64)` and end at `(64,51)` in both normal viewports; reduced mode renders the same Workshop endpoint. Reduced launch space pixels are unchanged across 200ms. Risky controls measure 332×44 or 302×44; Break contract measures 137.20×44; all are reachable and unclipped, with minimum measured text/control font 16px. The harness now checks pointer hit ownership before every click; its early failure caught a launch toast intercepting the switcher, replaced by a non-interactive ship-only status.
+
+All 16 targeted screenshots were visually inspected. Examples: [launch](artifacts/contracts-runtime/final-launch-390x844.png), [Jen arriving](artifacts/contracts-runtime/final-jen-arrival-390x844.png), [Workshop](artifacts/contracts-runtime/final-jen-workshop-390x844.png), [Risky choices at 360px](artifacts/contracts-runtime/final-risky-branches-360x800.png), [static launch](artifacts/contracts-runtime/final-launch-reduced-360x800.png). These are desktop viewport emulations, not physical-device proof. Existing authored-tell, numeric board/review reward-band, economy, paid-authority, meta/content, and real-device gates remain open.
+
 ## Provenance and reproduction
 
 - Worktree: `/Users/garrettdare/.codex/worktrees/ship-animation-foundation/warp-crew`.
