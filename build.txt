@@ -1,1 +1,3 @@
-Warp Crew Pages build 2026-09-20T19:39:57Z
+Warp Crew Pages build 2026-09-22T05:23:08Z
+Source: codex/contract-route-overhaul@9bec3a2e4d
+Reviewed gameplay: 9b9585ea79
