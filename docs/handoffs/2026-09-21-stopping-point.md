@@ -50,12 +50,16 @@ Evidence: [Contract route runtime QA](../qa/2026-09-21-contract-route-loop.md), 
 
 ## Resume tomorrow
 
-1. Re-open the public GitHub Pages fresh-save build and record any overnight/device-only difference from `gh-pages@fcab3f1`.
+1. Re-open the public GitHub Pages fresh-save build and record any overnight/device-only difference from `gh-pages@fcab3f1`. **Verified 2026-09-22 at 07:17 PDT:** the live `?fresh=1` path launched the seven-step Contract Board tutorial and opened `Distress at Dust Lane`, not the older Grok flow. The artifact identifies build `2026-09-22T05:23:08Z`, source `codex/contract-route-overhaul@9bec3a2e4d`, reviewed gameplay `9b9585ea79`, and Pages ref `fcab3f1cf238c54f68273e7d4518fc493a9e97be`. This is browser evidence, not physical-device evidence.
 2. Run the first physical-device pass on one iPhone and one Android: fresh tutorial, Risky route, return claim, Jen arrival, selected Away crew, reduced motion, and reload.
 3. Write and approve the encounter-tell/recommendation roster before adding content.
 4. Specify literal reward bands and build the deterministic 30-day economy simulator before changing reward or monetization values.
 5. Approve the monetization fairness boundary, then write the offer/source/sink/authority specification.
 6. Choose the next implementation package: encounter content + balance evidence, or body-family/ship visual polish. Do not combine both into one review surface.
+
+## 2026-09-22 package choice
+
+Garrett approved **Encounter intelligence and balance evidence** as the next package. Its proposed design is [Encounter intelligence and balance evidence](../superpowers/specs/2026-09-22-encounter-intelligence-balance-evidence-design.md). It authors all 16 current tells/recommendations, derives literal reward ranges, and produces deterministic combat/30-day free-player evidence without changing values. Body-family and ship visual work remain outside this review surface.
 
 ## Safety boundary
 
