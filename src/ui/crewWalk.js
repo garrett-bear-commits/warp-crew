@@ -399,11 +399,13 @@ function drawAgent(g, a) {
 function tick(sim, dt) {
   if (!canvas || !ctx || !w) return;
   if (!canvas.isConnected) return;
-  clock += sim;
+  if (!reducedMotion) clock += sim;
   const policy = motionPolicy(reducedMotion);
-  for (const a of agents.values()) stepAgent(a, sim, policy.animateFrames);
+  // Authored station/departure snaps are applied when their state changes.
+  // Ambient walking and separation nudges are purely decorative.
+  if (!reducedMotion) for (const a of agents.values()) stepAgent(a, sim, policy.animateFrames);
   const list = [...agents.values()];
-  for (let i = 0; i < list.length; i++) {
+  for (let i = 0; !reducedMotion && i < list.length; i++) {
     for (let j = i + 1; j < list.length; j++) {
       const a = list[i];
       const b = list[j];

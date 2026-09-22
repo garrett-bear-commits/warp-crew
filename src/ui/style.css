@@ -445,6 +445,7 @@ button.hud-chip {
   max-height: min(42vh, 360px);
 }
 .room-sheet .sheet-actions button { min-height: 44px; }
+.room-sheet .sheet-actions:has([data-act="contract-claim"]) { font-size: 16px; }
 .room-sheet h2 { margin: 0 0 4px; font-size: 18px; }
 .sheet-head {
   display: flex;
@@ -963,7 +964,18 @@ button:focus-visible {
 .away-view .mission-card > div { flex: 1 1 180px; min-width: 0; }
 .away-view .mission-card > button { flex: 1 0 100%; }
 .away-view .mission-card p { margin: 6px 0; }
-.daily-plan-chip { max-width: 100%; padding: 8px 12px; background: var(--panel); border-radius: var(--radius-md); }
+.away-view .mission-card .muted { font-size: 16px; }
+.daily-plan-chip {
+  position: absolute;
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  bottom: 8px;
+  z-index: 6;
+  max-width: calc(100% - 20px);
+  padding: 8px 12px;
+  background: var(--panel);
+  border-radius: var(--radius-md);
+}
 .contract-sheet :focus-visible, .mission-switcher :focus-visible,
 .contract-card :focus-visible, .route-stage :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 [data-reduced-motion="true"] :is(.contract-card, .route-stage, .order-card, .party-picker, .daily-plan-chip, .contract-sheet),

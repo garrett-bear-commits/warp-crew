@@ -8,6 +8,7 @@ let w = 0;
 let h = 0;
 let dpr = 1;
 let started = false;
+let motionQuery = null;
 let clock = 0;
 
 const stars = [];
@@ -122,6 +123,8 @@ function makeBody(kind) {
 
 function tick(sim, dt) {
   if (!canvas || !ctx || !w) return;
+  // Keep drawing loaded art and resizes, but freeze decorative ambient travel.
+  if (motionQuery?.matches) dt = 0;
   clock += dt;
   const g = ctx;
   g.clearRect(0, 0, w, h);
@@ -226,6 +229,7 @@ function drawRock(g, r) {
 
 export function attachSpace(el) {
   if (!el) return;
+  if (!motionQuery) motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
   if (canvas === el && started) {
     resize();
     return;

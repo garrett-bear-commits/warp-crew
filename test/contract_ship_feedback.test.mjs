@@ -16,6 +16,7 @@ import {
   syncCrewLayer,
 } from '../src/ui/crewWalk.js';
 import { stopStageLoop } from '../src/ui/stageLoop.js';
+import { attachSpace, stopSpace } from '../src/ui/spaceFlight.js';
 
 // Catches losing the ship-space indication for an active/returned route or
 // failing to render the durable first Sparrow repair after the route clears.
@@ -263,6 +264,42 @@ shadowFeet.length = 0;
 runFrame();
 assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 21) < 0.001), `Bridge actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
 assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 85) < 0.001), `Engineering actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
+
+// Disabling walk frames alone still lets idle actors slide and collision pushes
+// move them. Record actual rendered feet across live preference changes.
+syncCrewLayer(canvas, readyPlayer);
+motion.set(false);
+for (let i = 0; i < 100; i++) runFrame();
+motion.set(true);
+shadowFeet.length = 0;
+runFrame();
+const staticFeet = [...shadowFeet].sort((a, b) => a.crewInstanceId.localeCompare(b.crewInstanceId));
+for (let i = 0; i < 30; i++) { shadowFeet.length = 0; runFrame(); }
+assert.deepEqual([...shadowFeet].sort((a, b) => a.crewInstanceId.localeCompare(b.crewInstanceId)), staticFeet, 'reduced motion freezes ambient crew positions');
+motion.set(false);
+for (let i = 0; i < 100; i++) { shadowFeet.length = 0; runFrame(); }
+assert.notDeepEqual([...shadowFeet].sort((a, b) => a.crewInstanceId.localeCompare(b.crewInstanceId)), staticFeet, 'normal ambient crew movement resumes');
+
+globalThis.Image = class { complete = true; naturalWidth = 64; naturalHeight = 64; };
+const spaceDraws = [];
+const spaceContext = {
+  setTransform() {}, clearRect() { spaceDraws.length = 0; }, save() {}, restore() {},
+  beginPath() {}, fill() {}, arc() {},
+  fillRect(...args) { spaceDraws.push(['rect', ...args]); },
+  translate(...args) { spaceDraws.push(['translate', ...args]); },
+  rotate(...args) { spaceDraws.push(['rotate', ...args]); },
+  drawImage(image, ...args) { spaceDraws.push(['image', image.src, ...args]); },
+};
+attachSpace({ ...canvas, getContext: () => spaceContext });
+motion.set(true);
+runFrame();
+const staticSpace = structuredClone(spaceDraws);
+for (let i = 0; i < 30; i++) runFrame();
+assert.deepEqual(spaceDraws, staticSpace, 'reduced motion freezes stars, bodies and rocks');
+motion.set(false);
+runFrame();
+assert.notDeepEqual(spaceDraws, staticSpace, 'normal space drift resumes');
+stopSpace();
 stopStageLoop();
 
 const loginEntry = renderPlatformLoginEntry();

@@ -28,4 +28,23 @@ assert.equal(doc.activeElement, newAccept);
 dialog = null;
 syncDialogFocus(root, first, newAccept);
 assert.equal(doc.activeElement, trigger);
+
+// Main renders once when publishing a close transition, then again after the
+// action finishes. Replaced non-dialog markup must retain the exact trigger.
+const wrongOffer = button({ act: 'contract-review', offer: 'offer_other' });
+const replacement = button({ act: 'contract-review', offer: 'offer_1' });
+root.querySelectorAll = () => [wrongOffer, replacement];
+trigger.isConnected = false;
+doc.activeElement = null;
+syncDialogFocus(root, null, trigger);
+assert.equal(doc.activeElement, replacement, 'second render retains exact Review trigger');
+replacement.isConnected = true;
+wrongOffer.focus();
+syncDialogFocus(root, null, replacement);
+assert.equal(doc.activeElement, wrongOffer, 'connected prior focus does not steal current focus');
+replacement.isConnected = false;
+replacement.disabled = true;
+doc.activeElement = null;
+syncDialogFocus(root, null, trigger);
+assert.equal(doc.activeElement, null, 'never focus a disabled or different offer');
 console.log('dialog_focus.test.mjs OK');

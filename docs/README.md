@@ -11,7 +11,9 @@ This directory contains both current product evidence and historical build notes
 - [Ship and animation foundation](design/21-ship-animation-foundation.md) — exact first-package geometry, interaction, and Ninefold rendering contract.
 - [Ship and animation QA](qa/2026-09-21-ship-animation-foundation.md) — automated results, 390×844 captures, hit ownership, and remaining device gates.
 - [Jest platform and monetization research](research/2026-09-21-jest-platform-monetization.md) — current platform contracts and gaps that constrain future designs.
-- [Contract route and first-session loop specification](superpowers/specs/2026-09-21-contract-route-loop-design.md) — approved Contract Board direction translated into route, tutorial, combat-order, expedition-choice, migration, telemetry, and QA requirements; awaiting implementation approval.
+- [Contract route and first-session loop specification](superpowers/specs/2026-09-21-contract-route-loop-design.md) — approved route, tutorial, combat-order, expedition-choice, migration, telemetry, and QA requirements; implementation evidence and remaining content gates are below.
+- [Contract route implementation plan](superpowers/plans/2026-09-21-contract-route-loop.md) — nine-task package and verification contract.
+- [Contract route runtime QA](qa/2026-09-21-contract-route-loop.md) — reproducible 390×844 and 360×800 desktop browser measurements, reload and migration evidence, QA-found fixes, and outstanding authored tells, reward-band presentation, economy, and device gates.
 
 These files describe the current build and the evidence needed to improve it. They do not authorize a particular redesign or live monetization model.
 

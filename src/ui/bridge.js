@@ -81,6 +81,12 @@ export function syncDialogFocus(root, priorDialog, priorFocus) {
     const trigger = [...root.querySelectorAll('[data-act]')].find(element => sameAction(element, root._wcDialogReturn));
     trigger?.focus();
     root._wcDialogReturn = null;
+  } else if (!dialog && priorFocus?.isConnected === false && priorFocus?.dataset?.act) {
+    // A second action render can replace the just-restored triggering card.
+    // Preserve only its exact action identity; never redirect to another offer.
+    const replacement = [...root.querySelectorAll('[data-act]')]
+      .find(element => !element.disabled && sameAction(element, priorFocus.dataset));
+    replacement?.focus();
   }
 }
 

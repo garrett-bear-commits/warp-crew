@@ -1,0 +1,6563 @@
+{
+  "url": "http://127.0.0.1:5199/",
+  "browser": {
+    "Browser": "Chrome/153.0.8010.53",
+    "Protocol-Version": "1.3",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "V8-Version": "15.3.76.13",
+    "WebKit-Version": "537.36 (@792bf6722e73a45aa9e47c163b9901bdc17f3230)",
+    "webSocketDebuggerUrl": "ws://127.0.0.1:9339/devtools/browser/e0958cc3-a4d1-4364-b11b-13ba74c2d42c"
+  },
+  "seed": {
+    "version": 7,
+    "captainName": "Captain",
+    "createdAt": 1790017200000,
+    "wallet": {
+      "credits": 80,
+      "fuel": 8,
+      "gems": 0,
+      "medals": 0,
+      "reputation": 0
+    },
+    "fuelMax": 10,
+    "fuelRatePerHour": 1,
+    "fuelClaimAt": 1790017200000,
+    "ship": {
+      "shipId": "sparrow",
+      "systems": {
+        "engines": 1,
+        "shields": 1,
+        "cargo": 1,
+        "weapons": 1,
+        "quarters": 0,
+        "sensors": 0,
+        "medbay": 0
+      },
+      "cosmetics": {},
+      "ownedHulls": [
+        "sparrow"
+      ],
+      "hull": 100
+    },
+    "crewSlots": 2,
+    "crew": [
+      {
+        "instanceId": "qa-crew-0",
+        "templateId": "merc_rex",
+        "name": "Rex Vale",
+        "role": "pilot",
+        "rarity": "common",
+        "species": "human",
+        "faction": "haulers",
+        "origin": "Spur Anchor",
+        "quote": "Lane’s dirty. Hands aren’t.",
+        "history": "Rex flew meal-packs for a Spur co-op until a Swarm probe tagged his convoy. He kept the Sparrow airborne and never went back to scheduled runs.",
+        "passive": {
+          "fuelCostReduce": 0
+        },
+        "level": 1,
+        "stars": 1,
+        "rank": 1,
+        "copies": 1,
+        "xp": 0,
+        "power": 10,
+        "status": "ready",
+        "injuredUntil": 0,
+        "blurb": "Ex-hauler pilot. Steady hands."
+      },
+      {
+        "instanceId": "qa-crew-1",
+        "templateId": "merc_bolt",
+        "name": "Bolt",
+        "role": "engineer",
+        "rarity": "common",
+        "species": "droid",
+        "faction": "yard",
+        "origin": "Null Scrapyard",
+        "quote": "If it rattles, I named it.",
+        "history": "A scrap-yard chassis with three owners and one personality core that refuses a factory reset. Bolts talk while they weld. The welds hold.",
+        "passive": {
+          "repairBonus": 0.05
+        },
+        "level": 1,
+        "stars": 1,
+        "rank": 1,
+        "copies": 1,
+        "xp": 0,
+        "power": 10,
+        "status": "ready",
+        "injuredUntil": 0,
+        "blurb": "Refurbished yard droid."
+      }
+    ],
+    "reserve": [],
+    "iapFulfilled": [],
+    "activeExpedition": null,
+    "contractBoard": null,
+    "activeContract": null,
+    "dailyLoop": {
+      "dayKey": null,
+      "contract": false,
+      "improve": false,
+      "away": false
+    },
+    "location": "station_home",
+    "flags": {
+      "splashSeen": true
+    },
+    "gacha": {
+      "pityRare": 0,
+      "pityLegend": 0,
+      "luck": 0,
+      "pulls": 0,
+      "lastRarity": null
+    },
+    "loginStreak": 1,
+    "lastLoginDay": "2026-09-21",
+    "dailyPullAvailable": true,
+    "stats": {
+      "jumps": 0,
+      "combatsWon": 0,
+      "expeditions": 0,
+      "visits": {},
+      "planetRuns": {},
+      "contractsCompleted": 0,
+      "contractsByProfile": {
+        "reliable": 0,
+        "risky": 0,
+        "strange": 0
+      }
+    },
+    "story": {
+      "chapter": 0,
+      "eclipseIntro": false
+    },
+    "tutorial": {
+      "script": 3,
+      "phase": "distress",
+      "completed": false,
+      "dismissed": false,
+      "firstTravel": false,
+      "firstCombat": false,
+      "firstExpedition": false,
+      "hiredThird": false,
+      "slot3Unlocked": false,
+      "slot4Unlocked": false,
+      "jestPrompted": false,
+      "lastRewards": null,
+      "recruit": null,
+      "ordersBeat": null
+    }
+  },
+  "fixedNow": 1790017200000,
+  "timezone": "America/Los_Angeles",
+  "deviceScaleFactor": 1,
+  "scenarios": [
+    {
+      "viewport": "390x844",
+      "measurements": [
+        {
+          "label": "distress",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Review Distress, Distress at Dust Lane, 1F, Guarded danger, credits, medals, and reputation",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 514.65625,
+              "width": 332,
+              "height": 44,
+              "bottom": 558.65625,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Contracts",
+              "fontSize": 17
+            },
+            {
+              "text": "! Distress",
+              "fontSize": 16
+            },
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 18.72
+            },
+            {
+              "text": "A freighter is calling for help beneath a pirate signal.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "1F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "2 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits, medals, and reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Guarded",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "distress-review",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Close contract review",
+              "action": "contract-review-close",
+              "disabled": false,
+              "x": 325,
+              "y": 257.734375,
+              "width": 44,
+              "height": 44,
+              "bottom": 301.734375,
+              "right": 369,
+              "clip": {
+                "left": 8,
+                "top": 244.734375,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Accept contract",
+              "action": "contract-accept",
+              "disabled": false,
+              "x": 25,
+              "y": 707,
+              "width": 144.921875,
+              "height": 44,
+              "bottom": 751,
+              "right": 169.921875,
+              "clip": {
+                "left": 8,
+                "top": 244.734375,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Distress",
+              "fontSize": 16
+            },
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 17
+            },
+            {
+              "text": "A freighter is calling for help beneath a pirate signal.",
+              "fontSize": 16
+            },
+            {
+              "text": "Destination: Dust Lane",
+              "fontSize": 16
+            },
+            {
+              "text": "Payable route fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "1F",
+              "fontSize": 16
+            },
+            {
+              "text": "Expected reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits, medals, and reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Guarded",
+              "fontSize": 16
+            },
+            {
+              "text": "Lower expected danger on this route.",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            },
+            {
+              "text": "Accepting spends no fuel. Fuel is spent by route actions.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 8,
+              "y": 244.734375,
+              "width": 374,
+              "height": 527.265625,
+              "bottom": 772,
+              "right": 382,
+              "scrollHeight": 525,
+              "clientHeight": 525,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "tutorial-briefing",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Launch · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 339.578125,
+              "width": 332,
+              "height": 44,
+              "bottom": 383.578125,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 16
+            },
+            {
+              "text": "briefing",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            },
+            {
+              "text": "Spend fuel and depart.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "tutorial-order",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Choose Brace, Guaranteed, 0F extra, Failure: half hull loss · no crew injury",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 655.4375,
+              "width": 298,
+              "height": 44,
+              "bottom": 699.4375,
+              "right": 344,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 16
+            },
+            {
+              "text": "confrontation",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            },
+            {
+              "text": "Pirate Scout",
+              "fontSize": 17
+            },
+            {
+              "text": "Pirate Scout",
+              "fontSize": 18.72
+            },
+            {
+              "text": "A light cutter tagging freighters.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace is recommended for hull and crew protection.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace · Recommended",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Guaranteed · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: half hull loss · no crew injury",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "tutorial-cargo-claim",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Close",
+              "action": "close-room",
+              "disabled": false,
+              "x": 322,
+              "y": 80,
+              "width": 44,
+              "height": 44,
+              "bottom": 124,
+              "right": 366,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 380,
+                "bottom": 335.3125
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Bring it aboard",
+              "action": "contract-claim",
+              "disabled": false,
+              "x": 182.90625,
+              "y": 266.125,
+              "width": 130.796875,
+              "height": 55.1875,
+              "bottom": 321.3125,
+              "right": 313.703125,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 380,
+                "bottom": 335.3125
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Cargo Hold",
+              "fontSize": 18
+            },
+            {
+              "text": "The scout wing breaks off. You strip the pod.",
+              "fontSize": 16
+            },
+            {
+              "text": "120cr · 8 med · 4 rep",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 10,
+              "y": 66,
+              "width": 370,
+              "height": 269.3125,
+              "bottom": 335.3125,
+              "right": 380,
+              "scrollHeight": 269,
+              "clientHeight": 269,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.90625,
+            "y": 86.84375,
+            "width": 382.1875,
+            "height": 663.3125,
+            "bottom": 750.15625,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "three-card-board",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Review Reliable, Steady Freight, 2F, Low danger, credits and reputation",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 396.65625,
+              "width": 332,
+              "height": 44,
+              "bottom": 440.65625,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Review Risky, Belt Intercept, 2F, High danger, credits and medals",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 396.484375,
+              "width": 332,
+              "height": 44,
+              "bottom": 440.484375,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Review Strange, Uncatalogued Echo, 2F, Guarded danger, story and salvage",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 702.3125,
+              "width": 332,
+              "height": 44,
+              "bottom": 746.3125,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Contracts",
+              "fontSize": 17
+            },
+            {
+              "text": "◆ Reliable",
+              "fontSize": 16
+            },
+            {
+              "text": "Steady Freight",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Keep the cargo moving and the books come out clean.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "2 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits and reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Low",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Trader · Trade contacts know how to close a clean deal.",
+              "fontSize": 16
+            },
+            {
+              "text": "⚔ Risky",
+              "fontSize": 16
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Someone is taking shots at the lane. Meet them prepared.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "3 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "✦ Strange",
+              "fontSize": 16
+            },
+            {
+              "text": "Uncatalogued Echo",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Follow the anomaly before it fades back into static.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "3 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "story and salvage",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Guarded",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Sensors · Sensors can separate a useful signal from a trap.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "mission-switcher",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Contracts",
+              "action": "mission-view",
+              "disabled": false,
+              "x": 16,
+              "y": 66,
+              "width": 116.65625,
+              "height": 44,
+              "bottom": 110,
+              "right": 132.65625,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Away",
+              "action": "mission-view",
+              "disabled": false,
+              "x": 136.65625,
+              "y": 66,
+              "width": 116.671875,
+              "height": 44,
+              "bottom": 110,
+              "right": 253.328125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Explore",
+              "action": "mission-view",
+              "disabled": false,
+              "x": 257.328125,
+              "y": 66,
+              "width": 116.65625,
+              "height": 44,
+              "bottom": 110,
+              "right": 373.984375,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-review",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Close contract review",
+              "action": "contract-review-close",
+              "disabled": false,
+              "x": 325,
+              "y": 280.921875,
+              "width": 44,
+              "height": 44,
+              "bottom": 324.921875,
+              "right": 369,
+              "clip": {
+                "left": 8,
+                "top": 267.921875,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Accept contract",
+              "action": "contract-accept",
+              "disabled": false,
+              "x": 25,
+              "y": 707,
+              "width": 144.921875,
+              "height": 44,
+              "bottom": 751,
+              "right": 169.921875,
+              "clip": {
+                "left": 8,
+                "top": 267.921875,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Risky",
+              "fontSize": 16
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 17
+            },
+            {
+              "text": "Someone is taking shots at the lane. Meet them prepared.",
+              "fontSize": 16
+            },
+            {
+              "text": "Destination: Hope's Rest",
+              "fontSize": 16
+            },
+            {
+              "text": "Payable route fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Expected reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Possible hull or crew consequence.",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Accepting spends no fuel. Fuel is spent by route actions.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 8,
+              "y": 267.921875,
+              "width": 374,
+              "height": 504.078125,
+              "bottom": 772,
+              "right": 382,
+              "scrollHeight": 502,
+              "clientHeight": 502,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-briefing",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Launch · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 339.578125,
+              "width": 332,
+              "height": 44,
+              "bottom": 383.578125,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Abandon",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 399.578125,
+              "width": 94.703125,
+              "height": 44,
+              "bottom": 443.578125,
+              "right": 123.703125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16
+            },
+            {
+              "text": "briefing",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Spend fuel and depart.",
+              "fontSize": 16
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-choice",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Secure the contract · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 339.578125,
+              "width": 332,
+              "height": 44,
+              "bottom": 383.578125,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Push the signal · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 430.765625,
+              "width": 332,
+              "height": 44,
+              "bottom": 474.765625,
+              "right": 361,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 490.765625,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 534.765625,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16
+            },
+            {
+              "text": "choice",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Lower-variance route outcome.",
+              "fontSize": 16
+            },
+            {
+              "text": "Pursue the stronger reward opportunity.",
+              "fontSize": 16
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-orders",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 396.4375,
+              "width": 298,
+              "height": 44,
+              "bottom": 440.4375,
+              "right": 344,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Choose Burn, 76%, 1F extra, +12 effective power · normal failure hull loss and injury",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 396.328125,
+              "width": 298,
+              "height": 44,
+              "bottom": 440.328125,
+              "right": 344,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Choose Board, 52%, 0F extra, −10% effective power · failure injures one crew member",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 578.21875,
+              "width": 298,
+              "height": 44,
+              "bottom": 622.21875,
+              "right": 344,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 639.21875,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 683.21875,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16
+            },
+            {
+              "text": "confrontation",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Swarm Skirmish",
+              "fontSize": 17
+            },
+            {
+              "text": "Swarm Skirmish",
+              "fontSize": 18.72
+            },
+            {
+              "text": "A hunting pack. Do not let them surround you.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace is recommended for hull and crew protection.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace · Recommended",
+              "fontSize": 18.72
+            },
+            {
+              "text": "58% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: half hull loss · no crew injury",
+              "fontSize": 16
+            },
+            {
+              "text": "Burn",
+              "fontSize": 18.72
+            },
+            {
+              "text": "76% · 1F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "+12 effective power · normal failure hull loss and injury",
+              "fontSize": 16
+            },
+            {
+              "text": "Board",
+              "fontSize": 18.72
+            },
+            {
+              "text": "52% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Victory: +25% credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "−10% effective power · failure injures one crew member",
+              "fontSize": 16
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-cargo-claim",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Close",
+              "action": "close-room",
+              "disabled": false,
+              "x": 322,
+              "y": 80,
+              "width": 44,
+              "height": 44,
+              "bottom": 124,
+              "right": 366,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 380,
+                "bottom": 335.3125
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Bring it aboard",
+              "action": "contract-claim",
+              "disabled": false,
+              "x": 192.5,
+              "y": 266.125,
+              "width": 130.796875,
+              "height": 55.1875,
+              "bottom": 321.3125,
+              "right": 323.296875,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 380,
+                "bottom": 335.3125
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Cargo Hold",
+              "fontSize": 18
+            },
+            {
+              "text": "The pack peels. Chitin and medals in the wake.",
+              "fontSize": 16
+            },
+            {
+              "text": "120cr · 10 med · 5 rep",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 10,
+              "y": 66,
+              "width": 370,
+              "height": 269.3125,
+              "bottom": 335.3125,
+              "right": 380,
+              "scrollHeight": 269,
+              "clientHeight": 269,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.90625,
+            "y": 86.84375,
+            "width": 382.1875,
+            "height": 663.3125,
+            "bottom": 750.15625,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "away-destinations",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Choose crew",
+              "action": "exp-choose",
+              "disabled": false,
+              "x": 36,
+              "y": 410.140625,
+              "width": 318,
+              "height": 44,
+              "bottom": 454.140625,
+              "right": 354,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Away",
+              "fontSize": 17
+            },
+            {
+              "text": "Dustfall Outpost",
+              "fontSize": 16
+            },
+            {
+              "text": "Preferred role: scout",
+              "fontSize": 16
+            },
+            {
+              "text": "Recommended crew: 67% success · 5m",
+              "fontSize": 16
+            },
+            {
+              "text": "Success: 70cr · 8 med · 4 rep · Failure: 16cr · 2 med · 1 rep",
+              "fontSize": 16
+            },
+            {
+              "text": "Injury risk: crew may return injured on failure.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "selected-party",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Close crew selection",
+              "action": "exp-picker-close",
+              "disabled": false,
+              "x": 325,
+              "y": 159.046875,
+              "width": 44,
+              "height": 44,
+              "bottom": 203.046875,
+              "right": 369,
+              "clip": {
+                "left": 8,
+                "top": 146.046875,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Jen Park\ngunner · ✓ Selected\npower 11 · highest ready power",
+              "action": "exp-crew-toggle",
+              "disabled": false,
+              "x": 25,
+              "y": 230.875,
+              "width": 340,
+              "height": 80,
+              "bottom": 310.875,
+              "right": 365,
+              "clip": {
+                "left": 8,
+                "top": 146.046875,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Rex Vale\npilot · Not selected\npower 10",
+              "action": "exp-crew-toggle",
+              "disabled": false,
+              "x": 25,
+              "y": 318.875,
+              "width": 340,
+              "height": 80,
+              "bottom": 398.875,
+              "right": 365,
+              "clip": {
+                "left": 8,
+                "top": 146.046875,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Bolt\nengineer · Not selected\npower 10",
+              "action": "exp-crew-toggle",
+              "disabled": false,
+              "x": 25,
+              "y": 406.875,
+              "width": 340,
+              "height": 80,
+              "bottom": 486.875,
+              "right": 365,
+              "clip": {
+                "left": 8,
+                "top": 146.046875,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Confirm expedition",
+              "action": "exp-launch",
+              "disabled": false,
+              "x": 25,
+              "y": 707,
+              "width": 340,
+              "height": 44,
+              "bottom": 751,
+              "right": 365,
+              "clip": {
+                "left": 8,
+                "top": 146.046875,
+                "right": 382,
+                "bottom": 772
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Choose crew · Dustfall Outpost",
+              "fontSize": 17
+            },
+            {
+              "text": "1/2 selected",
+              "fontSize": 16
+            },
+            {
+              "text": "Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "gunner · ✓ Selected",
+              "fontSize": 16
+            },
+            {
+              "text": "power 11 · highest ready power",
+              "fontSize": 16
+            },
+            {
+              "text": "Rex Vale",
+              "fontSize": 16
+            },
+            {
+              "text": "pilot · Not selected",
+              "fontSize": 16
+            },
+            {
+              "text": "power 10",
+              "fontSize": 16
+            },
+            {
+              "text": "Bolt",
+              "fontSize": 16
+            },
+            {
+              "text": "engineer · Not selected",
+              "fontSize": 16
+            },
+            {
+              "text": "power 10",
+              "fontSize": 16
+            },
+            {
+              "text": "Success chance: 59%",
+              "fontSize": 16
+            },
+            {
+              "text": "Success: 70cr · 8 med · 4 rep",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: 16cr · 2 med · 1 rep",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure injures the away team.",
+              "fontSize": 16
+            },
+            {
+              "text": "Returns: 12:05 PM",
+              "fontSize": 16
+            },
+            {
+              "text": "Jen Park unavailable for contracts until return.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 8,
+              "y": 146.046875,
+              "width": 374,
+              "height": 625.953125,
+              "bottom": 772,
+              "right": 382,
+              "scrollHeight": 624,
+              "clientHeight": 624,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "daily-plan",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "2 of 3 daily milestones, next: Improve your ship or crew",
+              "action": "daily-improve",
+              "disabled": false,
+              "x": 10,
+              "y": 727,
+              "width": 370,
+              "height": 44,
+              "bottom": 771,
+              "right": 380,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "2/3 · Improve your ship or crew",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 86.84375,
+            "width": 382.1875,
+            "height": 663.3125,
+            "bottom": 750.15625,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "active-away",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "navTop": 779,
+          "targets": [
+            {
+              "label": "Claim",
+              "action": "exp-claim",
+              "disabled": false,
+              "x": 159.734375,
+              "y": 266.203125,
+              "width": 70.53125,
+              "height": 44,
+              "bottom": 310.203125,
+              "right": 230.265625,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Skip 15g",
+              "action": "exp-skip",
+              "disabled": false,
+              "x": 148.75,
+              "y": 316.203125,
+              "width": 92.484375,
+              "height": 44,
+              "bottom": 360.203125,
+              "right": 241.234375,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Extract",
+              "action": "exp-abort",
+              "disabled": false,
+              "x": 154.234375,
+              "y": 366.203125,
+              "width": 81.53125,
+              "height": 44,
+              "bottom": 410.203125,
+              "right": 235.765625,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 390,
+                "bottom": 779
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Away",
+              "fontSize": 17
+            },
+            {
+              "text": "ACTIVE · Dustfall Outpost",
+              "fontSize": 16
+            },
+            {
+              "text": "59% · 5m 0s left",
+              "fontSize": 16
+            },
+            {
+              "text": "Jen Park",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.90625,
+            "y": 33.765625,
+            "width": 382.1875,
+            "height": 776.46875,
+            "bottom": 810.234375,
+            "right": 386.09375
+          },
+          "scrollWidth": 390,
+          "reduced": false,
+          "pass": true
+        }
+      ],
+      "reloads": [
+        {
+          "label": "tutorial-confrontation",
+          "before": {
+            "version": 7,
+            "phase": "order",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "confrontation",
+              "revision": 1,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "order",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "confrontation",
+              "revision": 1,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "tutorial-return",
+          "before": {
+            "version": 7,
+            "phase": "return",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "return",
+              "revision": 2,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 8,
+                  "reputation": 4,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 2,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The scout wing breaks off. You strip the pod."
+              },
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "return",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "return",
+              "revision": 2,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 8,
+                  "reputation": 4,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 2,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The scout wing breaks off. You strip the pod."
+              },
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-choice",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 6,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "choice",
+              "revision": 1,
+              "routeSeed": 3073970916,
+              "choiceId": null,
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 6,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "choice",
+              "revision": 1,
+              "routeSeed": 3073970916,
+              "choiceId": null,
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-confrontation",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "confrontation",
+              "revision": 2,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "confrontation",
+              "revision": 2,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-return",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "return",
+              "revision": 3,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 10,
+                  "reputation": 5,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 5,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The pack peels. Chitin and medals in the wake."
+              },
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "return",
+              "revision": 3,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 10,
+                  "reputation": 5,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 5,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The pack peels. Chitin and medals in the wake."
+              },
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-claimed",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 320,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 18,
+              "reputation": 9
+            },
+            "contract": null,
+            "completed": [
+              "offer_2026-09-21_risky"
+            ],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 320,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 18,
+              "reputation": 9
+            },
+            "contract": null,
+            "completed": [
+              "offer_2026-09-21_risky"
+            ],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        }
+      ],
+      "captures": [
+        "contracts-runtime/distress-390x844.png",
+        "contracts-runtime/review-390x844.png",
+        "contracts-runtime/tutorial-order-390x844.png",
+        "contract-return-390x844.png",
+        "contracts-runtime/improvement-390x844.png",
+        "contracts-board-390x844.png",
+        "contracts-runtime/board-risky-390x844.png",
+        "contracts-runtime/board-strange-390x844.png",
+        "contracts-runtime/normal-review-390x844.png",
+        "contracts-runtime/choice-390x844.png",
+        "contract-order-390x844.png",
+        "contracts-runtime/order-brace-390x844.png",
+        "contracts-runtime/order-burn-390x844.png",
+        "contracts-runtime/order-board-390x844.png",
+        "contracts-runtime/normal-return-390x844.png",
+        "expedition-party-390x844.png",
+        "daily-plan-390x844.png",
+        "contracts-runtime/improvement-ready-390x844.png",
+        "contracts-runtime/active-away-390x844.png",
+        "contracts-runtime/explore-blocked-390x844.png"
+      ],
+      "phases": [
+        "distress",
+        "launch",
+        "order",
+        "return",
+        "recruit",
+        "choose",
+        "away",
+        "done"
+      ],
+      "improvementFocus": "Cargo Hold",
+      "reviewFocusBefore": {
+        "active": "<button type=\"button\" class=\"icon-close\" data-act=\"contract-review-close\" aria-label=\"Close contract review\">×</button>",
+        "return": {
+          "act": "contract-review",
+          "offer": "offer_2026-09-21_risky"
+        }
+      },
+      "reviewFocus": {
+        "action": "contract-review",
+        "offer": "risky"
+      },
+      "confrontationSeed": {
+        "version": 7,
+        "captainName": "Captain",
+        "createdAt": 1790017200000,
+        "wallet": {
+          "credits": 200,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 8,
+          "reputation": 4
+        },
+        "fuelMax": 10,
+        "fuelRatePerHour": 1,
+        "fuelClaimAt": 1790017200000,
+        "ship": {
+          "shipId": "sparrow",
+          "systems": {
+            "engines": 1,
+            "shields": 1,
+            "cargo": 1,
+            "weapons": 1,
+            "quarters": 0,
+            "sensors": 0,
+            "medbay": 0
+          },
+          "cosmetics": {},
+          "ownedHulls": [
+            "sparrow"
+          ],
+          "hull": 98
+        },
+        "crewSlots": 3,
+        "crew": [
+          {
+            "instanceId": "qa-crew-0",
+            "templateId": "merc_rex",
+            "name": "Rex Vale",
+            "role": "pilot",
+            "rarity": "common",
+            "species": "human",
+            "faction": "haulers",
+            "origin": "Spur Anchor",
+            "quote": "Lane’s dirty. Hands aren’t.",
+            "history": "Rex flew meal-packs for a Spur co-op until a Swarm probe tagged his convoy. He kept the Sparrow airborne and never went back to scheduled runs.",
+            "passive": {
+              "fuelCostReduce": 0
+            },
+            "level": 1,
+            "stars": 1,
+            "rank": 1,
+            "copies": 1,
+            "xp": 0,
+            "power": 10,
+            "status": "ready",
+            "injuredUntil": 0,
+            "blurb": "Ex-hauler pilot. Steady hands."
+          },
+          {
+            "instanceId": "qa-crew-1",
+            "templateId": "merc_bolt",
+            "name": "Bolt",
+            "role": "engineer",
+            "rarity": "common",
+            "species": "droid",
+            "faction": "yard",
+            "origin": "Null Scrapyard",
+            "quote": "If it rattles, I named it.",
+            "history": "A scrap-yard chassis with three owners and one personality core that refuses a factory reset. Bolts talk while they weld. The welds hold.",
+            "passive": {
+              "repairBonus": 0.05
+            },
+            "level": 1,
+            "stars": 1,
+            "rank": 1,
+            "copies": 1,
+            "xp": 0,
+            "power": 10,
+            "status": "ready",
+            "injuredUntil": 0,
+            "blurb": "Refurbished yard droid."
+          },
+          {
+            "instanceId": "merc_jen_0cyk5rc",
+            "templateId": "merc_jen",
+            "name": "Jen Park",
+            "role": "gunner",
+            "rarity": "common",
+            "species": "human",
+            "faction": "station",
+            "origin": "Spur Anchor",
+            "quote": "Aim first. Report never.",
+            "history": "Jen washed out of Spur security for firing on a “friendly” cutter that turned pirate mid-dock. The station still pretends she quit.",
+            "passive": {
+              "critChance": 0.02
+            },
+            "level": 1,
+            "stars": 1,
+            "rank": 1,
+            "copies": 1,
+            "xp": 0,
+            "power": 11,
+            "status": "ready",
+            "injuredUntil": 0,
+            "blurb": "Station security washout."
+          }
+        ],
+        "reserve": [],
+        "iapFulfilled": [],
+        "activeExpedition": null,
+        "contractBoard": {
+          "dayKey": "2026-09-21",
+          "offers": [
+            {
+              "id": "offer_2026-09-21_reliable",
+              "profile": "reliable",
+              "icon": "contract_reliable",
+              "title": "Steady Freight",
+              "brief": "Keep the cargo moving and the books come out clean.",
+              "destinationId": "ice_spur",
+              "destinationName": "Glass Spur",
+              "normalFuel": 2,
+              "beats": 2,
+              "beatLabel": "2 beats",
+              "rewardFamily": "credits and reputation",
+              "danger": "Low",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "trader",
+                "label": "Trader",
+                "why": "Trade contacts know how to close a clean deal."
+              }
+            },
+            {
+              "id": "offer_2026-09-21_risky",
+              "profile": "risky",
+              "icon": "contract_risky",
+              "title": "Belt Intercept",
+              "brief": "Someone is taking shots at the lane. Meet them prepared.",
+              "destinationId": "colony_hope",
+              "destinationName": "Hope's Rest",
+              "normalFuel": 2,
+              "beats": 3,
+              "beatLabel": "3 beats",
+              "rewardFamily": "credits and medals",
+              "danger": "High",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              }
+            },
+            {
+              "id": "offer_2026-09-21_strange",
+              "profile": "strange",
+              "icon": "contract_strange",
+              "title": "Uncatalogued Echo",
+              "brief": "Follow the anomaly before it fades back into static.",
+              "destinationId": "scrapyard",
+              "destinationName": "Null Scrapyard",
+              "normalFuel": 2,
+              "beats": 3,
+              "beatLabel": "3 beats",
+              "rewardFamily": "story and salvage",
+              "danger": "Guarded",
+              "favoredTrait": {
+                "kind": "system",
+                "id": "sensors",
+                "label": "Sensors",
+                "why": "Sensors can separate a useful signal from a trap."
+              }
+            }
+          ],
+          "completedOfferIds": []
+        },
+        "activeContract": {
+          "id": "contract_2026-09-21_risky",
+          "acceptanceId": "contract_2026-09-21_risky:2",
+          "offerId": "offer_2026-09-21_risky",
+          "boardDay": "2026-09-21",
+          "profile": "risky",
+          "title": "Belt Intercept",
+          "destinationId": "colony_hope",
+          "favoredTrait": {
+            "kind": "role",
+            "id": "gunner",
+            "label": "Gunner",
+            "why": "A gunner turns a dangerous contract into a payout."
+          },
+          "stage": "confrontation",
+          "revision": 2,
+          "routeSeed": 3073970916,
+          "choiceId": "push",
+          "encounterId": "swarm_skirmish",
+          "orderId": null,
+          "result": null,
+          "routeOutcome": {
+            "w": 45,
+            "kind": "combat",
+            "encounter": "swarm_skirmish"
+          },
+          "secureOutcome": {
+            "w": 45,
+            "kind": "combat",
+            "encounter": "swarm_skirmish"
+          },
+          "storyFlag": null,
+          "beats": 3,
+          "fuelSpent": 2,
+          "acceptedAt": 1790017200000
+        },
+        "dailyLoop": {
+          "dayKey": "2026-09-21",
+          "contract": true,
+          "improve": false,
+          "away": false
+        },
+        "location": "lane_a",
+        "flags": {
+          "splashSeen": true,
+          "sparrowFirstRepair": true
+        },
+        "gacha": {
+          "pityRare": 0,
+          "pityLegend": 0,
+          "luck": 0,
+          "pulls": 0,
+          "lastRarity": null
+        },
+        "loginStreak": 1,
+        "lastLoginDay": "2026-09-21",
+        "dailyPullAvailable": true,
+        "stats": {
+          "jumps": 0,
+          "combatsWon": 0,
+          "expeditions": 0,
+          "visits": {
+            "lane_a": 1
+          },
+          "planetRuns": {},
+          "contractsCompleted": 1,
+          "contractsByProfile": {
+            "reliable": 0,
+            "risky": 0,
+            "strange": 0,
+            "distress": 1
+          }
+        },
+        "story": {
+          "chapter": 1,
+          "eclipseIntro": false,
+          "emberUnlocked": false,
+          "hollowUnlocked": false,
+          "crownUnlocked": false
+        },
+        "tutorial": {
+          "script": 3,
+          "phase": "away",
+          "completed": false,
+          "dismissed": false,
+          "firstTravel": true,
+          "firstCombat": true,
+          "firstExpedition": false,
+          "hiredThird": true,
+          "slot3Unlocked": true,
+          "slot4Unlocked": false,
+          "jestPrompted": false,
+          "lastRewards": {
+            "credits": 120,
+            "medals": 8,
+            "reputation": 4,
+            "gems": 0,
+            "fuel": 0
+          },
+          "recruit": {
+            "instanceId": "merc_jen_0cyk5rc",
+            "templateId": "merc_jen",
+            "name": "Jen Park",
+            "role": "gunner",
+            "rarity": "common",
+            "blurb": "Station security washout."
+          },
+          "ordersBeat": null
+        },
+        "_jestRegistered": false,
+        "_jestPlayerId": "local-dev",
+        "contractAcceptanceSequence": 2
+      },
+      "orderFacts": [
+        "Brace · Recommended\n\n58% · 0F extra\n\nNormal payout\n\nFailure: half hull loss · no crew injury\n\nChoose Brace",
+        "Burn\n\n76% · 1F extra\n\nNormal payout\n\n+12 effective power · normal failure hull loss and injury\n\nChoose Burn",
+        "Board\n\n52% · 0F extra\n\nVictory: +25% credits and medals\n\n−10% effective power · failure injures one crew member\n\nChoose Board"
+      ],
+      "normalResult": {
+        "success": true,
+        "rewards": {
+          "credits": 120,
+          "medals": 10,
+          "reputation": 5,
+          "gems": 0,
+          "fuel": 0
+        },
+        "hullLoss": 5,
+        "injuredCrewId": null,
+        "storyFlag": null,
+        "summary": "The pack peels. Chitin and medals in the wake."
+      },
+      "claim": {
+        "before": {
+          "credits": 200,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 8,
+          "reputation": 4
+        },
+        "reward": {
+          "credits": 120,
+          "medals": 10,
+          "reputation": 5,
+          "gems": 0,
+          "fuel": 0
+        },
+        "after": {
+          "credits": 320,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "completed": 2
+      },
+      "partyFocus": {
+        "action": "exp-choose",
+        "planet": "dustfall"
+      },
+      "partyPreview": "Success chance: 59%\n\nSuccess: 70cr · 8 med · 4 rep\n\nFailure: 16cr · 2 med · 1 rep\n\nFailure injures the away team.\n\nReturns: 12:05 PM\n\nJen Park unavailable for contracts until return.",
+      "away": {
+        "job": {
+          "id": "exp_dustfall_1790017200000",
+          "kind": "expedition",
+          "minutes": 5,
+          "payload": {
+            "planetId": "dustfall",
+            "crewInstanceIds": [
+              "merc_jen_0cyk5rc"
+            ],
+            "successChance": 0.5918518518518519,
+            "roleHit": false
+          },
+          "startedAt": 1790017200000,
+          "endAt": 1790017500000
+        },
+        "crew": [
+          {
+            "id": "qa-crew-0",
+            "status": "ready"
+          },
+          {
+            "id": "qa-crew-1",
+            "status": "ready"
+          },
+          {
+            "id": "merc_jen_0cyk5rc",
+            "status": "expedition"
+          }
+        ],
+        "wallet": {
+          "credits": 320,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "daily": {
+          "dayKey": "2026-09-21",
+          "contract": true,
+          "improve": false,
+          "away": true
+        }
+      },
+      "improvement": {
+        "before": {
+          "credits": 320,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "after": {
+          "credits": 100,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "systems": {
+          "engines": 1,
+          "shields": 1,
+          "cargo": 1,
+          "weapons": 1,
+          "quarters": 0,
+          "sensors": 1,
+          "medbay": 0
+        },
+        "daily": {
+          "dayKey": "2026-09-21",
+          "contract": true,
+          "improve": true,
+          "away": true
+        },
+        "chipHidden": true
+      },
+      "exploreBlocked": {
+        "copy": true,
+        "buttons": [
+          {
+            "disabled": true,
+            "label": "Spur Anchor\n0F · dock\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Dust Lane\n1F · 40–60cr · 94%\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Kestrel Market\n1F · 80–150cr\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Broken Belt\n1F · 60–90cr\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Hope's Rest\n2F · ~120cr · 94%\nHERE"
+          },
+          {
+            "disabled": true,
+            "label": "Glass Spur\n1F · 40–130cr\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Null Scrapyard\n1F · 70–120cr\nJUMP"
+          }
+        ]
+      },
+      "exceptions": []
+    },
+    {
+      "viewport": "360x800",
+      "measurements": [
+        {
+          "label": "distress",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Review Distress, Distress at Dust Lane, 1F, Guarded danger, credits, medals, and reputation",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 514.65625,
+              "width": 302,
+              "height": 44,
+              "bottom": 558.65625,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Contracts",
+              "fontSize": 17
+            },
+            {
+              "text": "! Distress",
+              "fontSize": 16
+            },
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 18.72
+            },
+            {
+              "text": "A freighter is calling for help beneath a pirate signal.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "1F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "2 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits, medals, and reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Guarded",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "distress-review",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Close contract review",
+              "action": "contract-review-close",
+              "disabled": false,
+              "x": 295,
+              "y": 213.734375,
+              "width": 44,
+              "height": 44,
+              "bottom": 257.734375,
+              "right": 339,
+              "clip": {
+                "left": 8,
+                "top": 200.734375,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Accept contract",
+              "action": "contract-accept",
+              "disabled": false,
+              "x": 25,
+              "y": 663,
+              "width": 144.921875,
+              "height": 44,
+              "bottom": 707,
+              "right": 169.921875,
+              "clip": {
+                "left": 8,
+                "top": 200.734375,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Distress",
+              "fontSize": 16
+            },
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 17
+            },
+            {
+              "text": "A freighter is calling for help beneath a pirate signal.",
+              "fontSize": 16
+            },
+            {
+              "text": "Destination: Dust Lane",
+              "fontSize": 16
+            },
+            {
+              "text": "Payable route fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "1F",
+              "fontSize": 16
+            },
+            {
+              "text": "Expected reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits, medals, and reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Guarded",
+              "fontSize": 16
+            },
+            {
+              "text": "Lower expected danger on this route.",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            },
+            {
+              "text": "Accepting spends no fuel. Fuel is spent by route actions.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 8,
+              "y": 200.734375,
+              "width": 344,
+              "height": 527.265625,
+              "bottom": 728,
+              "right": 352,
+              "scrollHeight": 525,
+              "clientHeight": 525,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "tutorial-briefing",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Launch · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 339.578125,
+              "width": 302,
+              "height": 44,
+              "bottom": 383.578125,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 16
+            },
+            {
+              "text": "briefing",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            },
+            {
+              "text": "Spend fuel and depart.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "tutorial-order",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Choose Brace, Guaranteed, 0F extra, Failure: half hull loss · no crew injury",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 641.4375,
+              "width": 268,
+              "height": 44,
+              "bottom": 685.4375,
+              "right": 314,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Distress at Dust Lane",
+              "fontSize": 16
+            },
+            {
+              "text": "confrontation",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Engineer · An engineer keeps a rescue run together.",
+              "fontSize": 16
+            },
+            {
+              "text": "Pirate Scout",
+              "fontSize": 17
+            },
+            {
+              "text": "Pirate Scout",
+              "fontSize": 18.72
+            },
+            {
+              "text": "A light cutter tagging freighters.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace is recommended for hull and crew protection.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace · Recommended",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Guaranteed · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: half hull loss · no crew injury",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "tutorial-cargo-claim",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Close",
+              "action": "close-room",
+              "disabled": false,
+              "x": 292,
+              "y": 80,
+              "width": 44,
+              "height": 44,
+              "bottom": 124,
+              "right": 336,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 350,
+                "bottom": 358.5
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Bring it aboard",
+              "action": "contract-claim",
+              "disabled": false,
+              "x": 182.90625,
+              "y": 289.3125,
+              "width": 130.796875,
+              "height": 55.1875,
+              "bottom": 344.5,
+              "right": 313.703125,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 350,
+                "bottom": 358.5
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Cargo Hold",
+              "fontSize": 18
+            },
+            {
+              "text": "The scout wing breaks off. You strip the pod.",
+              "fontSize": 16
+            },
+            {
+              "text": "120cr · 8 med · 4 rep",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 10,
+              "y": 66,
+              "width": 340,
+              "height": 292.5,
+              "bottom": 358.5,
+              "right": 350,
+              "scrollHeight": 293,
+              "clientHeight": 293,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.59375,
+            "y": 85.078125,
+            "width": 352.796875,
+            "height": 622.828125,
+            "bottom": 707.90625,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "three-card-board",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Review Reliable, Steady Freight, 2F, Low danger, credits and reputation",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 374.65625,
+              "width": 302,
+              "height": 44,
+              "bottom": 418.65625,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Review Risky, Belt Intercept, 2F, High danger, credits and medals",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 374.484375,
+              "width": 302,
+              "height": 44,
+              "bottom": 418.484375,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Review Strange, Uncatalogued Echo, 2F, Guarded danger, story and salvage",
+              "action": "contract-review",
+              "disabled": false,
+              "x": 29,
+              "y": 658.3125,
+              "width": 302,
+              "height": 44,
+              "bottom": 702.3125,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Contracts",
+              "fontSize": 17
+            },
+            {
+              "text": "◆ Reliable",
+              "fontSize": 16
+            },
+            {
+              "text": "Steady Freight",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Keep the cargo moving and the books come out clean.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "2 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits and reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Low",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Trader · Trade contacts know how to close a clean deal.",
+              "fontSize": 16
+            },
+            {
+              "text": "⚔ Risky",
+              "fontSize": 16
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Someone is taking shots at the lane. Meet them prepared.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "3 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "✦ Strange",
+              "fontSize": 16
+            },
+            {
+              "text": "Uncatalogued Echo",
+              "fontSize": 18.72
+            },
+            {
+              "text": "Follow the anomaly before it fades back into static.",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Length",
+              "fontSize": 16
+            },
+            {
+              "text": "3 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "Reward",
+              "fontSize": 16
+            },
+            {
+              "text": "story and salvage",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "Guarded",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Sensors · Sensors can separate a useful signal from a trap.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "mission-switcher",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Contracts",
+              "action": "mission-view",
+              "disabled": false,
+              "x": 16,
+              "y": 66,
+              "width": 106.65625,
+              "height": 44,
+              "bottom": 110,
+              "right": 122.65625,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Away",
+              "action": "mission-view",
+              "disabled": false,
+              "x": 126.65625,
+              "y": 66,
+              "width": 106.671875,
+              "height": 44,
+              "bottom": 110,
+              "right": 233.328125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Explore",
+              "action": "mission-view",
+              "disabled": false,
+              "x": 237.328125,
+              "y": 66,
+              "width": 106.65625,
+              "height": 44,
+              "bottom": 110,
+              "right": 343.984375,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-review",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Close contract review",
+              "action": "contract-review-close",
+              "disabled": false,
+              "x": 295,
+              "y": 236.921875,
+              "width": 44,
+              "height": 44,
+              "bottom": 280.921875,
+              "right": 339,
+              "clip": {
+                "left": 8,
+                "top": 223.921875,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Accept contract",
+              "action": "contract-accept",
+              "disabled": false,
+              "x": 25,
+              "y": 663,
+              "width": 144.921875,
+              "height": 44,
+              "bottom": 707,
+              "right": 169.921875,
+              "clip": {
+                "left": 8,
+                "top": 223.921875,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Risky",
+              "fontSize": 16
+            },
+            {
+              "text": "Belt Intercept",
+              "fontSize": 17
+            },
+            {
+              "text": "Someone is taking shots at the lane. Meet them prepared.",
+              "fontSize": 16
+            },
+            {
+              "text": "Destination: Hope's Rest",
+              "fontSize": 16
+            },
+            {
+              "text": "Payable route fuel",
+              "fontSize": 16
+            },
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "Expected reward",
+              "fontSize": 16
+            },
+            {
+              "text": "credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "Danger",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Possible hull or crew consequence.",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Accepting spends no fuel. Fuel is spent by route actions.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 8,
+              "y": 223.921875,
+              "width": 344,
+              "height": 504.078125,
+              "bottom": 728,
+              "right": 352,
+              "scrollHeight": 502,
+              "clientHeight": 502,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-briefing",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Launch · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 339.578125,
+              "width": 302,
+              "height": 44,
+              "bottom": 383.578125,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Abandon",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 399.578125,
+              "width": 94.703125,
+              "height": 44,
+              "bottom": 443.578125,
+              "right": 123.703125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16
+            },
+            {
+              "text": "briefing",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Spend fuel and depart.",
+              "fontSize": 16
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-choice",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Secure the contract · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 339.578125,
+              "width": 302,
+              "height": 44,
+              "bottom": 383.578125,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Push the signal · 1F",
+              "action": "contract-action",
+              "disabled": false,
+              "x": 29,
+              "y": 430.765625,
+              "width": 302,
+              "height": 44,
+              "bottom": 474.765625,
+              "right": 331,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 490.765625,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 534.765625,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16
+            },
+            {
+              "text": "choice",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Lower-variance route outcome.",
+              "fontSize": 16
+            },
+            {
+              "text": "Pursue the stronger reward opportunity.",
+              "fontSize": 16
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-orders",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 374.625,
+              "width": 268,
+              "height": 44,
+              "bottom": 418.625,
+              "right": 314,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Choose Burn, 76%, 1F extra, +12 effective power · normal failure hull loss and injury",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 374.515625,
+              "width": 268,
+              "height": 44,
+              "bottom": 418.515625,
+              "right": 314,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Choose Board, 52%, 0F extra, −10% effective power · failure injures one crew member",
+              "action": "contract-order",
+              "disabled": false,
+              "x": 46,
+              "y": 534.40625,
+              "width": 268,
+              "height": 44,
+              "bottom": 578.40625,
+              "right": 314,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Break contract",
+              "action": "contract-abandon",
+              "disabled": false,
+              "x": 29,
+              "y": 595.40625,
+              "width": 137.203125,
+              "height": 44,
+              "bottom": 639.40625,
+              "right": 166.203125,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Belt Intercept",
+              "fontSize": 16
+            },
+            {
+              "text": "confrontation",
+              "fontSize": 17
+            },
+            {
+              "text": "Crew: Rex Vale, Bolt, Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            },
+            {
+              "text": "Swarm Skirmish",
+              "fontSize": 17
+            },
+            {
+              "text": "Swarm Skirmish",
+              "fontSize": 18.72
+            },
+            {
+              "text": "A hunting pack. Do not let them surround you.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace is recommended for hull and crew protection.",
+              "fontSize": 16
+            },
+            {
+              "text": "Brace · Recommended",
+              "fontSize": 18.72
+            },
+            {
+              "text": "58% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: half hull loss · no crew injury",
+              "fontSize": 16
+            },
+            {
+              "text": "Burn",
+              "fontSize": 18.72
+            },
+            {
+              "text": "76% · 1F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "+12 effective power · normal failure hull loss and injury",
+              "fontSize": 16
+            },
+            {
+              "text": "Board",
+              "fontSize": 18.72
+            },
+            {
+              "text": "52% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Victory: +25% credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "−10% effective power · failure injures one crew member",
+              "fontSize": 16
+            },
+            {
+              "text": "No pending reward. Spent fuel is not refunded.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "normal-cargo-claim",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Close",
+              "action": "close-room",
+              "disabled": false,
+              "x": 292,
+              "y": 80,
+              "width": 44,
+              "height": 44,
+              "bottom": 124,
+              "right": 336,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 350,
+                "bottom": 358.5
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Bring it aboard",
+              "action": "contract-claim",
+              "disabled": false,
+              "x": 192.5,
+              "y": 289.3125,
+              "width": 130.796875,
+              "height": 55.1875,
+              "bottom": 344.5,
+              "right": 323.296875,
+              "clip": {
+                "left": 10,
+                "top": 66,
+                "right": 350,
+                "bottom": 358.5
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Cargo Hold",
+              "fontSize": 18
+            },
+            {
+              "text": "The pack peels. Chitin and medals in the wake.",
+              "fontSize": 16
+            },
+            {
+              "text": "120cr · 10 med · 5 rep",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 10,
+              "y": 66,
+              "width": 340,
+              "height": 292.5,
+              "bottom": 358.5,
+              "right": 350,
+              "scrollHeight": 293,
+              "clientHeight": 293,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.59375,
+            "y": 85.078125,
+            "width": 352.796875,
+            "height": 622.828125,
+            "bottom": 707.90625,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "away-destinations",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Choose crew",
+              "action": "exp-choose",
+              "disabled": false,
+              "x": 36,
+              "y": 410.140625,
+              "width": 288,
+              "height": 44,
+              "bottom": 454.140625,
+              "right": 324,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Away",
+              "fontSize": 17
+            },
+            {
+              "text": "Dustfall Outpost",
+              "fontSize": 16
+            },
+            {
+              "text": "Preferred role: scout",
+              "fontSize": 16
+            },
+            {
+              "text": "Recommended crew: 67% success · 5m",
+              "fontSize": 16
+            },
+            {
+              "text": "Success: 70cr · 8 med · 4 rep · Failure: 16cr · 2 med · 1 rep",
+              "fontSize": 16
+            },
+            {
+              "text": "Injury risk: crew may return injured on failure.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "selected-party",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Close crew selection",
+              "action": "exp-picker-close",
+              "disabled": false,
+              "x": 295,
+              "y": 75.859375,
+              "width": 44,
+              "height": 44,
+              "bottom": 119.859375,
+              "right": 339,
+              "clip": {
+                "left": 8,
+                "top": 62.859375,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Jen Park\ngunner · ✓ Selected\npower 11 · highest ready power",
+              "action": "exp-crew-toggle",
+              "disabled": false,
+              "x": 25,
+              "y": 147.6875,
+              "width": 310,
+              "height": 96,
+              "bottom": 243.6875,
+              "right": 335,
+              "clip": {
+                "left": 8,
+                "top": 62.859375,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Rex Vale\npilot · Not selected\npower 10",
+              "action": "exp-crew-toggle",
+              "disabled": false,
+              "x": 25,
+              "y": 251.6875,
+              "width": 310,
+              "height": 80,
+              "bottom": 331.6875,
+              "right": 335,
+              "clip": {
+                "left": 8,
+                "top": 62.859375,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Bolt\nengineer · Not selected\npower 10",
+              "action": "exp-crew-toggle",
+              "disabled": false,
+              "x": 25,
+              "y": 339.6875,
+              "width": 310,
+              "height": 80,
+              "bottom": 419.6875,
+              "right": 335,
+              "clip": {
+                "left": 8,
+                "top": 62.859375,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Confirm expedition",
+              "action": "exp-launch",
+              "disabled": false,
+              "x": 25,
+              "y": 663,
+              "width": 310,
+              "height": 44,
+              "bottom": 707,
+              "right": 335,
+              "clip": {
+                "left": 8,
+                "top": 62.859375,
+                "right": 352,
+                "bottom": 728
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Choose crew · Dustfall Outpost",
+              "fontSize": 17
+            },
+            {
+              "text": "1/2 selected",
+              "fontSize": 16
+            },
+            {
+              "text": "Jen Park",
+              "fontSize": 16
+            },
+            {
+              "text": "gunner · ✓ Selected",
+              "fontSize": 16
+            },
+            {
+              "text": "power 11 · highest ready power",
+              "fontSize": 16
+            },
+            {
+              "text": "Rex Vale",
+              "fontSize": 16
+            },
+            {
+              "text": "pilot · Not selected",
+              "fontSize": 16
+            },
+            {
+              "text": "power 10",
+              "fontSize": 16
+            },
+            {
+              "text": "Bolt",
+              "fontSize": 16
+            },
+            {
+              "text": "engineer · Not selected",
+              "fontSize": 16
+            },
+            {
+              "text": "power 10",
+              "fontSize": 16
+            },
+            {
+              "text": "Success chance: 59%",
+              "fontSize": 16
+            },
+            {
+              "text": "Success: 70cr · 8 med · 4 rep",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: 16cr · 2 med · 1 rep",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure injures the away team.",
+              "fontSize": 16
+            },
+            {
+              "text": "Returns: 12:05 PM",
+              "fontSize": 16
+            },
+            {
+              "text": "Jen Park unavailable for contracts until return.",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [
+            {
+              "x": 8,
+              "y": 62.859375,
+              "width": 344,
+              "height": 665.140625,
+              "bottom": 728,
+              "right": 352,
+              "scrollHeight": 663,
+              "clientHeight": 663,
+              "withinViewport": true
+            }
+          ],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "daily-plan",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "2 of 3 daily milestones, next: Improve your ship or crew",
+              "action": "daily-improve",
+              "disabled": false,
+              "x": 10,
+              "y": 683,
+              "width": 340,
+              "height": 44,
+              "bottom": 727,
+              "right": 350,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "2/3 · Improve your ship or crew",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 85.078125,
+            "width": 352.796875,
+            "height": 622.828125,
+            "bottom": 707.90625,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        },
+        {
+          "label": "active-away",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "navTop": 735,
+          "targets": [
+            {
+              "label": "Claim",
+              "action": "exp-claim",
+              "disabled": false,
+              "x": 144.734375,
+              "y": 266.203125,
+              "width": 70.53125,
+              "height": 44,
+              "bottom": 310.203125,
+              "right": 215.265625,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Skip 15g",
+              "action": "exp-skip",
+              "disabled": false,
+              "x": 133.75,
+              "y": 316.203125,
+              "width": 92.484375,
+              "height": 44,
+              "bottom": 360.203125,
+              "right": 226.234375,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            },
+            {
+              "label": "Extract",
+              "action": "exp-abort",
+              "disabled": false,
+              "x": 139.234375,
+              "y": 366.203125,
+              "width": 81.53125,
+              "height": 44,
+              "bottom": 410.203125,
+              "right": 220.765625,
+              "clip": {
+                "left": 0,
+                "top": 58,
+                "right": 360,
+                "bottom": 735
+              },
+              "fullyVisible": true,
+              "reachable": true,
+              "targetPass": true
+            }
+          ],
+          "text": [
+            {
+              "text": "Away",
+              "fontSize": 17
+            },
+            {
+              "text": "ACTIVE · Dustfall Outpost",
+              "fontSize": 16
+            },
+            {
+              "text": "59% · 5m 0s left",
+              "fontSize": 16
+            },
+            {
+              "text": "Jen Park",
+              "fontSize": 16
+            }
+          ],
+          "sheets": [],
+          "ship": {
+            "x": 3.59375,
+            "y": 32,
+            "width": 352.796875,
+            "height": 736,
+            "bottom": 768,
+            "right": 356.390625
+          },
+          "scrollWidth": 360,
+          "reduced": false,
+          "pass": true
+        }
+      ],
+      "reloads": [
+        {
+          "label": "tutorial-confrontation",
+          "before": {
+            "version": 7,
+            "phase": "order",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "confrontation",
+              "revision": 1,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "order",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "confrontation",
+              "revision": 1,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "tutorial-return",
+          "before": {
+            "version": 7,
+            "phase": "return",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "return",
+              "revision": 2,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 8,
+                  "reputation": 4,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 2,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The scout wing breaks off. You strip the pod."
+              },
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "return",
+            "wallet": {
+              "credits": 80,
+              "fuel": 7,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
+            "contract": {
+              "id": "contract_2026-09-21_distress",
+              "acceptanceId": "contract_2026-09-21_distress:1",
+              "offerId": "offer_tutorial_distress",
+              "boardDay": "2026-09-21",
+              "profile": "distress",
+              "title": "Distress at Dust Lane",
+              "destinationId": "lane_a",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "engineer",
+                "label": "Engineer",
+                "why": "An engineer keeps a rescue run together."
+              },
+              "stage": "return",
+              "revision": 2,
+              "routeSeed": 512630695,
+              "choiceId": null,
+              "encounterId": "pirate_scout",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 8,
+                  "reputation": 4,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 2,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The scout wing breaks off. You strip the pod."
+              },
+              "routeOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "secureOutcome": {
+                "kind": "combat",
+                "encounter": "pirate_scout"
+              },
+              "storyFlag": null,
+              "beats": 2,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": false,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-choice",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 6,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "choice",
+              "revision": 1,
+              "routeSeed": 3073970916,
+              "choiceId": null,
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 6,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "choice",
+              "revision": 1,
+              "routeSeed": 3073970916,
+              "choiceId": null,
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 1,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-confrontation",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "confrontation",
+              "revision": 2,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "confrontation",
+              "revision": 2,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": null,
+              "result": null,
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-return",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "return",
+              "revision": 3,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 10,
+                  "reputation": 5,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 5,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The pack peels. Chitin and medals in the wake."
+              },
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 200,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 8,
+              "reputation": 4
+            },
+            "contract": {
+              "id": "contract_2026-09-21_risky",
+              "acceptanceId": "contract_2026-09-21_risky:2",
+              "offerId": "offer_2026-09-21_risky",
+              "boardDay": "2026-09-21",
+              "profile": "risky",
+              "title": "Belt Intercept",
+              "destinationId": "colony_hope",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              },
+              "stage": "return",
+              "revision": 3,
+              "routeSeed": 3073970916,
+              "choiceId": "push",
+              "encounterId": "swarm_skirmish",
+              "orderId": "brace",
+              "result": {
+                "success": true,
+                "rewards": {
+                  "credits": 120,
+                  "medals": 10,
+                  "reputation": 5,
+                  "gems": 0,
+                  "fuel": 0
+                },
+                "hullLoss": 5,
+                "injuredCrewId": null,
+                "storyFlag": null,
+                "summary": "The pack peels. Chitin and medals in the wake."
+              },
+              "routeOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "secureOutcome": {
+                "w": 45,
+                "kind": "combat",
+                "encounter": "swarm_skirmish"
+              },
+              "storyFlag": null,
+              "beats": 3,
+              "fuelSpent": 2,
+              "acceptedAt": 1790017200000
+            },
+            "completed": [],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        },
+        {
+          "label": "normal-claimed",
+          "before": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 320,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 18,
+              "reputation": 9
+            },
+            "contract": null,
+            "completed": [
+              "offer_2026-09-21_risky"
+            ],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "after": {
+            "version": 7,
+            "phase": "away",
+            "wallet": {
+              "credits": 320,
+              "fuel": 5,
+              "gems": 0,
+              "medals": 18,
+              "reputation": 9
+            },
+            "contract": null,
+            "completed": [
+              "offer_2026-09-21_risky"
+            ],
+            "daily": {
+              "dayKey": "2026-09-21",
+              "contract": true,
+              "improve": false,
+              "away": false
+            }
+          },
+          "equal": true
+        }
+      ],
+      "captures": [
+        "contracts-runtime/distress-360x800.png",
+        "contracts-runtime/review-360x800.png",
+        "contracts-runtime/tutorial-order-360x800.png",
+        "contracts-runtime/return-360x800.png",
+        "contracts-runtime/improvement-360x800.png",
+        "contracts-board-360x800.png",
+        "contracts-runtime/board-risky-360x800.png",
+        "contracts-runtime/board-strange-360x800.png",
+        "contracts-runtime/normal-review-360x800.png",
+        "contracts-runtime/choice-360x800.png",
+        "contracts-runtime/orders-360x800.png",
+        "contracts-runtime/order-brace-360x800.png",
+        "contracts-runtime/order-burn-360x800.png",
+        "contracts-runtime/order-board-360x800.png",
+        "contracts-runtime/normal-return-360x800.png",
+        "contracts-runtime/party-360x800.png",
+        "contracts-runtime/daily-plan-360x800.png",
+        "contracts-runtime/improvement-ready-360x800.png",
+        "contracts-runtime/active-away-360x800.png",
+        "contracts-runtime/explore-blocked-360x800.png"
+      ],
+      "phases": [
+        "distress",
+        "launch",
+        "order",
+        "return",
+        "recruit",
+        "choose",
+        "away",
+        "done"
+      ],
+      "improvementFocus": "Cargo Hold",
+      "reviewFocusBefore": {
+        "active": "<button type=\"button\" class=\"icon-close\" data-act=\"contract-review-close\" aria-label=\"Close contract review\">×</button>",
+        "return": {
+          "act": "contract-review",
+          "offer": "offer_2026-09-21_risky"
+        }
+      },
+      "reviewFocus": {
+        "action": "contract-review",
+        "offer": "risky"
+      },
+      "confrontationSeed": {
+        "version": 7,
+        "captainName": "Captain",
+        "createdAt": 1790017200000,
+        "wallet": {
+          "credits": 200,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 8,
+          "reputation": 4
+        },
+        "fuelMax": 10,
+        "fuelRatePerHour": 1,
+        "fuelClaimAt": 1790017200000,
+        "ship": {
+          "shipId": "sparrow",
+          "systems": {
+            "engines": 1,
+            "shields": 1,
+            "cargo": 1,
+            "weapons": 1,
+            "quarters": 0,
+            "sensors": 0,
+            "medbay": 0
+          },
+          "cosmetics": {},
+          "ownedHulls": [
+            "sparrow"
+          ],
+          "hull": 98
+        },
+        "crewSlots": 3,
+        "crew": [
+          {
+            "instanceId": "qa-crew-0",
+            "templateId": "merc_rex",
+            "name": "Rex Vale",
+            "role": "pilot",
+            "rarity": "common",
+            "species": "human",
+            "faction": "haulers",
+            "origin": "Spur Anchor",
+            "quote": "Lane’s dirty. Hands aren’t.",
+            "history": "Rex flew meal-packs for a Spur co-op until a Swarm probe tagged his convoy. He kept the Sparrow airborne and never went back to scheduled runs.",
+            "passive": {
+              "fuelCostReduce": 0
+            },
+            "level": 1,
+            "stars": 1,
+            "rank": 1,
+            "copies": 1,
+            "xp": 0,
+            "power": 10,
+            "status": "ready",
+            "injuredUntil": 0,
+            "blurb": "Ex-hauler pilot. Steady hands."
+          },
+          {
+            "instanceId": "qa-crew-1",
+            "templateId": "merc_bolt",
+            "name": "Bolt",
+            "role": "engineer",
+            "rarity": "common",
+            "species": "droid",
+            "faction": "yard",
+            "origin": "Null Scrapyard",
+            "quote": "If it rattles, I named it.",
+            "history": "A scrap-yard chassis with three owners and one personality core that refuses a factory reset. Bolts talk while they weld. The welds hold.",
+            "passive": {
+              "repairBonus": 0.05
+            },
+            "level": 1,
+            "stars": 1,
+            "rank": 1,
+            "copies": 1,
+            "xp": 0,
+            "power": 10,
+            "status": "ready",
+            "injuredUntil": 0,
+            "blurb": "Refurbished yard droid."
+          },
+          {
+            "instanceId": "merc_jen_0cyk5rc",
+            "templateId": "merc_jen",
+            "name": "Jen Park",
+            "role": "gunner",
+            "rarity": "common",
+            "species": "human",
+            "faction": "station",
+            "origin": "Spur Anchor",
+            "quote": "Aim first. Report never.",
+            "history": "Jen washed out of Spur security for firing on a “friendly” cutter that turned pirate mid-dock. The station still pretends she quit.",
+            "passive": {
+              "critChance": 0.02
+            },
+            "level": 1,
+            "stars": 1,
+            "rank": 1,
+            "copies": 1,
+            "xp": 0,
+            "power": 11,
+            "status": "ready",
+            "injuredUntil": 0,
+            "blurb": "Station security washout."
+          }
+        ],
+        "reserve": [],
+        "iapFulfilled": [],
+        "activeExpedition": null,
+        "contractBoard": {
+          "dayKey": "2026-09-21",
+          "offers": [
+            {
+              "id": "offer_2026-09-21_reliable",
+              "profile": "reliable",
+              "icon": "contract_reliable",
+              "title": "Steady Freight",
+              "brief": "Keep the cargo moving and the books come out clean.",
+              "destinationId": "ice_spur",
+              "destinationName": "Glass Spur",
+              "normalFuel": 2,
+              "beats": 2,
+              "beatLabel": "2 beats",
+              "rewardFamily": "credits and reputation",
+              "danger": "Low",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "trader",
+                "label": "Trader",
+                "why": "Trade contacts know how to close a clean deal."
+              }
+            },
+            {
+              "id": "offer_2026-09-21_risky",
+              "profile": "risky",
+              "icon": "contract_risky",
+              "title": "Belt Intercept",
+              "brief": "Someone is taking shots at the lane. Meet them prepared.",
+              "destinationId": "colony_hope",
+              "destinationName": "Hope's Rest",
+              "normalFuel": 2,
+              "beats": 3,
+              "beatLabel": "3 beats",
+              "rewardFamily": "credits and medals",
+              "danger": "High",
+              "favoredTrait": {
+                "kind": "role",
+                "id": "gunner",
+                "label": "Gunner",
+                "why": "A gunner turns a dangerous contract into a payout."
+              }
+            },
+            {
+              "id": "offer_2026-09-21_strange",
+              "profile": "strange",
+              "icon": "contract_strange",
+              "title": "Uncatalogued Echo",
+              "brief": "Follow the anomaly before it fades back into static.",
+              "destinationId": "scrapyard",
+              "destinationName": "Null Scrapyard",
+              "normalFuel": 2,
+              "beats": 3,
+              "beatLabel": "3 beats",
+              "rewardFamily": "story and salvage",
+              "danger": "Guarded",
+              "favoredTrait": {
+                "kind": "system",
+                "id": "sensors",
+                "label": "Sensors",
+                "why": "Sensors can separate a useful signal from a trap."
+              }
+            }
+          ],
+          "completedOfferIds": []
+        },
+        "activeContract": {
+          "id": "contract_2026-09-21_risky",
+          "acceptanceId": "contract_2026-09-21_risky:2",
+          "offerId": "offer_2026-09-21_risky",
+          "boardDay": "2026-09-21",
+          "profile": "risky",
+          "title": "Belt Intercept",
+          "destinationId": "colony_hope",
+          "favoredTrait": {
+            "kind": "role",
+            "id": "gunner",
+            "label": "Gunner",
+            "why": "A gunner turns a dangerous contract into a payout."
+          },
+          "stage": "confrontation",
+          "revision": 2,
+          "routeSeed": 3073970916,
+          "choiceId": "push",
+          "encounterId": "swarm_skirmish",
+          "orderId": null,
+          "result": null,
+          "routeOutcome": {
+            "w": 45,
+            "kind": "combat",
+            "encounter": "swarm_skirmish"
+          },
+          "secureOutcome": {
+            "w": 45,
+            "kind": "combat",
+            "encounter": "swarm_skirmish"
+          },
+          "storyFlag": null,
+          "beats": 3,
+          "fuelSpent": 2,
+          "acceptedAt": 1790017200000
+        },
+        "dailyLoop": {
+          "dayKey": "2026-09-21",
+          "contract": true,
+          "improve": false,
+          "away": false
+        },
+        "location": "lane_a",
+        "flags": {
+          "splashSeen": true,
+          "sparrowFirstRepair": true
+        },
+        "gacha": {
+          "pityRare": 0,
+          "pityLegend": 0,
+          "luck": 0,
+          "pulls": 0,
+          "lastRarity": null
+        },
+        "loginStreak": 1,
+        "lastLoginDay": "2026-09-21",
+        "dailyPullAvailable": true,
+        "stats": {
+          "jumps": 0,
+          "combatsWon": 0,
+          "expeditions": 0,
+          "visits": {
+            "lane_a": 1
+          },
+          "planetRuns": {},
+          "contractsCompleted": 1,
+          "contractsByProfile": {
+            "reliable": 0,
+            "risky": 0,
+            "strange": 0,
+            "distress": 1
+          }
+        },
+        "story": {
+          "chapter": 1,
+          "eclipseIntro": false,
+          "emberUnlocked": false,
+          "hollowUnlocked": false,
+          "crownUnlocked": false
+        },
+        "tutorial": {
+          "script": 3,
+          "phase": "away",
+          "completed": false,
+          "dismissed": false,
+          "firstTravel": true,
+          "firstCombat": true,
+          "firstExpedition": false,
+          "hiredThird": true,
+          "slot3Unlocked": true,
+          "slot4Unlocked": false,
+          "jestPrompted": false,
+          "lastRewards": {
+            "credits": 120,
+            "medals": 8,
+            "reputation": 4,
+            "gems": 0,
+            "fuel": 0
+          },
+          "recruit": {
+            "instanceId": "merc_jen_0cyk5rc",
+            "templateId": "merc_jen",
+            "name": "Jen Park",
+            "role": "gunner",
+            "rarity": "common",
+            "blurb": "Station security washout."
+          },
+          "ordersBeat": null
+        },
+        "_jestRegistered": false,
+        "_jestPlayerId": "local-dev",
+        "contractAcceptanceSequence": 2
+      },
+      "orderFacts": [
+        "Brace · Recommended\n\n58% · 0F extra\n\nNormal payout\n\nFailure: half hull loss · no crew injury\n\nChoose Brace",
+        "Burn\n\n76% · 1F extra\n\nNormal payout\n\n+12 effective power · normal failure hull loss and injury\n\nChoose Burn",
+        "Board\n\n52% · 0F extra\n\nVictory: +25% credits and medals\n\n−10% effective power · failure injures one crew member\n\nChoose Board"
+      ],
+      "normalResult": {
+        "success": true,
+        "rewards": {
+          "credits": 120,
+          "medals": 10,
+          "reputation": 5,
+          "gems": 0,
+          "fuel": 0
+        },
+        "hullLoss": 5,
+        "injuredCrewId": null,
+        "storyFlag": null,
+        "summary": "The pack peels. Chitin and medals in the wake."
+      },
+      "claim": {
+        "before": {
+          "credits": 200,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 8,
+          "reputation": 4
+        },
+        "reward": {
+          "credits": 120,
+          "medals": 10,
+          "reputation": 5,
+          "gems": 0,
+          "fuel": 0
+        },
+        "after": {
+          "credits": 320,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "completed": 2
+      },
+      "partyFocus": {
+        "action": "exp-choose",
+        "planet": "dustfall"
+      },
+      "partyPreview": "Success chance: 59%\n\nSuccess: 70cr · 8 med · 4 rep\n\nFailure: 16cr · 2 med · 1 rep\n\nFailure injures the away team.\n\nReturns: 12:05 PM\n\nJen Park unavailable for contracts until return.",
+      "away": {
+        "job": {
+          "id": "exp_dustfall_1790017200000",
+          "kind": "expedition",
+          "minutes": 5,
+          "payload": {
+            "planetId": "dustfall",
+            "crewInstanceIds": [
+              "merc_jen_0cyk5rc"
+            ],
+            "successChance": 0.5918518518518519,
+            "roleHit": false
+          },
+          "startedAt": 1790017200000,
+          "endAt": 1790017500000
+        },
+        "crew": [
+          {
+            "id": "qa-crew-0",
+            "status": "ready"
+          },
+          {
+            "id": "qa-crew-1",
+            "status": "ready"
+          },
+          {
+            "id": "merc_jen_0cyk5rc",
+            "status": "expedition"
+          }
+        ],
+        "wallet": {
+          "credits": 320,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "daily": {
+          "dayKey": "2026-09-21",
+          "contract": true,
+          "improve": false,
+          "away": true
+        }
+      },
+      "improvement": {
+        "before": {
+          "credits": 320,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "after": {
+          "credits": 100,
+          "fuel": 5,
+          "gems": 0,
+          "medals": 18,
+          "reputation": 9
+        },
+        "systems": {
+          "engines": 1,
+          "shields": 1,
+          "cargo": 1,
+          "weapons": 1,
+          "quarters": 0,
+          "sensors": 1,
+          "medbay": 0
+        },
+        "daily": {
+          "dayKey": "2026-09-21",
+          "contract": true,
+          "improve": true,
+          "away": true
+        },
+        "chipHidden": true
+      },
+      "exploreBlocked": {
+        "copy": true,
+        "buttons": [
+          {
+            "disabled": true,
+            "label": "Spur Anchor\n0F · dock\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Dust Lane\n1F · 40–60cr · 94%\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Kestrel Market\n1F · 80–150cr\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Broken Belt\n1F · 60–90cr\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Hope's Rest\n2F · ~120cr · 94%\nHERE"
+          },
+          {
+            "disabled": true,
+            "label": "Glass Spur\n1F · 40–130cr\nJUMP"
+          },
+          {
+            "disabled": true,
+            "label": "Null Scrapyard\n1F · 70–120cr\nJUMP"
+          }
+        ]
+      },
+      "exceptions": []
+    }
+  ],
+  "failures": [
+    {
+      "viewport": "390x844",
+      "label": "reduced-motion",
+      "message": "decorative canvas or camera motion remains",
+      "evidence": {
+        "spaceStatic": false,
+        "crewStatic": false,
+        "transforms": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "combatLive": false
+      }
+    },
+    {
+      "viewport": "360x800",
+      "label": "reduced-motion",
+      "message": "decorative canvas or camera motion remains",
+      "evidence": {
+        "spaceStatic": false,
+        "crewStatic": false,
+        "transforms": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "combatLive": false
+      }
+    }
+  ],
+  "reducedMotion": [
+    {
+      "viewport": "390x844",
+      "measurement": {
+        "label": "reduced-orders",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "navTop": 779,
+        "targets": [
+          {
+            "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+            "action": "contract-order",
+            "disabled": false,
+            "x": 46,
+            "y": 396.4375,
+            "width": 298,
+            "height": 44,
+            "bottom": 440.4375,
+            "right": 344,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 390,
+              "bottom": 779
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          },
+          {
+            "label": "Choose Burn, 76%, 1F extra, +12 effective power · normal failure hull loss and injury",
+            "action": "contract-order",
+            "disabled": false,
+            "x": 46,
+            "y": 396.328125,
+            "width": 298,
+            "height": 44,
+            "bottom": 440.328125,
+            "right": 344,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 390,
+              "bottom": 779
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          },
+          {
+            "label": "Choose Board, 52%, 0F extra, −10% effective power · failure injures one crew member",
+            "action": "contract-order",
+            "disabled": false,
+            "x": 46,
+            "y": 578.21875,
+            "width": 298,
+            "height": 44,
+            "bottom": 622.21875,
+            "right": 344,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 390,
+              "bottom": 779
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          },
+          {
+            "label": "Break contract",
+            "action": "contract-abandon",
+            "disabled": false,
+            "x": 29,
+            "y": 639.21875,
+            "width": 137.203125,
+            "height": 44,
+            "bottom": 683.21875,
+            "right": 166.203125,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 390,
+              "bottom": 779
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          }
+        ],
+        "text": [
+          {
+            "text": "Belt Intercept",
+            "fontSize": 16
+          },
+          {
+            "text": "confrontation",
+            "fontSize": 17
+          },
+          {
+            "text": "Crew: Rex Vale, Bolt, Jen Park",
+            "fontSize": 16
+          },
+          {
+            "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+            "fontSize": 16
+          },
+          {
+            "text": "Swarm Skirmish",
+            "fontSize": 17
+          },
+          {
+            "text": "Swarm Skirmish",
+            "fontSize": 18.72
+          },
+          {
+            "text": "A hunting pack. Do not let them surround you.",
+            "fontSize": 16
+          },
+          {
+            "text": "Brace is recommended for hull and crew protection.",
+            "fontSize": 16
+          },
+          {
+            "text": "Brace · Recommended",
+            "fontSize": 18.72
+          },
+          {
+            "text": "58% · 0F extra",
+            "fontSize": 16
+          },
+          {
+            "text": "Normal payout",
+            "fontSize": 16
+          },
+          {
+            "text": "Failure: half hull loss · no crew injury",
+            "fontSize": 16
+          },
+          {
+            "text": "Burn",
+            "fontSize": 18.72
+          },
+          {
+            "text": "76% · 1F extra",
+            "fontSize": 16
+          },
+          {
+            "text": "Normal payout",
+            "fontSize": 16
+          },
+          {
+            "text": "+12 effective power · normal failure hull loss and injury",
+            "fontSize": 16
+          },
+          {
+            "text": "Board",
+            "fontSize": 18.72
+          },
+          {
+            "text": "52% · 0F extra",
+            "fontSize": 16
+          },
+          {
+            "text": "Victory: +25% credits and medals",
+            "fontSize": 16
+          },
+          {
+            "text": "−10% effective power · failure injures one crew member",
+            "fontSize": 16
+          },
+          {
+            "text": "No pending reward. Spent fuel is not refunded.",
+            "fontSize": 16
+          }
+        ],
+        "sheets": [],
+        "ship": {
+          "x": 3.90625,
+          "y": 33.765625,
+          "width": 382.1875,
+          "height": 776.46875,
+          "bottom": 810.234375,
+          "right": 386.09375
+        },
+        "scrollWidth": 390,
+        "reduced": true,
+        "pass": true
+      },
+      "consequenceParity": true,
+      "decorative": {
+        "reduced": true,
+        "css": [
+          {
+            "animation": "none",
+            "transition": "0s"
+          },
+          {
+            "animation": "none",
+            "transition": "0s"
+          },
+          {
+            "animation": "none",
+            "transition": "0s"
+          },
+          {
+            "animation": "none",
+            "transition": "0s"
+          }
+        ]
+      },
+      "capture": "contracts-reduced-motion-390x844.png",
+      "canvasMotion": {
+        "spaceStatic": false,
+        "crewStatic": false,
+        "transforms": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "combatLive": false
+      },
+      "resultParity": true,
+      "exceptions": []
+    },
+    {
+      "viewport": "360x800",
+      "measurement": {
+        "label": "reduced-orders",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "navTop": 735,
+        "targets": [
+          {
+            "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+            "action": "contract-order",
+            "disabled": false,
+            "x": 46,
+            "y": 374.625,
+            "width": 268,
+            "height": 44,
+            "bottom": 418.625,
+            "right": 314,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 360,
+              "bottom": 735
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          },
+          {
+            "label": "Choose Burn, 76%, 1F extra, +12 effective power · normal failure hull loss and injury",
+            "action": "contract-order",
+            "disabled": false,
+            "x": 46,
+            "y": 374.515625,
+            "width": 268,
+            "height": 44,
+            "bottom": 418.515625,
+            "right": 314,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 360,
+              "bottom": 735
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          },
+          {
+            "label": "Choose Board, 52%, 0F extra, −10% effective power · failure injures one crew member",
+            "action": "contract-order",
+            "disabled": false,
+            "x": 46,
+            "y": 534.40625,
+            "width": 268,
+            "height": 44,
+            "bottom": 578.40625,
+            "right": 314,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 360,
+              "bottom": 735
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          },
+          {
+            "label": "Break contract",
+            "action": "contract-abandon",
+            "disabled": false,
+            "x": 29,
+            "y": 595.40625,
+            "width": 137.203125,
+            "height": 44,
+            "bottom": 639.40625,
+            "right": 166.203125,
+            "clip": {
+              "left": 0,
+              "top": 58,
+              "right": 360,
+              "bottom": 735
+            },
+            "fullyVisible": true,
+            "reachable": true,
+            "targetPass": true
+          }
+        ],
+        "text": [
+          {
+            "text": "Belt Intercept",
+            "fontSize": 16
+          },
+          {
+            "text": "confrontation",
+            "fontSize": 17
+          },
+          {
+            "text": "Crew: Rex Vale, Bolt, Jen Park",
+            "fontSize": 16
+          },
+          {
+            "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+            "fontSize": 16
+          },
+          {
+            "text": "Swarm Skirmish",
+            "fontSize": 17
+          },
+          {
+            "text": "Swarm Skirmish",
+            "fontSize": 18.72
+          },
+          {
+            "text": "A hunting pack. Do not let them surround you.",
+            "fontSize": 16
+          },
+          {
+            "text": "Brace is recommended for hull and crew protection.",
+            "fontSize": 16
+          },
+          {
+            "text": "Brace · Recommended",
+            "fontSize": 18.72
+          },
+          {
+            "text": "58% · 0F extra",
+            "fontSize": 16
+          },
+          {
+            "text": "Normal payout",
+            "fontSize": 16
+          },
+          {
+            "text": "Failure: half hull loss · no crew injury",
+            "fontSize": 16
+          },
+          {
+            "text": "Burn",
+            "fontSize": 18.72
+          },
+          {
+            "text": "76% · 1F extra",
+            "fontSize": 16
+          },
+          {
+            "text": "Normal payout",
+            "fontSize": 16
+          },
+          {
+            "text": "+12 effective power · normal failure hull loss and injury",
+            "fontSize": 16
+          },
+          {
+            "text": "Board",
+            "fontSize": 18.72
+          },
+          {
+            "text": "52% · 0F extra",
+            "fontSize": 16
+          },
+          {
+            "text": "Victory: +25% credits and medals",
+            "fontSize": 16
+          },
+          {
+            "text": "−10% effective power · failure injures one crew member",
+            "fontSize": 16
+          },
+          {
+            "text": "No pending reward. Spent fuel is not refunded.",
+            "fontSize": 16
+          }
+        ],
+        "sheets": [],
+        "ship": {
+          "x": 3.59375,
+          "y": 32,
+          "width": 352.796875,
+          "height": 736,
+          "bottom": 768,
+          "right": 356.390625
+        },
+        "scrollWidth": 360,
+        "reduced": true,
+        "pass": true
+      },
+      "consequenceParity": true,
+      "decorative": {
+        "reduced": true,
+        "css": [
+          {
+            "animation": "none",
+            "transition": "0s"
+          },
+          {
+            "animation": "none",
+            "transition": "0s"
+          },
+          {
+            "animation": "none",
+            "transition": "0s"
+          },
+          {
+            "animation": "none",
+            "transition": "0s"
+          }
+        ]
+      },
+      "capture": "contracts-runtime/reduced-motion-360x800.png",
+      "canvasMotion": {
+        "spaceStatic": false,
+        "crewStatic": false,
+        "transforms": [
+          "none",
+          "none",
+          "none",
+          "none",
+          "none",
+          "none"
+        ],
+        "combatLive": false
+      },
+      "resultParity": true,
+      "exceptions": []
+    }
+  ]
+}

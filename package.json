@@ -7,7 +7,8 @@
     "dev": "vite --host --port 5173",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node test/timer.test.mjs && node test/fuel.test.mjs && node test/economy.test.mjs && node test/daily.test.mjs && node test/travel_phase_a.test.mjs && node test/platform_iap.test.mjs && node test/phase_c.test.mjs && node test/tutorial_week.test.mjs && node test/sanity.mjs",
+    "test": "node test/timer.test.mjs && node test/fuel.test.mjs && node test/economy.test.mjs && node test/daily.test.mjs && node test/travel_phase_a.test.mjs && node test/platform_iap.test.mjs && node test/phase_c.test.mjs && node test/tutorial_week.test.mjs && node test/sanity.mjs && node test/tutorial_v3.test.mjs",
+    "test:loop": "node test/combat_orders.test.mjs && node test/contract_board.test.mjs && node test/contract_route.test.mjs && node test/tutorial_v3.test.mjs && node test/expedition_party.test.mjs && node test/contract_ui.test.mjs && node test/daily_loop.test.mjs && node test/contract_ship_feedback.test.mjs && node test/session_loop.test.mjs && node test/explore_orders.test.mjs && node test/dialog_focus.test.mjs",
     "test:ship": "node test/ship_layout.test.mjs && node test/ship_pathing.test.mjs && node test/crew_animation.test.mjs && node test/ship_view.test.mjs && node test/ship_debug.test.mjs",
     "start": "vite --host --port 5173",
     "build:pages": "GITHUB_PAGES=1 vite build"
