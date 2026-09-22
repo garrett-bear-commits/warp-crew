@@ -10,7 +10,7 @@ Reviewed gameplay: `9b9585ea794120696913216a2763c563a4ba7753`
 
 ## Decision
 
-Make the existing Contract Board legible and measurable before changing its economy. This package authors a truthful tell and recommendation for every current encounter, replaces vague reward-family copy with exact reward ranges derived from the saved route, and adds deterministic balance evidence for the current rules.
+Make the existing Contract Board legible and measurable before changing its economy. This package authors a truthful tell and recommendation for every current encounter, replaces vague reward-family copy with literal currency payout ranges derived from the saved route and current player modifiers, and adds deterministic balance evidence for the current rules.
 
 No reward, cost, timer, progression, encounter-power, or monetization value changes in this package. Evidence may identify a future tuning need; it does not silently tune the game.
 
@@ -53,15 +53,15 @@ tell: {
   label: 'Formation tightening',
   text: 'Three cutters are closing their ragged V around the Sparrow.',
   recommendedOrder: 'burn',
-  reason: 'Burn spends 1F for +12 power, improving the chance to break the formation first.',
+  reason: 'Burn spends 1F for +12 power before the displayed chance reaches its cap.',
 }
 ```
 
 The tell never changes combat math. Its recommendation must resolve to `COMBAT_ORDERS`, and its reason must name the real generic tradeoff:
 
 - **Brace:** no extra fuel, half failure hull loss, and no failure injury;
-- **Burn:** costs 1F and adds 12 effective power;
-- **Board:** uses 90% crew power, pays 125% credits and medals on success, and forces injury on failure.
+- **Burn:** costs 1F and adds 12 effective power; displayed win chance remains capped at 94%;
+- **Board:** uses 90% crew power, multiplies base credits and medals by 1.25 before flooring, and forces injury on failure.
 
 The UI preselects nothing and grants no hidden bonus for following the recommendation. The tutorial remains the encoded exception: Pirate Scout exposes only Brace and guarantees victory.
 
@@ -70,29 +70,29 @@ The UI preselects nothing and grants no hidden bonus for following the recommend
 | Encounter | Tell | Recommended order | Reason |
 |---|---|---|---|
 | Pirate Scout | **Targeting engines.** The scout is painting the Sparrow's engines, but its first volley is hurried. | Brace | Protect the tutorial crew and hull while the guaranteed counterattack lands. |
-| Pirate Wing | **Formation tightening.** Three cutters are closing their ragged V around the Sparrow. | Burn | Spend 1F for +12 power and improve the chance to break the formation first. |
-| Scrapper Gang | **Grapples primed.** Cutting skiffs are drifting close enough to trade hull for salvage. | Board | Risk lower effective power for 25% more credits and medals on a win. |
-| Eclipse Probe | **Signal about to jump.** The probe has finished mapping the ship and is turning for open dark. | Burn | Spend 1F for +12 power and improve the chance to stop its escape. |
+| Pirate Wing | **Formation tightening.** Three cutters are closing their ragged V around the Sparrow. | Burn | Spend 1F for +12 power before the displayed chance reaches its cap. |
+| Scrapper Gang | **Grapples primed.** Cutting skiffs are drifting close enough to trade hull for salvage. | Board | Risk lower effective power for the higher rounded win payout shown. |
+| Eclipse Probe | **Signal about to jump.** The probe has finished mapping the ship and is turning for open dark. | Burn | Spend 1F for +12 power before the displayed chance reaches its cap. |
 | Swarm Skirmish | **Pack spreading wide.** The hunting pack is separating to strike from both sides. | Brace | Halve failure hull loss and prevent crew injury if the pack gets through. |
 | Swarm Frigate Echo | **Core flare rising.** The remembered frigate is charging a broadside larger than the Sparrow. | Brace | Halve failure hull loss and prevent crew injury against the heavy shot. |
-| Corsair Ace | **Attack vector committed.** The ace has traded distance for one clean firing pass. | Burn | Spend 1F for +12 power and improve the chance to seize the pass first. |
-| Ice Raiders | **Boarding clamps open.** White-hulled corsairs are matching speed with their clamps exposed. | Board | Accept greater failure risk for 25% more credits and medals on a win. |
+| Corsair Ace | **Attack vector committed.** The ace has traded distance for one clean firing pass. | Burn | Spend 1F for +12 power before the displayed chance reaches its cap. |
+| Ice Raiders | **Boarding clamps open.** White-hulled corsairs are matching speed with their clamps exposed. | Board | Accept greater failure risk for the higher rounded win payout shown. |
 | Swarm Brood | **Chitin cloud closing.** Half-grown probes are thickening around the shield line. | Brace | Halve failure hull loss and prevent crew injury if the brood reaches the hull. |
-| Veil Wraith | **Blind angle moving.** The contact vanishes whenever sensors or crew look directly at it. | Burn | Spend 1F for +12 power and improve the chance to force a decisive pass. |
-| Corsair King | **Flagship alongside.** The old captain is presenting a prize broadside and daring a boarding reply. | Board | Risk lower effective power for 25% more credits and medals from the flagship. |
+| Veil Wraith | **Blind angle moving.** The contact vanishes whenever sensors or crew look directly at it. | Burn | Spend 1F for +12 power before the displayed chance reaches its cap. |
+| Corsair King | **Flagship alongside.** The old captain is presenting a prize broadside and daring a boarding reply. | Board | Risk lower effective power for the higher rounded win payout shown. |
 | Eclipse Echo | **War-form unfolding.** The echo is opening weapon limbs the Spur was never built to answer. | Brace | Halve failure hull loss and prevent crew injury if the war-form fires. |
-| Ember Raider | **Breach team heating.** Raiders are welding toward Cargo while their own hull runs exposed. | Burn | Spend 1F for +12 power and improve the chance to stop the breach. |
+| Ember Raider | **Breach team heating.** Raiders are welding toward Cargo while their own hull runs exposed. | Burn | Spend 1F for +12 power before the displayed chance reaches its cap. |
 | Hollow Shade | **Name forming.** A second line of writing is appearing beneath the crew's name on the hull. | Brace | Halve failure hull loss and prevent crew injury if the mark completes. |
 | Crown Warden | **Verdict chambered.** The Warden has finished its warning and loaded a gold verdict round. | Brace | Halve failure hull loss and prevent crew injury if the verdict lands. |
-| Eclipse Throne | **Halo collapsing inward.** The Throne's halo is drawing every nearby signal toward its core. | Burn | Spend 1F for +12 power and improve the chance to act before the collapse. |
+| Eclipse Throne | **Halo collapsing inward.** The Throne's halo is drawing every nearby signal toward its core. | Burn | Spend 1F for +12 power before the displayed chance reaches its cap. |
 
 Tests reject blank fields, unknown recommendations, reasons that contradict current order effects, or accidental tutorial exposure of Burn/Board.
 
 ## Literal reward bands
 
-A reward band is the inclusive minimum and maximum claimable payout for the saved offer's currently possible terminal paths, evaluated against the current player snapshot.
+A reward band is the inclusive minimum and maximum currency payout for the saved offer's currently executable terminal paths, evaluated against the current player snapshot. It is labeled **Possible payout now**, not guaranteed payout.
 
-It includes each currency that can be non-zero on at least one path: credits, medals, reputation, gems, and fuel. It does not combine currencies into a synthetic score and does not count XP, hull loss, injury, fuel cost, or story flags as rewards.
+It includes each currency that can be non-zero on at least one path: credits, medals, reputation, gems, and fuel. It does not combine currencies into a synthetic score. XP, hull loss, injury, fuel cost, and story flags are separate consequence facts; the UI never describes the currency band as the exact total reward.
 
 Display examples:
 
@@ -102,28 +102,28 @@ Display examples:
 
 A single value is shown once. A zero minimum is shown when failure can remove that currency. `Up to` is reserved for currency absent on some valid paths. The accessible label uses the same literal values.
 
-Add a pure `contractRewardBand(player, offer)` helper beside contract review logic. It enumerates saved `routeContent` without mutation:
+Extract pure payout-path helpers from the current live route/combat resolution and make both live resolution and a new `contractRewardBand(player, offer)` call those helpers. The band must never transcribe production coefficients into a parallel formula. It enumerates saved `routeContent` without mutation:
 
 1. reliable and strange offers include every saved Secure/Push terminal reward path;
-2. risky offers include saved low/high encounters, success/failure rewards, and all orders;
-3. Board success applies the existing 1.25 credits/medals scale before site scaling;
-4. combat failure applies the existing 22% credits, 25% medals, and zero reputation before site scaling;
-5. existing trade, delivery, salvage, story, cargo, reputation, hull, weapons, and repeat-visit helpers supply the math;
-6. tutorial distress uses its guaranteed payout;
+2. risky offers include saved low/high encounters, success/failure results, and only orders enabled by production preview after prior route costs are deducted from an ephemeral copy of the current fuel balance;
+3. existing `resolveCombatOrder`, route/story payout, `scaleSitePayout`, and `tradePayout` helpers supply values in the same order as commit; coefficients such as Board's 1.25 scale and failure floors remain owned by those production helpers;
+4. tutorial distress calls the existing `tutorialGuaranteed` resolution branch, which exposes only Brace and forces the fixed win payout;
+5. post-floor objects returned by those shared helpers, not percentage prose, supply min/max values;
+6. every included terminal path is a fuel-feasible sequence of production previews for launch, Secure/Push, and any order; the enumerator never mutates the real player;
 7. invalid saved content returns unavailable instead of inventing a range.
 
-The helper returns structured values plus a label. Card, review, and accessibility copy share one formatter. Acceptance already snapshots the route content used by the band, so reload cannot change the displayed or claimable range.
+The helper returns structured values plus a label. Card, review, and accessibility copy share one formatter. Acceptance preserves route identity but does not freeze cargo, weapons, reputation, ready crew, visit count, or other payout modifiers. Therefore the band is recomputed from the current player whenever the offer/review is rendered. After resolution, the UI shows only the stored result that exact-once claim will grant. Tests must prove route identity survives reload without claiming that live modifier changes cannot change a pre-resolution band.
 
 ## Combat balance matrix
 
-A deterministic report imports production combat functions and evaluates all 16 encounters with Brace, Burn, and Board at these crew-power ratios before order modifiers:
+A deterministic report constructs player/contract fixtures for all 16 encounters and calls the production contract preview path, including ready-crew power, combat bonuses, `rubberBandPower`, order modifiers, fuel enablement, and the 94% chance cap. It evaluates enabled Brace, Burn, and Board states at these crew-power ratios before order modifiers:
 
 - underpowered: `0.75 × encounter power`;
 - even: `1.00 × encounter power`;
 - advantaged: `1.25 × encounter power`;
 - dominant: `1.50 × encounter power`.
 
-Each row records effective power, win chance, fuel, success/failure payout, expected currency payout, hull-loss multiplier, and failure-injury policy. Tutorial guarantees are separate.
+Each row records effective power, rubber-banded enemy power, win chance, fuel, post-floor success/failure currency payout, expected currency payout, hull-loss multiplier, and failure-injury policy. Tutorial guarantees are separate. This matrix and the 30-day output expose current behavior; neither approves balance or authorizes tuning.
 
 Committed Markdown/JSON evidence makes dominant-order patterns visible. The gate validates completeness and repeatability; it does not fail because a current value looks weak. Tuning remains a later owner-approved package.
 
@@ -131,7 +131,7 @@ Committed Markdown/JSON evidence makes dominant-order patterns visible. The gate
 
 ### Purpose and production reuse
 
-Measure whether the free loop supports one useful daily chapter and expose current source/sink pressure. Use production player creation, fuel regeneration, board generation, preview/commit, claim, expedition, and improvement-cost helpers. Inject time and random draws. If a production transition calls `Date.now()` internally, add an optional clock argument with unchanged runtime defaults.
+Measure whether the free loop supports one useful daily chapter and expose current source/sink pressure. Use production player creation, fuel regeneration, board generation, preview/commit, claim, expedition, and ship-upgrade transitions. Thread one simulated `now` and seeded RNG through player/crew creation, contract acceptance, injury deadlines, elapsed analytics, board/day logic, regeneration, expedition progress/resolution, and claim. Optional arguments default to current `Date.now`/`Math.random` runtime behavior. The baseline must not use `forceComplete` to bypass expedition readiness.
 
 No duplicate reward formula is allowed. Aggregation may be new; gameplay math must come from production modules.
 
@@ -149,9 +149,9 @@ Three free strategies exercise current choices without pretending to model spend
 
 | Strategy | Contract | Route/order | Improvement |
 |---|---|---|---|
-| cautious | Reliable, Strange, Risky | Secure; Brace | Cheapest available credit-funded ship improvement after the contract; otherwise save. |
-| balanced | Strange, Reliable, Risky | Secure unless Push differs and leaves 2F; Burn only if it adds at least 10 percentage points and leaves 1F, otherwise Brace | Same cheapest-valid rule. |
-| ambitious | Risky, Strange, Reliable | Push; Board at 75%+ displayed chance, otherwise affordable Burn, otherwise Brace | Same cheapest-valid rule. |
+| cautious | Reliable, Strange, Risky | Secure; Brace | Compare current systems with production `nextUpgradeCost`, then apply the cheapest affordable result through `upgradeSystem`; otherwise save. |
+| balanced | Strange, Reliable, Risky | Secure unless Push differs and leaves 2F; Burn only if it adds at least 10 percentage points and leaves 1F, otherwise Brace | Same `nextUpgradeCost`/`upgradeSystem` rule. |
+| ambitious | Risky, Strange, Reliable | Push; Board at 75%+ displayed chance, otherwise affordable Burn, otherwise Brace | Same `nextUpgradeCost`/`upgradeSystem` rule. |
 
 Thresholds are simulator inputs, not player recommendations or balance changes.
 
@@ -182,8 +182,8 @@ Write failing tests before implementation.
 - Exactly 16 encounter IDs have complete, valid tells; tutorial rules remain intact.
 - Combat and encounter numeric values remain unchanged except optional dependency injection.
 - Tutorial, reliable, risky, and strange fixtures enumerate every valid reward path.
-- Board success, combat failure, scaling, repeat visits, and zero-minimum currency are covered.
-- Card, review, and accessible labels share one formatter; reload preserves the range.
+- Board success, combat failure, production scaling/flooring, repeat visits, disabled orders, and zero-minimum currency are covered through shared payout helpers.
+- Card, review, and accessible labels share one formatter; reload preserves route identity, while deliberate modifier changes recompute the pre-resolution band.
 - Identical simulation inputs/seeds produce identical 30-day JSON.
 - Wallet conservation reconciles every source and sink; no action bypasses production validation.
 - No scenario uses purchases, ads, skips, or premium grants.
