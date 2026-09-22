@@ -52,10 +52,18 @@ assert.equal(act('contract-claim', stale).ok, false);
 act('tutorial-draw');
 assert.equal(player.tutorial.phase, 'choose');
 assert.equal(player.contractBoard.offers.length, 3);
+assert.equal(sessionAction(player, ui, 'goto-contracts').events.filter(x => x.event === 'contract_board_seen').length, 1);
 const offer = player.contractBoard.offers[0];
 act('contract-review', { offer: offer.id });
 act('contract-accept', { offer: offer.id });
 assert.equal(player.tutorial.phase, 'away');
+// Catches false board exposure when an accepted route replaces the three offers.
+for (const action of ['goto-contracts', 'goto-missions', 'mission-view']) {
+  const navigation = sessionAction(player, ui, action, { view: 'contracts' });
+  assert.equal(navigation.ok, true);
+  assert.equal(navigation.ui.missionView, 'contracts');
+  assert.equal(navigation.events.filter(x => x.event === 'contract_board_seen').length, 0, `${action}: active route hides the board`);
+}
 act('exp-choose', { planet: 'dustfall' });
 assert.match(sessionModels(player, ui).awayPicker.options.find(c => c.templateId === 'merc_jen').portrait, /jen\.png$/);
 for (const id of [...ui.selectedExpeditionCrewIds]) act('exp-crew-toggle', { id });

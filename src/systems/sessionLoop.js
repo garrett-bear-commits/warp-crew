@@ -145,7 +145,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   };
   const boardSeen = () => {
     const board = player.contractBoard;
-    if (board?.offers.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: board.offers.map(x => x.destinationId), completedCount: board.completedOfferIds.length }));
+    if (!player.activeContract && board?.offers.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: board.offers.map(x => x.destinationId), completedCount: board.completedOfferIds.length }));
   };
   if (act === 'mission-view' || act === 'goto-contracts' || act === 'goto-away' || act === 'goto-missions') {
     const view = act === 'mission-view' ? data.view : act === 'goto-away' ? 'away' : 'contracts';
