@@ -24,25 +24,83 @@ export function expeditionPartySize(player) {
   return Math.min(4, 2 + Math.floor(Math.max(0, slots - 2) / 4));
 }
 
-export function pickExpeditionCrew(player, planet, max = null) {
-  const cap = max ?? expeditionPartySize(player);
-  const pref = planet?.prefRole;
-  const ready = readyCrew(player);
-  const scored = ready
-    .map((c) => ({
-      c,
-      score:
-        (c.power || 10) +
-        (pref && c.role === pref ? 14 : 0) +
-        (c.passive?.expeditionSuccess || 0) * 90,
-    }))
-    .sort((a, b) => b.score - a.score);
-  return scored.slice(0, cap).map((x) => x.c);
+function expeditionReadyCrew(player) {
+  return readyCrew(player).filter((crew) => crew.status !== 'injured');
 }
 
-export function previewExpedition(player, planetId) {
+function roleMatchReason(role) {
+  return `${String(role).slice(0, 1).toUpperCase()}${String(role).slice(1)} match`;
+}
+
+export function expeditionCrewOptions(player, planetId) {
   const planet = planetById(planetId);
-  const crew = pickExpeditionCrew(player, planet);
+  if (!planet) return [];
+
+  const pref = planet.prefRole;
+  const ready = expeditionReadyCrew(player);
+  const highestPower = Math.max(...ready.map((crew) => crew.power || 10), 0);
+  return ready
+    .map((crew) => {
+      const roleScore = pref && crew.role === pref ? 14 : 0;
+      const expeditionPassive = crew.passive?.expeditionSuccess || 0;
+      const reasons = [`power ${crew.power || 10}`];
+      if (roleScore) reasons.push(roleMatchReason(pref));
+      if ((crew.power || 10) === highestPower) reasons.push('highest ready power');
+      if (expeditionPassive) reasons.push(`expedition passive +${Math.round(expeditionPassive * 100)}%`);
+      return {
+        ...crew,
+        id: crew.instanceId,
+        reasons,
+        score: (crew.power || 10) + roleScore + expeditionPassive * 90,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+export function recommendedExpeditionCrewIds(player, planetId) {
+  return expeditionCrewOptions(player, planetId)
+    .slice(0, expeditionPartySize(player))
+    .map((crew) => crew.instanceId);
+}
+
+export function validateExpeditionParty(player, planetId, crewInstanceIds) {
+  const planet = planetById(planetId);
+  if (!planet) return { ok: false, reason: 'unknown_planet' };
+  if (!Array.isArray(crewInstanceIds)) return { ok: false, reason: 'invalid_party' };
+  if (!crewInstanceIds.length) return { ok: false, reason: 'empty_party' };
+  const cap = expeditionPartySize(player);
+  if (crewInstanceIds.length > cap) return { ok: false, reason: 'party_cap', cap };
+  if (new Set(crewInstanceIds).size !== crewInstanceIds.length) return { ok: false, reason: 'duplicate_crew' };
+
+  const byId = new Map((player.crew || []).map((crew) => [crew.instanceId, crew]));
+  const crew = [];
+  for (const instanceId of crewInstanceIds) {
+    const member = byId.get(instanceId);
+    if (!member) return { ok: false, reason: 'unknown_crew', instanceId };
+    if (member.status === 'expedition') return { ok: false, reason: 'away_crew', instanceId };
+    if (member.status === 'injured') return { ok: false, reason: 'injured_crew', instanceId };
+    if (!expeditionReadyCrew(player).some((candidate) => candidate.instanceId === instanceId)) {
+      return { ok: false, reason: 'unavailable_crew', instanceId };
+    }
+    crew.push(member);
+  }
+  return { ok: true, planet, crew, crewInstanceIds: [...crewInstanceIds], cap };
+}
+
+export function pickExpeditionCrew(player, planet, max = null) {
+  const cap = max ?? expeditionPartySize(player);
+  return expeditionCrewOptions(player, planet?.id)
+    .slice(0, cap)
+    .map((crew) => ({ ...crew }));
+}
+
+export function previewExpedition(player, planetId, crewInstanceIds = null) {
+  const planet = planetById(planetId);
+  const selectedIds = crewInstanceIds == null
+    ? recommendedExpeditionCrewIds(player, planetId)
+    : crewInstanceIds;
+  const validation = validateExpeditionParty(player, planetId, selectedIds);
+  const crew = validation.ok ? validation.crew : [];
   const roleHit = planet.prefRole && crew.some((c) => c.role === planet.prefRole);
   const sensors = Math.max(0, player?.ship?.systems?.sensors || 0) * 0.02;
   const chance = expeditionSuccessChance({
@@ -60,7 +118,7 @@ export function previewExpedition(player, planetId) {
     kind: 'expedition',
     visits,
   });
-  return { planet, crew, chance, roleHit, win, fail };
+  return { planet, crew, chance, roleHit, win, fail, selectedIds: [...selectedIds], validation };
 }
 
 export function startExpedition({
