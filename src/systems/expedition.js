@@ -24,20 +24,20 @@ export function expeditionPartySize(player) {
   return Math.min(4, 2 + Math.floor(Math.max(0, slots - 2) / 4));
 }
 
-function expeditionReadyCrew(player) {
-  return readyCrew(player).filter((crew) => crew.status !== 'injured');
+function expeditionReadyCrew(player, now = Date.now()) {
+  return readyCrew(player, now);
 }
 
 function roleMatchReason(role) {
   return `${String(role).slice(0, 1).toUpperCase()}${String(role).slice(1)} match`;
 }
 
-export function expeditionCrewOptions(player, planetId) {
+export function expeditionCrewOptions(player, planetId, now = Date.now()) {
   const planet = planetById(planetId);
   if (!planet) return [];
 
   const pref = planet.prefRole;
-  const ready = expeditionReadyCrew(player);
+  const ready = expeditionReadyCrew(player, now);
   const highestPower = Math.max(...ready.map((crew) => crew.power || 10), 0);
   return ready
     .map((crew) => {
@@ -57,13 +57,13 @@ export function expeditionCrewOptions(player, planetId) {
     .sort((a, b) => b.score - a.score);
 }
 
-export function recommendedExpeditionCrewIds(player, planetId) {
-  return expeditionCrewOptions(player, planetId)
+export function recommendedExpeditionCrewIds(player, planetId, now = Date.now()) {
+  return expeditionCrewOptions(player, planetId, now)
     .slice(0, expeditionPartySize(player))
     .map((crew) => crew.instanceId);
 }
 
-export function validateExpeditionParty(player, planetId, crewInstanceIds) {
+export function validateExpeditionParty(player, planetId, crewInstanceIds, now = Date.now()) {
   const planet = planetById(planetId);
   if (!planet) return { ok: false, reason: 'unknown_planet' };
   if (!Array.isArray(crewInstanceIds)) return { ok: false, reason: 'invalid_party' };
@@ -78,8 +78,7 @@ export function validateExpeditionParty(player, planetId, crewInstanceIds) {
     const member = byId.get(instanceId);
     if (!member) return { ok: false, reason: 'unknown_crew', instanceId };
     if (member.status === 'expedition') return { ok: false, reason: 'away_crew', instanceId };
-    if (member.status === 'injured') return { ok: false, reason: 'injured_crew', instanceId };
-    if (!expeditionReadyCrew(player).some((candidate) => candidate.instanceId === instanceId)) {
+    if (!expeditionReadyCrew(player, now).some((candidate) => candidate.instanceId === instanceId)) {
       return { ok: false, reason: 'unavailable_crew', instanceId };
     }
     crew.push(member);
@@ -87,19 +86,19 @@ export function validateExpeditionParty(player, planetId, crewInstanceIds) {
   return { ok: true, planet, crew, crewInstanceIds: [...crewInstanceIds], cap };
 }
 
-export function pickExpeditionCrew(player, planet, max = null) {
+export function pickExpeditionCrew(player, planet, max = null, now = Date.now()) {
   const cap = max ?? expeditionPartySize(player);
-  return expeditionCrewOptions(player, planet?.id)
+  return expeditionCrewOptions(player, planet?.id, now)
     .slice(0, cap)
     .map((crew) => ({ ...crew }));
 }
 
-export function previewExpedition(player, planetId, crewInstanceIds = null) {
+export function previewExpedition(player, planetId, crewInstanceIds = null, now = Date.now()) {
   const planet = planetById(planetId);
   const selectedIds = crewInstanceIds == null
-    ? recommendedExpeditionCrewIds(player, planetId)
+    ? recommendedExpeditionCrewIds(player, planetId, now)
     : crewInstanceIds;
-  const validation = validateExpeditionParty(player, planetId, selectedIds);
+  const validation = validateExpeditionParty(player, planetId, selectedIds, now);
   const crew = validation.ok ? validation.crew : [];
   const roleHit = planet.prefRole && crew.some((c) => c.role === planet.prefRole);
   const sensors = Math.max(0, player?.ship?.systems?.sensors || 0) * 0.02;
