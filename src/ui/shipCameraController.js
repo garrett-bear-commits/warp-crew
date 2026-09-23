@@ -17,8 +17,7 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
   const ignored = event => event.target?.closest?.('.stage-hud, [data-slot="overlays"], [data-slot="ship-sequence"]');
 
   function pointerdown(event) {
-    if (surface.classList?.contains('camera-disabled') || ignored(event)
-      || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (ignored(event) || (event.pointerType === 'mouse' && event.button !== 0)) return;
     if (!pointers.size) {
       gestureMoved = false;
       lastGesture = false;
@@ -59,6 +58,7 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
   function end(event, cancelled = false) {
     const ending = pointers.get(event.pointerId);
     if (!ending) return;
+    if (cancelled) suppressNativeClickUntil = Date.now() + CLICK_SUPPRESSION_MS;
     if (!cancelled && pointers.size === 1 && !gestureMoved
       && Math.hypot(event.clientX - ending.start.x, event.clientY - ending.start.y) >= DRAG_THRESHOLD) {
       gestureMoved = true;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createCameraController } from '../src/ui/shipCameraController.js';
 
-function setup(scale = 0.25) {
+function setup(scale = 0.25, cameraDisabled = false) {
   const handlers = new Map();
   const captures = new Set();
   const surface = {
@@ -11,15 +11,47 @@ function setup(scale = 0.25) {
     releasePointerCapture(id) { captures.delete(id); },
     hasPointerCapture(id) { return captures.has(id); },
     getBoundingClientRect() { return { left: 10, top: 20 }; },
+    classList: { contains(name) { return cameraDisabled && name === 'camera-disabled'; } },
   };
   let camera = { x: 0, y: 0, scale, minScale: 0.2, maxScale: 2,
     viewport: { w: 390, h: 620 }, world: { w: 1152, h: 1728 } };
   const taps = [];
   const control = createCameraController({ surface, getCamera: () => camera,
     setCamera: next => { camera = next; }, onTap: point => taps.push(point), onFocus() {} });
-  const send = (name, id, x, y) => handlers.get(name)?.({ pointerId: id,
-    clientX: x, clientY: y, button: 0, preventDefault() {} });
+  const send = (name, id, x, y, detail = 1) => {
+    const event = { pointerId: id, clientX: x, clientY: y, button: 0, detail,
+      prevented: false, stopped: false,
+      preventDefault() { this.prevented = true; },
+      stopImmediatePropagation() { this.stopped = true; } };
+    handlers.get(name)?.(event);
+    return event;
+  };
   return { send, taps, control, get camera() { return camera; }, handlers };
+}
+
+// Lost capture must consume a following pointer click without blocking a new tap or keyboard click.
+{
+  const s = setup();
+  s.send('pointerdown', 1, 110, 120);
+  s.send('lostpointercapture', 1, 110, 120);
+  const cancelledClick = s.send('click', 1, 110, 120);
+  assert.equal(cancelledClick.stopped, true);
+  assert.equal(s.taps.length, 0);
+  s.send('pointerdown', 2, 110, 120);
+  s.send('pointerup', 2, 110, 120);
+  assert.equal(s.taps.length, 1);
+  const keyboardClick = s.send('click', 2, 110, 120, 0);
+  assert.equal(keyboardClick.stopped, false);
+  s.control.destroy();
+}
+
+// Combat keeps the playfield gesture surface active even when battle UI is live.
+{
+  const s = setup(0.4, true);
+  s.send('pointerdown', 1, 110, 120);
+  s.send('pointermove', 1, 130, 120);
+  assert.equal(s.camera.x, 20);
+  s.control.destroy();
 }
 
 // Crossing the drag threshold in small moves pans by the full drag distance.

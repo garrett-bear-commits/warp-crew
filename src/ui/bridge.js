@@ -131,6 +131,7 @@ function bindOnce(root) {
     }
     const actBtn = ev.target.closest('[data-act]');
     if (actBtn && root.contains(actBtn)) {
+      if (actBtn.classList.contains('hotspot') && root._wcBattleActive) return;
       if (actBtn.classList.contains('hotspot') && root._wcCamera.scale <= root._wcCamera.minScale * 1.1) {
         root._wcFocusRoom?.(actBtn.dataset.room);
         return;
@@ -176,6 +177,7 @@ function bindCamera(root) {
     getCamera: () => root._wcCamera,
     setCamera: root._wcSetCamera,
     onTap: point => {
+      if (root._wcBattleActive) return;
       const room = roomAt(point);
       if (!room) return;
       if (root._wcCamera.scale <= root._wcCamera.minScale * 1.1) root._wcFocusRoom(room.id);
@@ -282,7 +284,7 @@ function patchShell(root, ctx) {
   }
 
   root.querySelector('.wc-shell')?.classList.toggle('tab-home', isHome);
-  root.querySelector('.stage')?.classList.toggle('camera-disabled', !isHome || fighting);
+  root._wcBattleActive = fighting;
   root._wcSelectedRoom = selectedRoom;
   root.querySelector('.wc-shell')?.classList.toggle('in-battle', fighting);
   root.querySelector('.wc-shell')?.setAttribute('data-phase', phase);
