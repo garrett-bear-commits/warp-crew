@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Deterministic, saved daily Contract Board. Route mutations belong elsewhere. */
 
-import { visibleNodes, NODES } from '../data/sectors.js';
+import { visibleNodes, NODES, STORY_BEATS } from '../data/sectors.js';
 import { CONTRACT_PROFILES, combatWeight, qualifiesForProfile, storySalvageWeight } from '../data/contracts.js';
 import { encounterById, previewCombatOrder, crewPower, rubberBandPower } from './combat.js';
 import { grant, scaleSitePayout } from './economy.js';
@@ -287,12 +287,13 @@ function contractDecisionKey(player, contract, action, now = Date.now()) {
 
 function validRewardContent(content, destinationId) {
   const validEncounter = id => id == null || encounterById(id).id === id;
+  const validStoryFlag = flag => typeof flag === 'string' && Object.hasOwn(STORY_BEATS, flag);
   const validOutcome = outcome => Boolean(outcome && ['combat', 'trade', 'delivery', 'salvage', 'story', 'arrive'].includes(outcome.kind)
     && CURRENCIES.every(key => !Object.hasOwn(outcome, key) || (typeof outcome[key] === 'number' && Number.isFinite(outcome[key]) && outcome[key] >= 0))
     && (outcome.kind !== 'combat' || (typeof outcome.encounter === 'string' && validEncounter(outcome.encounter)))
-    && (outcome.kind !== 'story' || typeof outcome.flag === 'string'));
+    && (outcome.kind !== 'story' || validStoryFlag(outcome.flag)));
   return Boolean(content && NODES[destinationId] && validOutcome(content.routeOutcome) && validOutcome(content.secureOutcome)
-    && validEncounter(content.encounterId) && (content.storyFlag == null || typeof content.storyFlag === 'string'));
+    && validEncounter(content.encounterId) && (content.storyFlag == null || validStoryFlag(content.storyFlag)));
 }
 
 function validOfferContent(offer) {

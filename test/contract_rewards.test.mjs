@@ -72,4 +72,26 @@ assert.deepEqual(finish.result.rewards, win.result.rewards);
 assert.deepEqual(contractRewardBand(finish.player, finish.player.activeContract, { now }), unavailable, 'resolved result is displayed separately');
 const bad = { ...throne, routeContent: { ...throne.routeContent, encounterId: null } };
 assert.deepEqual(contractRewardBand(player, bad, { now }), unavailable, 'inconsistent combat identity is invalid');
+// Reject unknown story catalog IDs before fallback rewards can invent a band.
+const storyOffer = { ...player.contractBoard.offers.find(x => x.profile === 'strange') };
+storyOffer.routeContent = { ...storyOffer.routeContent, encounterId: null, storyFlag: 'rumor_swarm', routeOutcome: { kind: 'story', flag: 'rumor_swarm' }, secureOutcome: { kind: 'story', flag: 'rumor_swarm' } };
+const storyPlayer = { ...player, contractBoard: { ...player.contractBoard, offers: [storyOffer] } };
+const storyAccepted = acceptContract(storyPlayer, storyOffer.id, now).player;
+const invalidStoryResults = [];
+for (const flag of ['not_a_real_story', 'toString']) {
+  const content = { ...storyOffer.routeContent, storyFlag: flag, routeOutcome: { kind: 'story', flag }, secureOutcome: { kind: 'story', flag } };
+  const invalidOffer = { ...storyOffer, routeContent: content };
+  const invalidActive = { ...storyAccepted.activeContract, ...content };
+  for (const [name, subject, offer] of [
+    ['board', storyPlayer, invalidOffer],
+    ['accepted', { ...storyAccepted, activeContract: invalidActive }, invalidActive],
+  ]) {
+    const actual = contractRewardBand(subject, offer, { now });
+    if (JSON.stringify(actual) !== JSON.stringify(unavailable)) invalidStoryResults.push({ name, flag, label: actual.label });
+  }
+}
+assert.deepEqual(invalidStoryResults, [], 'malformed board and accepted story identities must be unavailable');
+const completedStoryPlayer = { ...storyPlayer, flags: { ...storyPlayer.flags, rumor_swarm: true } };
+assert.equal(contractRewardBand(completedStoryPlayer, storyOffer, { now }).label, '40 credits · 3 reputation', 'known completed story retains production fallback');
+assert.equal(contractRewardBand({ ...storyAccepted, flags: completedStoryPlayer.flags }, storyAccepted.activeContract, { now }).label, '40 credits · 3 reputation');
 console.log('contract_rewards.test.mjs OK');
