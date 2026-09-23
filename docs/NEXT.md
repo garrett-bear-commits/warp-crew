@@ -13,15 +13,16 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 
 ## Next design decisions
 
-- [ ] Approve encounter tells and recommended orders for all 16 current encounters.
-- [ ] Approve numeric contract reward-band presentation.
+- [x] Approve and implement encounter tells and recommended orders for all 16 current encounters (2026-09-22 package; scoped audits and local QA below).
+- [x] Approve and implement literal current contract reward-band presentation, without approving balance values.
 - [ ] Approve fair monetization invariants: earnable functional power, acceleration/fuel/attempts/convenience/cosmetics, and subscription stance.
 - [ ] Approve source/sink targets and free/light/high-spender assumptions for the economy simulator.
 - [ ] Choose the next art package: alien/robot movement families or Sparrow/hull visual transformation.
 
 ## Next implementation candidates
 
-- [ ] **Selected 2026-09-22:** Encounter-tell roster, literal reward bands, balance matrix, and 30-day simulator. Design awaiting owner review: [Encounter intelligence and balance evidence](superpowers/specs/2026-09-22-encounter-intelligence-balance-evidence-design.md).
+- [x] **Selected and implemented 2026-09-22:** encounter-tell roster, literal reward bands, 192-row balance matrix, and 15 deterministic 30-day free-player runs. [Approved design](superpowers/specs/2026-09-22-encounter-intelligence-balance-evidence-design.md), [runtime and economy evidence](qa/2026-09-22-encounter-balance-evidence.md), [bounded Grok audit](audits/2026-09-22-encounter-balance-implementation-audit.md). This does not approve economy balance or production release.
+- [ ] **Proposed next package, owner approval required:** classify the simulator's `reward_unavailable`/non-useful days against actual crew availability, then run one real iPhone and one real Android short-session pass with recordings, timings, touch/focus/safe-area checks, and player-comprehension notes. Agree daily useful-session and source/sink target bands before any numeric tuning. Do not broaden it into monetization or art generation.
 - [ ] Physical-device fixes found by the verification pass.
 - [ ] Distinct alien/robot body families using the approved Ninefold crop/anchor contract.
 - [ ] Additional ships/hulls, visible room upgrades, and long-horizon progression surfaces.
