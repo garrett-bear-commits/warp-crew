@@ -142,4 +142,3 @@ export function formatRewardBand(band) {
     return `${amount} ${key}`;
   }).join(' · ') || '0 credits';
 }
-
