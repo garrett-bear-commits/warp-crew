@@ -1,6 +1,7 @@
 const SHIP_REFERENCE = Object.freeze({ w: 1152, h: 1728 });
 const BATTLE_MARGIN = 1.55;
-const FOCUSED_STATION_REFERENCE = 64;
+const SMALLEST_AUTHORED_ROOM_WIDTH = 0.19;
+const ROOMS_ACROSS_AT_NEAR_LIMIT = 2.5;
 const MIN_STATION_TARGET = 44;
 
 function finite(value, fallback) {
@@ -21,15 +22,29 @@ function normalizedWorld(world) {
 }
 
 function scaleLimits(viewport, world) {
+  const focusedRoomWidth = world.w * SMALLEST_AUTHORED_ROOM_WIDTH;
   const minScale = Math.min(
     viewport.w / (world.w * BATTLE_MARGIN),
     viewport.h / (world.h * BATTLE_MARGIN),
   );
-  const maxScale = Math.max(MIN_STATION_TARGET / FOCUSED_STATION_REFERENCE, minScale);
+  const targetScale = Math.max(
+    MIN_STATION_TARGET / focusedRoomWidth,
+    viewport.w / (ROOMS_ACROSS_AT_NEAR_LIMIT * focusedRoomWidth),
+  );
+  const maxScale = Math.max(targetScale, minScale);
   return { minScale, maxScale };
 }
 
-/** Keep a meaningful slice of each world axis on screen, while allowing a full frame. */
+function axisBounds(viewportSize, renderedSize) {
+  if (renderedSize <= viewportSize) {
+    const centeredOrigin = (viewportSize - renderedSize) / 2;
+    return { min: centeredOrigin, max: centeredOrigin };
+  }
+  const overlap = Math.min(viewportSize, renderedSize * 0.2);
+  return { min: overlap - renderedSize, max: viewportSize - overlap };
+}
+
+/** Keep at least 20% of the rendered world, or the whole viewport, visible per axis. */
 export function clampCamera(camera) {
   const viewport = normalizedViewport(camera.viewport);
   const world = normalizedWorld(camera.world);
@@ -37,15 +52,13 @@ export function clampCamera(camera) {
   const scale = Math.max(minScale, Math.min(maxScale, finite(camera.scale, minScale)));
   const renderedW = world.w * scale;
   const renderedH = world.h * scale;
-  const minX = renderedW <= viewport.w ? viewport.w - renderedW : viewport.w - renderedW * 0.8;
-  const maxX = renderedW <= viewport.w ? 0 : renderedW * 0.2;
-  const minY = renderedH <= viewport.h ? viewport.h - renderedH : viewport.h - renderedH * 0.8;
-  const maxY = renderedH <= viewport.h ? 0 : renderedH * 0.2;
+  const xBounds = axisBounds(viewport.w, renderedW);
+  const yBounds = axisBounds(viewport.h, renderedH);
 
   return {
     ...camera,
-    x: Math.max(minX, Math.min(maxX, finite(camera.x, viewport.w / 2))),
-    y: Math.max(minY, Math.min(maxY, finite(camera.y, viewport.h / 2))),
+    x: Math.max(xBounds.min, Math.min(xBounds.max, finite(camera.x, viewport.w / 2))),
+    y: Math.max(yBounds.min, Math.min(yBounds.max, finite(camera.y, viewport.h / 2))),
     scale,
     minScale,
     maxScale,
