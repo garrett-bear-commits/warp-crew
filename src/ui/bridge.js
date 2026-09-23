@@ -35,6 +35,8 @@ import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderSh
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
+import { makeCamera, focusCamera, resizeCamera, zoomAt } from './shipCamera.js';
+import { createCameraController } from './shipCameraController.js';
 
 const NAV_ICO = {
   ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
@@ -59,6 +61,8 @@ export function renderApp(root, ctx) {
   const priorFocus = root.ownerDocument.activeElement;
   root._wcHandlers = ctx.handlers;
   if (!root.querySelector('.wc-shell') || !root.querySelector('[data-slot="coach"]')) {
+    root._wcCameraController?.destroy();
+    root._wcCameraResize?.disconnect();
     root._wcBound = false;
     root.innerHTML = buildShell();
   }
@@ -107,10 +111,19 @@ function bindOnce(root) {
   root._wcBound = true;
   root.addEventListener('keydown', ev => trapDialogKey(root, ev));
   startStageLoop();
+  bindCamera(root);
   root.addEventListener('pointerdown', () => unlockSfx(), { once: true });
   root.addEventListener('click', (ev) => {
     const handlers = root._wcHandlers;
     if (!handlers) return;
+    const cameraButton = ev.target.closest('[data-camera]');
+    if (cameraButton && root.contains(cameraButton)) {
+      const action = cameraButton.dataset.camera;
+      if (action === 'focus') root._wcFocusRoom?.();
+      else root._wcSetCamera?.(zoomAt(root._wcCamera, action === 'zoom-in' ? 1.25 : 0.8,
+        { x: root._wcCamera.viewport.w / 2, y: root._wcCamera.viewport.h / 2 }));
+      return;
+    }
     const tabBtn = ev.target.closest('[data-tab]');
     if (tabBtn && root.contains(tabBtn)) {
       handlers.setTab(tabBtn.getAttribute('data-tab'));
@@ -118,6 +131,10 @@ function bindOnce(root) {
     }
     const actBtn = ev.target.closest('[data-act]');
     if (actBtn && root.contains(actBtn)) {
+      if (actBtn.classList.contains('hotspot') && root._wcCamera.scale <= root._wcCamera.minScale * 1.1) {
+        root._wcFocusRoom?.(actBtn.dataset.room);
+        return;
+      }
       handlers.onAction(actBtn.getAttribute('data-act'), { ...actBtn.dataset });
       return;
     }
@@ -126,6 +143,52 @@ function bindOnce(root) {
       return;
     }
   });
+}
+
+function bindCamera(root) {
+  const stage = root.querySelector('.stage');
+  const fit = root.querySelector('.ship-fit');
+  const size = () => ({ w: stage.clientWidth || 390, h: stage.clientHeight || 620 });
+  root._wcCamera = makeCamera(size(), { w: 1152, h: 1728 });
+  root._wcSetCamera = camera => {
+    root._wcCamera = camera;
+    fit.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
+  };
+  const focus = (worldPoint, scale = root._wcCamera.maxScale) => {
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!reduced) {
+      fit.classList.add('is-focusing');
+      clearTimeout(root._wcFocusTimer);
+      root._wcFocusTimer = setTimeout(() => fit.classList.remove('is-focusing'), 270);
+    }
+    root._wcSetCamera(focusCamera(root._wcCamera, worldPoint, scale));
+  };
+  const roomAt = point => ROOMS.find(room => point.x >= room.left * 11.52
+    && point.x <= (room.left + room.w) * 11.52
+    && point.y >= room.top * 17.28 && point.y <= (room.top + room.h) * 17.28);
+  root._wcFocusRoom = roomId => {
+    const room = ROOMS.find(candidate => candidate.id === (roomId || root._wcSelectedRoom));
+    focus(room ? { x: room.labelAnchor.x * 11.52, y: room.labelAnchor.y * 17.28 }
+      : { x: 576, y: 864 });
+  };
+  root._wcCameraController = createCameraController({
+    surface: stage,
+    getCamera: () => root._wcCamera,
+    setCamera: root._wcSetCamera,
+    onTap: point => {
+      const room = roomAt(point);
+      if (!room) return;
+      if (root._wcCamera.scale <= root._wcCamera.minScale * 1.1) root._wcFocusRoom(room.id);
+      else root._wcHandlers?.onAction('select-room', { act: 'select-room', room: room.id });
+    },
+    onFocus: point => focus(point),
+  });
+  stage.addEventListener('pointerdown', () => fit.classList.remove('is-focusing'));
+  root._wcSetCamera(root._wcCamera);
+  if (typeof ResizeObserver !== 'undefined') {
+    root._wcCameraResize = new ResizeObserver(() => root._wcSetCamera(resizeCamera(root._wcCamera, size())));
+    root._wcCameraResize.observe(stage);
+  }
 }
 
 function buildShell() {
@@ -219,6 +282,8 @@ function patchShell(root, ctx) {
   }
 
   root.querySelector('.wc-shell')?.classList.toggle('tab-home', isHome);
+  root.querySelector('.stage')?.classList.toggle('camera-disabled', !isHome || fighting);
+  root._wcSelectedRoom = selectedRoom;
   root.querySelector('.wc-shell')?.classList.toggle('in-battle', fighting);
   root.querySelector('.wc-shell')?.setAttribute('data-phase', phase);
   root.querySelector('.wc-shell')?.setAttribute('aria-busy', departureInFlight ? 'true' : 'false');
@@ -295,6 +360,11 @@ function renderStageHud(locName, hullPct, shieldPct) {
         <div class="meter-chip ghost">
           <span class="lbl">SHLD</span>
           <div class="meter shield"><span style="width:${shieldPct}%"></span></div>
+        </div>
+        <div class="camera-controls" aria-label="Ship view controls">
+          <button type="button" data-camera="focus" aria-label="Focus ship view">Focus</button>
+          <button type="button" data-camera="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" data-camera="zoom-out" aria-label="Zoom out">−</button>
         </div>
   `;
 }

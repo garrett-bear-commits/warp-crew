@@ -141,16 +141,23 @@ button.hud-chip {
   display: flex;
   align-items: center;
   justify-content: center;
+  touch-action: none;
 }
 .ship-fit {
-  position: relative;
+  position: absolute;
   display: inline-block;
-  height: 92%;
-  aspect-ratio: 1152 / 1728;
-  max-width: 98%;
+  left: 0;
+  top: 0;
+  width: 1152px;
+  height: 1728px;
+  transform-origin: top left;
   line-height: 0;
   z-index: 2;
   filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55));
+}
+.ship-fit.is-focusing { transition: transform 250ms var(--ease-out); }
+@media (prefers-reduced-motion: reduce) {
+  .ship-fit.is-focusing { transition: none; }
 }
 .hotspot-layer {
   position: absolute;
@@ -330,6 +337,24 @@ button.hud-chip {
   align-items: center;
   pointer-events: none;
   z-index: 5;
+}
+.camera-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  pointer-events: auto;
+}
+.camera-controls button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(7, 9, 14, 0.88);
+  color: var(--text);
+  font: 700 16px var(--font-display);
+  cursor: pointer;
 }
 .meter-chip {
   display: flex;
