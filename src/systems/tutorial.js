@@ -301,7 +301,7 @@ export function completeTutorial(player, { registered = false } = {}) {
   };
 }
 
-export function grantTutorialRecruit(player) {
+export function grantTutorialRecruit(player, { rng = Math.random } = {}) {
   const t = { ...defaultTutorial(), ...(player.tutorial || {}) };
   if (t.hiredThird) {
     return { player, instance: t.recruit };
@@ -312,7 +312,7 @@ export function grantTutorialRecruit(player) {
   const already = player.crew?.some((c) => c.templateId === TUTORIAL_RECRUIT_ID);
   const instance = already
     ? player.crew.find((c) => c.templateId === TUTORIAL_RECRUIT_ID)
-    : createCrewInstance(TUTORIAL_RECRUIT_ID);
+    : createCrewInstance(TUTORIAL_RECRUIT_ID, { rng });
   const crew = already ? player.crew : [...(player.crew || []), instance];
   return {
     player: {

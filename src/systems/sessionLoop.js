@@ -261,7 +261,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     Object.assign(nextUi, { selectedExpeditionId: null, selectedExpeditionCrewIds: [], tab: 'ship', selectedRoom: null });
     effect = { kind: 'expedition', crewInstanceIds: [...ids] };
   } else if (act === 'tutorial-draw') {
-    const res = grantTutorialRecruit(player);
+    const res = grantTutorialRecruit(player, { rng });
     if (!res.instance || res.player === player) return fail('recruit_unavailable');
     player = res.player;
     tutorial('recruited');

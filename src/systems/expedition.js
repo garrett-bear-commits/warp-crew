@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { makeTimedJob, wallClockProgress } from '../shared/timer.js';
 import { PLANET_DEFS, planetById } from '../data/planets.js';
-import { readyCrew } from './player.js';
+import { readyCrew, grantCrewXp, applyCrewInjury } from './player.js';
 import { crewPower } from './combat.js';
-import { sumPassives } from './passives.js';
-import { scaleSitePayout } from './economy.js';
+import { sumPassives, injuryMinutesFor } from './passives.js';
+import { scaleSitePayout, grant } from './economy.js';
+import { noteTutorialEvent } from './tutorial.js';
 import { galaxyUnlocked } from '../data/galaxies.js';
 
 /** Test cadence — set to 360 for launch (6h) */
@@ -182,6 +183,24 @@ export function resolveExpedition(job, { rng = Math.random, forceComplete = fals
     planet,
     progress: 1,
   };
+}
+
+export function applyExpeditionResult(player, result, { now = Date.now() } = {}) {
+  if (!result?.ready || !player.activeExpedition) return { ok: false, player, reason: 'expedition_not_ready' };
+  const planetId = result.planet?.id || player.activeExpedition.payload.planetId;
+  const planetRuns = { ...(player.stats?.planetRuns || {}) };
+  if (planetId) planetRuns[planetId] = (planetRuns[planetId] || 0) + 1;
+  let nextPlayer = {
+    ...player,
+    wallet: grant(player.wallet, result.rewards),
+    activeExpedition: null,
+    crew: player.crew.map(c => result.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c),
+    stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1, planetRuns },
+  };
+  if (result.success) nextPlayer = grantCrewXp(nextPlayer, result.crewInstanceIds, 18);
+  else if (!result.aborted) nextPlayer = applyCrewInjury(nextPlayer, result.crewInstanceIds, injuryMinutesFor(nextPlayer, 18), now);
+  nextPlayer = noteTutorialEvent(nextPlayer, 'expedition_done').player;
+  return { ok: true, player: nextPlayer, result };
 }
 
 export function skipExpeditionJob(job, now = Date.now()) {

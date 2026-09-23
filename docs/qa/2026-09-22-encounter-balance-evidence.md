@@ -275,3 +275,42 @@ Ratios refer to ready crew power before combat bonuses and order modifiers. All 
 | 1.50 | Brace | Enabled | 126 / 118 | 61.3% | 0 | 420 credits · 36 medals · 18 reputation · 8 gems | 92 credits · 9 medals | 292.9139 credits · 25.5386 medals · 11.0258 reputation · 4.9003 gems | 0.5 | prevented |
 | 1.50 | Burn | Enabled | 138 / 118 | 66.1% | 1 | 420 credits · 36 medals · 18 reputation · 8 gems | 92 credits · 9 medals | 308.9247 credits · 26.8566 medals · 11.9044 reputation · 5.2908 gems | 1 | normal |
 | 1.50 | Board | Enabled | 113 / 118 | 56.0% | 0 | 525 credits · 45 medals · 18 reputation · 8 gems | 92 credits · 9 medals | 334.3332 credits · 29.1478 medals · 10.0739 reputation · 4.4773 gems | 1 | forced |
+
+## 30-day free-player economy
+
+Fixed seeds: 4219, 17031, 88421, 240911, 990001. Start: 2026-09-22T12:00:00.000Z; exactly 24 hours between check-ins.
+
+Day 1 includes the tutorial, its already accepted first normal offer, and active Dustfall job. Later days choose the strategy-priority offer and first visible expedition with production-recommended crew. Cheapest affordable system wins; equal costs sort by system ID. Free daily-login gems are earned rewards; no premium grants, purchases, ads, skips, or force completion occur.
+
+A useful session completes all three daily milestones (contract, improvement, away launch). A useful action is any claim, upgrade, or away launch. Worst means fewest useful sessions/upgrades, most fuel-starved days, and greatest ending accumulation for each currency separately. Ties use the first listed seed. No target bands or tuning approval are implied.
+
+Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cursor, so this accrual is banked, not permanently discarded. These daily backlog snapshots must not be summed as losses. Wasted fuel counts only discarded daily-login grants; wallet sinks count actual deductions.
+
+| Strategy | Metric | Median | Worst seed | Worst value |
+|---|---|---:|---:|---:|
+| cautious | Useful sessions / 30 | 18 | 17031 | 12 |
+| cautious | Fuel-starved days | 0 | 4219 | 0 |
+| cautious | Upgrades / 30 days | 22 | 17031 | 20 |
+| cautious | End credits | 123 | 990001 | 423 |
+| cautious | End fuel | 10 | 17031 | 12 |
+| cautious | End gems | 60 | 4219 | 60 |
+| cautious | End medals | 334 | 88421 | 340 |
+| cautious | End reputation | 238 | 240911 | 246 |
+| balanced | Useful sessions / 30 | 13 | 17031 | 8 |
+| balanced | Fuel-starved days | 0 | 4219 | 0 |
+| balanced | Upgrades / 30 days | 18 | 17031 | 15 |
+| balanced | End credits | 144 | 17031 | 279 |
+| balanced | End fuel | 12 | 4219 | 12 |
+| balanced | End gems | 60 | 4219 | 60 |
+| balanced | End medals | 500 | 88421 | 556 |
+| balanced | End reputation | 151 | 88421 | 174 |
+| ambitious | Useful sessions / 30 | 8 | 4219 | 4 |
+| ambitious | Fuel-starved days | 0 | 4219 | 0 |
+| ambitious | Upgrades / 30 days | 15 | 4219 | 14 |
+| ambitious | End credits | 71 | 4219 | 231 |
+| ambitious | End fuel | 12 | 4219 | 12 |
+| ambitious | End gems | 60 | 4219 | 60 |
+| ambitious | End medals | 356 | 88421 | 403 |
+| ambitious | End reputation | 125 | 88421 | 148 |
+
+Conservation: 15/15 runs PASS. Detailed daily ledgers: [JSON](artifacts/contract-economy-30-day.json).

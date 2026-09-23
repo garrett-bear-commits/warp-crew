@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { createNewPlayer, migratePlayer, tickCrewStatus, grantCrewXp, applyCrewInjury } from './systems/player.js';
+import { createNewPlayer, migratePlayer, tickCrewStatus } from './systems/player.js';
 import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { claimFuelRegen } from './systems/fuel.js';
 import { prepareSession, sessionModels, sessionAction, persistSessionTransition } from './systems/sessionLoop.js';
@@ -7,6 +7,7 @@ import { pullOnce, pullTen, buyLuck, contractHire, callUpReserve, sellReserve, b
 import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, clampFuel } from './systems/economy.js';
 import {
   resolveExpedition,
+  applyExpeditionResult,
   skipExpeditionJob,
   EXPEDITION_SKIP_GEMS,
   abortPayoutFrac,
@@ -18,7 +19,7 @@ import {
   buyProduct,
   fulfillIncompletePurchases,
 } from './systems/iap.js';
-import { repairHull, injuryMinutesFor } from './systems/passives.js';
+import { repairHull } from './systems/passives.js';
 import {
   init as platformInit,
   markGameLoaded,
@@ -100,27 +101,9 @@ async function refreshNotifs() {
 }
 
 function finishExpeditionResult(res) {
-  const planetId = res.planet?.id || player.activeExpedition?.payload?.planetId;
-  const planetRuns = { ...(player.stats?.planetRuns || {}) };
-  if (planetId) planetRuns[planetId] = (planetRuns[planetId] || 0) + 1;
-  player = {
-    ...player,
-    wallet: grant(player.wallet, res.rewards),
-    activeExpedition: null,
-    crew: player.crew.map((c) =>
-      res.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c
-    ),
-    stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1, planetRuns },
-  };
-  if (res.success) {
-    player = grantCrewXp(player, res.crewInstanceIds, 18);
-  } else if (!res.aborted) {
-    player = applyCrewInjury(player, res.crewInstanceIds, injuryMinutesFor(player, 18));
-  }
-  {
-    const te = noteTutorialEvent(player, 'expedition_done');
-    player = te.player;
-  }
+  const transition = applyExpeditionResult(player, res);
+  if (!transition.ok) return;
+  player = transition.player;
   const skipNote = res.skipped ? ' (skipped)' : res.aborted ? ' (extract)' : '';
   const paid = formatReward(res.rewards);
   pushLog(
