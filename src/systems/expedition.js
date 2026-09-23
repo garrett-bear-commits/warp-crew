@@ -155,8 +155,8 @@ function lootFor(job, success, player) {
   });
 }
 
-export function resolveExpedition(job, { rng = Math.random, forceComplete = false, player = null, abortFrac = 1 } = {}) {
-  const { progress, complete } = wallClockProgress(job);
+export function resolveExpedition(job, { rng = Math.random, forceComplete = false, player = null, abortFrac = 1, now = Date.now() } = {}) {
+  const { progress, complete } = wallClockProgress(job, now);
   if (!forceComplete && !complete) return { ready: false, progress };
 
   const chance = job.payload.successChance ?? 0.5;
@@ -193,7 +193,7 @@ export function skipExpeditionJob(job, now = Date.now()) {
 }
 
 export function abortPayoutFrac(job, now = Date.now()) {
-  const { progress } = wallClockProgress(job);
+  const { progress } = wallClockProgress(job, now);
   if (progress < 0.5) return 0;
   return 0.25;
 }

@@ -261,8 +261,8 @@ function analyticsEvent(event, fields) {
   return { event, ...fields };
 }
 
-function contractDecisionKey(player, contract, action) {
-  const crew = readyContractCrew(player).map((member) => ({
+function contractDecisionKey(player, contract, action, now = Date.now()) {
+  const crew = readyContractCrew(player, now).map((member) => ({
     instanceId: member.instanceId,
     power: Number(member.power) || 0,
     status: member.status || 'ready',
@@ -304,7 +304,7 @@ function contractDecisionKey(player, contract, action) {
   return JSON.stringify(inputs);
 }
 
-export function acceptContract(player, offerId) {
+export function acceptContract(player, offerId, now = Date.now()) {
   if (player?.activeContract) return { ok: false, reason: 'contract_already_active', player };
   const board = player?.contractBoard;
   const offer = (board?.offers || []).find((candidate) => candidate.id === offerId);
@@ -348,7 +348,7 @@ export function acceptContract(player, offerId) {
     storyFlag: content.storyFlag,
     beats: offer.beats,
     fuelSpent: offer.profile === 'distress' ? player.tutorial?.contractRecoveryFuelSpent || 0 : 0,
-    acceptedAt: Date.now(),
+    acceptedAt: now,
   };
   return {
     ok: true,
@@ -366,10 +366,10 @@ export function acceptContract(player, offerId) {
   };
 }
 
-function actionPreview(player, contract, action) {
+function actionPreview(player, contract, action, now = Date.now()) {
   if (contract.stage === 'briefing' && action?.id === 'launch') {
     if ((player?.ship?.hull ?? 100) <= 8) return { ok: false, reason: 'hull_critical' };
-    if (!readyContractCrew(player).length) return { ok: false, reason: 'no_ready_crew' };
+    if (!readyContractCrew(player, now).length) return { ok: false, reason: 'no_ready_crew' };
     return {
       ok: true,
       cost: { fuel: contract.profile === 'distress' ? Math.max(0, contractFuelCost(player) - contract.fuelSpent) : contractFuelCost(player) },
@@ -403,7 +403,7 @@ function actionPreview(player, contract, action) {
     if (!contract.encounterId || encounter.id !== contract.encounterId) {
       return { ok: false, reason: 'unknown_encounter' };
     }
-    const crew = readyContractCrew(player);
+    const crew = readyContractCrew(player, now);
     const bonus = combatBonuses(player, encounter);
     const playerPower = crewPower(crew) + bonus.extraPower;
     const enemyPower = Math.max(6, Math.round(rubberBandPower(encounter.power, playerPower) * bonus.enemyScale));
@@ -433,15 +433,15 @@ function actionPreview(player, contract, action) {
   return { ok: false, reason: 'wrong_contract_stage' };
 }
 
-export function previewContractAction(player, action) {
+export function previewContractAction(player, action, now = Date.now()) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'no_active_contract' };
-  const preview = actionPreview(player, contract, action);
+  const preview = actionPreview(player, contract, action, now);
   const base = {
     stage: contract.stage,
     revision: contract.revision,
     acceptanceId: contract.acceptanceId,
-    decisionKey: contractDecisionKey(player, contract, action),
+    decisionKey: contractDecisionKey(player, contract, action, now),
     action: action ? { ...action } : null,
     cost: preview.cost || { fuel: 0 },
     consequence: preview.consequence || null,
@@ -453,7 +453,7 @@ export function previewContractAction(player, action) {
   return { ...base, ok: true };
 }
 
-function routeReward(player, contract, selectedOutcome = contract.routeOutcome) {
+function routeReward(player, contract, selectedOutcome = contract.routeOutcome, now = Date.now()) {
   const outcome = selectedOutcome || {};
   const visits = player?.stats?.visits?.[contract.destinationId] || 0;
   let base = normalizeRewards(outcome);
@@ -465,7 +465,7 @@ function routeReward(player, contract, selectedOutcome = contract.routeOutcome) 
   }
   let rewards = scaleSitePayout(base, player, { kind, visits });
   if (kind === 'trade' || kind === 'delivery') {
-    rewards = { ...rewards, credits: tradePayout(rewards.credits, readyContractCrew(player)) };
+    rewards = { ...rewards, credits: tradePayout(rewards.credits, readyContractCrew(player, now)) };
   }
   return {
     success: true,
@@ -477,9 +477,9 @@ function routeReward(player, contract, selectedOutcome = contract.routeOutcome) 
   };
 }
 
-function resolveContractCombat(player, contract, orderId, rng) {
+function resolveContractCombat(player, contract, orderId, rng, now = Date.now()) {
   const encounter = encounterById(contract.encounterId);
-  const crew = readyContractCrew(player);
+  const crew = readyContractCrew(player, now);
   const bonus = combatBonuses(player, encounter);
   const playerPower = crewPower(crew) + bonus.extraPower;
   const enemyPower = Math.max(6, Math.round(rubberBandPower(encounter.power, playerPower) * bonus.enemyScale));
@@ -521,7 +521,7 @@ function resolveContractCombat(player, contract, orderId, rng) {
     const index = Math.min(crew.length - 1, Math.max(0, Math.floor(rng() * crew.length)));
     injuredCrewId = crew[index]?.instanceId || null;
     if (injuredCrewId) {
-      const injuredUntil = Date.now() + injuryMinutesFor(nextPlayer, 20) * 60000;
+      const injuredUntil = now + injuryMinutesFor(nextPlayer, 20) * 60000;
       nextPlayer = {
         ...nextPlayer,
         crew: nextPlayer.crew.map((member) => member.instanceId === injuredCrewId
@@ -549,7 +549,7 @@ function resolveContractCombat(player, contract, orderId, rng) {
   };
 }
 
-export function commitContractAction(player, preview, { rng = Math.random } = {}) {
+export function commitContractAction(player, preview, { rng = Math.random, now = Date.now() } = {}) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'no_active_contract', player };
   if (
@@ -561,7 +561,7 @@ export function commitContractAction(player, preview, { rng = Math.random } = {}
     return { ok: false, reason: 'stale_contract_action', player };
   }
 
-  const current = previewContractAction(player, preview.action);
+  const current = previewContractAction(player, preview.action, now);
   if (!current.ok) return { ok: false, reason: current.reason, player };
   if (
     preview.decisionKey !== current.decisionKey
@@ -588,11 +588,11 @@ export function commitContractAction(player, preview, { rng = Math.random } = {}
     if (nextContract.stage === 'confrontation') nextContract.encounterId = current.consequence.encounterId;
     if (nextContract.stage === 'return') {
       const outcome = preview.action.id === 'secure' ? nextContract.secureOutcome : nextContract.routeOutcome;
-      nextContract.result = routeReward(nextPlayer, nextContract, outcome);
+      nextContract.result = routeReward(nextPlayer, nextContract, outcome, now);
     }
   } else if (contract.stage === 'confrontation') {
-    nextContract.participantIds = readyContractCrew(nextPlayer).map(member => member.instanceId);
-    const resolved = resolveContractCombat(nextPlayer, nextContract, preview.action.orderId, rng);
+    nextContract.participantIds = readyContractCrew(nextPlayer, now).map(member => member.instanceId);
+    const resolved = resolveContractCombat(nextPlayer, nextContract, preview.action.orderId, rng, now);
     nextPlayer = resolved.player;
     nextContract.stage = 'return';
     nextContract.orderId = preview.action.orderId;
@@ -614,7 +614,7 @@ export function commitContractAction(player, preview, { rng = Math.random } = {}
   };
 }
 
-export function claimContractReward(player) {
+export function claimContractReward(player, now = Date.now()) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'already_claimed', player };
   if (contract.stage !== 'return' || !contract.result) {
@@ -635,7 +635,7 @@ export function claimContractReward(player) {
   const contractsByProfile = { ...(player?.stats?.contractsByProfile || {}) };
   contractsByProfile[contract.profile] = (contractsByProfile[contract.profile] || 0) + 1;
   const completedOfferIds = [...(player.contractBoard?.completedOfferIds || []), contract.offerId];
-  const today = contractDayKey();
+  const today = contractDayKey(now);
   const dailyLoop = player?.dailyLoop?.dayKey === today
     ? { ...player.dailyLoop, contract: true }
     : { dayKey: today, contract: true, improve: false, away: false };
@@ -662,7 +662,7 @@ export function claimContractReward(player) {
     analytics: analyticsEvent('contract_reward_claimed', {
       profile: contract.profile,
       ...contract.result.rewards,
-      elapsedSeconds: Math.max(0, Math.floor((Date.now() - (contract.acceptedAt || Date.now())) / 1000)),
+      elapsedSeconds: Math.max(0, Math.floor((now - (contract.acceptedAt || now)) / 1000)),
     }),
   };
 }

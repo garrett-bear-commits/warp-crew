@@ -32,11 +32,10 @@ function ensureShip(ship) {
   return next;
 }
 
-export function createNewPlayer({ captainName = 'Captain' } = {}) {
-  const now = Date.now();
+export function createNewPlayer({ captainName = 'Captain', now = Date.now(), rng = Math.random } = {}) {
   const crew = [
-    createCrewInstance('merc_rex'),
-    createCrewInstance('merc_bolt'),
+    createCrewInstance('merc_rex', { rng }),
+    createCrewInstance('merc_bolt', { rng }),
   ];
   return {
     version: SAVE_VERSION,

@@ -422,14 +422,14 @@ export function catalogById(id) {
   return CREW_CATALOG.find((c) => c.id === id) || null;
 }
 
-export function createCrewInstance(templateId, { level = 1, stars = 1, rank = 1 } = {}) {
+export function createCrewInstance(templateId, { level = 1, stars = 1, rank = 1, instanceId = null, rng = Math.random } = {}) {
   const t = catalogById(templateId);
   if (!t) throw new Error('Unknown crew template ' + templateId);
   const st = Math.max(1, stars | 0);
   const rk = Math.max(1, rank | 0);
   const lv = Math.max(1, level | 0);
   return {
-    instanceId: `${templateId}_${Math.random().toString(36).slice(2, 9)}`,
+    instanceId: instanceId || `${templateId}_${rng().toString(36).slice(2, 9)}`,
     templateId: t.id,
     name: t.name,
     role: t.role,

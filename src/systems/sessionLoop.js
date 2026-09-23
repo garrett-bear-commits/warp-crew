@@ -75,7 +75,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
     const labels = { launch: 'Launch', secure: 'Secure the contract', push: 'Push the signal' };
     const ids = contract.stage === 'briefing' ? ['launch'] : contract.stage === 'choice' ? ['secure', 'push'] : [];
     const actions = ids.map(id => {
-      const preview = previewContractAction(player, { id });
+      const preview = previewContractAction(player, { id }, now);
       models.contractPreviews[id] = preview;
       const consequence = preview.consequence;
       const combatChoice = consequence?.encounterName
@@ -93,12 +93,12 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
       const encounter = encounterById(contract.encounterId);
       const guaranteed = contract.profile === 'distress';
       const orders = listCombatOrders({ tutorial: guaranteed }).map(({ id, extraFuel }) => {
-        const preview = previewContractAction(player, { id: 'order', orderId: id });
+        const preview = previewContractAction(player, { id: 'order', orderId: id }, now);
         models.contractPreviews[`order:${id}`] = preview;
         // Keep consequence facts visible even when the wallet cannot pay. The
         // actual cached preview remains disabled and is the only commit token.
         const facts = !preview.ok && preview.reason === 'not_enough_fuel'
-          ? { ...previewContractAction({ ...player, wallet: { ...player.wallet, fuel: extraFuel } }, { id: 'order', orderId: id }), ok: false, reason: preview.reason }
+          ? { ...previewContractAction({ ...player, wallet: { ...player.wallet, fuel: extraFuel } }, { id: 'order', orderId: id }, now), ok: false, reason: preview.reason }
           : preview;
         return orderDisplay(id, facts, encounter, guaranteed);
       });
@@ -167,7 +167,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     tutorial('contract_reviewed', { offerId: data.offer });
   } else if (act === 'contract-review-close') nextUi.reviewedOfferId = null;
   else if (act === 'contract-accept') {
-    const res = acceptContract(player, data.offer);
+    const res = acceptContract(player, data.offer, now);
     if (!res.ok) return res;
     player = res.player;
     events.push(fromAnalytics({ ...res.analytics, traitMatch: traitMatch(player, player.activeContract.favoredTrait) }));
@@ -187,7 +187,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       events.push(fromAnalytics(res.analytics));
       Object.assign(nextUi, { tab: 'ship', selectedRoom: null, confirmAbandon: null });
     } else if (act === 'contract-claim' || data.action === 'claim') {
-      const res = claimContractReward(player);
+      const res = claimContractReward(player, now);
       if (!res.ok) return res;
       player = { ...res.player, dailyLoop: ensureDailyLoop(before, now).dailyLoop };
       milestone('contract');
@@ -197,8 +197,8 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     } else {
       const action = act === 'contract-order' ? { id: 'order', orderId: data.order } : { id: data.action };
       const key = action.id === 'order' ? `order:${action.orderId}` : action.id;
-      const preview = ui.contractPreviews?.[key] || previewContractAction(player, action);
-      const res = commitContractAction(player, preview, { rng });
+      const preview = ui.contractPreviews?.[key] || previewContractAction(player, action, now);
+      const res = commitContractAction(player, preview, { rng, now });
       if (!res.ok) return res;
       player = res.player;
       events.push(fromAnalytics(res.analytics));
