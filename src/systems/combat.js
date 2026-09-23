@@ -171,7 +171,7 @@ export function resolveCombat({
 }
 
 const ENCOUNTER_TELLS = {
-  pirate_scout: { label: 'Targeting engines.', text: "The scout is painting the Sparrow's engines, but its first volley is hurried.", recommendedOrder: 'brace', reason: 'Protect the tutorial crew and hull while the guaranteed counterattack lands.' },
+  pirate_scout: { label: 'Targeting engines.', text: "The scout is painting the Sparrow's engines, but its first volley is hurried.", recommendedOrder: 'brace', reason: 'Brace costs no extra fuel and, on failure, halves hull loss and prevents crew injury.' },
   pirate_wing: { label: 'Formation tightening.', text: 'Three cutters are closing their ragged V around the Sparrow.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
   scrapper_gang: { label: 'Grapples primed.', text: 'Cutting skiffs are drifting close enough to trade hull for salvage.', recommendedOrder: 'board', reason: 'Risk lower effective power for the higher rounded win payout shown.' },
   swarm_probe: { label: 'Signal about to jump.', text: 'The probe has finished mapping the ship and is turning for open dark.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
