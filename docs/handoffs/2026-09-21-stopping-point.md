@@ -6,8 +6,8 @@
 - Base: `4e34e2e972d66c2f583215fd7f822a41dbadf479`
 - Integration branch: `codex/contract-route-overhaul`
 - Draft PR: <https://github.com/garrett-bear-commits/warp-crew/pull/1>
-- QA deployment: `gh-pages@fcab3f1` from source `codex/contract-route-overhaul@9bec3a2`
-- Deployment workflow: GitHub Pages run `35690544860` — successful
+- Current QA deployment: `gh-pages@d0e72f0` from source `codex/contract-route-overhaul@47fb6e5` (2026-09-23; details below)
+- Prior QA deployment: `gh-pages@fcab3f1` from source `codex/contract-route-overhaul@9bec3a2`; GitHub Pages run `35690544860` succeeded
 - Public QA target: <https://garrett-bear-commits.github.io/warp-crew/>
 - Fresh-save QA: <https://garrett-bear-commits.github.io/warp-crew/?fresh=1>
 - QA hub: <https://garrett-bear-commits.github.io/warp-crew/qa.html>
@@ -73,4 +73,10 @@ All 16 existing encounters now have distinct tells and truthful order recommenda
 
 Final local gate on `a05bcf4` passed: `npm run test:balance`, `npm run test:loop`, `npm test`, `npm run test:ship`, `npm run build`, and `git diff --check`. Both report-generator orders were rerun and reported unchanged JSON/Markdown after the runtime section was added. Headless Chrome 153 drove a local fresh-save production preview at 390×844 and 360×800 plus reduced motion at 390×844: identical Risky Board/review/accessibility range, one Swarm Skirmish recommendation with all three orders enabled, 44×44px minimum sampled actions, 16px minimum essential text, visible keyboard focus, no horizontal document overflow, and an unclipped review sheet. [Screenshots and measurements](../qa/2026-09-22-encounter-balance-evidence.md#phone-sized-runtime-evidence) are desktop emulation, not physical phone QA. All 15 capture filenames are distinct, including separate reduced Board/review files; static normal/reduced 390px Board/review/encounter pairs are byte-identical. The final [Grok audit](../audits/2026-09-22-encounter-balance-implementation-audit.md#whole-package-supplement-and-screenshot-provenance-correction) returned scoped code/docs/evidence-composition approval for `a05bcf4` but marked pixel review unavailable. Grok did not inspect image pixels or run the repository.
 
-Recommended next owner decision: approve a bounded daily-loop friction and physical-device validation package, with one real iPhone and Android short-session pass and an explicit classification of non-useful simulator days. Agree useful-session and source/sink targets before any value changes. Monetization fairness/purchase authority, Flora GPT Image 2.5 art with a spend cap, new body/ship assets, PR #1 merge, Pages publication, Jest upload, and Jest production activation remain separate unapproved gates. The previously verified Pages fresh-save deployment is still the older QA build; this package was **not** published there.
+Recommended next owner decision: approve a bounded daily-loop friction and physical-device validation package, with one real iPhone and Android short-session pass and an explicit classification of non-useful simulator days. Agree useful-session and source/sink targets before any value changes. Monetization fairness/purchase authority, Flora GPT Image 2.5 art with a spend cap, new body/ship assets, PR #1 merge, Jest upload, and Jest production activation remain separate unapproved gates.
+
+## 2026-09-23 Pages QA refresh
+
+Garrett requested an updated QA build for hands-on feedback. The public, mock-platform GitHub Pages deployment is now `gh-pages@d0e72f0d02abdab242130adbb561a9709e9f3fce`, built from `codex/contract-route-overhaul@47fb6e5b57cf687b5e6130393b279de23072a903`. GitHub Pages reported `built` at 2026-09-23T03:10:03Z. The served `build.txt` names that source, and the served JavaScript SHA-256 `67ed5374930b9bf3fff1174e948b46580cc50bfa5a93d9a90656b49a57477c93` matches the locally tested bundle. A live public `?fresh=1` browser run proceeded from the splash through all seven first-session tutorial beats to the daily-plan screen, including contract review, guaranteed Scout Brace, Cargo claim, Jen recruitment, follow-up Board, and Dustfall crew selection/launch. The live Board showed the new literal payout ranges. This is browser QA, not physical-device or Jest production evidence.
+
+Direct playtest: <https://garrett-bear-commits.github.io/warp-crew/?fresh=1>. The existing `/qa.html` hub checklist still describes an older flow and was not rewritten in this publish. No PR #1 merge, Jest upload, or Jest production activation occurred.

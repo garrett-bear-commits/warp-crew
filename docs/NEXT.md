@@ -1,12 +1,13 @@
 # Warp Crew next-work checklist
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 
 ## Tomorrow — verify first
 
 - [x] Open the GitHub Pages fresh-save link and confirm the deployed build shows the Contract Board tutorial rather than an older Grok build.
 - [x] Record the Pages deployment commit/time in the stopping-point handoff.
+- [x] Publish and live-smoke the updated GitHub Pages QA game build at `gh-pages@d0e72f0` from package source `47fb6e5` (2026-09-23). Use the direct game link; the QA hub checklist still describes an older flow.
 - [ ] Run one real iPhone pass and one real Android pass; attach screenshots or recordings and device/OS details.
 - [ ] Check safe areas, scrolling, 44px targets, 16px consequence text, focus, reduced motion, and frame pacing on those devices.
 - [ ] Log any device failure as a reproducible issue before changing layout.
