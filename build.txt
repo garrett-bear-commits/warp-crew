@@ -1,3 +1,4 @@
-Warp Crew Pages build 2026-09-22T05:23:08Z
-Source: codex/contract-route-overhaul@9bec3a2e4d
-Reviewed gameplay: 9b9585ea79
+Warp Crew Pages QA build 2026-09-23T03:07:20Z
+Source: codex/contract-route-overhaul@47fb6e5b57cf687b5e6130393b279de23072a903
+Scope: seven-step first-session tutorial, encounter intelligence, literal contract rewards, balance evidence
+Platform: GitHub Pages local/mock mode; not a Jest production build
