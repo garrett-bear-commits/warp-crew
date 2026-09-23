@@ -8,7 +8,7 @@ function escapeHtml(value) {
 const e = escapeHtml;
 const profileLabel = (offer) => offer.profileLabel || ({ reliable: 'Reliable', risky: 'Risky', strange: 'Strange', distress: 'Distress' }[offer.profile] || offer.profile || 'Contract');
 const profileIcon = (offer) => ({ reliable: '◆', risky: '⚔', strange: '✦', distress: '!' }[offer.profile] || '◇');
-const rewardLabel = (offer) => offer.primaryReward || offer.rewardFamily || '';
+const rewardLabel = (offer) => offer.rewardBand?.label || offer.primaryReward || offer.rewardLabel || 'Reward unavailable';
 const trait = (value) => value ? `<p class="contract-consequence">Favored: ${e(value.label)}${value.why ? ` · ${e(value.why)}` : ''}</p>` : '';
 const reason = (value) => value ? `<p class="contract-consequence">${e(value)}</p>` : '';
 
@@ -18,11 +18,11 @@ export function renderMissionSwitcher(view = 'contracts') {
 
 export function renderContractBoard(model = {}) {
   return `<section class="contract-board" aria-label="Contract Board"><h2>Contracts</h2>${(model.offers || []).map((offer) => {
-    const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, ${rewardLabel(offer)}`;
+    const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, Possible payout now: ${rewardLabel(offer)}`;
     return `<article class="contract-card" data-profile="${e(offer.profile)}">
       <p class="contract-profile"><span aria-hidden="true">${profileIcon(offer)}</span> ${e(profileLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
       <h3>${e(offer.title)}</h3><p>${e(offer.brief)}</p>
-      <dl class="contract-facts"><div><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div><dt>Reward</dt><dd>${e(rewardLabel(offer))}</dd></div><div><dt>Danger</dt><dd>${e(offer.danger)}</dd></div></dl>
+      <dl class="contract-facts"><div><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div><dt>Possible payout now</dt><dd>${e(rewardLabel(offer))}</dd></div><div><dt>Danger</dt><dd>${e(offer.danger)}</dd></div></dl>
       ${trait(offer.favoredTrait)}<button type="button" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
     </article>`;
   }).join('') || '<p>No contracts available.</p>'}</section>`;
@@ -34,10 +34,10 @@ export function renderContractReview(model = {}) {
     <button type="button" class="icon-close" data-act="contract-review-close" aria-label="Close contract review">×</button>
     <p>${e(profileLabel(offer))}</p><h2 id="contract-review-title">${e(offer.title)}</h2>
     <p>${e(offer.brief)}</p><p>Destination: ${e(model.destinationName || offer.destinationName)}</p>
-    <dl class="contract-facts"><div><dt>Payable route fuel</dt><dd>${e(model.cost?.fuel)}F</dd></div><div><dt>Expected reward</dt><dd>${e(model.rewardLabel || model.rewardBand?.label)}</dd></div><div><dt>Danger</dt><dd>${e(offer.danger)}</dd></div></dl>
+    <dl class="contract-facts"><div><dt>Payable route fuel</dt><dd>${e(model.cost?.fuel)}F</dd></div><div><dt>Possible payout now</dt><dd>${e(rewardLabel(model))}</dd></div><div><dt>Danger</dt><dd>${e(offer.danger)}</dd></div></dl>
     ${reason(model.consequence)}${trait(model.favoredTrait || offer.favoredTrait)}${reason(model.reason)}
     <p>Accepting spends no fuel. Fuel is spent by route actions.</p>
-    <button type="button" class="primary" data-act="contract-accept" data-offer="${e(offer.id)}" ${model.enabled === false || model.ok === false ? 'disabled' : ''}>Accept contract</button>
+    <button type="button" class="primary" data-act="contract-accept" data-offer="${e(offer.id)}" aria-label="${e(`Accept contract, Possible payout now: ${rewardLabel(model)}`)}" ${model.enabled === false || model.ok === false ? 'disabled' : ''}>Accept contract</button>
   </section></div>`;
 }
 

@@ -1,5 +1,5 @@
 // Session orchestration: pure transitions, followed by one durable publication boundary.
-import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, reviewContractOffer, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract } from './contracts.js';
+import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, reviewContractOffer, contractRewardBand, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract } from './contracts.js';
 import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
 import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
 import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
@@ -65,11 +65,17 @@ function combatModel(encounter, orders, guaranteed, extra = {}) {
 export function sessionModels(player, ui = {}, now = Date.now()) {
   const contract = player.activeContract;
   const models = { missionView: ui.missionView || 'contracts', dailyPlan: dailyPlan(player, now),
-    contractBoard: player.contractBoard, activeContractView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {} };
+    contractBoard: player.contractBoard ? { ...player.contractBoard, offers: player.contractBoard.offers.map(offer => {
+      const rewardBand = contractRewardBand(player, offer, { now });
+      return { ...offer, rewardBand, primaryReward: rewardBand.label, enabled: rewardBand.available && !player.contractBoard.completedOfferIds.includes(offer.id) };
+    }) } : null, activeContractView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {} };
   if (ui.reviewedOfferId) {
     const review = reviewContractOffer(player, ui.reviewedOfferId);
-    if (review.ok) models.contractReview = { ...review, destinationName: NODES[review.offer.destinationId]?.name,
-      enabled: !contract && !player.contractBoard.completedOfferIds.includes(review.offer.id) };
+    if (review.ok) {
+      const rewardBand = contractRewardBand(player, review.offer, { now });
+      models.contractReview = { ...review, rewardBand, destinationName: NODES[review.offer.destinationId]?.name,
+        enabled: rewardBand.available && !contract && !player.contractBoard.completedOfferIds.includes(review.offer.id) };
+    }
   }
   if (contract) {
     const labels = { launch: 'Launch', secure: 'Secure the contract', push: 'Push the signal' };
@@ -85,7 +91,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
     });
     if (contract.stage === 'return') actions.push({ id: 'claim', label: 'Bring it aboard', enabled: true, primary: true });
     models.activeContractView = { ...contract, actions,
-      crewLabel: readyCrew(player).map(c => c.name).join(', ') || 'No ready crew',
+      crewLabel: readyCrew(player, now).map(c => c.name).join(', ') || 'No ready crew',
       result: contract.result ? { ...contract.result, rewardLabel: formatReward(contract.result.rewards) } : null,
       abandon: contract.profile === 'distress' ? null : { enabled: true, label: contract.stage === 'briefing' ? 'Abandon' : 'Break contract', consequence: 'No pending reward. Spent fuel is not refunded.' },
     };
@@ -167,6 +173,8 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     tutorial('contract_reviewed', { offerId: data.offer });
   } else if (act === 'contract-review-close') nextUi.reviewedOfferId = null;
   else if (act === 'contract-accept') {
+    const review = reviewContractOffer(player, data.offer);
+    if (review.ok && !contractRewardBand(player, review.offer, { now }).available) return fail('reward_unavailable');
     const res = acceptContract(player, data.offer, now);
     if (!res.ok) return res;
     player = res.player;

@@ -6,6 +6,25 @@ import { renderSessionGuidance, renderRoomSheet } from '../src/ui/bridge.js';
 import { ROOMS } from '../src/data/starterShip.js';
 import { ordersStep, sessionHint } from '../src/systems/tutorial.js';
 
+// A bad saved route must not enter the acceptance transition, and live modifiers
+// must change the displayed band without replacing the saved route identity.
+const fixedNow = Date.UTC(2030, 8, 22, 12);
+const bandPlayer = prepareSession({ ...createNewPlayer({ now: fixedNow, rng: () => 0.1 }), tutorial: { script: 3, completed: true, phase: 'done' }, wallet: { credits: 0, medals: 0, reputation: 0, gems: 0, fuel: 10 } }, fixedNow);
+const bandOffer = bandPlayer.contractBoard.offers.find(x => x.profile === 'risky');
+const initialBand = sessionModels(bandPlayer, { reviewedOfferId: bandOffer.id }, fixedNow).contractReview.rewardBand;
+const upgraded = { ...bandPlayer, ship: { ...bandPlayer.ship, systems: { ...bandPlayer.ship.systems, weapons: 9 } } };
+assert.notDeepEqual(sessionModels(upgraded, { reviewedOfferId: bandOffer.id }, fixedNow).contractReview.rewardBand.currencies, initialBand.currencies);
+const invalidOffer = { ...bandOffer, routeContent: null };
+const invalidPlayer = { ...bandPlayer, contractBoard: { ...bandPlayer.contractBoard, offers: [invalidOffer] } };
+const invalidReview = sessionModels(invalidPlayer, { reviewedOfferId: invalidOffer.id }, fixedNow).contractReview;
+assert.equal(invalidReview.enabled, false);
+assert.equal(invalidReview.rewardBand.label, 'Reward unavailable');
+assert.equal(sessionAction(invalidPlayer, {}, 'contract-accept', { offer: invalidOffer.id }, { now: fixedNow }).reason, 'reward_unavailable');
+const acceptedBand = sessionAction(bandPlayer, {}, 'contract-accept', { offer: bandOffer.id }, { now: fixedNow }).player;
+const injuredBand = { ...acceptedBand, crew: acceptedBand.crew.map(c => ({ ...c, status: 'injured', injuredUntil: fixedNow + 1000 })) };
+assert.equal(sessionModels(injuredBand, {}, fixedNow).activeContractView.crewLabel, 'No ready crew');
+assert.notEqual(sessionModels(injuredBand, {}, fixedNow + 1000).activeContractView.crewLabel, 'No ready crew');
+
 // Catches production actions that skip tutorial steps, lose rendered identity, auto-pick
 // a different away party, or publish effects before a failed local save.
 let player = prepareSession(createNewPlayer());

@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { renderMissions, renderCombatModal } from '../src/ui/bridge.js';
 import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
+import { createNewPlayer } from '../src/systems/player.js';
+import { prepareSession, sessionModels } from '../src/systems/sessionLoop.js';
+import { acceptContract, previewContractAction, commitContractAction } from '../src/systems/contracts.js';
 import {
   renderMissionSwitcher, renderContractBoard, renderContractReview,
   renderActiveContract, renderCombatOrders, renderAwayPicker, renderDailyPlan,
@@ -15,7 +18,7 @@ const offers = [
 const board = renderContractBoard({ offers });
 assert.equal((board.match(/data-act="contract-review"/g) || []).length, 3);
 for (const fact of ['2F', '2 beats', '3 beats', 'High', 'Gunner', 'Trade contacts']) assert.ok(board.includes(fact), fact);
-assert.match(board, /aria-label="[^"]*Reliable[^"]*Quiet Freight[^"]*2F[^"]*Low[^"]*Credits/);
+assert.match(board, /aria-label="[^"]*Reliable[^"]*Quiet Freight[^"]*2F[^"]*Low[^"]*Possible payout now: Credits/);
 assert.match(renderContractBoard({ offers: [{ ...offers[0], completed: true }] }), /disabled[^>]*>[^<]*Completed/);
 assert.match(renderMissionSwitcher(), /aria-pressed="true"[^>]*>Contracts/);
 assert.match(renderMissionSwitcher('away'), /aria-pressed="true"[^>]*>Away/);
@@ -30,6 +33,42 @@ assert.match(orders, /data-order="brace"/);
 assert.ok(orders.includes('Half hull loss · no injury') && orders.includes('Normal payout'));
 assert.match(orders, /data-order="burn"[^>]*disabled/);
 assert.ok(orders.includes('Not enough fuel'));
+
+// Live board and review expose the same literal range to sighted and screen-reader users.
+const now = Date.UTC(2026, 8, 22, 12);
+const livePlayer = prepareSession({ ...createNewPlayer({ now, rng: () => 0.1 }), tutorial: { script: 3, completed: true, phase: 'done' } }, now);
+const liveOffer = livePlayer.contractBoard.offers[0];
+const boardModel = sessionModels(livePlayer, {}, now).contractBoard;
+const boardHtml = renderContractBoard(boardModel);
+assert.match(boardHtml, /<dt>Possible payout now<\/dt>/);
+assert.ok(boardModel.offers[0].rewardBand.label.includes('credits'));
+assert.ok(boardHtml.includes(boardModel.offers[0].rewardBand.label));
+assert.ok(boardHtml.includes(`Possible payout now: ${boardModel.offers[0].rewardBand.label}"`));
+const reviewModel = sessionModels(livePlayer, { reviewedOfferId: liveOffer.id }, now).contractReview;
+const reviewHtml = renderContractReview(reviewModel);
+assert.match(reviewHtml, /<dt>Possible payout now<\/dt>/);
+assert.ok(reviewHtml.includes(reviewModel.rewardBand.label));
+assert.ok(reviewHtml.includes(`aria-label="Accept contract, Possible payout now: ${reviewModel.rewardBand.label}"`));
+assert.doesNotMatch(boardHtml + reviewHtml, /Expected reward/);
+const badOffer = { ...liveOffer, routeContent: null };
+const badPlayer = { ...livePlayer, contractBoard: { ...livePlayer.contractBoard, offers: [badOffer] } };
+const badReviewHtml = renderContractReview(sessionModels(badPlayer, { reviewedOfferId: badOffer.id }, now).contractReview);
+assert.match(badReviewHtml, /Reward unavailable/);
+assert.match(badReviewHtml, /data-act="contract-accept"[^>]*disabled/);
+const acceptedLive = acceptContract(livePlayer, liveOffer.id, now).player;
+const launchedLive = commitContractAction(acceptedLive, previewContractAction(acceptedLive, { id: 'launch' }, now), { now }).player;
+const returnedLive = commitContractAction(launchedLive, previewContractAction(launchedLive, { id: 'secure' }, now), { now }).player;
+const returnView = renderActiveContract(sessionModels(returnedLive, {}, now).activeContractView);
+assert.ok(returnView.includes(sessionModels(returnedLive, {}, now).activeContractView.result.rewardLabel));
+assert.doesNotMatch(returnView, /Possible payout now/);
+const tellHtml = renderCombatOrders({ title: 'Pirate Wing', tell: { label: 'Formation tightening', text: 'Three cutters close in.', reason: 'Spend 1F for +12 power.' }, orders: [
+  { id: 'brace', name: 'Brace', enabled: true, chanceLabel: '60%', costLabel: '0F extra', consequence: 'Half hull loss' },
+  { id: 'burn', name: 'Burn', enabled: true, recommended: true, chanceLabel: '80%', costLabel: '1F extra', consequence: '+12 effective power' },
+] });
+assert.match(tellHtml, /Formation tightening/);
+assert.match(tellHtml, /Spend 1F for \+12 power/);
+assert.match(tellHtml, /Burn · Recommended/);
+assert.doesNotMatch(tellHtml, /aria-pressed/);
 
 // Catches launching without crew reasons, selection state, or opportunity cost.
 const awayModel = { destination: { id: 'dustfall', name: 'Dustfall' }, cap: 2, selectedIds: ['a'], enabled: true, chanceLabel: '80%', successReward: '80 credits', failureReward: '18 credits', injuryRisk: 'Injury possible on failure', returnLabel: '14:30', opportunityCost: 'Selected crew unavailable for contracts until return.', options: [{ id: 'a', name: 'Rex', role: 'pilot', selected: true, portrait: '/rex.png', reasons: ['highest ready power'] }] };
@@ -83,7 +122,7 @@ for (const action of ['contract-action', 'contract-abandon']) {
 }
 
 // Catches aria-label replacing the visible action, breaking label-in-name access.
-assert.ok(board.includes('aria-label="Review Reliable, Quiet Freight, 2F, Low danger, Credits"'));
+assert.ok(board.includes('aria-label="Review Reliable, Quiet Freight, 2F, Low danger, Possible payout now: Credits"'));
 assert.ok(orders.includes('aria-label="Choose Brace, Guaranteed, Free, Half hull loss · no injury"'));
 assert.ok(orders.includes('aria-label="Choose Burn, Guaranteed, 1F, Normal hull loss"'));
 console.log('contract_ui.test.mjs OK');
