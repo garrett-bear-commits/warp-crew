@@ -3,13 +3,13 @@
 
 import { visibleNodes, NODES } from '../data/sectors.js';
 import { CONTRACT_PROFILES, combatWeight, qualifiesForProfile, storySalvageWeight } from '../data/contracts.js';
-import { encounterById, previewCombatOrder, resolveCombatOrder, crewPower, rubberBandPower } from './combat.js';
+import { encounterById, previewCombatOrder, crewPower, rubberBandPower } from './combat.js';
 import { grant, scaleSitePayout } from './economy.js';
 import { spendFuel } from './fuel.js';
-import { fuelCostFor, combatBonuses, hullAfterCombat, injuryMinutesFor, tradePayout } from './passives.js';
+import { fuelCostFor, combatBonuses } from './passives.js';
 import { applyStoryFlag } from './story.js';
 import { normalizeContractState as normalizeSavedContractState, validContractResult } from './contractState.js';
-import { grantCrewXp } from './player.js';
+import { CURRENCIES, readyContractCrew, normalizeCurrencyReward as normalizeRewards, resolveRoutePayout, resolveContractCombatPayout, formatRewardBand } from './contractRewards.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -175,16 +175,6 @@ export function tutorialDistressOffer(player) {
   };
 }
 
-function normalizeRewards(rewards = {}) {
-  return {
-    credits: Number(rewards.credits) || 0,
-    medals: Number(rewards.medals) || 0,
-    reputation: Number(rewards.reputation) || 0,
-    gems: Number(rewards.gems) || 0,
-    fuel: Number(rewards.fuel) || 0,
-  };
-}
-
 function deterministicIndex(seed, length, salt = '') {
   if (!length) return 0;
   return hashSeed(`${seed}:${salt}`) % length;
@@ -244,15 +234,6 @@ function snapshotRouteContent(offer, routeSeed) {
   };
 }
 
-function readyContractCrew(player, now = Date.now()) {
-  const ready = (player?.crew || []).filter((crew) => {
-    if (crew.status === 'expedition') return false;
-    return crew.status !== 'injured' || (crew.injuredUntil || 0) <= now;
-  });
-  const slots = Math.max(1, player?.crewSlots || 2);
-  return [...ready].sort((a, b) => (b.power || 0) - (a.power || 0)).slice(0, slots);
-}
-
 function contractFuelCost(player) {
   return fuelCostFor(player, 1);
 }
@@ -304,6 +285,24 @@ function contractDecisionKey(player, contract, action, now = Date.now()) {
   return JSON.stringify(inputs);
 }
 
+function validRewardContent(content, destinationId) {
+  const validEncounter = id => id == null || encounterById(id).id === id;
+  const validOutcome = outcome => Boolean(outcome && ['combat', 'trade', 'delivery', 'salvage', 'story', 'arrive'].includes(outcome.kind)
+    && CURRENCIES.every(key => !Object.hasOwn(outcome, key) || (typeof outcome[key] === 'number' && Number.isFinite(outcome[key]) && outcome[key] >= 0))
+    && (outcome.kind !== 'combat' || (typeof outcome.encounter === 'string' && validEncounter(outcome.encounter)))
+    && (outcome.kind !== 'story' || typeof outcome.flag === 'string'));
+  return Boolean(content && NODES[destinationId] && validOutcome(content.routeOutcome) && validOutcome(content.secureOutcome)
+    && validEncounter(content.encounterId) && (content.storyFlag == null || typeof content.storyFlag === 'string'));
+}
+
+function validOfferContent(offer) {
+  return offer?.profile === 'distress' || Boolean(offer?.routeContent
+    && offer.routeContent.destinationId === offer.destinationId
+    && Number.isInteger(offer.routeContent.routeSeed)
+    && (offer.routeContent.routeOutcome?.kind !== 'combat' || offer.routeContent.encounterId === offer.routeContent.routeOutcome.encounter)
+    && validRewardContent(offer.routeContent, offer.destinationId));
+}
+
 export function acceptContract(player, offerId, now = Date.now()) {
   if (player?.activeContract) return { ok: false, reason: 'contract_already_active', player };
   const board = player?.contractBoard;
@@ -314,6 +313,7 @@ export function acceptContract(player, offerId, now = Date.now()) {
   }
   const node = NODES[offer.destinationId];
   if (!node) return { ok: false, reason: 'unknown_destination', player };
+  if (!validOfferContent(offer)) return { ok: false, reason: 'invalid_contract_content', player };
   if (offer.profile === 'distress' && (player.tutorial?.firstCombat || player.tutorial?.hiredThird || player.tutorial?.completed || player.tutorial?.dismissed)) {
     return { ok: false, reason: 'tutorial_already_resolved', player };
   }
@@ -321,8 +321,7 @@ export function acceptContract(player, offerId, now = Date.now()) {
   const routeSeed = hashSeed(`${offer.id}:${offer.destinationId}:${offer.profile}`);
   const content = offer.profile === 'distress'
     ? { routeOutcome: { kind: 'combat', encounter: 'pirate_scout' }, secureOutcome: { kind: 'combat', encounter: 'pirate_scout' }, encounterId: 'pirate_scout', storyFlag: null }
-    : offer.routeContent?.destinationId === offer.destinationId
-      ? offer.routeContent : snapshotRouteContent(offer, routeSeed);
+    : offer.routeContent;
   const acceptanceSequence = Number.isSafeInteger(player?.contractAcceptanceSequence)
     ? player.contractAcceptanceSequence + 1
     : 1;
@@ -338,7 +337,7 @@ export function acceptContract(player, offerId, now = Date.now()) {
     favoredTrait: { ...offer.favoredTrait },
     stage: 'briefing',
     revision: 0,
-    routeSeed,
+    routeSeed: offer.profile === 'distress' ? routeSeed : content.routeSeed,
     choiceId: null,
     encounterId: content.encounterId,
     orderId: null,
@@ -453,102 +452,6 @@ export function previewContractAction(player, action, now = Date.now()) {
   return { ...base, ok: true };
 }
 
-function routeReward(player, contract, selectedOutcome = contract.routeOutcome, now = Date.now()) {
-  const outcome = selectedOutcome || {};
-  const visits = player?.stats?.visits?.[contract.destinationId] || 0;
-  let base = normalizeRewards(outcome);
-  let kind = outcome.kind || 'salvage';
-  let storyFlag = kind === 'story' ? outcome.flag || contract.storyFlag || null : null;
-  if (kind === 'story') {
-    const applied = applyStoryFlag(player, storyFlag);
-    base = normalizeRewards(applied.rewards || { credits: 40, reputation: 3 });
-  }
-  let rewards = scaleSitePayout(base, player, { kind, visits });
-  if (kind === 'trade' || kind === 'delivery') {
-    rewards = { ...rewards, credits: tradePayout(rewards.credits, readyContractCrew(player, now)) };
-  }
-  return {
-    success: true,
-    rewards: normalizeRewards(rewards),
-    hullLoss: 0,
-    injuredCrewId: null,
-    storyFlag,
-    summary: kind === 'story' ? 'The signal resolves into a discovery.' : 'The contract closes cleanly.',
-  };
-}
-
-function resolveContractCombat(player, contract, orderId, rng, now = Date.now()) {
-  const encounter = encounterById(contract.encounterId);
-  const crew = readyContractCrew(player, now);
-  const bonus = combatBonuses(player, encounter);
-  const playerPower = crewPower(crew) + bonus.extraPower;
-  const enemyPower = Math.max(6, Math.round(rubberBandPower(encounter.power, playerPower) * bonus.enemyScale));
-  const combat = resolveCombatOrder({
-    playerPower,
-    enemyPower,
-    orderId,
-    encounter,
-    rng,
-    // Commit already validated and paid the order cost. Reconstruct the
-    // pre-spend balance so Burn remains enabled during deterministic resolve.
-    fuel: (player?.wallet?.fuel ?? 0) + (orderId === 'burn' ? 1 : 0),
-    tutorialGuaranteed: contract.profile === 'distress',
-  });
-  const visits = player?.stats?.visits?.[contract.destinationId] || 0;
-  const rewards = contract.profile === 'distress'
-    ? normalizeRewards(combat.rewards)
-    : normalizeRewards(scaleSitePayout(combat.rewards, player, { kind: 'combat', visits }));
-
-  const afterNormalHull = hullAfterCombat(player, {
-    success: combat.success,
-    tutorial: contract.profile === 'distress',
-  });
-  const originalHull = player?.ship?.hull ?? 100;
-  const normalHullLoss = Math.max(0, originalHull - (afterNormalHull.ship?.hull ?? originalHull));
-  const hullScale = combat.success ? 1 : (combat.failureHullScale ?? 1);
-  const hullLoss = Math.floor(normalHullLoss * hullScale);
-  let nextPlayer = {
-    ...player,
-    ship: { ...player.ship, hull: Math.max(0, originalHull - hullLoss) },
-  };
-
-  let injuredCrewId = null;
-  const defaultFailureInjury = !combat.success && crew.length > 0;
-  const shouldInjure = !combat.success
-    && !combat.preventsInjury
-    && (combat.forcesFailureInjury || defaultFailureInjury);
-  if (shouldInjure) {
-    const index = Math.min(crew.length - 1, Math.max(0, Math.floor(rng() * crew.length)));
-    injuredCrewId = crew[index]?.instanceId || null;
-    if (injuredCrewId) {
-      const injuredUntil = now + injuryMinutesFor(nextPlayer, 20) * 60000;
-      nextPlayer = {
-        ...nextPlayer,
-        crew: nextPlayer.crew.map((member) => member.instanceId === injuredCrewId
-          ? { ...member, status: 'injured', injuredUntil }
-          : member),
-      };
-    }
-  }
-
-  if (combat.success && contract.profile !== 'distress') {
-    nextPlayer = grantCrewXp(nextPlayer, crew.map(member => member.instanceId), 10);
-    nextPlayer = { ...nextPlayer, stats: { ...nextPlayer.stats, combatsWon: (nextPlayer.stats?.combatsWon || 0) + 1 } };
-  }
-
-  return {
-    player: nextPlayer,
-    result: {
-      success: Boolean(combat.success),
-      rewards,
-      hullLoss,
-      injuredCrewId,
-      storyFlag: null,
-      summary: combat.log,
-    },
-  };
-}
-
 export function commitContractAction(player, preview, { rng = Math.random, now = Date.now() } = {}) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'no_active_contract', player };
@@ -588,11 +491,11 @@ export function commitContractAction(player, preview, { rng = Math.random, now =
     if (nextContract.stage === 'confrontation') nextContract.encounterId = current.consequence.encounterId;
     if (nextContract.stage === 'return') {
       const outcome = preview.action.id === 'secure' ? nextContract.secureOutcome : nextContract.routeOutcome;
-      nextContract.result = routeReward(nextPlayer, nextContract, outcome, now);
+      nextContract.result = resolveRoutePayout(nextPlayer, nextContract, outcome, now);
     }
   } else if (contract.stage === 'confrontation') {
     nextContract.participantIds = readyContractCrew(nextPlayer, now).map(member => member.instanceId);
-    const resolved = resolveContractCombat(nextPlayer, nextContract, preview.action.orderId, rng, now);
+    const resolved = resolveContractCombatPayout(nextPlayer, nextContract, preview.action.orderId, { rng, now });
     nextPlayer = resolved.player;
     nextContract.stage = 'return';
     nextContract.orderId = preview.action.orderId;
@@ -612,6 +515,59 @@ export function commitContractAction(player, preview, { rng = Math.random, now =
       revision: nextContract.revision,
     }),
   };
+}
+
+/** Only production-approved actions on ephemeral players contribute a terminal path. */
+function enumerateRewardPaths(player, offer, now) {
+  let copy = JSON.parse(JSON.stringify(player));
+  const active = copy.activeContract;
+  if (active) {
+    if (offer?.id !== active.id && offer?.id !== active.offerId && offer?.offerId !== active.offerId) return [];
+    if (active.stage === 'return') return [];
+    if (!validRewardContent(active, active.destinationId)) return [];
+  } else {
+    if (!validOfferContent(offer)) return [];
+    copy.contractBoard = { ...copy.contractBoard, offers: [JSON.parse(JSON.stringify(offer))] };
+    const accepted = acceptContract(copy, offer.id, now);
+    if (!accepted.ok) return [];
+    copy = accepted.player;
+  }
+  const terminals = [];
+  function advance(current) {
+    const contract = current.activeContract;
+    if (contract.stage === 'return') {
+      if (validContractResult(contract.result)) terminals.push(contract.result);
+      return;
+    }
+    const actions = contract.stage === 'briefing' ? [{ id: 'launch' }]
+      : contract.stage === 'choice' ? [{ id: 'secure' }, { id: 'push' }]
+      : contract.stage === 'confrontation' ? ['brace', 'burn', 'board'].map(orderId => ({ id: 'order', orderId })) : [];
+    for (const action of actions) {
+      const preview = previewContractAction(current, action, now);
+      if (!preview.ok) continue;
+      for (const roll of contract.stage === 'confrontation' ? [0, 1] : [0]) {
+        const branch = JSON.parse(JSON.stringify(current));
+        const committed = commitContractAction(branch, preview, { rng: () => roll, now });
+        if (committed.ok) advance(committed.player);
+      }
+    }
+  }
+  advance(copy);
+  return terminals;
+}
+
+export function contractRewardBand(player, offer, { now = Date.now() } = {}) {
+  const terminals = enumerateRewardPaths(player, offer, now);
+  if (!terminals.length) return { available: false, label: 'Reward unavailable', currencies: {}, paths: [] };
+  const paths = [...new Map(terminals.map(result => [JSON.stringify(result.rewards), result.rewards])).values()];
+  const currencies = {};
+  for (const key of CURRENCIES) {
+    const amounts = paths.map(path => path[key]);
+    const max = Math.max(...amounts);
+    if (max > 0) currencies[key] = { min: Math.min(...amounts), max, presentOnAllPaths: terminals.every(result => result.rewardPresence?.[key] === true) };
+  }
+  const band = { available: true, currencies, paths };
+  return { ...band, label: formatRewardBand(band) };
 }
 
 export function claimContractReward(player, now = Date.now()) {

@@ -4,6 +4,7 @@ import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { ensureContractBoard, acceptContract, previewContractAction, commitContractAction, claimContractReward } from '../src/systems/contracts.js';
 import { prepareSession, sessionAction, sessionModels, persistSessionTransition } from '../src/systems/sessionLoop.js';
 import { NODES } from '../src/data/sectors.js';
+import { encounterById } from '../src/systems/combat.js';
 
 const now = new Date(2026, 8, 21, 12).getTime();
 const reload = player => prepareSession(migratePlayer(JSON.parse(JSON.stringify(player))), now);
@@ -17,7 +18,14 @@ function step(player, id, orderId = 'brace', rng = () => 0) {
 function accepted(profile = 'risky', destinationId = null, day = now) {
   let player = ensureContractBoard(veteran(), day).player;
   const offer = player.contractBoard.offers.find(offer => offer.profile === profile);
-  if (destinationId) offer.destinationId = destinationId;
+  if (destinationId) {
+    // Destination overrides must carry a coherent saved snapshot: production
+    // rejects mismatched content instead of silently rerolling its identity.
+    const combats = NODES[destinationId].outcomes.filter(outcome => outcome.kind === 'combat')
+      .sort((a, b) => encounterById(a.encounter).power - encounterById(b.encounter).power || a.encounter.localeCompare(b.encounter));
+    offer.destinationId = destinationId;
+    offer.routeContent = { ...offer.routeContent, destinationId, routeOutcome: { ...combats.at(-1) }, secureOutcome: { ...combats[0] }, encounterId: combats.at(-1).encounter, storyFlag: null };
+  }
   return acceptContract(player, offer.id).player;
 }
 function tutorialAt(stage) {
