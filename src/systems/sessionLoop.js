@@ -53,13 +53,13 @@ function orderDisplay(id, preview, encounter, guaranteed) {
     costLabel: `${preview.cost?.fuel ?? preview.fuel ?? 0}F extra`,
     rewardLabel: id === 'board' ? 'Victory: +25% credits and medals' : 'Normal payout',
     consequence: id === 'brace' ? 'Failure: half hull loss · no crew injury' : id === 'board' ? '−10% effective power · failure injures one crew member' : '+12 effective power · normal failure hull loss and injury',
-    reason: preview.reason || '', recommended: id === 'brace',
+    reason: preview.reason || '', recommended: id === encounter.tell.recommendedOrder,
   };
 }
 
 function combatModel(encounter, orders, guaranteed, extra = {}) {
   return { title: encounter.name, guaranteed, orders, canCancel: !guaranteed,
-    tell: { label: encounter.name, text: encounter.blurb, reason: 'Brace is recommended for hull and crew protection.' }, ...extra };
+    tell: encounter.tell, ...extra };
 }
 
 export function sessionModels(player, ui = {}, now = Date.now()) {
@@ -203,7 +203,8 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       player = res.player;
       events.push(fromAnalytics(res.analytics));
       if (act === 'contract-order') {
-        events.push(event('combat_order_selected', { encounter: contract.encounterId, order: data.order, shownChance: preview.consequence.chance, extraFuel: preview.cost.fuel }));
+        const recommendedOrder = encounterById(contract.encounterId).tell.recommendedOrder;
+        events.push(event('combat_order_selected', { encounter: contract.encounterId, order: data.order, shownChance: preview.consequence.chance, extraFuel: preview.cost.fuel, recommendedOrder, followedRecommendation: data.order === recommendedOrder }));
         tutorial('combat_order_done');
         effect = { kind: 'combat', preview: { encounter: encounterById(contract.encounterId) }, win: res.result.success };
       } else if (action.id === 'launch') {
@@ -291,7 +292,8 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     player = res.player;
     tutorial('travel_success');
     Object.assign(nextUi, { pendingCombat: null, tab: 'ship', selectedRoom: null });
-    events.push(event('combat_order_selected', { encounter: preview.encounter.id, order: data.order, shownChance: shown.chance, extraFuel: data.order === 'burn' ? 1 : 0 }));
+    const recommendedOrder = preview.encounter.tell.recommendedOrder;
+    events.push(event('combat_order_selected', { encounter: preview.encounter.id, order: data.order, shownChance: shown.chance, extraFuel: data.order === 'burn' ? 1 : 0, recommendedOrder, followedRecommendation: data.order === recommendedOrder }));
     events.push(event('combat', { success: res.result.combat.success, encounter: preview.encounter.id }));
     effect = { kind: 'combat', preview, win: res.result.combat.success, result: res.result };
   } else if (act === 'combat-cancel') {

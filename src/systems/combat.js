@@ -170,6 +170,25 @@ export function resolveCombat({
   };
 }
 
+const ENCOUNTER_TELLS = {
+  pirate_scout: { label: 'Targeting engines.', text: "The scout is painting the Sparrow's engines, but its first volley is hurried.", recommendedOrder: 'brace', reason: 'Protect the tutorial crew and hull while the guaranteed counterattack lands.' },
+  pirate_wing: { label: 'Formation tightening.', text: 'Three cutters are closing their ragged V around the Sparrow.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
+  scrapper_gang: { label: 'Grapples primed.', text: 'Cutting skiffs are drifting close enough to trade hull for salvage.', recommendedOrder: 'board', reason: 'Risk lower effective power for the higher rounded win payout shown.' },
+  swarm_probe: { label: 'Signal about to jump.', text: 'The probe has finished mapping the ship and is turning for open dark.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
+  swarm_skirmish: { label: 'Pack spreading wide.', text: 'The hunting pack is separating to strike from both sides.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the pack gets through.' },
+  swarm_frigate: { label: 'Core flare rising.', text: 'The remembered frigate is charging a broadside larger than the Sparrow.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury against the heavy shot.' },
+  pirate_ace: { label: 'Attack vector committed.', text: 'The ace has traded distance for one clean firing pass.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
+  ice_raiders: { label: 'Boarding clamps open.', text: 'White-hulled corsairs are matching speed with their clamps exposed.', recommendedOrder: 'board', reason: 'Accept greater failure risk for the higher rounded win payout shown.' },
+  swarm_brood: { label: 'Chitin cloud closing.', text: 'Half-grown probes are thickening around the shield line.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the brood reaches the hull.' },
+  veil_wraith: { label: 'Blind angle moving.', text: 'The contact vanishes whenever sensors or crew look directly at it.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
+  corsair_king: { label: 'Flagship alongside.', text: 'The old captain is presenting a prize broadside and daring a boarding reply.', recommendedOrder: 'board', reason: 'Risk lower effective power for the higher rounded win payout shown.' },
+  eclipse_echo: { label: 'War-form unfolding.', text: 'The echo is opening weapon limbs the Spur was never built to answer.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the war-form fires.' },
+  ember_raider: { label: 'Breach team heating.', text: 'Raiders are welding toward Cargo while their own hull runs exposed.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
+  hollow_shade: { label: 'Name forming.', text: "A second line of writing is appearing beneath the crew's name on the hull.", recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the mark completes.' },
+  crown_warden: { label: 'Verdict chambered.', text: 'The Warden has finished its warning and loaded a gold verdict round.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the verdict lands.' },
+  eclipse_throne: { label: 'Halo collapsing inward.', text: "The Throne's halo is drawing every nearby signal toward its core.", recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
+};
+
 export const ENCOUNTERS_V1 = [
   {
     id: 'pirate_scout',
@@ -179,6 +198,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'A light cutter tagging freighters.',
     win: 'The scout wing breaks off. You strip the pod.',
     fail: 'They rake the hull and vanish into dust.',
+    tell: ENCOUNTER_TELLS.pirate_scout,
   },
   {
     id: 'pirate_wing',
@@ -188,6 +208,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'Three cutters flying a ragged V.',
     win: 'The wing scatters. You keep one engine and the pay chest.',
     fail: 'They punch a hole in cargo and run.',
+    tell: ENCOUNTER_TELLS.pirate_wing,
   },
   {
     id: 'scrapper_gang',
@@ -197,6 +218,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'Yard dogs with cutting torches.',
     win: 'You outbid them with guns. Their salvage is yours.',
     fail: 'They torch a panel and take the easy metal.',
+    tell: ENCOUNTER_TELLS.scrapper_gang,
   },
   {
     id: 'swarm_probe',
@@ -206,6 +228,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'A black-shelled mapper. It already knows your name.',
     win: 'The probe cracks. A nav-crystal ticks in the husk.',
     fail: 'It tags your hull and slips into the dark.',
+    tell: ENCOUNTER_TELLS.swarm_probe,
   },
   {
     id: 'swarm_skirmish',
@@ -215,6 +238,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'A hunting pack. Do not let them surround you.',
     win: 'The pack peels. Chitin and medals in the wake.',
     fail: 'They score the shields and leave a mark.',
+    tell: ENCOUNTER_TELLS.swarm_skirmish,
   },
   {
     id: 'swarm_frigate',
@@ -224,6 +248,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'A silhouette larger than a station, half-remembered.',
     win: 'The echo breaks. You bag a core fragment.',
     fail: 'The shadow passes. Hull sings with stress.',
+    tell: ENCOUNTER_TELLS.swarm_frigate,
   },
   {
     id: 'pirate_ace',
@@ -233,6 +258,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'One pilot, one painted hull, no manners.',
     win: 'The ace ejects. You keep the painted fin.',
     fail: 'A perfect rake. You limp home with scrap.',
+    tell: ENCOUNTER_TELLS.pirate_ace,
   },
   {
     id: 'ice_raiders',
@@ -242,6 +268,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'Glass-spur corsairs in white hulls.',
     win: 'You crack their ice-lock. Convoy pay inside.',
     fail: 'They steal a pallet and vanish into glare.',
+    tell: ENCOUNTER_TELLS.ice_raiders,
   },
   {
     id: 'swarm_brood',
@@ -251,6 +278,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'A living cloud of half-grown probes.',
     win: 'The brood burns. Cores tick in the ash.',
     fail: 'They cling. You scrape them off with hull.',
+    tell: ENCOUNTER_TELLS.swarm_brood,
   },
   {
     id: 'veil_wraith',
@@ -260,6 +288,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'Something that only moves when you look away.',
     win: 'The wraith unravels. Cold medals in the dust.',
     fail: 'It brands the hull and is gone.',
+    tell: ENCOUNTER_TELLS.veil_wraith,
   },
   {
     id: 'corsair_king',
@@ -269,6 +298,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'The nest’s old captain, still armed.',
     win: 'The king yields a crate and a grudging salute.',
     fail: 'He rakes engineering and laughs on comms.',
+    tell: ENCOUNTER_TELLS.corsair_king,
   },
   {
     id: 'eclipse_echo',
@@ -278,6 +308,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'A war-form the Spur was never meant to see.',
     win: 'The echo folds. A gem-bright core in the wrecklight.',
     fail: 'It does not chase. That is worse.',
+    tell: ENCOUNTER_TELLS.eclipse_echo,
   },
   {
     id: 'ember_raider',
@@ -287,6 +318,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'Heat-shield paint. They board while the hull is still glowing.',
     win: 'The raider peels. Slag-scored plate and a pay chest.',
     fail: 'They weld a hole in cargo and laugh in the heat.',
+    tell: ENCOUNTER_TELLS.ember_raider,
   },
   {
     id: 'hollow_shade',
@@ -296,6 +328,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'It only exists in peripheral vision. Do not look away on purpose.',
     win: 'The shade unthreads. Cold medals where a body should be.',
     fail: 'It writes a name on the hull. Yours, misspelled.',
+    tell: ENCOUNTER_TELLS.hollow_shade,
   },
   {
     id: 'crown_warden',
@@ -305,6 +338,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'Gold customs with real guns. Reputation is a boarding pass.',
     win: 'The warden salutes and drops a gilt crate. You lived through manners.',
     fail: 'A verdict round kisses the engines. You limp, fined in hull.',
+    tell: ENCOUNTER_TELLS.crown_warden,
   },
   {
     id: 'eclipse_throne',
@@ -314,6 +348,7 @@ export const ENCOUNTERS_V1 = [
     blurb: 'The Swarm wearing a halo. End of the mapped war.',
     win: 'The throne cracks. A core ticks like a second heart.',
     fail: 'It does not kill you. It files you. You leave marked.',
+    tell: ENCOUNTER_TELLS.eclipse_throne,
   },
 ];
 
