@@ -137,13 +137,13 @@ async function run(width, height, reduced = false) {
     await page.evaluate(`document.querySelector('.contract-card[data-profile="risky"]').scrollIntoView({block:'center'})`);
     scenario.measurements.push(await page.measure('board-risky', '.contract-card[data-profile="risky"]'));
     assert.ok(scenario.measurements.at(-1).scope.y >= 58 && scenario.measurements.at(-1).scope.bottom <= scenario.measurements.at(-1).navTop, 'risky card clipped in overview');
-    scenario.screenshots.push(await page.capture(`encounter-intelligence-board-${name}.png`));
+    scenario.screenshots.push(await page.capture(`encounter-intelligence-board-${reduced ? 'reduced-' : ''}${name}.png`));
     await page.click('.contract-card[data-profile="risky"] [data-act="contract-review"]');
     scenario.measurements.push(await page.measure('review', '.contract-sheet'));
     scenario.reviewAccessibleLabel = await page.evaluate(`document.querySelector('.contract-sheet [data-act="contract-accept"]').getAttribute('aria-label')`);
     assert.ok(scenario.reviewAccessibleLabel.includes(scenario.measurements.at(-1).payout), 'review accessible payout mismatch');
     assert.equal(scenario.measurements.at(-2).payout, scenario.measurements.at(-1).payout, 'board/review payout mismatch');
-    scenario.screenshots.push(await page.capture(`encounter-intelligence-review-${name}.png`));
+    scenario.screenshots.push(await page.capture(`encounter-intelligence-review-${reduced ? 'reduced-' : ''}${name}.png`));
     await page.click('[data-act="contract-accept"]');
     await page.click('[data-view="contracts"]');
     await page.click('[data-action="launch"]');
