@@ -5,9 +5,10 @@ import { buildCombatBalanceMatrix, renderCombatBalanceMarkdown } from '../src/si
 
 const report = runEconomySeedSet();
 if (report.runs.some(run => !run.reconciliation.ok)) throw new Error('Economy ledger failed conservation');
+const runtimeEvidence = await readFile('docs/qa/2026-09-22-encounter-runtime-evidence.md', 'utf8');
 const outputs = [
   ['docs/qa/artifacts/contract-economy-30-day.json', JSON.stringify(report, null, 2) + '\n'],
-  ['docs/qa/2026-09-22-encounter-balance-evidence.md', renderCombatBalanceMarkdown(buildCombatBalanceMatrix()) + '\n' + renderEconomyMarkdown(report)],
+  ['docs/qa/2026-09-22-encounter-balance-evidence.md', renderCombatBalanceMarkdown(buildCombatBalanceMatrix()) + '\n' + renderEconomyMarkdown(report) + '\n' + runtimeEvidence],
 ];
 for (const [path, content] of outputs) {
   await mkdir(dirname(path), { recursive: true });

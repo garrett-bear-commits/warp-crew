@@ -4,9 +4,10 @@ import { buildCombatBalanceMatrix, renderCombatBalanceMarkdown } from '../src/si
 import { runEconomySeedSet, renderEconomyMarkdown } from '../src/sim/contractEconomy.js';
 
 const matrix = buildCombatBalanceMatrix();
+const runtimeEvidence = await readFile('docs/qa/2026-09-22-encounter-runtime-evidence.md', 'utf8');
 const outputs = [
   ['docs/qa/artifacts/encounter-balance-matrix.json', JSON.stringify(matrix, null, 2) + '\n'],
-  ['docs/qa/2026-09-22-encounter-balance-evidence.md', renderCombatBalanceMarkdown(matrix) + '\n' + renderEconomyMarkdown(runEconomySeedSet())],
+  ['docs/qa/2026-09-22-encounter-balance-evidence.md', renderCombatBalanceMarkdown(matrix) + '\n' + renderEconomyMarkdown(runEconomySeedSet()) + '\n' + runtimeEvidence],
 ];
 
 for (const [path, content] of outputs) {
