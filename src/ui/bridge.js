@@ -37,6 +37,7 @@ import { renderMissionSwitcher, renderContractBoard, renderContractReview, rende
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
 import { makeCamera, focusCamera, resizeCamera, zoomAt } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
+import { artUrl } from '../shared/artUrl.js';
 
 const NAV_ICO = {
   ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
@@ -149,6 +150,16 @@ function bindOnce(root) {
 function bindCamera(root) {
   const stage = root.querySelector('.stage');
   const fit = root.querySelector('.ship-fit');
+  const hull = fit.querySelector('.sparrow-hull');
+  hull.addEventListener('error', () => {
+    if (!hull.dataset.fallback) {
+      hull.dataset.fallback = '1';
+      hull.src = artUrl('art/pixel/ships/sparrow-cutaway.jpg');
+    } else {
+      hull.style.display = 'none';
+      fit.style.background = '#1b2941';
+    }
+  });
   const size = () => ({ w: stage.clientWidth || 390, h: stage.clientHeight || 620 });
   root._wcCamera = makeCamera(size(), { w: 1152, h: 1728 });
   root._wcSetCamera = camera => {
@@ -307,8 +318,8 @@ function patchShell(root, ctx) {
     && (coachStep.cta || coachStep.body);
   setSlot(root, 'coach', showCoach ? renderSessionGuidance(player, now) : '');
 
-  attachSpace(root.querySelector('[data-slot="space"]'));
-  attachCombat(root.querySelector('[data-slot="combat"]'), root.querySelector('.stage'));
+  attachSpace(root.querySelector('[data-slot="space"]'), () => root._wcCamera, 77);
+  attachCombat(root.querySelector('[data-slot="combat"]'), root.querySelector('.stage'), () => root._wcCamera);
   syncCrewLayer(root.querySelector('[data-slot="crew"]'), player);
 
   if (!isHome) {

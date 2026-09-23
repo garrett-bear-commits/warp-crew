@@ -1,16 +1,12 @@
 // @ts-nocheck
 import { SPACE_ART } from '../data/portraits.js';
 import { onTick } from './stageLoop.js';
+import { effectScreenPoint, visibleLandmarks } from './worldProjection.js';
 
-let canvas = null;
-let ctx = null;
-let w = 0;
-let h = 0;
-let dpr = 1;
-let started = false;
-let motionQuery = null;
-let clock = 0;
-let launch = null;
+let canvas = null, ctx = null, w = 0, h = 0, dpr = 1, started = false;
+let motionQuery = null, getCamera = null, landmarkSeed = 77, launch = null, clock = 0;
+const rocks = [];
+const images = Object.create(null);
 
 /** Presentation only; callers invoke this after the launch save commits. */
 export function playLaunch({ onDone } = {}) {
@@ -18,22 +14,13 @@ export function playLaunch({ onDone } = {}) {
   if (canvas) canvas.dataset.flight = motionQuery?.matches ? 'static' : 'departing';
 }
 
-const stars = [];
-const rocks = [];
-const bodies = [];
-const imgs = Object.create(null);
-let spawnPlanet = 4;
-let spawnIce = 14;
-let spawnNebula = 8;
-let spawnHole = 22;
-
 function load(src) {
   if (!src) return null;
-  if (imgs[src]) return imgs[src];
-  const im = new Image();
-  im.src = src;
-  imgs[src] = im;
-  return im;
+  if (images[src]) return images[src];
+  const image = new Image();
+  image.src = src;
+  images[src] = image;
+  return image;
 }
 
 function resize() {
@@ -42,94 +29,95 @@ function resize() {
   w = Math.max(1, rect.width);
   h = Math.max(1, rect.height);
   dpr = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = (w * dpr) | 0;
-  canvas.height = (h * dpr) | 0;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
   ctx = canvas.getContext('2d');
-  if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-function seedStars() {
-  stars.length = 0;
-  const n = 110;
-  for (let i = 0; i < n; i++) {
-    stars.push({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      z: Math.random(),
-      s: Math.random() < 0.12 ? 1.6 : 1,
+function drawImageOrFallback(g, image, point, size, fallback) {
+  if (image?.complete && image.naturalWidth) {
+    g.drawImage(image, point.x - size / 2, point.y - size / 2, size, size);
+  } else fallback();
+}
+
+function drawLandmarks(g, camera) {
+  const items = visibleLandmarks(landmarkSeed, camera);
+  for (const item of items.filter(item => item.kind === 'nebula')) {
+    const point = effectScreenPoint(camera, item);
+    const size = item.size * camera.scale;
+    g.save();
+    g.globalAlpha = 0.3;
+    drawImageOrFallback(g, load(SPACE_ART.nebula), point, size, () => {
+      const glow = g.createRadialGradient(point.x, point.y, 0, point.x, point.y, size / 2);
+      glow.addColorStop(0, 'rgba(88,67,146,0.5)');
+      glow.addColorStop(1, 'rgba(88,67,146,0)');
+      g.fillStyle = glow;
+      g.fillRect(point.x - size / 2, point.y - size / 2, size, size);
     });
+    g.restore();
+  }
+  for (const item of items) {
+    const point = effectScreenPoint(camera, item);
+    if (item.kind === 'star') {
+      const twinkle = motionQuery?.matches ? 1 : 0.85 + Math.sin(clock * 1.2 + item.depth * 23) * 0.15;
+      g.fillStyle = `rgba(215,231,255,${(0.28 + item.depth * 0.7) * twinkle})`;
+      const size = Math.max(0.7, item.size * camera.scale * 2);
+      g.fillRect(point.x, point.y, size, launch && !motionQuery?.matches ? size * 6 : size);
+    } else if (item.kind === 'planet' || item.kind === 'ice' || item.kind === 'hole') {
+      const size = item.size * camera.scale;
+      const src = item.kind === 'planet' ? SPACE_ART.planet
+        : item.kind === 'ice' ? SPACE_ART.planetIce : SPACE_ART.blackhole;
+      drawImageOrFallback(g, load(src), point, size, () => {
+        g.fillStyle = item.kind === 'planet' ? '#455683'
+          : item.kind === 'ice' ? '#9ecadd' : '#12101f';
+        g.beginPath();
+        g.arc(point.x, point.y, size * 0.42, 0, Math.PI * 2);
+        g.fill();
+      });
+    }
   }
 }
 
-function seedRocks() {
-  rocks.length = 0;
-  for (let i = 0; i < 3; i++) {
-    rocks.push(makeRock(true));
-  }
-}
-
-function makeRock(anywhere) {
+function spawnRock(camera) {
+  const world = camera.world || { w: 1152, h: 1728 };
   const src = SPACE_ART.asteroids[(Math.random() * SPACE_ART.asteroids.length) | 0];
-  return {
-    kind: 'rock',
-    img: load(src),
-    x: Math.random() * w,
-    y: anywhere ? Math.random() * h : -40,
-    s: 18 + Math.random() * 28,
-    vy: 22 + Math.random() * 26,
-    rot: Math.random() * 6,
-    vr: (Math.random() - 0.5) * 0.4,
-    a: 0.55 + Math.random() * 0.3,
-  };
+  rocks.push({
+    worldX: Math.random() * world.w, worldY: -60,
+    size: 35 + Math.random() * 45, speed: 50 + Math.random() * 40,
+    rotation: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 0.4,
+    image: load(src),
+  });
 }
 
-function makeBody(kind) {
-  if (kind === 'planet') {
-    return {
-      kind,
-      img: load(SPACE_ART.planet),
-      x: w * (0.08 + Math.random() * 0.2),
-      y: -120,
-      s: 92 + Math.random() * 50,
-      vy: 48 + Math.random() * 28,
-      a: 0.95,
-    };
+function drawRocks(g, camera, dt) {
+  if (!motionQuery?.matches && rocks.length < 3 && Math.random() < dt * 0.6) spawnRock(camera);
+  for (let i = rocks.length - 1; i >= 0; i--) {
+    const rock = rocks[i];
+    rock.worldY += rock.speed * dt;
+    rock.rotation += rock.spin * dt;
+    if (rock.worldY > (camera.world?.h || 1728) + 100) {
+      rocks.splice(i, 1);
+      continue;
+    }
+    const point = effectScreenPoint(camera, rock);
+    const size = rock.size * camera.scale;
+    g.save();
+    g.translate(point.x, point.y);
+    g.rotate(rock.rotation);
+    g.globalAlpha = 0.7;
+    drawImageOrFallback(g, rock.image, { x: 0, y: 0 }, size, () => {
+      g.fillStyle = '#6a6e78';
+      g.beginPath();
+      g.arc(0, 0, size * 0.35, 0, Math.PI * 2);
+      g.fill();
+    });
+    g.restore();
   }
-  if (kind === 'ice') {
-    return {
-      kind,
-      img: load(SPACE_ART.planetIce),
-      x: w * (0.62 + Math.random() * 0.22),
-      y: -80,
-      s: 52 + Math.random() * 28,
-      vy: 56 + Math.random() * 34,
-      a: 0.92,
-    };
-  }
-  if (kind === 'nebula') {
-    return {
-      kind,
-      img: load(SPACE_ART.nebula),
-      x: w * 0.5,
-      y: -160,
-      s: Math.max(w, h) * (0.7 + Math.random() * 0.25),
-      vy: 7 + Math.random() * 6,
-      a: 0.38,
-    };
-  }
-  return {
-    kind: 'hole',
-    img: load(SPACE_ART.blackhole),
-    x: w * (0.18 + Math.random() * 0.64),
-    y: -90,
-    s: 70 + Math.random() * 40,
-    vy: 9 + Math.random() * 7,
-    a: 0.85,
-  };
 }
 
 function tick(sim, dt) {
-  if (!canvas || !ctx || !w) return;
+  if (!canvas || !ctx || !getCamera) return;
   if (launch) {
     launch.remaining -= dt;
     canvas.dataset.flight = motionQuery?.matches ? 'static' : 'departing';
@@ -140,7 +128,6 @@ function tick(sim, dt) {
       done?.();
     }
   }
-  // Keep drawing loaded art and resizes, but freeze decorative ambient travel.
   if (motionQuery?.matches) dt = 0;
   else if (launch) dt *= 6;
   clock += dt;
@@ -148,132 +135,24 @@ function tick(sim, dt) {
   g.clearRect(0, 0, w, h);
   g.fillStyle = '#03050c';
   g.fillRect(0, 0, w, h);
-
-  const nebula = bodies.find((b) => b.kind === 'nebula');
-  if (nebula) drawBody(g, nebula);
-
-  // far stars
-  g.fillStyle = '#d7e7ff';
-  for (const s of stars) {
-    const spd = 6 + s.z * 10;
-    s.y += spd * dt;
-    if (s.y > h + 2) {
-      s.y = -2;
-      s.x = Math.random() * w;
-    }
-    const a = 0.28 + s.z * 0.7;
-    g.globalAlpha = a;
-    const sz = s.s * (0.6 + s.z * 0.8);
-    g.fillRect(s.x, s.y, sz, launch && !motionQuery?.matches ? sz * 6 : sz);
-  }
-  g.globalAlpha = 1;
-
-  spawnPlanet -= dt;
-  spawnIce -= dt;
-  spawnNebula -= dt;
-  spawnHole -= dt;
-  if (spawnPlanet <= 0 && !bodies.some((b) => b.kind === 'planet')) {
-    bodies.push(makeBody('planet'));
-    spawnPlanet = 18 + Math.random() * 22;
-  }
-  if (spawnIce <= 0 && !bodies.some((b) => b.kind === 'ice')) {
-    bodies.push(makeBody('ice'));
-    spawnIce = 28 + Math.random() * 34;
-  }
-  if (spawnNebula <= 0 && !bodies.some((b) => b.kind === 'nebula')) {
-    bodies.push(makeBody('nebula'));
-    spawnNebula = 48 + Math.random() * 40;
-  }
-  if (spawnHole <= 0 && !bodies.some((b) => b.kind === 'hole')) {
-    bodies.push(makeBody('hole'));
-    spawnHole = 70 + Math.random() * 50;
-  }
-
-  if (rocks.length < 3 && Math.random() < dt * 0.25) rocks.push(makeRock(false));
-
-  for (let i = bodies.length - 1; i >= 0; i--) {
-    const b = bodies[i];
-    if (b.kind === 'nebula') continue;
-    b.y += b.vy * dt;
-    drawBody(g, b);
-    if (b.y - b.s > h + 40) bodies.splice(i, 1);
-  }
-  if (nebula) {
-    nebula.y += nebula.vy * dt;
-    if (nebula.y - nebula.s > h + 80) {
-      const i = bodies.indexOf(nebula);
-      if (i >= 0) bodies.splice(i, 1);
-    }
-  }
-
-  for (let i = rocks.length - 1; i >= 0; i--) {
-    const r = rocks[i];
-    r.y += r.vy * dt;
-    r.rot += r.vr * dt;
-    drawRock(g, r);
-    if (r.y - r.s > h + 20) rocks.splice(i, 1);
-  }
+  const camera = getCamera();
+  if (!camera) return;
+  drawLandmarks(g, camera);
+  drawRocks(g, camera, dt);
 }
 
-function drawBody(g, b) {
-  const im = b.img;
-  if (!im || !im.complete || !im.naturalWidth) return;
-  g.save();
-  g.globalAlpha = b.a;
-  g.translate(b.x, b.y);
-  const iw = im.naturalWidth;
-  const ih = im.naturalHeight;
-  const sc = b.s / Math.max(iw, ih);
-  g.drawImage(im, (-iw * sc) / 2, (-ih * sc) / 2, iw * sc, ih * sc);
-  g.restore();
-}
-
-function drawRock(g, r) {
-  const im = r.img;
-  g.save();
-  g.translate(r.x, r.y);
-  g.rotate(r.rot);
-  g.globalAlpha = r.a;
-  if (im && im.complete && im.naturalWidth) {
-    g.drawImage(im, -r.s / 2, -r.s / 2, r.s, r.s);
-  } else {
-    g.fillStyle = '#6a6e78';
-    g.beginPath();
-    g.arc(0, 0, r.s * 0.35, 0, Math.PI * 2);
-    g.fill();
-  }
-  g.restore();
-}
-
-export function attachSpace(el) {
+export function attachSpace(el, cameraGetter, seed = 77) {
   if (!el) return;
+  getCamera = cameraGetter;
+  landmarkSeed = seed;
   if (!motionQuery) motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
-  if (canvas === el && started) {
-    resize();
-    return;
-  }
+  if (canvas === el && started) return;
   canvas = el;
   resize();
   if (!el._wcRo) {
-    el._wcRo = new ResizeObserver(() => resize());
+    el._wcRo = new ResizeObserver(resize);
     el._wcRo.observe(el);
   }
-  if (!stars.length) seedStars();
-  if (!rocks.length) seedRocks();
-  if (!bodies.length && w) {
-    const p = makeBody('planet');
-    p.y = h * 0.18;
-    bodies.push(p);
-    const n = makeBody('nebula');
-    n.y = h * 0.35;
-    n.a = 0.32;
-    bodies.push(n);
-  }
-  load(SPACE_ART.planet);
-  load(SPACE_ART.planetIce);
-  load(SPACE_ART.nebula);
-  load(SPACE_ART.blackhole);
-  SPACE_ART.asteroids.forEach(load);
   if (!started) {
     started = true;
     onTick(tick);
@@ -284,4 +163,5 @@ export function attachSpace(el) {
 export function stopSpace() {
   canvas = null;
   ctx = null;
+  getCamera = null;
 }

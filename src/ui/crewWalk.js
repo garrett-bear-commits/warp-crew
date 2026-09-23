@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAtExact, pathRooms } from '../data/starterShip.js';
 import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
-import { sheetFor, walkAssetFor, WALK_FRAMES } from './crewArt.js';
+import { walkAssetFor, WALK_FRAMES } from './crewArt.js';
 import { crewPoseForActor, motionPolicy } from './crewAnimation.js';
 import { onTick } from './stageLoop.js';
 
@@ -10,7 +10,6 @@ let canvas = null;
 let ctx = null;
 let w = 0;
 let h = 0;
-let dpr = 1;
 let clock = 0;
 let started = false;
 let battle = false;
@@ -265,15 +264,17 @@ function stepAgent(a, dt, animateFrames = true) {
 
 function resize() {
   if (!canvas) return;
-  const rect = canvas.getBoundingClientRect();
-  w = Math.max(1, rect.width);
-  h = Math.max(1, rect.height);
-  dpr = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = (w * dpr) | 0;
-  canvas.height = (h * dpr) | 0;
+  // The canvas lives inside the already transformed 1152×1728 world layer.
+  // Its bitmap must use world pixels; measuring the transformed rect applies
+  // the camera scale to crew and thrusters a second time.
+  w = 1152;
+  h = 1728;
+  if (canvas.width === w && canvas.height === h && ctx) return;
+  canvas.width = w;
+  canvas.height = h;
   ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
   }
 }
@@ -380,30 +381,13 @@ function drawAgent(g, a) {
       destination.height
     );
   } else {
-    const sheet = sheetFor(a.templateId, a.role);
-    if (sheet) {
-      g.imageSmoothingEnabled = false;
-      const iw = 32;
-      g.drawImage(
-        Object.assign(new Image(), { src: sheet.url }),
-        0,
-        0,
-        iw,
-        iw,
-        destination.x,
-        destination.y,
-        destination.width,
-        destination.height
-      );
-    } else {
-      g.fillStyle = '#5ce1ff';
-      g.fillRect(
-        destination.x + destination.width * 0.28,
-        destination.y + destination.height * 0.3,
-        destination.width * 0.44,
-        destination.height * 0.7
-      );
-    }
+    g.fillStyle = '#5ce1ff';
+    g.fillRect(
+      destination.x + destination.width * 0.28,
+      destination.y + destination.height * 0.3,
+      destination.width * 0.44,
+      destination.height * 0.7
+    );
   }
   g.restore();
   g.__wcActorInstanceId = null;
