@@ -11,7 +11,8 @@
     "test:loop": "node test/combat_orders.test.mjs && node test/contract_board.test.mjs && node test/contract_route.test.mjs && node test/tutorial_v3.test.mjs && node test/expedition_party.test.mjs && node test/contract_ui.test.mjs && node test/daily_loop.test.mjs && node test/contract_ship_feedback.test.mjs && node test/session_loop.test.mjs && node test/explore_orders.test.mjs && node test/dialog_focus.test.mjs && node --test test/final_review.test.mjs",
     "test:ship": "node test/ship_layout.test.mjs && node test/ship_pathing.test.mjs && node test/crew_animation.test.mjs && node test/ship_view.test.mjs && node test/ship_debug.test.mjs",
     "start": "vite --host --port 5173",
-    "build:pages": "GITHUB_PAGES=1 vite build"
+    "build:pages": "GITHUB_PAGES=1 vite build",
+    "report:contract-balance": "node scripts/contract-balance-report.mjs"
   },
   "devDependencies": {
     "vite": "^6.0.0"
