@@ -47,6 +47,7 @@ import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
 import { cancelCrewDeparture, holdCrewForDeparture, moveCrewToDeparture, holdCrewForArrival, moveCrewToArrival, stopCrewSim } from './ui/crewWalk.js';
 import { playLaunch } from './ui/spaceFlight.js';
 import { playCombat, playEncounterBeat, isBattlePlaying } from './ui/combatView.js';
+import { createGuidedBeatScheduler } from './ui/guidedBeatScheduler.js';
 import { sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
 import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
@@ -72,7 +73,6 @@ let toastTimer = 0;
 let departureInFlight = false;
 let departureRunId = 0;
 let shipSequence = null;
-let guidedBeatTimer = 0;
 let essentialProgress = 0;
 let essentialReady = false;
 let essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
@@ -401,18 +401,13 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
   return { registered: Boolean(after?.registered), username: after?.username };
 }
 
-function scheduleGuidedBeat() {
-  if (guidedBeatTimer || !app || player?.tutorial?.script !== 4 || player.tutorial.phase !== 'fight'
-    || !player.activeEncounter?.orders?.brace?.used || player.activeEncounter.result) return;
-  guidedBeatTimer = setTimeout(async () => {
-    guidedBeatTimer = 0;
-    if (!app || player?.tutorial?.script !== 4 || player.tutorial.phase !== 'fight'
-      || !player.activeEncounter?.orders?.brace?.used || player.activeEncounter.result) return;
-    if (isBattlePlaying()) { scheduleGuidedBeat(); return; }
-    const { acceptanceId, revision } = player.activeEncounter;
-    await handleAction('encounter-advance', { acceptanceId, revision });
-  }, 420);
-}
+const guidedBeatScheduler = createGuidedBeatScheduler({
+  getPlayer: () => app ? player : null,
+  advance: data => handleAction('encounter-advance', data),
+  isBattlePlaying,
+});
+
+function scheduleGuidedBeat() { guidedBeatScheduler.schedule(); }
 
 function doHire({ gems = false, ten = false } = {}) {
   if (!isFeatureUnlocked(player, 'gacha')) {
@@ -849,8 +844,7 @@ export function mountWarpCrew(rootEl) {
   });
   return () => {
     if (mountId === gen) app = null;
-    if (guidedBeatTimer) clearTimeout(guidedBeatTimer);
-    guidedBeatTimer = 0;
+    guidedBeatScheduler.cancel();
     stopCrewSim();
   };
 }

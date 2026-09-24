@@ -117,9 +117,11 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
       models.activeContractView.encounter = {
         acceptanceId: encounter.acceptanceId,
         revision: encounter.revision,
+        version: encounter.version,
         beat: encounter.beat,
         kind: encounter.kind,
         braceUsed: encounter.orders.brace.used,
+        targetWeaponsUsed: encounter.orders.targetWeapons?.used === true,
         result: encounter.result,
         lossReason: encounter.lossReason,
         hull: encounter.hull,
@@ -127,6 +129,8 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         systems: encounter.systems,
         enemyHull: encounter.enemy.hull,
         target: encounter.orderWindow?.target || encounter.enemy.target,
+        weaponDisabled: encounter.version === 2 && encounter.enemy.weaponDisabledThroughBeat > 0
+          && encounter.enemy.weaponDisabledThroughBeat >= encounter.beat,
         beatsToImpact: encounter.orderWindow?.beatsToImpact
           || (encounter.beat > 0 && encounter.enemy.pattern === 'charging_volley' ? 3 - (encounter.beat % 3) : null),
         outputs: encounter.outputs,
