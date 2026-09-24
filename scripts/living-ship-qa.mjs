@@ -1,16 +1,59 @@
 /** Isolated Chrome DevTools Protocol QA of script-5 first play and saved script 4. */
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createNewPlayer } from '../src/systems/player.js';
 import { prepareSession, sessionAction } from '../src/systems/sessionLoop.js';
+import { routeToWorkAnchor } from '../src/data/shipRoutes.js';
+import { SPARROW_LAYOUT } from '../src/data/starterShip.js';
 
 const cdpUrl = process.env.QA_CDP || 'http://127.0.0.1:9342';
 const pageUrl = process.env.QA_URL || 'http://127.0.0.1:4173/?fresh=1';
+const sourceCommit = process.env.QA_SOURCE_COMMIT;
 const captureDir = new URL('../.superpowers/sdd/2026-09-24-captain-first-play-combat/captures/', import.meta.url);
 await mkdir(captureDir, { recursive: true });
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
+const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
+
+async function verifyBuild() {
+  assert.match(sourceCommit || '', /^[0-9a-f]{40}$/, 'QA_SOURCE_COMMIT must be an exact 40-character source commit');
+  assert.equal(git('rev-parse', '--verify', `${sourceCommit}^{commit}`), sourceCommit, 'source commit does not resolve');
+  const builtPaths = ['src', 'public', 'index.html', 'package.json', 'vite.config.js'];
+  assert.equal(git('diff', '--name-only', sourceCommit, '--', ...builtPaths), '', 'production source differs from QA_SOURCE_COMMIT');
+  const buildOutput = execFileSync('npm', ['run', 'build:pages'], { encoding: 'utf8' });
+  assert.match(buildOutput, /built in /, 'Pages build did not complete');
+  const localIndex = await readFile(new URL('../dist/index.html', import.meta.url));
+  const indexText = localIndex.toString('utf8');
+  const jsPath = indexText.match(/<script type="module"[^>]+src="([^"]+\.js)"/)?.[1];
+  const cssPath = indexText.match(/<link rel="stylesheet"[^>]+href="([^"]+\.css)"/)?.[1];
+  assert.ok(jsPath && cssPath, 'Pages index must identify its JS and CSS assets');
+  const assets = [{ path: 'index.html', local: new URL('../dist/index.html', import.meta.url), served: new URL(pageUrl) },
+    ...[jsPath, cssPath].map(path => ({ path, local: new URL(path, new URL('../dist/', import.meta.url)), served: new URL(path, pageUrl) }))];
+  const hashes = [];
+  for (const asset of assets) {
+    const localBytes = await readFile(asset.local);
+    const response = await fetch(asset.served);
+    assert.equal(response.status, 200, `served ${asset.path} missing`);
+    const servedBytes = Buffer.from(await response.arrayBuffer());
+    const localHash = sha256(localBytes);
+    const servedHash = sha256(servedBytes);
+    assert.equal(servedHash, localHash, `served ${asset.path} differs from freshly built dist`);
+    hashes.push({ path: asset.path, servedUrl: asset.served.href, sha256: localHash, bytes: localBytes.length });
+  }
+  return { sourceCommit, buildCommand: 'npm run build:pages', assets: hashes };
+}
+
+const provenance = await verifyBuild();
 const browser = await (await fetch(`${cdpUrl}/json/version`)).json();
-const report = { browser: browser.Browser, pageUrl, sourceCommit: process.env.QA_SOURCE_COMMIT || null, screens: [], checks: {} };
+const report = { browser: browser.Browser, pageUrl, provenance, screens: [], checks: {} };
+const arrivalRoute = routeToWorkAnchor(SPARROW_LAYOUT.anchors.airlock, 'workshop');
+assert.equal(arrivalRoute.ok, true, 'first hire must have a walkable airlock-to-workshop route');
+assert.ok(arrivalRoute.points.some(point => point.via === 'door-enter' && point.room === 'workshop'), 'first hire route must enter the workshop through its door');
+report.checks.crewRoute = { start: SPARROW_LAYOUT.anchors.airlock, end: arrivalRoute.points.at(-1),
+  waypoints: arrivalRoute.points.length, doors: arrivalRoute.points.filter(point => point.via),
+  points: arrivalRoute.points.map(point => ({ x: point.x, y: point.y, room: point.room || 'hall', via: point.via || null })) };
 
 async function openPage(width, height, reduced = false) {
   const target = await (await fetch(`${cdpUrl}/json/new?about:blank`, { method: 'PUT' })).json();
@@ -74,6 +117,10 @@ async function openPage(width, height, reduced = false) {
       splash: document.querySelector('.splash-scene img')?.getAttribute('src') || null,
       artLoaded: document.querySelector('.splash-scene img')?.naturalWidth || null,
       images: [...document.querySelectorAll('img')].filter(el => { const r = el.getBoundingClientRect(); return r.width && r.height; }).map(el => ({ src: el.getAttribute('src'), naturalWidth: el.naturalWidth, naturalHeight: el.naturalHeight, displayWidth: Math.round(el.getBoundingClientRect().width) })),
+      visualViewport: { width: Math.round(window.visualViewport?.width || innerWidth), height: Math.round(window.visualViewport?.height || innerHeight) },
+      safeAreaInsets: (() => { const el = document.createElement('div'); el.style.cssText = 'position:fixed;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)'; document.body.append(el); const s = getComputedStyle(el); const insets = { top: parseFloat(s.paddingTop), right: parseFloat(s.paddingRight), bottom: parseFloat(s.paddingBottom), left: parseFloat(s.paddingLeft) }; el.remove(); return insets; })(),
+      primaryRect: (() => { const r = document.querySelector('[data-primary-pulse]')?.getBoundingClientRect(); return r && { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; })(),
+      spotlight: (() => { const el = document.querySelector('.first-session-spotlight'); const target = el?.querySelector('[data-spotlight-target]'); if (!el || !target) return null; const r = target.getBoundingClientRect(); const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); const scrim = getComputedStyle(el, '::before'); return { targetHit: hit === target || target.contains(hit), targetZ: getComputedStyle(target).zIndex, scrimZ: scrim.zIndex, scrimPointerEvents: scrim.pointerEvents, scrimPosition: scrim.position, scrimInset: [scrim.top, scrim.right, scrim.bottom, scrim.left] }; })(),
       bottomNav: (() => { const r = document.querySelector('.bottom-nav')?.getBoundingClientRect(); return r && { top: Math.round(r.top), bottom: Math.round(r.bottom) }; })(),
       activeDialog: (() => { const r = document.querySelector('[role="dialog"]')?.getBoundingClientRect(); return r && { top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; })(),
       visibleButtons: [...document.querySelectorAll('button')].filter(el => { const r = el.getBoundingClientRect(); return r.width && r.height && getComputedStyle(el).visibility !== 'hidden'; }).map(el => ({ label: (el.innerText || el.ariaLabel || '').trim().slice(0, 40), action: el.dataset.act || null, disabled: el.disabled, width: Math.round(el.getBoundingClientRect().width), height: Math.round(el.getBoundingClientRect().height) })),
@@ -82,7 +129,7 @@ async function openPage(width, height, reduced = false) {
       pulseAnimations: [...document.querySelectorAll('[data-primary-pulse]')].map(el => getComputedStyle(el).animationName),
       badges: [...document.querySelectorAll('.attention-dot, .nav-badge, [data-attention]')].map(el => el.outerHTML.slice(0, 160)),
       reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-      save: (() => { const p = JSON.parse(localStorage.getItem('warpcrew.save.v2') || '{}').player; return p && { script: p.tutorial?.script, phase: p.tutorial?.phase, crew: p.crew?.map(c => ({ id: c.templateId, name: c.name, captain: c.isCaptain, rarity: c.rarity })), credits: p.wallet?.credits, fuel: p.wallet?.fuel, pulls: p.gacha?.pulls, contract: p.activeContract?.stage, encounterVersion: p.activeEncounter?.version, encounterResult: p.activeEncounter?.result, targetUsed: p.activeEncounter?.orders?.targetWeapons?.used, braceUsed: p.activeEncounter?.orders?.brace?.used }; })(),
+      save: (() => { const p = JSON.parse(localStorage.getItem('warpcrew.save.v2') || '{}').player; return p && { script: p.tutorial?.script, phase: p.tutorial?.phase, crew: p.crew?.map(c => ({ id: c.templateId, name: c.name, captain: c.isCaptain, rarity: c.rarity })), credits: p.wallet?.credits, fuel: p.wallet?.fuel, pulls: p.gacha?.pulls, contract: p.activeContract?.stage, encounterVersion: p.activeEncounter?.version, encounterResult: p.activeEncounter?.result, hull: p.activeEncounter?.hull, shield: p.activeEncounter?.shield, enemyHull: p.activeEncounter?.enemy?.hull, targetUsed: p.activeEncounter?.orders?.targetWeapons?.used, braceUsed: p.activeEncounter?.orders?.brace?.used }; })(),
       text: document.body.innerText.slice(0, 500) }))()`);
     assert.ok(metrics.scrollWidth <= width, `${label}: horizontal overflow ${metrics.scrollWidth}>${width}`);
     assert.equal(metrics.reducedMotion, reduced, `${label}: media emulation mismatch`);
@@ -91,6 +138,11 @@ async function openPage(width, height, reduced = false) {
     assert.ok(metrics.visibleButtons.every(button => button.disabled || (button.width >= 44 && button.height >= 44)), `${label}: enabled button below 44px`);
     assert.ok(metrics.requiredText.every(item => item.fontSize >= 16), `${label}: required text below 16px`);
     assert.ok(metrics.requiredText.filter(item => item.instruction).every(item => item.fontSize >= 18), `${label}: instruction text below 18px`);
+    if (metrics.spotlight) {
+      assert.equal(metrics.spotlight.targetHit, true, `${label}: spotlight action is occluded`);
+      assert.equal(metrics.spotlight.scrimPointerEvents, 'auto', `${label}: spotlight background is not intercepted`);
+      assert.equal(metrics.spotlight.scrimPosition, 'fixed', `${label}: spotlight scrim is not viewport-bound`);
+    }
     report.screens.push({ label, filename, reduced, ...metrics });
     return metrics;
   };
@@ -138,6 +190,14 @@ async function play(width, height, reduced = false) {
     const assign = await page.capture('assign');
     assert.equal(assign.save.crew.length, 2);
     assert.equal(assign.save.crew[1].id, 'merc_jen');
+    if (width === 390 && !reduced) {
+      await wait(800);
+      await page.capture('arrival-mid');
+      await wait(1400);
+      await page.capture('arrival-door');
+      await wait(1800);
+      await page.capture('arrival-workstation');
+    }
     const introReloadUrl = await page.evaluate('location.href');
     assert.equal(new URL(introReloadUrl).searchParams.has('fresh'), false, 'intro refresh must not repeat fresh clear');
     await page.send('Page.navigate', { url: introReloadUrl });
@@ -149,7 +209,19 @@ async function play(width, height, reduced = false) {
     assert.equal(introReload.save.crew[0].name, 'QA Aster');
     await page.click('.first-session-cue [data-act="station-assign"][data-station="weapons"]');
     await page.until('Boolean(document.querySelector(\'[data-act="tutorial-fight-start"]\'))');
-    await page.capture('distress');
+    const distress = await page.capture('distress');
+    assert.equal(distress.spotlight?.targetHit, true);
+    if (width === 390 && !reduced) {
+      const before = await page.evaluate(`(() => { const x = 24, y = Math.round(innerHeight * 0.35); const hit = document.elementFromPoint(x, y); return { x, y, hit: hit?.tagName || null, hitClass: typeof hit?.className === 'string' ? hit.className : null, intercepted: Boolean(hit?.closest('.first-session-spotlight')), expanded: document.querySelector('[data-camera="toggle"]')?.getAttribute('aria-expanded') }; })()`);
+      assert.equal(before.intercepted, true, 'viewport background click must hit spotlight scrim');
+      await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: before.x, y: before.y, button: 'left', clickCount: 1 });
+      await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: before.x, y: before.y, button: 'left', clickCount: 1 });
+      const after = await page.evaluate(`(() => ({ expanded: document.querySelector('[data-camera="toggle"]').getAttribute('aria-expanded'), phase: JSON.parse(localStorage.getItem('warpcrew.save.v2')).player.tutorial.phase }))()`);
+      assert.equal(after.expanded, before.expanded, 'spotlight background click must not open camera controls');
+      assert.equal(after.phase, 'fight', 'spotlight background click must not advance tutorial');
+      report.checks.spotlightBackground = { x: before.x, y: before.y, hit: before.hit, hitClass: before.hitClass, intercepted: before.intercepted,
+        cameraBefore: before.expanded, cameraAfter: after.expanded, phaseAfter: after.phase };
+    }
     const fightStarted = Date.now();
     await page.click('[data-act="tutorial-fight-start"]');
     await page.until('Boolean(document.querySelector(\'[data-act="encounter-order"][data-order="target_weapons"]:not([disabled])\'))');
@@ -158,6 +230,11 @@ async function play(width, height, reduced = false) {
     await page.click('[data-act="encounter-order"][data-order="target_weapons"]');
     const ordered = await page.capture('target-ordered');
     assert.equal(ordered.save.targetUsed, true);
+    assert.match(ordered.text, /Pirate weapons disabled|Next pirate volley canceled/);
+    assert.ok(ordered.save.enemyHull < target.save.enemyHull, 'crew shot must lower pirate hull after order');
+    if (width === 390 && !reduced) report.checks.guidedFeedback = {
+      pirateBefore: target.save.enemyHull, pirateAfter: ordered.save.enemyHull,
+      disableVisible: true, shotVisibleInHud: true };
     await page.until('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))', 30000);
     const firstWinSeconds = (Date.now() - sessionStarted) / 1000;
     const fightSeconds = (Date.now() - fightStarted) / 1000;
@@ -221,9 +298,10 @@ async function play(width, height, reduced = false) {
       await page.until('Boolean(document.querySelector(\'[data-act="contract-action"][data-action="push"]\'))');
       await page.click('[data-act="contract-action"][data-action="push"]');
       await page.until('Boolean(document.querySelector(\'[data-act="encounter-advance"], [data-act="encounter-order"]\'))');
-      await page.capture('normal-fight');
+      const normalFight = await page.capture('normal-fight');
       let usedOrder = null;
       let terminal = null;
+      let impact = null;
       for (let beat = 0; beat < 20; beat++) {
         terminal = await page.evaluate(`(() => {
           const p = JSON.parse(localStorage.getItem('warpcrew.save.v2')).player;
@@ -235,10 +313,19 @@ async function play(width, height, reduced = false) {
           await page.click('[data-act="encounter-order"][data-order="target_weapons"]');
           usedOrder = 'target_weapons';
         } else await page.click('[data-act="encounter-advance"]');
+        if (!impact) {
+          const damage = await page.evaluate(`(() => { const e = JSON.parse(localStorage.getItem('warpcrew.save.v2')).player.activeEncounter; return e && { hull: e.hull, shield: e.shield }; })()`);
+          if (damage && (damage.hull < normalFight.save.hull || damage.shield < normalFight.save.shield)) {
+            const frame = await page.capture('normal-impact');
+            impact = { hullBefore: normalFight.save.hull, hullAfter: frame.save.hull,
+              shieldBefore: normalFight.save.shield, shieldAfter: frame.save.shield };
+          }
+        }
       }
       assert.ok(['win', 'loss'].includes(terminal), 'normal job reaches a terminal result');
       await page.capture('normal-result');
-      report.normalJob = { result: terminal, usedOrder };
+      assert.ok(impact, 'normal fight must show a measured ship impact');
+      report.normalJob = { result: terminal, usedOrder, impact };
       if (terminal === 'win') await page.click('[data-act="contract-claim"]');
       else await page.click('[data-act="encounter-recover"]');
     }
@@ -282,7 +369,15 @@ async function legacyV4() {
     await page.click('[data-act="contract-claim"]');
     const claimed = await page.capture('legacy-v4-claimed');
     assert.equal(claimed.save.phase, 'name');
-    report.checks.legacyV4 = { braceUsed: true, version: 1, claimedOnce: true };
+    const claimedCredits = claimed.save.credits;
+    await page.send('Page.navigate', { url: await page.evaluate('location.href') });
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-name"]\'))');
+    const reloaded = await page.capture('legacy-v4-claimed-reload');
+    assert.equal(reloaded.save.credits, claimedCredits);
+    assert.equal(reloaded.save.phase, 'name');
+    assert.equal(await page.evaluate('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))'), false);
+    report.checks.legacyV4 = { braceUsed: true, version: 1, claimedOnce: true,
+      creditsAfterClaim: claimedCredits, creditsAfterReload: reloaded.save.credits, claimActionAfterReload: false };
   } finally { await page.close(); }
 }
 
