@@ -2,6 +2,7 @@
 import { startEncounter, advanceEncounter } from './autoCombat.js';
 import { normalizeAssignments, stationOutputs } from './stations.js';
 import { resolveSimulatedCombatPayout } from './contractRewards.js';
+import { isCanonicalGuidedContract } from './contractState.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
 const numberIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
@@ -89,6 +90,8 @@ function validSnapshot(encounter, contract, tutorial) {
   const entryRevision = contract.profile === 'distress' ? 1
     : contract.profile === 'reliable' && contract.choiceId === 'push' ? 2 : null;
   if (!encounter || contract.encounterMode !== 'crew' || ![1, 2].includes(encounter.version) || encounter.acceptanceId !== contract.acceptanceId
+    || (tutorial?.script === 5 && !tutorial.completed && ['fight', 'claim'].includes(tutorial.phase)
+      && !isCanonicalGuidedContract(contract))
     || entryRevision === null
     || (contract.profile === 'distress'
       && (tutorial?.script === 4 ? encounter.version !== 1
@@ -132,10 +135,9 @@ export function normalizeEncounterState(player) {
   if (!encounter && contract.encounterMode !== 'crew') return player;
   if (validSnapshot(encounter, contract, player.tutorial)) return player;
   const tutorial = player.tutorial;
-  const recoveringGuidedDistress = contract.profile === 'distress'
-    && [4, 5].includes(tutorial?.script) && tutorial.phase === 'fight' && !tutorial.completed;
-  const recoveringGuidedClaim = contract.offerId === 'offer_tutorial_distress' && contract.profile === 'distress'
-    && contract.stage === 'return' && tutorial?.script === 5 && tutorial.phase === 'claim'
+  const recoveringGuidedDistress = ((contract.profile === 'distress' && tutorial?.script === 4)
+    || tutorial?.script === 5) && tutorial.phase === 'fight' && !tutorial.completed;
+  const recoveringGuidedClaim = tutorial?.script === 5 && tutorial.phase === 'claim'
     && !tutorial.completed && !(player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress')
     && !player.flags?.sparrowFirstRepair;
   const paidFuel = Math.min(1, Number.isFinite(contract.fuelSpent) ? Math.max(0, contract.fuelSpent) : 0);

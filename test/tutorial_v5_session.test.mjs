@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { prepareSession, sessionAction, persistSessionTransition } from '../src/systems/sessionLoop.js';
+import { normalizeEncounterState } from '../src/systems/encounterState.js';
 import * as main from '../src/main.js';
 
 const now = Date.UTC(2030, 8, 23, 12);
@@ -252,6 +253,17 @@ test('malformed v5 contract revision keeps paid launch credit on retry', () => {
   assert.equal(retried.player.gacha.pulls, 0);
 });
 
+test('encounter normalization rejects a guided claim with a changed offer ID', () => {
+  const won = guidedWin(staffed());
+  const corrupted = { ...won, activeContract: { ...won.activeContract, offerId: 'bogus' } };
+  const recovered = normalizeEncounterState(corrupted);
+  assert.equal(recovered.activeContract, null);
+  assert.equal(recovered.activeEncounter, null);
+  assert.equal(recovered.tutorial.phase, 'fight');
+  assert.equal(recovered.tutorial.contractRecoveryFuelSpent, 1);
+  assert.deepEqual(recovered.contractBoard.completedOfferIds, []);
+});
+
 for (const [label, corrupt] of [
   ['missing return rewards', player => ({ ...player, activeContract: {
     ...player.activeContract, result: { ...player.activeContract.result, rewards: null },
@@ -259,6 +271,15 @@ for (const [label, corrupt] of [
   ['missing return encounter', player => ({ ...player, activeEncounter: null })],
   ['unsupported return encounter version', player => ({ ...player, activeEncounter: {
     ...player.activeEncounter, version: 3,
+  } })],
+  ['wrong return offer ID', player => ({ ...player, activeContract: {
+    ...player.activeContract, offerId: 'bogus',
+  } })],
+  ['wrong return contract ID', player => ({ ...player, activeContract: {
+    ...player.activeContract, id: 'contract_bogus_distress',
+  } })],
+  ['wrong return acceptance ID', player => ({ ...player, activeContract: {
+    ...player.activeContract, acceptanceId: 'contract_bogus_distress:1',
   } })],
 ]) {
   test(`corrupt v5 claim with ${label} recovers a single paid guided retry`, () => {

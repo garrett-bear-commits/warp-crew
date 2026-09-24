@@ -20,6 +20,20 @@ export function validContractResult(result) {
   );
 }
 
+/** The v5 guided fight must retain its original contract and payout identity. */
+export function isCanonicalGuidedContract(contract) {
+  if (typeof contract?.boardDay !== 'string') return false;
+  const id = `contract_${contract.boardDay}_distress`;
+  return contract.offerId === 'offer_tutorial_distress'
+    && contract.id === id
+    && typeof contract.acceptanceId === 'string'
+    && contract.acceptanceId.startsWith(`${id}:`)
+    && /^[1-9]\d*$/.test(contract.acceptanceId.slice(id.length + 1))
+    && contract.profile === 'distress'
+    && contract.destinationId === 'lane_a'
+    && contract.encounterId === 'pirate_scout';
+}
+
 export function normalizeContractState(player, { nodes, encounterById }) {
   const contract = player?.activeContract;
   if (!contract) return player;
@@ -32,6 +46,8 @@ export function normalizeContractState(player, { nodes, encounterById }) {
       && contract.acceptanceId.startsWith(`${tutorialContractId}:`)
       && /^[1-9]\d*$/.test(contract.acceptanceId.slice(tutorialContractId.length + 1))
       && contract.destinationId === 'lane_a');
+  const activeGuidedV5 = player.tutorial?.script === 5 && !player.tutorial.completed
+    && ['fight', 'claim'].includes(player.tutorial.phase);
   // A resolved payout is self-contained. Catalog retirement must not destroy
   // the committed result merely because the battle can no longer be replayed.
   const encounterValid = contract.stage === 'return'
@@ -49,6 +65,7 @@ export function normalizeContractState(player, { nodes, encounterById }) {
     && typeof contract.acceptanceId === 'string'
     && contract.acceptanceId.length > 0
     && typeof contract.offerId === 'string'
+    && (!activeGuidedV5 || isCanonicalGuidedContract(contract))
     && typeof contract.boardDay === 'string'
     && CONTRACT_PROFILES_IDS.has(contract.profile)
     && (!tutorialIdentity || contract.profile === 'distress')
@@ -72,10 +89,10 @@ export function normalizeContractState(player, { nodes, encounterById }) {
     const tutorial = player.tutorial;
     const recoveringTutorial = tutorialIdentity && tutorial?.script === 3 && !tutorial.completed && !tutorial.dismissed;
     const alreadyRewarded = (player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress') || player.flags?.sparrowFirstRepair;
-    const recoveringGuidedFight = tutorialIdentity && [4, 5].includes(tutorial?.script)
-      && tutorial?.phase === 'fight' && !tutorial.completed;
-    const recoveringGuidedClaim = tutorialIdentity && tutorial?.script === 5 && tutorial?.phase === 'claim'
-      && contract.stage === 'return' && !tutorial.completed && !alreadyRewarded;
+    const recoveringGuidedFight = ((tutorialIdentity && tutorial?.script === 4)
+      || tutorial?.script === 5) && tutorial?.phase === 'fight' && !tutorial.completed;
+    const recoveringGuidedClaim = tutorial?.script === 5 && tutorial?.phase === 'claim'
+      && !tutorial.completed && !alreadyRewarded;
     const recoveryPhase = tutorial?.hiredThird ? 'choose' : alreadyRewarded || tutorial?.firstCombat ? 'recruit' : 'distress';
     return {
       ...player,
