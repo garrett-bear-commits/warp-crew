@@ -48,6 +48,10 @@ import { playLaunch } from './ui/spaceFlight.js';
 import { playCombat, playEncounterBeat, isBattlePlaying } from './ui/combatView.js';
 import { sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
+import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
+import { ART_VERTICAL_SLICE } from './data/artManifest.js';
+import { artUrl } from './shared/artUrl.js';
+import { applyResolvedSlicePortraits } from './data/portraits.js';
 
 let app = null;
 let mountId = 0;
@@ -68,6 +72,9 @@ let departureInFlight = false;
 let departureRunId = 0;
 let shipSequence = null;
 let guidedBeatTimer = 0;
+let essentialProgress = 0;
+let essentialReady = false;
+let essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
 
 /** Preserve the saved tutorial script. migratePlayer owns script selection. */
 export function restoreTutorialPlayer(savedPlayer) {
@@ -99,6 +106,27 @@ function showToast(next) {
 function pushLog(msg) {
   log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
   while (log.length > 50) log.shift();
+}
+
+const SESSION_ERROR_COPY = {
+  save_failed: 'Could not save. Try again.',
+  tutorial_action_locked: 'Finish the current step first.',
+  tutorial_station_required: 'Send Bolt to Shields first.',
+  brace_required: 'Brace before the pirate fires.',
+  guided_encounter_unavailable: 'The distress call is no longer available.',
+  ship_name_unavailable: 'Name the ship after the first job.',
+  invalid_ship_name: 'Use a ship name up to 24 characters.',
+  welcome_unavailable: 'The welcome recruit is no longer available.',
+  registration_unavailable: 'Finish meeting your new crew first.',
+  registration_unconfirmed: 'Jest sign-in did not finish. You can skip it.',
+  stale_encounter_action: 'The fight moved on. Choose again.',
+  encounter_finished: 'The fight is over. Bring the cargo aboard.',
+  not_enough_fuel: 'Not enough fuel for this job.',
+  hull_critical: 'Repair your hull before the next job.',
+};
+
+export function sessionFailureMessage(reason) {
+  return SESSION_ERROR_COPY[reason] || 'That action is unavailable right now.';
 }
 
 function persist() {
@@ -198,6 +226,9 @@ function hydratePlayer() {
 }
 
 async function boot() {
+  essentialProgress = 0;
+  essentialReady = false;
+  essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
   try {
     hydratePlayer();
     artReady = hasCrewArt();
@@ -206,17 +237,31 @@ async function boot() {
     console.warn('hydrate', e);
   }
 
+  const sliceKeys = ['splash', 'rex', 'bolt', 'kira', 'tink', 'nemi'];
+  const essentials = sliceKeys
+    .map(key => ({ src: artUrl(ART_VERTICAL_SLICE[key].path), fallback: artUrl(ART_VERTICAL_SLICE[key].fallback) }));
+  essentials.push({ src: artUrl('art/space/sparrow-hull-v3.png'), fallback: artUrl('art/pixel/ships/sparrow-cutaway.jpg') });
+  const essentialP = preloadEssentialAssets(essentials, loadEssentialImage, progress => {
+    essentialProgress = progress;
+    setLoadingProgress(progress);
+    render();
+  }).then(paths => {
+    essentialScene = paths[0];
+    applyResolvedSlicePortraits(Object.fromEntries(sliceKeys.map((key, index) => [key, paths[index]])));
+    essentialReady = true;
+    render();
+  });
+
   const initResult = await platformInit();
   platformStatus = isReal()
     ? `jest (${initResult.mode})`
     : `local mock (${initResult.mode})`;
-  setLoadingProgress(10);
+  setLoadingProgress(essentialProgress);
 
   const jestPlayer = getJestPlayer();
   if (player && jestPlayer?.username && player.captainName === 'Captain') {
     player = { ...player, captainName: jestPlayer.username };
   }
-  setLoadingProgress(40);
 
   const entry = getEntryPayload();
   if (entry?.notification_type) {
@@ -225,7 +270,7 @@ async function boot() {
   }
   tab = resolveEntryTab(player, entry, tab);
 
-  const artP = prepareCrewArt()
+  const crewArtP = prepareCrewArt()
     .then(() => {
       artReady = true;
       render();
@@ -248,10 +293,9 @@ async function boot() {
     shopProducts = null;
   }
 
-  setLoadingProgress(90);
-  await Promise.all([artP, refreshNotifs().catch((e) => console.warn('notif sync', e))]);
+  await Promise.all([essentialP, crewArtP, refreshNotifs().catch((e) => console.warn('notif sync', e))]);
   persist();
-  setLoadingProgress(100);
+  setLoadingProgress(essentialProgress);
   markGameLoaded();
   captureEvent('session_start', {
     platform: isReal() ? 'jest' : 'local',
@@ -286,6 +330,9 @@ function render() {
     jestLive: isReal(),
     shopProducts,
     artReady,
+    splashProgress: essentialProgress,
+    splashReady: essentialReady,
+    splashScene: essentialScene,
     toast,
     departureInFlight,
     shipSequence,
@@ -476,8 +523,9 @@ async function handleAction(act, data = {}) {
       },
     });
     if (!committed.ok) {
-      pushLog(committed.reason === 'save_failed' ? 'Could not save. Action was not applied; please retry.' : committed.reason);
-      showToast({ title: committed.reason === 'save_failed' ? 'Could not save. Please retry.' : committed.reason.replaceAll('_', ' ') });
+      const message = sessionFailureMessage(committed.reason);
+      pushLog(message);
+      showToast({ title: message });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
     } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'exp-start', 'exp-launch'].includes(act)) {
       await refreshNotifs();

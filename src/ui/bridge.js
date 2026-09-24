@@ -36,7 +36,7 @@ import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderSh
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
-import { makeCamera, focusCamera, resizeCamera, zoomAt } from './shipCamera.js';
+import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 
@@ -68,7 +68,7 @@ export function renderApp(root, ctx) {
     root._wcBound = false;
     root.innerHTML = buildShell();
   }
-  bindOnce(root);
+  bindOnce(root, ctx);
   patchShell(root, ctx);
   syncDialogFocus(root, priorDialog, priorFocus);
 }
@@ -108,12 +108,12 @@ export function trapDialogKey(root, ev) {
   }
 }
 
-function bindOnce(root) {
+function bindOnce(root, ctx) {
   if (root._wcBound) return;
   root._wcBound = true;
   root.addEventListener('keydown', ev => trapDialogKey(root, ev));
   startStageLoop();
-  bindCamera(root);
+  bindCamera(root, ctx);
   root.addEventListener('pointerdown', () => unlockSfx(), { once: true });
   root.addEventListener('click', (ev) => {
     const handlers = root._wcHandlers;
@@ -151,7 +151,14 @@ function bindOnce(root) {
   });
 }
 
-function bindCamera(root) {
+export function initialSessionCamera(viewport) {
+  const camera = makeCamera(viewport, { w: 1152, h: 1728 });
+  const bridge = ROOMS.find(room => room.id === 'bridge');
+  const focused = focusCamera(camera, { x: bridge.labelAnchor.x * 11.52, y: bridge.labelAnchor.y * 17.28 }, camera.maxScale * 0.8);
+  return pan(focused, 0, -viewport.h * 0.2);
+}
+
+function bindCamera(root, ctx) {
   const stage = root.querySelector('.stage');
   const fit = root.querySelector('.ship-fit');
   const hull = fit.querySelector('.sparrow-hull');
@@ -165,7 +172,8 @@ function bindCamera(root) {
     }
   });
   const size = () => ({ w: stage.clientWidth || 390, h: stage.clientHeight || 620 });
-  root._wcCamera = makeCamera(size(), { w: 1152, h: 1728 });
+  root._wcCamera = ctx?.player?.tutorial?.script === 4 && !ctx.player.tutorial.completed
+    ? initialSessionCamera(size()) : makeCamera(size(), { w: 1152, h: 1728 });
   root._wcSetCamera = camera => {
     root._wcCamera = camera;
     fit.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
@@ -307,7 +315,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now));
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
-  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive }));
+  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene }));
   setSlot(root, 'hotspots', firstSession ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView }));
@@ -453,7 +461,7 @@ export function renderSessionGuidance(player, now = Date.now()) {
   if (player.tutorial?.script === 4 && !player.tutorial.completed) {
     if (player.tutorial.phase === 'station') {
       const bolt = player.crew.find(member => member.templateId === 'merc_bolt');
-      return `<aside class="first-session-cue" aria-label="First job"><p>Distress call. Send Bolt to Shields.</p><button class="primary" data-act="station-assign" data-id="${escapeHtml(bolt?.instanceId || '')}" data-station="shields">Send Bolt to Shields</button></aside>`;
+      return `<aside class="first-session-cue" aria-label="First job"><p>Distress call: send Bolt to Shields.</p><button class="primary" data-act="station-assign" data-id="${escapeHtml(bolt?.instanceId || '')}" data-station="shields">Send Bolt to Shields</button></aside>`;
     }
     if (player.tutorial.phase === 'fight' && !player.activeEncounter) {
       return '<aside class="first-session-cue" aria-label="Distress call"><p>Distress call from Dust Lane.</p><button class="primary" data-act="tutorial-fight-start">Answer call</button></aside>';
@@ -485,8 +493,8 @@ function renderToast(toast) {
     </div>`;
 }
 
-function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon, jestLive }) {
-  if (!player.flags?.splashSeen) return renderSplash();
+function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon, jestLive, splashProgress, splashReady, splashScene }) {
+  if (!player.flags?.splashSeen) return renderSplash({ progress: splashProgress, ready: splashReady, scene: splashScene });
   if (player.tutorial?.script === 4 && !player.tutorial.completed) return renderV4Modal(player, { jestLive });
   if (cinematic) return renderCinematic(cinematic);
   if (confirmAbandon) return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Break contract"><h2>Break contract?</h2><p>No pending reward. Fuel already spent is not refunded.</p><button data-act="contract-abandon-confirm" data-revision="${escapeHtml(confirmAbandon.revision)}" data-acceptance-id="${escapeHtml(confirmAbandon.acceptanceId)}">Break contract</button><button data-act="contract-abandon-cancel">Keep contract</button></section></div>`;
@@ -506,15 +514,21 @@ function starsHtml(n = 1) {
   return `<span class="stars">${'★'.repeat(s)}${'☆'.repeat(5 - s)}</span>`;
 }
 
-function renderSplash() {
+export function renderSplash({ progress = 0, ready = false, scene = SPLASH_ART } = {}) {
+  const pct = Number.isFinite(progress) ? Math.max(0, Math.min(100, Math.round(progress))) : 0;
   return `
-    <div class="modal-backdrop splash-backdrop">
-      <div class="splash-card">
-        <img src="${SPLASH_ART}" alt="Warp Crew" />
+    <div class="modal-backdrop splash-backdrop" role="dialog" aria-modal="true" aria-label="Warp Crew opening">
+      <div class="splash-scene" role="img" aria-label="Mercenary crew on a ship looking out into space">
+        ${scene ? `<img src="${escapeHtml(scene)}" alt="" />` : ''}
+      </div>
+      <div class="splash-cast" aria-hidden="true"><img src="${portraitFor('merc_bolt', 'engineer')}" alt="" /><img src="${portraitFor('merc_nemi', 'scout')}" alt="" /></div>
+      <div class="splash-shade" aria-hidden="true"></div>
+      <div class="splash-content">
+        <div class="splash-logo" aria-label="Warp Crew"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 42 24 24 45 6 24 24 3Z"/><path d="M24 10v28M11 24h26M17 17l14 14M31 17 17 31"/></svg><span>WARP<br>CREW</span></div>
         <div class="splash-copy">
-          <h2>Warp Crew</h2>
           <p>Your ship. Your crew.</p>
-          <button class="primary" data-act="splash-dismiss">Board ship</button>
+          <div class="splash-loading"><div class="splash-loading-label"><span>${ready ? 'Ship ready' : 'Loading ship'}</span><span>${pct}%</span></div><div class="splash-progress" role="progressbar" aria-label="Ship loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div></div>
+          <button type="button" class="primary" data-act="splash-dismiss" ${ready ? '' : 'disabled'}>Board ship</button>
         </div>
       </div>
     </div>`;
@@ -522,13 +536,13 @@ function renderSplash() {
 
 export function renderV4Modal(player, { jestLive = false } = {}) {
   const phase = player.tutorial.phase;
-  if (phase === 'name') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Name your ship"><h2>Cargo aboard. Third berth open.</h2><p>Name your ship.</p><label for="ship-name">Ship name</label><input id="ship-name" data-ship-name maxlength="48" value="${escapeHtml(player.ship?.name || 'Sparrow')}" autocomplete="off" /><button class="primary" data-act="tutorial-name">Continue</button></section></div>`;
-  if (phase === 'pull') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Welcome crew"><h2>One free crew member</h2><p>Guaranteed Uncommon. They join your open berth.</p><button class="primary" data-act="tutorial-welcome-pull">Meet your crew</button></section></div>`;
+  if (phase === 'name') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Name your ship"><h2>Cargo aboard; third berth open.</h2><p>Name your ship.</p><label for="ship-name">Ship name</label><input id="ship-name" data-ship-name maxlength="24" value="${escapeHtml(player.ship?.name || 'Sparrow')}" autocomplete="off" /><button class="primary" data-act="tutorial-name">Continue</button></section></div>`;
+  if (phase === 'pull') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Welcome crew"><h2>One free crew member</h2><p>Guaranteed Uncommon crew for your open berth.</p><button class="primary" data-act="tutorial-welcome-pull">Meet your crew</button></section></div>`;
   if (phase === 'register') {
     const member = player.crew.find(crew => crew.instanceId === player.tutorial.welcomeInstanceId);
     const suggestion = player.tutorial.suggestedRole === 'away' ? 'Good for a future Away team.'
       : player.tutorial.suggestedStation === 'weapons' ? 'Try them at Weapons.' : 'Try them at Shields.';
-    return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Jest sign-in"><h2>${escapeHtml(member?.name || 'Crew member')} joins the crew</h2><p>Uncommon ${escapeHtml(member?.role || 'crew')} · ${escapeHtml(suggestion)} You can change their job later.</p><p>Progress is saved on this device. Jest sign-in is optional.</p>${jestLive ? '<button class="primary" data-act="tutorial-register-start">Sign in to Jest</button>' : '<p>Jest sign-in is unavailable in this preview.</p>'}<button class="${jestLive ? '' : 'primary'}" data-act="tutorial-register-skip">Continue to ship</button></section></div>`;
+    return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Jest sign-in"><h2>${escapeHtml(member?.name || 'Crew member')} joins the crew</h2><p>Uncommon ${escapeHtml(member?.role || 'crew')} · ${escapeHtml(suggestion)}</p><p>Progress is saved in this browser; Jest sign-in is optional.</p>${jestLive ? '<button class="primary" data-act="tutorial-register-start">Sign in to Jest</button>' : '<p>Jest sign-in is unavailable in this preview.</p>'}<button class="${jestLive ? '' : 'primary'}" data-act="tutorial-register-skip">Continue to ship</button></section></div>`;
   }
   return '';
 }
