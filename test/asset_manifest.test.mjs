@@ -8,7 +8,7 @@ import { portraitFor, applyResolvedSlicePortraits } from '../src/data/portraits.
 
 assert.deepEqual(Object.keys(ART_VERTICAL_SLICE).sort(), ['bolt', 'kira', 'nemi', 'rex', 'splash', 'tink']);
 for (const [name, art] of Object.entries(ART_VERTICAL_SLICE)) {
-  assert.equal(art.status, 'provisional', `${name} must not masquerade as approved art`);
+  assert.equal(art.status, name === 'splash' ? 'approved' : 'provisional', `${name} art review status`);
   assert.ok(art.path.startsWith('/art/'));
   assert.ok(art.fallback.startsWith('/art/'));
   assert.ok(art.width > 0 && art.height > 0);
@@ -62,6 +62,8 @@ assert.match(loading, /role="progressbar"[^>]*aria-valuenow="40"/);
 assert.match(loading, /data-act="splash-dismiss"[^>]*disabled/);
 assert.match(loading, /class="splash-scene"/);
 assert.match(loading, /class="splash-logo"/);
+assert.doesNotMatch(loading, /class="splash-cast"/, 'approved five-crew scene must not gain duplicate portrait cutouts');
+assert.doesNotMatch(loading, /Your ship\. Your crew\./, 'loading plate should leave the art visible');
 const ready = renderSplash({ progress: 100, ready: true, scene: null });
 assert.match(ready, /Board ship/);
 assert.doesNotMatch(ready, /data-act="splash-dismiss"[^>]*disabled/);

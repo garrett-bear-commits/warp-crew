@@ -1,11 +1,11 @@
-/** Existing art used while the six-image vertical-slice batch awaits review. */
+/** Approved opening scene; crew portraits remain provisional. */
 export const ART_VERTICAL_SLICE = Object.freeze({
   splash: Object.freeze({
-    path: '/art/pixel/cinematic/jump.png',
-    fallback: '/art/pixel/ships/sparrow-cutaway.jpg',
-    width: 960, height: 540,
-    sha256: 'f190ba4cc859ff0ea3e7f2d595e4e1c01bd615294e555daecb4df5ab95e6819c',
-    status: 'provisional',
+    path: '/art/pixel/vertical-slice/splash-five-crew-v2.png',
+    fallback: '/art/pixel/cinematic/jump.png',
+    width: 941, height: 1672,
+    sha256: '353ff73314b2bd088d3e3d88df6933aa4e11be1d277a9c028887dfa85cb021fd',
+    status: 'approved',
   }),
   rex: Object.freeze({
     path: '/art/pixel/crew/rex.png', fallback: '/art/pixel/crew/jen.png',

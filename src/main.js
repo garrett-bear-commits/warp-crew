@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { createNewPlayer, migratePlayer, tickCrewStatus } from './systems/player.js';
 import { loadSave, writeSave, clearSave } from './systems/save.js';
+import { consumeFreshStart } from './systems/qaFreshStart.js';
 import { claimFuelRegen } from './systems/fuel.js';
 import { prepareSession, sessionModels, sessionAction, persistSessionTransition } from './systems/sessionLoop.js';
 import { pullOnce, pullTen, buyLuck, contractHire, callUpReserve, sellReserve, benchCrew, LUCK_CAP } from './systems/gacha.js';
@@ -171,8 +172,7 @@ function hydratePlayer() {
   const jestPlayer = getJestPlayer();
 
   try {
-    if (new URLSearchParams(location.search).get('fresh') === '1') {
-      clearSave();
+    if (consumeFreshStart({ location, history, clearSave })) {
       pushLog('QA fresh start (?fresh=1).');
     }
   } catch { /* ignore */ }

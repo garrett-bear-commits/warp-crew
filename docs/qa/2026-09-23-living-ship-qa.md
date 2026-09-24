@@ -1,6 +1,6 @@
 # Living-ship vertical-slice QA — in progress
 
-This record separates local code/browser evidence from owner phone QA and any published Jest build. The feature branch is `codex/contract-route-overhaul`; current reviewed source HEAD is `454495f` (the v4 fuel-retry recovery fix). The previous public GitHub Pages QA build documented in `docs/handoffs/2026-09-21-stopping-point.md` is older and does **not** contain this slice. No PR merge or Jest production activation is part of this record.
+This record separates local code/browser evidence from owner phone QA and any published Jest build. The feature branch is `codex/contract-route-overhaul`; the previously reviewed recovery fix was `454495f`. The Pages build documented in `docs/handoffs/2026-09-21-stopping-point.md` predates this slice until the publication below is verified. No PR merge or Jest production activation is part of this record.
 
 ## Local regression, 2026-09-23
 
@@ -37,12 +37,22 @@ The QA agent used `?fresh=1` in the Chrome profile on the local Vite origin `htt
 
 ## Art provenance and gate
 
-The approved six-output Flora estimate was US$0.33222 with a US$0.50 hard cap. The first high/2K/9:16 splash run `run_m17315921cwcfemzd770esspk58f1v76` actually cost US$0.113. A similar six-output batch would cost about US$0.678, so further generations were halted and a new cap decision requested. The original 1440×2560 PNG is preserved at `docs/art/outputs/splash-run_m17315921cwcfemzd770esspk58f1v76.png` (SHA-256 `751487688a492cc8836b599b1e9364a1af6ceb14abee02d512a95eb066de2873`); it is not in the public runtime directory, wired into the manifest, or approved as final art yet. See `docs/art/2026-09-23-vertical-slice-ledger.md` for the exact prompt, model, ID, output, and cost.
+The approved six-output Flora estimate was US$0.33222 with a US$0.50 hard cap. The first high/2K/9:16 splash run `run_m17315921cwcfemzd770esspk58f1v76` actually cost US$0.113. A similar six-output batch would cost about US$0.678, so further Flora generations were halted. The original 1440×2560 PNG is preserved at `docs/art/outputs/splash-run_m17315921cwcfemzd770esspk58f1v76.png` (SHA-256 `751487688a492cc8836b599b1e9364a1af6ceb14abee02d512a95eb066de2873`). Garrett then approved a single Codex-generated edit with one robot, two different aliens, two humans, and a spherical planet. The approved 941×1672 copy is installed at `public/art/pixel/vertical-slice/splash-five-crew-v2.png` (SHA-256 `353ff73314b2bd088d3e3d88df6933aa4e11be1d277a9c028887dfa85cb021fd`), while logo/loading UI stays separate. Codex's image tool did not expose its exact backend model ID, so GPT Image 2.5 cannot be independently certified. See the art ledger for the prompt and source path. Crew portraits remain provisional.
+
+## Final local first-play pass, 2026-09-23
+
+The source QA harness is `scripts/living-ship-qa.mjs`. It launched Chrome 153 in a new temporary profile, never the user's Chrome save, with a Pages production preview and device-scale-factor 2. Captures and its JSON report are in `.superpowers/sdd/2026-09-23-living-ship-vertical-slice/captures/` (git-ignored local evidence). It completed **33 screen captures** across 390×844, 360×800, and reduced-motion 390×844. In all three fresh-save runs: splash image loaded, Board → Bolt/Shields → distress → Brace/win → cargo claim → default ship name → one free Uncommon → preview sign-in Skip → post-tutorial next-job cue → reload. Every reload retained completed script 4, three crew, one pull, 200 credits, and ship name Sparrow. Document width stayed within viewport; sampled clicked targets were at least 44×44 CSS px. This is automated browser evidence, not a human timing/comprehension or physical-device pass.
+
+The first post-tutorial reliable job is now the authored **Dust Lane Patrol**, so today's daily seed cannot silently replace the intended first normal crew-run fight with a trade or legacy encounter. Existing saved boards remain unchanged, and later generated boards keep their normal variety. The ship shows the existing Secure/Push route actions after Launch. In the 390×844 run, Push opened the normal pirate fight; Brace was used and the job won at 11/30 hull, then the cargo claim completed. No payout or order numbers were changed. This is one tested seed/run, not balance approval.
+
+The final visual pass found and fixed two handoff problems: the Cargo Hold sheet hid the next-job cue after registration Skip, and the camera stayed at battle distance. The saved transition now clears that transient sheet, and the first-job camera returns to an inspectable bridge view, including on reload. The route-choice cue also makes the next step visible on the ship rather than requiring an unexplained Missions-tab jump.
+
+Final independent static review found a QA-link P2: the `?fresh=1` parameter was retained, so a tester refreshing the new-save link could erase the new progress again. The link now consumes that parameter immediately after its one authorized local clear, preserving unrelated URL query/hash. A focused test and all three isolated-browser reload runs verified that the parameter is gone and the new save survives refresh. The reviewer ran no browser tests. A separate [Grok Chrome audit](https://grok.com/c/1b597ff6-20ff-48b3-a4bc-be1f11098085) returned `ACCEPT` for its packet only; it did not see the full final diff, run a browser, or catch the fresh-link issue. Neither audit is a merge/Jest gate.
 
 ## Not yet verified
 
-- Time to first win and an unprompted next-job comprehension observation. The scripted fresh script-4 browser playthrough itself completed at `454495f`.
+- Time to first win and an unprompted next-job comprehension observation. The automated fresh script-4 and first normal-job playthroughs completed locally, but no human stopwatch or novice observation was recorded.
 - Interrupted script-4 saves at every phase, active/completed script-3 and veteran saves in a browser; unit tests cover model transitions, not all host behavior.
-- 360×800 and 390×844 screen captures after the final visual integration, plus true-size crew and station legibility, grayscale/gradient/translucent contrast, scaled text, and camera gestures during combat.
+- True-size crew and station legibility on physical phones, grayscale/gradient/translucent contrast, scaled text, and real pan/pinch gestures during combat. Desktop-emulated 360×800 and 390×844 captures are recorded locally.
 - Real iPhone Safari and Android Chrome/Jest-host passes, including pinch capture, safe areas, reduced motion, sign-in overlay, and save reload.
 - Inactive QA artifact publication/served-byte verification at the final commit. No Jest production activation, paid-product activation, or PR #1 merge.

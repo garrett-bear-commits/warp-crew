@@ -172,7 +172,8 @@ function bindCamera(root, ctx) {
     }
   });
   const size = () => ({ w: stage.clientWidth || 390, h: stage.clientHeight || 620 });
-  root._wcCamera = ctx?.player?.tutorial?.script === 4 && !ctx.player.tutorial.completed
+  root._wcCamera = ctx?.player?.tutorial?.script === 4
+    && (!ctx.player.tutorial.completed || (ctx.player.stats?.contractsCompleted || 0) <= 1)
     ? initialSessionCamera(size()) : makeCamera(size(), { w: 1152, h: 1728 });
   root._wcSetCamera = camera => {
     root._wcCamera = camera;
@@ -279,7 +280,9 @@ function patchShell(root, ctx) {
   const chips = hudChips(player);
   const tabs = unlockedTabs(player);
   const firstSession = isTutorialActive(player) && player.tutorial?.script === 4;
+  const leavingFirstSession = root._wcFirstSession === true && !firstSession;
   root._wcFirstSession = firstSession;
+  if (leavingFirstSession) root._wcSetCamera(initialSessionCamera(root._wcCamera.viewport));
   const fighting = isBattlePlaying();
   let coachStep = step && !step.modal ? step : null;
   if (coachStep && coachStep.act === 'goto-missions' && tab === 'missions') {
@@ -431,6 +434,10 @@ export function renderHotspots(player, fuel, expReady, selectedRoom) {
 export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView }) {
   if (isHome && player.activeEncounter) return renderShipEncounter(activeContractView);
   if (isHome && player.tutorial?.script === 4 && !player.tutorial.completed) return renderSessionGuidance(player, now);
+  if (isHome && player.activeContract?.stage === 'choice' && activeContractView?.actions?.length) {
+    const choices = activeContractView.actions.filter(action => action.id === 'secure' || action.id === 'push');
+    return `<aside class="first-session-cue route-choice" aria-label="Route choice"><p>Signal ahead. What should the crew do?</p>${choices.map(action => `<button class="${action.id === 'push' ? 'primary' : ''}" data-act="contract-action" data-action="${escapeHtml(action.id)}" data-revision="${escapeHtml(activeContractView.revision)}" data-acceptance-id="${escapeHtml(activeContractView.acceptanceId)}" ${action.enabled ? '' : 'disabled'}>${escapeHtml(action.label)}</button>`).join('')}</aside>`;
+  }
   if (isHome && player.tutorial?.script === 4 && player.tutorial.completed && !player.activeContract
     && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return `<aside class="first-session-cue" aria-label="Next job"><p>Next job is ready.</p><button class="primary" data-act="goto-contracts">See contracts</button><small>Away teams are on Missions when you're ready.</small></aside>`;
   const def = SHIPS[player.ship?.shipId] || SHIPS.sparrow;
@@ -521,12 +528,10 @@ export function renderSplash({ progress = 0, ready = false, scene = SPLASH_ART }
       <div class="splash-scene" role="img" aria-label="Mercenary crew on a ship looking out into space">
         ${scene ? `<img src="${escapeHtml(scene)}" alt="" />` : ''}
       </div>
-      <div class="splash-cast" aria-hidden="true"><img src="${portraitFor('merc_bolt', 'engineer')}" alt="" /><img src="${portraitFor('merc_nemi', 'scout')}" alt="" /></div>
       <div class="splash-shade" aria-hidden="true"></div>
       <div class="splash-content">
         <div class="splash-logo" aria-label="Warp Crew"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3 42 24 24 45 6 24 24 3Z"/><path d="M24 10v28M11 24h26M17 17l14 14M31 17 17 31"/></svg><span>WARP<br>CREW</span></div>
         <div class="splash-copy">
-          <p>Your ship. Your crew.</p>
           <div class="splash-loading"><div class="splash-loading-label"><span>${ready ? 'Ship ready' : 'Loading ship'}</span><span>${pct}%</span></div><div class="splash-progress" role="progressbar" aria-label="Ship loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><span style="width:${pct}%"></span></div></div>
           <button type="button" class="primary" data-act="splash-dismiss" ${ready ? '' : 'disabled'}>Board ship</button>
         </div>

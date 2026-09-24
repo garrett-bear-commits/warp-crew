@@ -1484,23 +1484,6 @@ button:focus-visible {
   image-rendering: auto;
   display: block;
 }
-.splash-cast {
-  position: absolute;
-  inset: auto 0 220px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 6vw;
-  z-index: 1;
-  pointer-events: none;
-}
-.splash-cast img {
-  width: min(34vw, 160px);
-  height: auto;
-  image-rendering: pixelated;
-  filter: drop-shadow(0 6px 10px #02050b);
-}
-.splash-cast img:last-child { width: min(31vw, 144px); }
 .splash-shade {
   position: absolute;
   inset: 0;

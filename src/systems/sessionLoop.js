@@ -250,6 +250,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     if (act === 'tutorial-register-complete') player = { ...player, _jestRegistered: true,
       captainName: data.username || player.captainName };
     player = prepareSession(player, now);
+    Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
   } else if (act === 'mission-view' || act === 'goto-contracts' || act === 'goto-away' || act === 'goto-missions') {
     const view = act === 'mission-view' ? data.view : act === 'goto-away' ? 'away' : 'contracts';
     if (!['contracts', 'away', 'explore'].includes(view)) return fail('unknown_mission_view');

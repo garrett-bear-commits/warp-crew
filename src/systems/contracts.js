@@ -120,9 +120,18 @@ export function generateContractBoard(player, now = Date.now()) {
   const shipId = player?.ship?.shipId || 'sparrow';
   const rng = xorshift(hashSeed(`${boardDay}:${careerBand(player)}:${shipId}`));
   const nodes = visibleNodes(player, now);
+  const firstCrewJob = player?.tutorial?.script === 4 && player.tutorial.completed
+    && (player?.stats?.contractsCompleted || 0) === 1;
   const offers = CONTRACT_PROFILES.map((profile) => {
     const candidates = candidatesFor(profile, nodes);
-    return offerFor(profile, pick(candidates, rng) || fallbackFor(profile), boardDay, rng);
+    const destination = firstCrewJob && profile.id === 'reliable'
+      ? NODES.lane_a : pick(candidates, rng) || fallbackFor(profile);
+    const offer = offerFor(profile, destination, boardDay, rng);
+    return firstCrewJob && profile.id === 'reliable'
+      ? { ...offer, title: 'Dust Lane Patrol',
+        brief: 'Pirates are testing the lane. Your crew can stop them.',
+        favoredTrait: { kind: 'role', id: 'gunner', label: 'Gunner', why: 'A gunner keeps pressure on the pirate.' } }
+      : offer;
   });
   // This is a durable claim ledger, including previous local dates. Clock or
   // timezone recovery may revisit a day, but cannot reopen its claimed offers.
