@@ -59,12 +59,13 @@ export function parkOverflowToReserve(player, slots, reserveCap = RESERVE_CAP) {
   if (crew.length <= slots) {
     return { player: { ...player, crew, reserve, crewSlots: slots }, sold, granted };
   }
-  const flying = crew.filter((c) => c.status === 'expedition');
+  const protectedCrew = crew.filter((c) => c.status === 'expedition'
+    || c.instanceId === player.captainInstanceId || c.isCaptain);
   const rest = crew
-    .filter((c) => c.status !== 'expedition')
+    .filter((c) => !protectedCrew.includes(c))
     .sort((a, b) => (b.power || 0) - (a.power || 0));
-  const room = Math.max(0, slots - flying.length);
-  const keep = [...flying, ...rest.slice(0, room)];
+  const room = Math.max(0, slots - protectedCrew.length);
+  const keep = [...protectedCrew, ...rest.slice(0, room)];
   const overflow = rest.slice(room);
   for (const c of overflow) {
     if (reserve.length < reserveCap) {
@@ -79,7 +80,7 @@ export function parkOverflowToReserve(player, slots, reserveCap = RESERVE_CAP) {
   }
   const wallet = Object.keys(granted).length ? grant(player.wallet, granted) : player.wallet;
   return {
-    player: { ...player, crew: keep, reserve, crewSlots: Math.max(slots, flying.length), wallet },
+    player: { ...player, crew: keep, reserve, crewSlots: Math.max(slots, protectedCrew.length), wallet },
     sold,
     granted,
   };

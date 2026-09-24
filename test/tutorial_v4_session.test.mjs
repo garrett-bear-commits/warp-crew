@@ -12,7 +12,7 @@ import { renderEncounter } from '../src/ui/contractView.js';
 
 const now = Date.UTC(2030, 8, 23, 12);
 const reload = player => migratePlayer(JSON.parse(JSON.stringify(player)));
-const fresh = () => prepareSession(createNewPlayer({ now, rng: () => 0.1 }), now);
+const fresh = () => prepareSession(createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 }), now);
 const boltId = player => player.crew.find(member => member.templateId === 'merc_bolt').instanceId;
 const identity = player => ({ acceptanceId: player.activeContract.acceptanceId, revision: player.activeContract.revision });
 const encounterIdentity = player => ({ acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision });

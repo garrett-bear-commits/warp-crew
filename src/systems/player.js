@@ -13,7 +13,7 @@ import { clampFuel } from './economy.js';
 import { normalizeAssignments } from './stations.js';
 import { normalizeEncounterState } from './encounterState.js';
 
-const SAVE_VERSION = 8;
+const SAVE_VERSION = 9;
 
 function ensureShip(ship) {
   const base = starterShip();
@@ -36,14 +36,16 @@ function ensureShip(ship) {
   return next;
 }
 
-export function createNewPlayer({ captainName = 'Captain', now = Date.now(), rng = Math.random } = {}) {
-  const crew = [
+export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, now = Date.now(), rng = Math.random } = {}) {
+  const legacy = tutorialScript === 4;
+  const crew = legacy ? [
     createCrewInstance('merc_rex', { rng }),
     createCrewInstance('merc_bolt', { rng }),
-  ];
+  ] : [];
   return {
     version: SAVE_VERSION,
     captainName,
+    captainInstanceId: null,
     createdAt: now,
     wallet: {
       credits: 80,
@@ -58,7 +60,7 @@ export function createNewPlayer({ captainName = 'Captain', now = Date.now(), rng
     ship: starterShip(),
     crewSlots: 2,
     crew,
-    stationAssignments: { [crew[0].instanceId]: 'helm', [crew[1].instanceId]: null },
+    stationAssignments: legacy ? { [crew[0].instanceId]: 'helm', [crew[1].instanceId]: null } : {},
     reserve: [],
     iapFulfilled: [],
     activeExpedition: null,
@@ -74,7 +76,7 @@ export function createNewPlayer({ captainName = 'Captain', now = Date.now(), rng
     dailyPullAvailable: true,
     stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {}, contractsCompleted: 0, contractsByProfile: { reliable: 0, risky: 0, strange: 0 } },
     story: { chapter: 0, eclipseIntro: false },
-    tutorial: defaultTutorialV4(),
+    tutorial: legacy ? defaultTutorialV4() : { script: 5, phase: 'board', completed: false },
   };
 }
 
@@ -83,11 +85,13 @@ export function migratePlayer(player) {
   const captainName = player.captainName || 'Captain';
   const jumps = player.stats?.jumps || 0;
   const combats = player.stats?.combatsWon || 0;
-  const base = createNewPlayer({ captainName });
+  const base = createNewPlayer({ captainName, tutorialScript: player.tutorial?.script === 5 ? 5 : 4 });
   let crew = Array.isArray(player.crew) ? player.crew.map((c) => recomputeCrew(c)) : base.crew;
   let reserve = Array.isArray(player.reserve) ? player.reserve.map((c) => recomputeCrew(c)) : [];
   let crewSlots = player.crewSlots ?? base.crewSlots;
-  const tutorial = player.tutorial?.script === 4
+  const tutorial = player.tutorial?.script === 5
+    ? { ...base.tutorial, ...player.tutorial, script: 5 }
+    : player.tutorial?.script === 4
     ? normalizeTutorialV4(player.tutorial)
     : migrateTutorialV3(player).tutorial;
 

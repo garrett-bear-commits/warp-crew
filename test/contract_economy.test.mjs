@@ -34,7 +34,7 @@ for (const strategy of Object.keys(STRATEGIES)) {
   assert.deepEqual(reconcileLedger(broken), { ok: false, differences: { credits: 1 } });
 }
 // Injury deadlines must use the injected clock; claiming consumes the active job.
-let player = createNewPlayer({ now: startAt, rng: () => 0.1 });
+let player = createNewPlayer({ tutorialScript: 4, now: startAt, rng: () => 0.1 });
 const ids = player.crew.map(c => c.instanceId);
 const job = startExpedition({ planetId: 'dustfall', crewInstanceIds: ids, minutes: 15, startedAt: startAt, successChance: 0 });
 player = { ...player, activeExpedition: job, crew: player.crew.map(c => ({ ...c, status: 'expedition' })) };

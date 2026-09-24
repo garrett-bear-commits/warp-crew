@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createNewPlayer } from '../src/systems/player.js';
 import { previewTravel, commitTravel } from '../src/systems/travel.js';
-const player = createNewPlayer();
+const player = createNewPlayer({ tutorialScript: 4 });
 player.tutorial.completed = true;
 player.tutorial.phase = 'done';
 const preview = previewTravel(player, 'lane_a', { rng: () => 0.5 });

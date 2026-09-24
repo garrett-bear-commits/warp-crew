@@ -5,7 +5,7 @@ import { defaultTutorialV4, grantWelcomePull } from '../src/systems/tutorialV4.j
 import { tutorialDistressOffer, acceptContract } from '../src/systems/contracts.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
-const base = () => createNewPlayer({ now: 1, rng: () => 0.2 });
+const base = () => createNewPlayer({ tutorialScript: 4, now: 1, rng: () => 0.2 });
 const withActiveRoute = player => {
   const offer = tutorialDistressOffer(player);
   const boarded = { ...player, contractBoard: { dayKey: 'tutorial', offers: [offer], completedOfferIds: [] } };
@@ -17,7 +17,7 @@ const withActiveRoute = player => {
 test('active script-3 recruit keeps its roster, economy, and route identity', () => {
   const old = withActiveRoute({ ...base(), version: 7, tutorial: { script: 3, phase: 'recruit', completed: false, dismissed: false } });
   const migrated = migratePlayer(clone(old));
-  assert.equal(migrated.version, 8);
+  assert.equal(migrated.version, 9);
   assert.equal(migrated.tutorial.script, 3);
   assert.equal(migrated.tutorial.phase, 'recruit');
   assert.deepEqual(migrated.crew.map(member => member.instanceId), old.crew.map(member => member.instanceId));

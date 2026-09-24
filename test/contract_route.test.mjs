@@ -13,8 +13,8 @@ import {
 // losing the saved result, or granting the same reward twice.
 const now = Date.UTC(2026, 8, 21, 12);
 let player = {
-  ...createNewPlayer(),
-  wallet: { ...createNewPlayer().wallet, fuel: 8 },
+  ...createNewPlayer({ tutorialScript: 4 }),
+  wallet: { ...createNewPlayer({ tutorialScript: 4 }).wallet, fuel: 8 },
   tutorial: { script: 3, completed: true, phase: 'done' },
 };
 player = ensureContractBoard(player, now).player;
@@ -92,8 +92,8 @@ if (commitContractAction(afterLaunch, wrongStage, { rng: () => 0 }).reason !== '
 
 function confrontationPlayer() {
   let routePlayer = {
-    ...createNewPlayer(),
-    wallet: { ...createNewPlayer().wallet, fuel: 8 },
+    ...createNewPlayer({ tutorialScript: 4 }),
+    wallet: { ...createNewPlayer({ tutorialScript: 4 }).wallet, fuel: 8 },
     tutorial: { script: 3, completed: true, phase: 'done' },
   };
   routePlayer = ensureContractBoard(routePlayer, now).player;
@@ -247,8 +247,8 @@ if (!abandonedRoute.ok || abandonedRoute.player.wallet.fuel !== 7 || abandonedRo
 
 // Catches a Strange route ignoring its accepted, persisted content selection.
 let strangePlayer = {
-  ...createNewPlayer(),
-  wallet: { ...createNewPlayer().wallet, fuel: 8 },
+  ...createNewPlayer({ tutorialScript: 4 }),
+  wallet: { ...createNewPlayer({ tutorialScript: 4 }).wallet, fuel: 8 },
   tutorial: { script: 3, completed: true, phase: 'done' },
 };
 strangePlayer = ensureContractBoard(strangePlayer, now).player;
@@ -306,8 +306,8 @@ if (strangePlayer.activeContract.stage !== expectedStrangeStage) throw new Error
 // Catches a preview or abandonment token mutating a later acceptance that
 // happens to have the same offer, stage, and revision.
 let identityPlayer = {
-  ...createNewPlayer(),
-  wallet: { ...createNewPlayer().wallet, fuel: 8 },
+  ...createNewPlayer({ tutorialScript: 4 }),
+  wallet: { ...createNewPlayer({ tutorialScript: 4 }).wallet, fuel: 8 },
   tutorial: { script: 3, completed: true, phase: 'done' },
 };
 identityPlayer = ensureContractBoard(identityPlayer, now).player;

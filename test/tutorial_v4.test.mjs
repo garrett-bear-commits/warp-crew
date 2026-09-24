@@ -5,15 +5,15 @@ import { defaultTutorialV4, advanceTutorialV4, grantWelcomePull, nameShip } from
 import { pullMerc, pullOnce, pullTen, defaultGacha, PITY } from '../src/systems/gacha.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
-const fresh = () => createNewPlayer({ now: 1, rng: () => 0.2 });
+const fresh = () => createNewPlayer({ tutorialScript: 4, now: 1, rng: () => 0.2 });
 const ready = () => {
   const player = fresh();
   return { ...player, crewSlots: 3, tutorial: { ...defaultTutorialV4(), phase: 'pull', firstWin: true, firstClaim: true, named: true } };
 };
 
 test('new players begin the short script with a named Sparrow', () => {
-  const player = createNewPlayer({ now: 1, rng: () => 0.2 });
-  assert.equal(player.version, 8);
+  const player = createNewPlayer({ tutorialScript: 4, now: 1, rng: () => 0.2 });
+  assert.equal(player.version, 9);
   assert.equal(player.ship.name, 'Sparrow');
   assert.equal(player.tutorial.script, 4);
   assert.equal(player.tutorial.phase, 'board');

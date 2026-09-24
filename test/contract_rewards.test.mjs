@@ -4,7 +4,7 @@ import { ensureContractBoard, contractRewardBand, acceptContract, previewContrac
 import { formatRewardBand, readyContractCrew, resolveContractCombatPayout } from '../src/systems/contractRewards.js';
 
 const now = Date.UTC(2026, 8, 22, 12);
-let player = createNewPlayer({ now, rng: () => 0.1 });
+let player = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
 player = { ...player, tutorial: { ...player.tutorial, completed: true, phase: 'done' }, story: { ...player.story, chapter: 1 }, wallet: { ...player.wallet, fuel: 10 } };
 player = ensureContractBoard(player, now).player;
 const before = JSON.stringify(player);
@@ -27,7 +27,7 @@ for (const routeContent of [null, {}, { ...player.contractBoard.offers[0].routeC
   assert.equal(acceptContract({ ...player, contractBoard: { ...player.contractBoard, offers: [offer] } }, offer.id, now).ok, false);
 }
 assert.deepEqual(contractRewardBand({ ...player, wallet: { ...player.wallet, fuel: 0 } }, player.contractBoard.offers[0], { now }), unavailable);
-let tutorial = createNewPlayer({ now, rng: () => 0.1 });
+let tutorial = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
 const distress = tutorialDistressOffer(tutorial);
 tutorial = { ...tutorial, contractBoard: { dayKey: 'tutorial', offers: [distress], completedOfferIds: [] } };
 const tutorialBand = contractRewardBand(tutorial, distress, { now });

@@ -36,7 +36,7 @@ assert.ok(orders.includes('Not enough fuel'));
 
 // Live board and review expose the same literal range to sighted and screen-reader users.
 const now = Date.UTC(2026, 8, 22, 12);
-const livePlayer = prepareSession({ ...createNewPlayer({ now, rng: () => 0.1 }), tutorial: { script: 3, completed: true, phase: 'done' } }, now);
+const livePlayer = prepareSession({ ...createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 }), tutorial: { script: 3, completed: true, phase: 'done' } }, now);
 const liveOffer = livePlayer.contractBoard.offers[0];
 const boardModel = sessionModels(livePlayer, {}, now).contractBoard;
 const boardHtml = renderContractBoard(boardModel);

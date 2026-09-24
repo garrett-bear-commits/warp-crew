@@ -6,7 +6,7 @@ import {
   validateExpeditionParty,
 } from '../src/systems/expedition.js';
 
-const player = { ...createNewPlayer(), crewSlots: 4 };
+const player = { ...createNewPlayer({ tutorialScript: 4 }), crewSlots: 4 };
 const options = expeditionCrewOptions(player, 'dustfall');
 if (options.length !== 2 || options.some((x) => !x.reasons.length)) throw new Error('options and reasons');
 const recommended = recommendedExpeditionCrewIds(player, 'dustfall');

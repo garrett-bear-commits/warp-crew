@@ -55,7 +55,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
   const rng = createSeededRng(seed);
   // Preserve the approved script-3 baseline for historical 30-day comparisons.
   // Script-4 first-session economics need a dedicated simulation after UI wiring.
-  let player = { ...createNewPlayer({ now: startAt, rng }), version: 7, tutorial: defaultTutorial() };
+  let player = { ...createNewPlayer({ tutorialScript: 4, now: startAt, rng }), version: 7, tutorial: defaultTutorial() };
   let ui = {};
   const run = { seed, strategy, startAt, policy: { ads: false, purchases: false, skips: false, forceComplete: false },
     initialWallet: wallet(player), days: [], totals: { sources: zero(), sinks: zero(), rewardsBySource: {}, costsByAction: {} } };

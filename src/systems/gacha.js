@@ -275,6 +275,7 @@ export function sellReserve(player, instanceId) {
   const reserve = player.reserve || [];
   const found = reserve.find((c) => c.instanceId === instanceId);
   if (!found) return { ok: false, reason: 'missing' };
+  if (found.instanceId === player.captainInstanceId || found.isCaptain) return { ok: false, reason: 'captain_protected' };
   const sold = sellContract(found.rarity);
   return {
     ok: true,
@@ -310,6 +311,7 @@ export function benchCrew(player, instanceId) {
   const crew = player.crew || [];
   const found = crew.find((c) => c.instanceId === instanceId);
   if (!found) return { ok: false, reason: 'missing' };
+  if (found.instanceId === player.captainInstanceId || found.isCaptain) return { ok: false, reason: 'captain_protected' };
   if (found.status === 'expedition') return { ok: false, reason: 'away' };
   if (crew.length <= 1) return { ok: false, reason: 'last_crew' };
   const reserve = player.reserve || [];

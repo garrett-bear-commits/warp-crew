@@ -12,7 +12,7 @@ export function completeFreshTutorial() {
     assert.notEqual(phase.modal, 'join');
     assert.doesNotMatch([phase.title, phase.body, phase.cta].join(' '), /Register|gems|shop|buy|another device|cross.device/i);
   }
-  let player = { ...createNewPlayer(), version: 7, tutorial: defaultTutorial() };
+  let player = { ...createNewPlayer({ tutorialScript: 4 }), version: 7, tutorial: defaultTutorial() };
   const initialWallet = { ...player.wallet };
   function phase(expected) {
     assert.equal(player.tutorial.phase, expected);

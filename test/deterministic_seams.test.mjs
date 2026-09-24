@@ -13,8 +13,8 @@ const makeRng = () => {
 };
 
 // A missing clock or RNG injection changes the saved player and crew identity.
-const a = createNewPlayer({ captainName: 'Sim', now, rng: makeRng() });
-const b = createNewPlayer({ captainName: 'Sim', now, rng: makeRng() });
+const a = createNewPlayer({ captainName: 'Sim', tutorialScript: 4, now, rng: makeRng() });
+const b = createNewPlayer({ captainName: 'Sim', tutorialScript: 4, now, rng: makeRng() });
 assert.deepEqual(a, b);
 assert.equal(a.createdAt, now);
 assert.equal(a.fuelClaimAt, now);

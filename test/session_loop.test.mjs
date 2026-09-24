@@ -9,7 +9,7 @@ import { defaultTutorial, ordersStep, sessionHint } from '../src/systems/tutoria
 // A bad saved route must not enter the acceptance transition, and live modifiers
 // must change the displayed band without replacing the saved route identity.
 const fixedNow = Date.UTC(2030, 8, 22, 12);
-const bandPlayer = prepareSession({ ...createNewPlayer({ now: fixedNow, rng: () => 0.1 }), tutorial: { script: 3, completed: true, phase: 'done' }, wallet: { credits: 0, medals: 0, reputation: 0, gems: 0, fuel: 10 } }, fixedNow);
+const bandPlayer = prepareSession({ ...createNewPlayer({ tutorialScript: 4, now: fixedNow, rng: () => 0.1 }), tutorial: { script: 3, completed: true, phase: 'done' }, wallet: { credits: 0, medals: 0, reputation: 0, gems: 0, fuel: 10 } }, fixedNow);
 const bandOffer = bandPlayer.contractBoard.offers.find(x => x.profile === 'risky');
 const initialBand = sessionModels(bandPlayer, { reviewedOfferId: bandOffer.id }, fixedNow).contractReview.rewardBand;
 const upgraded = { ...bandPlayer, ship: { ...bandPlayer.ship, systems: { ...bandPlayer.ship.systems, weapons: 9 } } };
@@ -27,7 +27,7 @@ assert.notEqual(sessionModels(injuredBand, {}, fixedNow + 1000).activeContractVi
 
 // Catches production actions that skip tutorial steps, lose rendered identity, auto-pick
 // a different away party, or publish effects before a failed local save.
-let player = prepareSession({ ...createNewPlayer(), version: 7, tutorial: defaultTutorial() });
+let player = prepareSession({ ...createNewPlayer({ tutorialScript: 4 }), version: 7, tutorial: defaultTutorial() });
 let ui = { missionView: 'contracts' };
 const events = [];
 function act(name, data = {}, options = {}) {
@@ -131,7 +131,7 @@ persistSessionTransition(result, { save: () => { order.push('save'); return true
 assert.deepEqual(order, ['save', 'publish', 'event', 'animation']);
 
 // The live pending Explore sheet must be operable and commit the chosen order.
-player = prepareSession({ ...createNewPlayer(), tutorial: { script: 3, completed: true, phase: 'done' } });
+player = prepareSession({ ...createNewPlayer({ tutorialScript: 4 }), tutorial: { script: 3, completed: true, phase: 'done' } });
 ui = { missionView: 'explore' };
 act('travel-to', { node: 'lane_a' }, { rng: () => 0.5 });
 assert.ok(ui.pendingCombat);

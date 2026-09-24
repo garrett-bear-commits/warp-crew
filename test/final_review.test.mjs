@@ -9,7 +9,7 @@ import { defaultTutorial } from '../src/systems/tutorial.js';
 
 const now = new Date(2026, 8, 21, 12).getTime();
 const reload = player => prepareSession(migratePlayer(JSON.parse(JSON.stringify(player))), now);
-const veteran = () => ({ ...createNewPlayer(), tutorial: { script: 3, completed: true, phase: 'done' } });
+const veteran = () => ({ ...createNewPlayer({ tutorialScript: 4 }), tutorial: { script: 3, completed: true, phase: 'done' } });
 const identity = player => ({ revision: player.activeContract.revision, acceptanceId: player.activeContract.acceptanceId });
 function step(player, id, orderId = 'brace', rng = () => 0) {
   const result = commitContractAction(player, previewContractAction(player, { id, orderId }), { rng });
@@ -30,7 +30,7 @@ function accepted(profile = 'risky', destinationId = null, day = now) {
   return acceptContract(player, offer.id).player;
 }
 function tutorialAt(stage) {
-  let player = prepareSession({ ...createNewPlayer(), version: 7, tutorial: defaultTutorial() }, now);
+  let player = prepareSession({ ...createNewPlayer({ tutorialScript: 4 }), version: 7, tutorial: defaultTutorial() }, now);
   for (const [act, data] of [['contract-review', { offer: 'offer_tutorial_distress' }], ['contract-accept', { offer: 'offer_tutorial_distress' }]]) {
     player = sessionAction(player, {}, act, data, { now }).player;
   }
