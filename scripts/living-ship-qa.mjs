@@ -185,7 +185,10 @@ async function play(width, height, reduced = false) {
     assert.equal(captain.save.phase, 'captain');
     assert.equal(await page.evaluate('document.querySelectorAll("[data-captain-option]").length'), 4);
     await page.click('[data-captain-option="captain_alien"]');
-    await page.evaluate('document.querySelector("[data-captain-name]").value = "QA Aster"');
+    await page.click('[data-captain-name]');
+    await page.evaluate(`(() => { const input = document.querySelector('[data-captain-name]'); input.focus(); input.select(); })()`);
+    await page.send('Input.insertText', { text: 'QA Aster' });
+    assert.equal(await page.evaluate('document.querySelector("[data-captain-name]").value'), 'QA Aster', 'typed captain name fixture');
     await page.click('[data-act="captain-choose"]');
     await page.until('Boolean(document.querySelector(\'[data-act="tutorial-first-hire"]\'))');
     const hire = await page.capture('hire');
@@ -435,6 +438,113 @@ async function corruptV5(kind = 'seed') {
   } finally { await page.close(); }
 }
 
+function v5ClaimFixture(kind) {
+  const now = Date.UTC(2030, 8, 23, 12);
+  let player = prepareSession(createNewPlayer({ now, rng: () => 0.1 }), now);
+  for (const [action, data] of [
+    ['splash-dismiss', {}],
+    ['captain-choose', { templateId: 'captain_droid', name: 'QA Unit' }],
+    ['tutorial-first-hire', {}],
+    ['station-assign', { id: null, station: 'weapons' }],
+    ['tutorial-fight-start', {}],
+  ]) {
+    if (action === 'station-assign') data.id = player.tutorial.firstHireInstanceId;
+    const result = sessionAction(player, {}, action, data, { now, rng: () => 0.1 });
+    assert.equal(result.ok, true, `corrupt claim fixture ${action}: ${result.reason}`);
+    player = result.player;
+  }
+  const fuelBefore = player.wallet.fuel;
+  const creditsBefore = player.wallet.credits;
+  let beat = sessionAction(player, {}, 'encounter-order', {
+    acceptanceId: player.activeEncounter.acceptanceId,
+    revision: player.activeEncounter.revision,
+    order: 'target_weapons',
+  }, { now, rng: () => 0.1 });
+  assert.equal(beat.ok, true, 'corrupt claim fixture target weapons order');
+  player = beat.player;
+  for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) {
+    beat = sessionAction(player, {}, 'encounter-advance', {
+      acceptanceId: player.activeEncounter.acceptanceId,
+      revision: player.activeEncounter.revision,
+    }, { now, rng: () => 0.1 });
+    assert.equal(beat.ok, true, `corrupt claim fixture encounter beat ${i}`);
+    player = beat.player;
+  }
+  assert.equal(player.tutorial.phase, 'claim');
+  assert.equal(player.activeContract.stage, 'return');
+  if (kind === 'invalid-rewards') player = { ...player, activeContract: {
+    ...player.activeContract, result: { ...player.activeContract.result, rewards: null },
+  } };
+  if (kind === 'invalid-offer') player = { ...player, activeContract: {
+    ...player.activeContract, offerId: 'bogus',
+  } };
+  if (kind === 'missing-contract') player = { ...player, activeContract: null };
+  if (kind === 'missing-encounter') player = { ...player, activeEncounter: null };
+  if (kind === 'version-3') player = { ...player, activeEncounter: {
+    ...player.activeEncounter, version: 3,
+  } };
+  return { player, fuelBefore, creditsBefore };
+}
+
+async function corruptV5Claim(kind) {
+  const page = await openPage(390, 844);
+  try {
+    const { player, fuelBefore, creditsBefore } = v5ClaimFixture(kind);
+    await page.until('Boolean(document.querySelector(\'.wc-shell\'))');
+    await page.evaluate(`localStorage.setItem('warpcrew.save.v2', ${JSON.stringify(JSON.stringify({ player, savedAt: Date.now() }))})`);
+    await page.send('Page.navigate', { url: await page.evaluate('location.href') });
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-fight-start"]\'))');
+    const migrationWindow = await page.evaluate(`(() => {
+      const saved = JSON.parse(localStorage.getItem('warpcrew.save.v2') || '{}').player;
+      return { key: 'warpcrew.save.v2', renderedPhase: document.querySelector('.wc-shell')?.dataset.phase,
+        savedPhase: saved?.tutorial?.phase, savedContractStage: saved?.activeContract?.stage ?? null };
+    })()`);
+    assert.equal(migrationWindow.renderedPhase, 'fight', `${kind}: recovered fight CTA should be visible first`);
+    assert.equal(migrationWindow.savedPhase, 'claim', `${kind}: fixture should expose the pre-persist raw save`);
+    await page.until(`(() => { const saved = JSON.parse(localStorage.getItem('warpcrew.save.v2') || '{}').player;
+      return saved?.tutorial?.phase === 'fight' && saved.activeContract === null && saved.activeEncounter === null; })()`);
+    const recovered = await page.capture(`corrupt-claim-${kind}-recovery`);
+    assert.equal(recovered.save.script, 5);
+    assert.equal(recovered.tutorial, 'fight');
+    assert.equal(recovered.save.phase, 'fight');
+    assert.equal(recovered.save.fuel, fuelBefore);
+    assert.equal(recovered.save.credits, creditsBefore);
+    assert.equal(recovered.save.pulls, 0);
+    assert.equal(recovered.save.contract, undefined);
+    assert.equal(await page.evaluate('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))'), false);
+
+    await page.click('[data-act="tutorial-fight-start"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="encounter-order"][data-order="target_weapons"]:not([disabled])\'))');
+    const restarted = await page.capture(`corrupt-claim-${kind}-retry`);
+    assert.equal(restarted.save.fuel, fuelBefore, 'claim recovery cannot charge launch fuel twice');
+    assert.equal(restarted.save.encounterVersion, 2);
+    await page.click('[data-act="encounter-order"][data-order="target_weapons"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))', 30000);
+    const won = await page.capture(`corrupt-claim-${kind}-retry-win`);
+    assert.equal(won.save.phase, 'claim');
+    assert.equal(won.save.credits, creditsBefore);
+    await page.click('[data-act="contract-claim"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-name"]\'))');
+    const claimed = await page.capture(`corrupt-claim-${kind}-claimed`);
+    assert.equal(claimed.save.phase, 'name_ship');
+    assert.equal(claimed.save.credits, creditsBefore + 120);
+    assert.equal(claimed.save.pulls, 0);
+    assert.equal(await page.evaluate(`JSON.parse(localStorage.getItem('warpcrew.save.v2')).player.contractBoard.completedOfferIds.filter(id => id === 'offer_tutorial_distress').length`), 1);
+    report.checks[`corruptClaim_${kind}`] = {
+      recoveredToFight: true,
+      migrationPersistence: migrationWindow,
+      retryWinAndClaim: true,
+      fuelBeforeRecovery: fuelBefore,
+      fuelAfterRetry: restarted.save.fuel,
+      creditsBeforeRecovery: creditsBefore,
+      creditsAfterRetry: won.save.credits,
+      creditsAfterClaim: claimed.save.credits,
+      pullsAfterClaim: claimed.save.pulls,
+      claimedOfferCount: 1,
+    };
+  } finally { await page.close(); }
+}
+
 async function missingHireV5() {
   const page = await openPage(390, 844);
   try {
@@ -513,6 +623,11 @@ await play(390, 844, true);
 await legacyV4();
 await corruptV5();
 await corruptV5('contract');
+await corruptV5Claim('invalid-rewards');
+await corruptV5Claim('invalid-offer');
+await corruptV5Claim('missing-contract');
+await corruptV5Claim('missing-encounter');
+await corruptV5Claim('version-3');
 await missingHireV5();
 await duplicateWelcomeV5();
 await writeFile(new URL('captain-first-play-qa.json', captureDir), `${JSON.stringify(report, null, 2)}\n`);
