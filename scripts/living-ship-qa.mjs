@@ -90,7 +90,7 @@ async function play(width, height, reduced = false) {
   try {
     await page.until('Boolean(document.querySelector(\'[data-act="splash-dismiss"]:not([disabled])\'))');
     const splash = await page.capture('splash');
-    assert.match(splash.splash, /splash-five-crew-v2\.png$/);
+    assert.match(splash.splash, /splash-five-crew-v3\.png$/);
     assert.equal(splash.artLoaded, 941);
     await page.click('[data-act="splash-dismiss"]');
     await page.until('Boolean(document.querySelector(\'[data-act="station-assign"][data-station="shields"]\'))');

@@ -1,11 +1,11 @@
-/** Approved opening scene; crew portraits remain provisional. */
+/** Opening scene QA candidate; crew portraits remain provisional. */
 export const ART_VERTICAL_SLICE = Object.freeze({
   splash: Object.freeze({
-    path: '/art/pixel/vertical-slice/splash-five-crew-v2.png',
+    path: '/art/pixel/vertical-slice/splash-five-crew-v3.png',
     fallback: '/art/pixel/cinematic/jump.png',
     width: 941, height: 1672,
-    sha256: '353ff73314b2bd088d3e3d88df6933aa4e11be1d277a9c028887dfa85cb021fd',
-    status: 'approved',
+    sha256: 'f716761790dd244c39471bd25e2eeebdd331e6820c89a9f1a47f403fd898982a',
+    status: 'qa-candidate',
   }),
   rex: Object.freeze({
     path: '/art/pixel/crew/rex.png', fallback: '/art/pixel/crew/jen.png',
