@@ -113,10 +113,21 @@ export function normalizeEncounterState(player) {
   if (!contract) return encounter ? { ...player, activeEncounter: null } : player;
   if (!encounter && contract.encounterMode !== 'crew') return player;
   if (validSnapshot(encounter, contract)) return player;
+  const tutorial = player.tutorial;
+  const recoveringV4Distress = contract.profile === 'distress'
+    && tutorial?.script === 4 && tutorial.phase === 'fight' && !tutorial.completed;
+  const paidFuel = Number.isFinite(contract.fuelSpent) ? Math.max(0, contract.fuelSpent) : 0;
   return {
     ...player,
     activeContract: null,
     activeEncounter: null,
+    ...(recoveringV4Distress ? {
+      tutorial: {
+        ...tutorial,
+        // Carry paid launch fuel into the next acceptance without refunding it.
+        contractRecoveryFuelSpent: Math.max(tutorial.contractRecoveryFuelSpent || 0, paidFuel),
+      },
+    } : {}),
     recoveryEvents: [...(player.recoveryEvents || []), { event: 'contract_recovered', reason: 'invalid_encounter_state' }],
   };
 }

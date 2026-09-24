@@ -137,6 +137,41 @@ test('guided distress, Brace, claim, ship name, welcome crew and Skip survive ea
   assert.match(hangarSheet, /hangar-sheet/);
 });
 
+test('corrupted saved v4 distress encounter retries without charging launch fuel twice or duplicating rewards', () => {
+  let player = fresh();
+  player = reload(apply(player, 'splash-dismiss').player);
+  player = reload(apply(player, 'station-assign', { id: boltId(player), station: 'shields' }).player);
+  const startingWallet = { ...player.wallet };
+  player = reload(apply(player, 'tutorial-fight-start').player);
+  const spentFuel = player.wallet.fuel;
+  assert.equal(spentFuel, startingWallet.fuel - 1);
+
+  const corrupted = { ...player, activeEncounter: { ...player.activeEncounter, seed: player.activeEncounter.seed + 1 } };
+  player = reload(corrupted);
+  assert.equal(player.activeContract, null);
+  assert.equal(player.activeEncounter, null);
+  assert.equal(player.tutorial.phase, 'fight');
+
+  player = reload(apply(player, 'tutorial-fight-start').player);
+  assert.equal(player.activeContract?.profile, 'distress', 'the tutorial remains playable');
+  assert.equal(player.wallet.fuel, spentFuel, 'retry does not charge for the already-paid launch');
+  assert.equal(player.activeContract.fuelSpent, 1);
+  assert.equal(player.wallet.credits, startingWallet.credits, 'no reward is granted before a claim');
+
+  player = reload(apply(player, 'encounter-order', { ...encounterIdentity(player), order: 'brace' }).player);
+  for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) {
+    player = reload(apply(player, 'encounter-advance', encounterIdentity(player)).player);
+  }
+  assert.equal(player.tutorial.phase, 'claim');
+  const rewards = { ...player.activeContract.result.rewards };
+  const claimIdentity = identity(player);
+  player = reload(apply(player, 'contract-claim', identity(player)).player);
+  assert.equal(player.wallet.credits, startingWallet.credits + rewards.credits);
+  assert.equal(player.wallet.fuel, spentFuel + rewards.fuel);
+  assert.equal(apply(player, 'contract-claim', claimIdentity).ok, false);
+  assert.equal(player.wallet.credits, startingWallet.credits + rewards.credits);
+});
+
 test('registration completion requires confirmed Jest registration; failed save publishes no reward', () => {
   let player = fresh();
   player = reload(apply(player, 'splash-dismiss').player);
