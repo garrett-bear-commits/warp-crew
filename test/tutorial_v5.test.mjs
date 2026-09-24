@@ -89,7 +89,9 @@ test('win, claim, name, pull, and registration each require prior saved evidence
   assert.equal(p.tutorial.phase, 'fight');
   assert.equal(advanceTutorialV5(p, 'guided_win'), p);
   const won = { ...p, activeContract: { offerId: 'offer_tutorial_distress', profile: 'distress', stage: 'return', acceptanceId: 'accepted', result: { success: true } },
-    activeEncounter: { kind: 'guided', acceptanceId: 'accepted', result: 'win', orders: { brace: { used: true } } } };
+    activeEncounter: { kind: 'guided', acceptanceId: 'accepted', result: 'win', orders: { targetWeapons: { used: true } } } };
+  const braceOnly = { ...won, activeEncounter: { ...won.activeEncounter, orders: { brace: { used: true } } } };
+  assert.equal(advanceTutorialV5(braceOnly, 'guided_win'), braceOnly, 'Brace alone does not satisfy script 5');
   p = advanceTutorialV5(won, 'guided_win');
   assert.equal(p.tutorial.phase, 'claim');
   assert.equal(p.tutorial.firstWin, true);

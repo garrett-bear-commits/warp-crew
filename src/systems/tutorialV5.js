@@ -43,7 +43,7 @@ export function advanceTutorialV5(player, event) {
     if (t.firstHireUsed && contract?.offerId === 'offer_tutorial_distress' && contract.profile === 'distress'
       && contract.stage === 'return' && contract.result?.success === true
       && encounter?.kind === 'guided' && encounter.acceptanceId === contract.acceptanceId
-      && encounter.result === 'win' && encounter.orders?.brace?.used === true) update = { phase: 'claim', firstWin: true };
+      && encounter.result === 'win' && encounter.orders?.targetWeapons?.used === true) update = { phase: 'claim', firstWin: true };
   } else if (t.phase === 'claim' && event === 'reward_claimed') {
     if (t.firstWin && !player.activeContract && player.contractBoard?.completedOfferIds?.includes('offer_tutorial_distress')) {
       update = { phase: 'name_ship', firstClaim: true };
