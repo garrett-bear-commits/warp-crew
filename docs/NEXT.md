@@ -8,7 +8,9 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 - [x] Open the GitHub Pages fresh-save link and confirm the deployed build shows the Contract Board tutorial rather than an older Grok build.
 - [x] Record the Pages deployment commit/time in the stopping-point handoff.
 - [x] Publish and live-smoke the updated GitHub Pages QA game build at `gh-pages@d0e72f0` from package source `47fb6e5` (2026-09-23). Use the direct game link; the QA hub checklist still describes an older flow.
+- [x] Publish the living-ship first-play slice at `gh-pages@b487113` from source `07ebcac` (2026-09-23), and verify live build marker, JavaScript, and approved splash hashes. The [QA game](https://garrett-bear-commits.github.io/warp-crew/) and [QA checklist](https://garrett-bear-commits.github.io/warp-crew/qa.html) now describe this slice; `?fresh=1` wipes the current browser save once.
 - [ ] Run one real iPhone pass and one real Android pass; attach screenshots or recordings and device/OS details.
+- [ ] Garrett: play the new Pages fresh-save tutorial on a separate browser/profile and report the first confusing or dull moment, fight feel, crew/station legibility, and whether the next job is obvious. Pages sign-in and purchases are mock previews, not Jest verification.
 - [ ] Check safe areas, scrolling, 44px targets, 16px consequence text, focus, reduced motion, and frame pacing on those devices.
 - [ ] Log any device failure as a reproducible issue before changing layout.
 

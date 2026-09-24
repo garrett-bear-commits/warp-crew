@@ -1,6 +1,6 @@
-# Living-ship vertical-slice QA — in progress
+# Living-ship vertical-slice QA — Pages build live, phone QA pending
 
-This record separates local code/browser evidence from owner phone QA and any published Jest build. The feature branch is `codex/contract-route-overhaul`; the previously reviewed recovery fix was `454495f`. The Pages build documented in `docs/handoffs/2026-09-21-stopping-point.md` predates this slice until the publication below is verified. No PR merge or Jest production activation is part of this record.
+This record separates local code/browser evidence from owner phone QA and any published Jest build. The feature branch is `codex/contract-route-overhaul`; the previously reviewed recovery fix was `454495f`. The earlier Pages build in `docs/handoffs/2026-09-21-stopping-point.md` is superseded by the QA deployment below. No PR merge or Jest production activation is part of this record.
 
 ## Local regression, 2026-09-23
 
@@ -49,10 +49,16 @@ The final visual pass found and fixed two handoff problems: the Cargo Hold sheet
 
 Final independent static review found a QA-link P2: the `?fresh=1` parameter was retained, so a tester refreshing the new-save link could erase the new progress again. The link now consumes that parameter immediately after its one authorized local clear, preserving unrelated URL query/hash. A focused test and all three isolated-browser reload runs verified that the parameter is gone and the new save survives refresh. The reviewer ran no browser tests. A separate [Grok Chrome audit](https://grok.com/c/1b597ff6-20ff-48b3-a4bc-be1f11098085) returned `ACCEPT` for its packet only; it did not see the full final diff, run a browser, or catch the fresh-link issue. Neither audit is a merge/Jest gate.
 
+## Published Pages QA artifact
+
+The [QA game](https://garrett-bear-commits.github.io/warp-crew/) and [QA checklist](https://garrett-bear-commits.github.io/warp-crew/qa.html) now serve `gh-pages@b487113f9ee003f67c261027d0ae4e1d1b3c82b0` from source `07ebcacaa7567450e8077014c55afb829607859d`. GitHub Pages deployment run `35961514645` completed successfully. The live `build.txt` names the source SHA and local/mock platform; the served JavaScript SHA-256 is `16a6a6b131dfa4887e991832320d405bfeefbe0cb39dd19a0a08cf761d1d4011`, and the served approved splash SHA-256 is `353ff73314b2bd088d3e3d88df6933aa4e11be1d277a9c028887dfa85cb021fd`. The live index references the expected JavaScript and CSS files, and the QA checklist has the current tutorial steps and save-wipe warning. This proves Pages bytes, not real Jest/phone behavior.
+
+The [fresh-save game link](https://garrett-bear-commits.github.io/warp-crew/?fresh=1) clears that browser's existing local Warp Crew save **once**. Use a separate browser/profile to retain progress. The app removes `fresh=1` from the URL after the clear so subsequent refreshes preserve the new save.
+
 ## Not yet verified
 
 - Time to first win and an unprompted next-job comprehension observation. The automated fresh script-4 and first normal-job playthroughs completed locally, but no human stopwatch or novice observation was recorded.
 - Interrupted script-4 saves at every phase, active/completed script-3 and veteran saves in a browser; unit tests cover model transitions, not all host behavior.
 - True-size crew and station legibility on physical phones, grayscale/gradient/translucent contrast, scaled text, and real pan/pinch gestures during combat. Desktop-emulated 360×800 and 390×844 captures are recorded locally.
 - Real iPhone Safari and Android Chrome/Jest-host passes, including pinch capture, safe areas, reduced motion, sign-in overlay, and save reload.
-- Inactive QA artifact publication/served-byte verification at the final commit. No Jest production activation, paid-product activation, or PR #1 merge.
+- Inactive Jest QA artifact publication and real Jest sign-in. The current public build is Pages mock mode. No Jest production activation, paid-product activation, or PR #1 merge.
