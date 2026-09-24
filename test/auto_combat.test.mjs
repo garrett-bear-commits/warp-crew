@@ -15,7 +15,7 @@ const baseArgs = {
 };
 
 function encounter(overrides = {}) {
-  return startEncounter({ ...baseArgs, ...overrides });
+  return startEncounter({ ...baseArgs, ruleset: 'v1', ...overrides });
 }
 
 function advanceUntil(state, predicate, limit = 40, orderForState = () => null) {
@@ -27,7 +27,7 @@ function advanceUntil(state, predicate, limit = 40, orderForState = () => null) 
 
 function reliablePushEncounter({ staffWeapons = false } = {}) {
   const now = Date.UTC(2030, 8, 22, 12);
-  let player = createNewPlayer({ now, rng: () => 0.1 });
+  let player = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
   player = {
     ...player,
     tutorial: { ...player.tutorial, completed: true, phase: 'done' },
@@ -352,6 +352,56 @@ function impactAtSecondTell(seed, target) {
   assert.equal(state.orderWindow.orderOptions.repair.reason, 'hull_full');
   assert.equal(state.orderWindow.availableOrders.includes('repair'), false);
   assert.equal(advanceEncounter(state, 'repair').reason, 'hull_full');
+}
+
+// Mutation caught: a zero-cost target lock that still lets the pirate volley land.
+{
+  const first = startEncounter({ ...baseArgs, ruleset: 'v2' });
+  assert.equal(first.version, 2);
+  assert.deepEqual(first.orders.targetWeapons, { used: false, uses: 0 });
+  assert.equal(first.enemy.weaponDisabledThroughBeat, 0);
+  const opened = advanceEncounter(first).state;
+  assert.deepEqual(opened.orderWindow.orderOptions.target_weapons, {
+    cost: { shield: 0 }, available: true, reason: null, cooldownBeats: 0,
+  });
+  const locked = advanceEncounter(opened, 'target_weapons');
+  assert.equal(locked.state.orders.targetWeapons.used, true);
+  assert.equal(locked.state.orders.targetWeapons.uses, 1);
+  assert.equal(locked.state.shield, opened.shield);
+  assert.equal(locked.state.enemy.weaponDisabledThroughBeat, 4);
+  assert.ok(locked.events.some(event => event.type === 'enemy_weapon_disabled' && event.target === 'weapons' && event.throughBeat === 4));
+  const impact = advanceEncounter(locked.state);
+  assert.ok(impact.events.some(event => event.type === 'enemy_volley_canceled'));
+  assert.equal(impact.events.some(event => event.type === 'enemy_impact' && event.amount > 0), false);
+  assert.equal(impact.state.enemy.weaponDisabledThroughBeat, 0);
+  assert.equal(advanceEncounter(impact.state, 'target_weapons').ok, false);
+  const laterWindow = advanceUntil(impact.state, state => Boolean(state.orderWindow), 5);
+  assert.equal(laterWindow.orderWindow.orderOptions.target_weapons.reason, 'used');
+  assert.equal(laterWindow.orderWindow.availableOrders.includes('target_weapons'), false);
+}
+
+// Mutation caught: a saved v1 fight being reinterpreted as v2 after a reload.
+{
+  const legacy = startEncounter({ ...baseArgs, ruleset: 'v1' });
+  assert.equal(legacy.version, 1);
+  assert.equal(legacy.orders.targetWeapons, undefined);
+  assert.equal(legacy.enemy.weaponDisabledThroughBeat, undefined);
+  assert.deepEqual(advanceEncounter(JSON.parse(JSON.stringify(legacy))), advanceEncounter(legacy));
+  const legacyWindow = advanceEncounter(legacy).state.orderWindow;
+  assert.deepEqual(Object.keys(legacyWindow.orderOptions), ['brace']);
+}
+
+// Mutation caught: normal v2 impact resolving damage before checking the saved lock.
+{
+  const opened = advanceEncounter(startEncounter({ ...baseArgs, kind: 'normal', ruleset: 'v2' })).state;
+  const locked = advanceEncounter(opened, 'target_weapons').state;
+  const restored = JSON.parse(JSON.stringify(locked));
+  assert.deepEqual(advanceEncounter(restored), advanceEncounter(locked));
+  const impact = advanceEncounter(restored);
+  assert.ok(impact.events.some(event => event.type === 'enemy_volley_canceled'));
+  assert.equal(impact.events.some(event => event.type === 'enemy_impact'), false);
+  assert.equal(impact.state.hull, locked.hull);
+  assert.equal(impact.state.shield, locked.shield);
 }
 
 console.log('auto combat reducer tests passed');

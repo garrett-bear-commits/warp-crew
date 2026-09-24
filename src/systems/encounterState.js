@@ -15,16 +15,23 @@ function validOrders(encounter) {
     && Number.isInteger(orders.brace.uses) && numberIn(orders.brace.uses, 0, encounter.beat)
     && Number.isInteger(orders.repair.uses) && numberIn(orders.repair.uses, 0, encounter.beat)
     && orders.brace.used === (orders.brace.uses > 0)
+    && (encounter.version === 1 ? !Object.hasOwn(orders, 'targetWeapons') : (record(orders.targetWeapons)
+      && typeof orders.targetWeapons.used === 'boolean'
+      && Number.isInteger(orders.targetWeapons.uses) && numberIn(orders.targetWeapons.uses, 0, 1)
+      && orders.targetWeapons.uses <= encounter.beat
+      && orders.targetWeapons.used === (orders.targetWeapons.uses === 1)))
     && Number.isInteger(encounter.braceThroughBeat) && numberIn(encounter.braceThroughBeat, 0, encounter.beat + 2)
     && record(cooldowns) && Object.keys(cooldowns).every(name => ['brace', 'repair'].includes(name))
     && ['brace', 'repair'].every(name => Number.isInteger(cooldowns[name]) && numberIn(cooldowns[name], 0, 4));
 }
 
-function validOrderWindow(window, kind) {
+function validOrderWindow(window, encounter) {
   if (window == null) return true;
-  const names = kind === 'guided' ? ['brace'] : ['brace', 'repair'];
+  const names = encounter.kind === 'guided' ? ['brace'] : ['brace', 'repair'];
+  if (encounter.version === 2 && encounter.encounterId === 'pirate_scout') names.push('target_weapons');
   return Boolean(
     record(window) && targets.includes(window.target)
+    && (encounter.version !== 2 || encounter.enemy.pattern === 'charging_volley')
     && Number.isInteger(window.beatsToImpact) && numberIn(window.beatsToImpact, 1, 3)
     && Array.isArray(window.availableOrders)
     && window.availableOrders.every(name => names.includes(name))
@@ -34,7 +41,7 @@ function validOrderWindow(window, kind) {
     && names.every(name => {
       const option = window.orderOptions?.[name];
       return record(option) && record(option.cost)
-        && option.cost.shield === (name === 'brace' ? 2 : 3)
+        && option.cost.shield === (name === 'brace' ? 2 : name === 'target_weapons' ? 0 : 3)
         && typeof option.available === 'boolean'
         && (option.available ? option.reason === null : ['insufficient_resource', 'cooldown', 'used', 'hull_full'].includes(option.reason))
         && Number.isInteger(option.cooldownBeats) && numberIn(option.cooldownBeats, 0, 4)
@@ -45,7 +52,7 @@ function validOrderWindow(window, kind) {
 
 function eligibleContract(player, contract) {
   return contract?.stage === 'confrontation' && (
-    (contract.profile === 'distress' && player.tutorial?.script === 4 && contract.encounterId === 'pirate_scout')
+    (contract.profile === 'distress' && [4, 5].includes(player.tutorial?.script) && contract.encounterId === 'pirate_scout')
     || (contract.profile === 'reliable' && contract.choiceId === 'push' && contract.encounterId === 'pirate_scout')
   );
 }
@@ -59,6 +66,8 @@ export function beginContractEncounter(player, now = Date.now()) {
     acceptanceId: contract.acceptanceId,
     encounterId: contract.encounterId,
     kind,
+    ruleset: contract.profile === 'distress' && player.tutorial?.script === 4
+      ? 'v1' : contract.encounterId === 'pirate_scout' ? 'v2' : 'v1',
     seed: contract.routeSeed,
     assignments: normalizeAssignments(player),
     outputs: stationOutputs(player, now),
@@ -79,7 +88,7 @@ function validSnapshot(encounter, contract) {
   // reliable Push (Launch plus choice). Every later contract revision is a beat.
   const entryRevision = contract.profile === 'distress' ? 1
     : contract.profile === 'reliable' && contract.choiceId === 'push' ? 2 : null;
-  if (!encounter || contract.encounterMode !== 'crew' || encounter.version !== 1 || encounter.acceptanceId !== contract.acceptanceId
+  if (!encounter || contract.encounterMode !== 'crew' || ![1, 2].includes(encounter.version) || encounter.acceptanceId !== contract.acceptanceId
     || entryRevision === null
     || encounter.encounterId !== contract.encounterId || !['guided', 'normal'].includes(encounter.kind)
     || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
@@ -91,13 +100,19 @@ function validSnapshot(encounter, contract) {
     || encounter.phase !== (encounter.result === null ? 'combat' : 'complete')
     || !numberIn(encounter.hull, 1, 30) || !numberIn(encounter.shield, 0, 12)
     || !record(encounter.enemy) || !numberIn(encounter.enemy.hull, 0, 42)
+    || (encounter.version === 1 && Object.hasOwn(encounter.enemy, 'weaponDisabledThroughBeat'))
+    || (encounter.version === 2 && (encounter.encounterId !== 'pirate_scout'
+      || !Number.isInteger(encounter.enemy.weaponDisabledThroughBeat)
+      || !numberIn(encounter.enemy.weaponDisabledThroughBeat, 0, encounter.beat + 2)
+      || (encounter.enemy.weaponDisabledThroughBeat > 0 && (encounter.enemy.weaponDisabledThroughBeat < encounter.beat
+        || encounter.orders?.targetWeapons?.used !== true))))
     || !targets.includes(encounter.enemy.target)
     || !['charging_volley', 'reloading', 'broken_contact'].includes(encounter.enemy.pattern)
     || !STATIONS.every(station => numberIn(encounter.outputs?.[station], 0, 10000)
       && numberIn(encounter.systems?.[station], 0, 100))
     || !record(encounter.assignments)
     || !validOrders(encounter)
-    || !validOrderWindow(encounter.orderWindow, encounter.kind)
+    || !validOrderWindow(encounter.orderWindow, encounter)
     || (encounter.result !== null && !['win', 'loss'].includes(encounter.result))) return false;
   if (encounter.result === 'win' && (encounter.beat === 0 || encounter.enemy.hull !== 0 || encounter.orderWindow !== null)) return false;
   if (encounter.result === 'loss' && (encounter.beat === 0 || encounter.hull !== 1 || encounter.enemy.hull <= 0 || encounter.orderWindow !== null)) return false;

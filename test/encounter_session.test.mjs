@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCrewInstance } from '../src/data/crewRoster.js';
+import { chooseCaptain } from '../src/systems/captainFirstPlay.js';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { generateContractBoard, acceptContract, previewContractAction, commitContractAction, claimContractReward, tutorialDistressOffer } from '../src/systems/contracts.js';
-import { applyEncounterAction, recoverEncounter } from '../src/systems/encounterState.js';
+import { applyEncounterAction, normalizeEncounterState, recoverEncounter } from '../src/systems/encounterState.js';
+import { hireFirstCrew } from '../src/systems/tutorialV5.js';
 import { sessionAction, sessionModels, persistSessionTransition } from '../src/systems/sessionLoop.js';
 import { renderActiveContract, renderShipEncounter } from '../src/ui/contractView.js';
 import { encounterVisualFrame } from '../src/ui/combatView.js';
@@ -19,13 +21,13 @@ const action = (player, id) => {
   return committed.player;
 };
 const guided = (script = 4) => {
-  let player = createNewPlayer({ now, rng: () => 0.1 });
+  let player = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
   player = { ...player, tutorial: { ...player.tutorial, script }, contractBoard: { dayKey: 'tutorial', offers: [tutorialDistressOffer(player)], completedOfferIds: [] } };
   player = acceptContract(player, 'offer_tutorial_distress', now).player;
   return action(player, 'launch');
 };
 const normal = ({ staffWeapons = false } = {}) => {
-  let player = createNewPlayer({ now, rng: () => 0.1 });
+  let player = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
   player = { ...player, tutorial: { ...player.tutorial, completed: true, phase: 'done' }, wallet: { ...player.wallet, fuel: 10 } };
   player = { ...player, contractBoard: generateContractBoard(player, now) };
   const offer = player.contractBoard.offers.find(candidate => candidate.profile === 'reliable');
@@ -41,6 +43,19 @@ const normal = ({ staffWeapons = false } = {}) => {
     };
   }
   return action(player, 'push');
+};
+const captainGuided = templateId => {
+  let player = createNewPlayer({ now, rng: () => 0.1 });
+  player = chooseCaptain(player, { templateId, name: 'Captain', rng: () => 0.1 }).player;
+  player = hireFirstCrew({ ...player, tutorial: { ...player.tutorial, phase: 'hire' } }, { rng: () => 0.2 }).player;
+  const firstHire = player.crew.find(member => member.instanceId === player.tutorial.firstHireInstanceId);
+  player = { ...player,
+    stationAssignments: { ...player.stationAssignments,
+      [firstHire.instanceId]: firstHire.templateId === 'merc_bolt' ? 'shields' : 'weapons' },
+    tutorial: { ...player.tutorial, phase: 'fight' },
+    contractBoard: { dayKey: 'tutorial', offers: [tutorialDistressOffer(player)], completedOfferIds: [] } };
+  player = acceptContract(player, 'offer_tutorial_distress', now).player;
+  return action(player, 'launch');
 };
 const beat = (player, order = null) => {
   const { acceptanceId, revision } = player.activeEncounter;
@@ -135,6 +150,82 @@ test('a damaged normal ship can lose, then recover without a reward', () => {
   assert.equal(recoverEncounter(recovered.player, { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision }).ok, false);
 });
 
+test('script-5 distress uses v2 for every starting captain output and the targeted guided win survives reload', () => {
+  const cases = [
+    ['captain_cyborg', { helm: 110, shields: 100, weapons: 110, engineering: 100 }],
+    ['captain_gunner', { helm: 100, shields: 110, weapons: 110, engineering: 100 }],
+    ['captain_alien', { helm: 100, shields: 100, weapons: 110, engineering: 100 }],
+    ['captain_droid', { helm: 100, shields: 110, weapons: 110, engineering: 100 }],
+  ];
+  for (const [templateId, outputs] of cases) {
+    let player = captainGuided(templateId);
+    assert.equal(player.activeEncounter.version, 2, templateId);
+    assert.deepEqual(player.activeEncounter.outputs, outputs, templateId);
+    player = beat(player);
+    const locked = applyEncounterAction(player, {
+      acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision, order: 'target_weapons',
+    }, now);
+    assert.equal(locked.ok, true, templateId);
+    assert.ok(locked.events.some(event => event.type === 'enemy_weapon_disabled'), templateId);
+    assert.equal(applyEncounterAction(locked.player, {
+      acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision, order: 'target_weapons',
+    }, now).reason, 'stale_encounter_action', templateId);
+    player = migratePlayer(clone(locked.player));
+    assert.equal(player.activeEncounter.orders.targetWeapons.used, true, templateId);
+    const impact = applyEncounterAction(player, {
+      acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision,
+    }, now);
+    assert.equal(impact.ok, true, templateId);
+    assert.equal(impact.events.some(event => event.type === 'enemy_impact' && event.amount > 0), false, templateId);
+    player = impact.player;
+    for (let i = 0; i < 20 && !player.activeEncounter.result; i++) player = beat(player);
+    assert.equal(player.activeEncounter.result, 'win', templateId);
+    assert.equal(player.activeEncounter.orders.targetWeapons.uses, 1, templateId);
+    assert.equal(player.activeContract.stage, 'return', templateId);
+  }
+});
+
+test('a saved script-4 fight retains its v1 Brace path and reward', () => {
+  const started = guided(4);
+  assert.equal(started.activeEncounter.version, 1);
+  const saved = { activeContract: clone(started.activeContract), activeEncounter: clone(started.activeEncounter), tutorial: clone(started.tutorial) };
+  assert.deepEqual(normalizeEncounterState(saved), saved);
+  let player = migratePlayer(clone(started));
+  player = beat(player);
+  assert.deepEqual(Object.keys(player.activeEncounter.orderWindow.orderOptions), ['brace']);
+  player = beat(player, 'brace');
+  for (let i = 0; i < 20 && !player.activeEncounter.result; i++) player = beat(player);
+  assert.equal(player.activeEncounter.result, 'win');
+  assert.deepEqual(player.activeContract.result.rewards, { credits: 120, medals: 8, reputation: 4, gems: 0, fuel: 0 });
+});
+
+test('a malformed v2 target option cannot fall through to a legacy claim', () => {
+  const downgraded = normal();
+  downgraded.activeEncounter = { ...downgraded.activeEncounter, version: 1 };
+  assert.equal(migratePlayer(clone(downgraded)).activeContract, null,
+    'a v2 snapshot with its version changed cannot become a payable v1 fight');
+  const opened = beat(normal());
+  assert.equal(opened.activeEncounter.version, 2);
+  const malformed = { ...clone(opened), activeEncounter: { ...clone(opened.activeEncounter),
+    orderWindow: { ...clone(opened.activeEncounter.orderWindow),
+      orderOptions: { ...clone(opened.activeEncounter.orderWindow.orderOptions), target_weapons: { cost: { shield: 2 }, available: true, reason: null, cooldownBeats: 0 } } } } };
+  assert.equal(applyEncounterAction(malformed, {
+    acceptanceId: malformed.activeEncounter.acceptanceId, revision: malformed.activeEncounter.revision, order: 'target_weapons',
+  }, now).ok, false);
+  const loaded = migratePlayer(malformed);
+  assert.equal(loaded.activeEncounter, null);
+  assert.equal(loaded.activeContract, null);
+  assert.equal(claimContractReward(loaded, now).ok, false);
+  for (const change of [
+    { orders: { ...clone(opened.activeEncounter.orders), targetWeapons: null } },
+    { enemy: { ...clone(opened.activeEncounter.enemy), weaponDisabledThroughBeat: null } },
+  ]) {
+    const broken = { ...clone(opened), activeEncounter: { ...clone(opened.activeEncounter), ...change } };
+    assert.equal(migratePlayer(broken).activeContract, null);
+    assert.equal(claimContractReward(broken, now).ok, false);
+  }
+});
+
 test('mismatched or corrupt encounter snapshots cannot pay rewards', () => {
   const player = normal({ staffWeapons: true });
   const mismatched = migratePlayer({ ...clone(player), activeEncounter: { ...clone(player.activeEncounter), acceptanceId: 'different' } });
@@ -209,7 +300,7 @@ test('the active UI exposes truthful costs and an always available advance actio
 });
 
 test('entering a new fight keeps controls with the visible ship', () => {
-  let ready = createNewPlayer({ now, rng: () => 0.1 });
+  let ready = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
   const bolt = ready.crew.find(member => member.templateId === 'merc_bolt');
   ready = { ...ready, tutorial: { ...ready.tutorial, phase: 'fight' },
     stationAssignments: { ...ready.stationAssignments, [bolt.instanceId]: 'shields' },

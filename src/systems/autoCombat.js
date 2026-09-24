@@ -17,10 +17,11 @@ function seededIndex(seed, beat, size) {
 }
 
 function orderStatus(state, order) {
-  const cost = order === 'brace' ? 2 : 3;
+  const cost = order === 'brace' ? 2 : order === 'target_weapons' ? 0 : 3;
   const cooldownBeats = Math.max(0, state.cooldowns?.[order] || 0);
   let reason = null;
-  if (order === 'brace' && state.kind === 'guided' && state.orders.brace.used) reason = 'used';
+  if (order === 'target_weapons' && state.orders.targetWeapons.used) reason = 'used';
+  else if (order === 'brace' && state.kind === 'guided' && state.orders.brace.used) reason = 'used';
   else if (cooldownBeats > 0) reason = 'cooldown';
   else if (order === 'repair' && state.hull >= MAX_HULL) reason = 'hull_full';
   else if (state.shield < cost) reason = 'insufficient_resource';
@@ -65,12 +66,24 @@ function resolveEnemyImpact(next, selectedWindow, events) {
   if (next.hull <= 1) finish(next, 'loss', events, 'Hull breached; retreat with the ship barely holding together.');
 }
 
+function resolvePirateVolley(next, selectedWindow, events) {
+  if (next.version === 2 && next.enemy.weaponDisabledThroughBeat >= next.beat) {
+    events.push({ type: 'enemy_volley_canceled', target: 'weapons' });
+    next.enemy.pattern = 'reloading';
+    next.enemy.weaponDisabledThroughBeat = 0;
+  } else {
+    resolveEnemyImpact(next, selectedWindow, events);
+  }
+}
+
 /** Create the JSON-safe, replayable snapshot for one crew-run encounter. */
-export function startEncounter({ acceptanceId, encounterId, kind, seed, assignments = {}, outputs = {} }) {
+export function startEncounter({ acceptanceId, encounterId, kind, seed, assignments = {}, outputs = {},
+  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1' }) {
   if (kind !== 'guided' && kind !== 'normal') throw new TypeError("kind must be 'guided' or 'normal'");
+  if (ruleset !== 'v1' && ruleset !== 'v2') throw new TypeError("ruleset must be 'v1' or 'v2'");
   const stationOutputs = Object.fromEntries(STATIONS.map(station => [station, outputValue(outputs, station)]));
   return {
-    version: 1,
+    version: ruleset === 'v2' ? 2 : 1,
     acceptanceId: String(acceptanceId ?? ''),
     encounterId: String(encounterId ?? ''),
     kind,
@@ -88,9 +101,11 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
       hull: kind === 'guided' ? 25 : 42,
       target: 'hull',
       pattern: 'charging_volley',
+      ...(ruleset === 'v2' ? { weaponDisabledThroughBeat: 0 } : {}),
     },
     cooldowns: { brace: 0, repair: 0 },
-    orders: { brace: { used: false, uses: 0 }, repair: { uses: 0 } },
+    orders: { brace: { used: false, uses: 0 }, repair: { uses: 0 },
+      ...(ruleset === 'v2' ? { targetWeapons: { used: false, uses: 0 } } : {}) },
     braceThroughBeat: 0,
     orderWindow: null,
     result: null,
@@ -103,8 +118,13 @@ export function advanceEncounter(state, order = null) {
   if (state.result !== null) return { state, events: [] };
 
   if (order !== null) {
-    if (!['brace', 'repair'].includes(order)) return { ok: false, reason: 'order_unavailable', state };
+    if (!['brace', 'repair', ...(state.version === 2 ? ['target_weapons'] : [])].includes(order)) {
+      return { ok: false, reason: 'order_unavailable', state };
+    }
     if (!state.orderWindow?.orderOptions?.[order]) {
+      return { ok: false, reason: 'order_unavailable', state };
+    }
+    if (order === 'target_weapons' && (state.encounterId !== 'pirate_scout' || state.enemy.pattern !== 'charging_volley')) {
       return { ok: false, reason: 'order_unavailable', state };
     }
     const availability = orderStatus(state, order);
@@ -137,6 +157,11 @@ export function advanceEncounter(state, order = null) {
     next.orders.repair.uses += 1;
     events.push({ type: 'order', order: 'repair', cost, cooldownBeats: 4, target: 'hull', amount });
     if (amount > 0) events.push({ type: 'repair', target: 'hull', system: 'engineering', amount, source: 'emergency_order' });
+  } else if (order === 'target_weapons') {
+    next.orders.targetWeapons = { used: true, uses: 1 };
+    next.enemy.weaponDisabledThroughBeat = next.beat + 2;
+    events.push({ type: 'order', order: 'target_weapons', cost: { shield: 0 }, target: 'weapons' });
+    events.push({ type: 'enemy_weapon_disabled', target: 'weapons', throughBeat: next.enemy.weaponDisabledThroughBeat });
   }
 
   const impactThisBeat = next.beat % 3 === 0;
@@ -162,10 +187,10 @@ export function advanceEncounter(state, order = null) {
     }
   }
 
-  if (next.result === null && normalImpactFirst) resolveEnemyImpact(next, selectedWindow, events);
+  if (next.result === null && normalImpactFirst) resolvePirateVolley(next, selectedWindow, events);
   if (next.result === null && normalImpactFirst) fireWeapons(next, events);
   if (next.result === null && next.enemy.hull <= 0) finish(next, 'win', events);
-  else if (next.result === null && impactThisBeat && !normalImpactFirst) resolveEnemyImpact(next, selectedWindow, events);
+  else if (next.result === null && impactThisBeat && !normalImpactFirst) resolvePirateVolley(next, selectedWindow, events);
 
   if (next.result === null) {
     if (next.beat % 3 === 1) {
@@ -174,6 +199,9 @@ export function advanceEncounter(state, order = null) {
       next.enemy.target = target;
       next.enemy.pattern = 'charging_volley';
       const orderNames = next.kind === 'guided' ? ['brace'] : ['brace', 'repair'];
+      if (next.version === 2 && next.encounterId === 'pirate_scout' && next.enemy.pattern === 'charging_volley') {
+        orderNames.push('target_weapons');
+      }
       const orderOptions = Object.fromEntries(orderNames.map(name => [name, orderStatus(next, name)]));
       next.orderWindow = {
         target,
