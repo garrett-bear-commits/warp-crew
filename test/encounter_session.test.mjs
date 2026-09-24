@@ -45,6 +45,10 @@ test('only a newly entered eligible fight starts the new encounter', () => {
   assert.equal(first.activeContract.stage, 'confrontation');
   assert.equal(first.activeEncounter.kind, 'guided');
   assert.equal(first.activeEncounter.acceptanceId, first.activeContract.acceptanceId);
+  assert.equal(migratePlayer(clone(first)).activeEncounter.kind, 'guided');
+  let guidedWin = first;
+  for (let i = 0; i < 30 && !guidedWin.activeEncounter.result; i++) guidedWin = beat(guidedWin);
+  assert.equal(migratePlayer(clone(guidedWin)).activeEncounter.result, 'win');
   assert.equal(normal().activeEncounter.kind, 'normal');
   const old = guided(3);
   assert.equal(old.activeEncounter ?? null, null);
@@ -157,6 +161,13 @@ test('mismatched or corrupt encounter snapshots cannot pay rewards', () => {
     ...clone(won.activeEncounter), enemy: { ...clone(won.activeEncounter.enemy), hull: 1 },
   } });
   assert.equal(impossibleWin.activeContract, null, 'a claimed victory requires a defeated enemy');
+  const zeroBeatWin = { ...clone(won), activeEncounter: {
+    ...clone(won.activeEncounter), beat: 0, revision: 0, eventIndex: 0,
+  } };
+  assert.equal(migratePlayer(zeroBeatWin).activeContract, null, 'a terminal win cannot predate its first combat beat');
+  assert.equal(claimContractReward(zeroBeatWin, now).ok, false, 'a forged zero-beat win cannot pay directly');
+  const brokenProgression = { ...clone(won), activeContract: { ...clone(won.activeContract), revision: won.activeContract.revision + 1 } };
+  assert.equal(migratePlayer(brokenProgression).activeContract, null, 'saved contract and combat revisions must advance together');
   const directModeLoss = { ...won, activeContract: { ...won.activeContract, encounterMode: null } };
   assert.equal(claimContractReward(directModeLoss, now).ok, false);
 });

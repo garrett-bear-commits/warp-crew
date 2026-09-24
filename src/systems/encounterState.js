@@ -75,12 +75,18 @@ export function beginContractEncounter(player, now = Date.now()) {
 }
 
 function validSnapshot(encounter, contract) {
+  // The only new-mode entry paths are distress Launch (one route action) and
+  // reliable Push (Launch plus choice). Every later contract revision is a beat.
+  const entryRevision = contract.profile === 'distress' ? 1
+    : contract.profile === 'reliable' && contract.choiceId === 'push' ? 2 : null;
   if (!encounter || contract.encounterMode !== 'crew' || encounter.version !== 1 || encounter.acceptanceId !== contract.acceptanceId
+    || entryRevision === null
     || encounter.encounterId !== contract.encounterId || !['guided', 'normal'].includes(encounter.kind)
     || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
     || !Number.isInteger(encounter.seed) || encounter.seed !== contract.routeSeed
     || !Number.isInteger(encounter.beat) || encounter.beat < 0
     || !Number.isInteger(encounter.revision) || encounter.revision !== encounter.beat
+    || contract.revision !== entryRevision + encounter.beat
     || !Number.isInteger(encounter.eventIndex) || encounter.eventIndex < encounter.beat
     || encounter.phase !== (encounter.result === null ? 'combat' : 'complete')
     || !numberIn(encounter.hull, 1, 30) || !numberIn(encounter.shield, 0, 12)
@@ -93,8 +99,8 @@ function validSnapshot(encounter, contract) {
     || !validOrders(encounter)
     || !validOrderWindow(encounter.orderWindow, encounter.kind)
     || (encounter.result !== null && !['win', 'loss'].includes(encounter.result))) return false;
-  if (encounter.result === 'win' && (encounter.enemy.hull !== 0 || encounter.orderWindow !== null)) return false;
-  if (encounter.result === 'loss' && (encounter.hull !== 1 || encounter.enemy.hull <= 0 || encounter.orderWindow !== null)) return false;
+  if (encounter.result === 'win' && (encounter.beat === 0 || encounter.enemy.hull !== 0 || encounter.orderWindow !== null)) return false;
+  if (encounter.result === 'loss' && (encounter.beat === 0 || encounter.hull !== 1 || encounter.enemy.hull <= 0 || encounter.orderWindow !== null)) return false;
   if (contract.stage === 'return') return encounter.result === 'win' && contract.result?.success === true
     && contract.result.hullLoss === 30 - encounter.hull;
   return contract.stage === 'confrontation' && encounter.result !== 'win';
