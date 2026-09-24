@@ -177,10 +177,11 @@ const DIRS = [
   [0, -1],
 ];
 
-export function findPath(x0, y0, x1, y1) {
+export function findPath(x0, y0, x1, y1, { strict = false } = {}) {
   bake();
-  const a = clampWalkable(x0, y0);
-  const b = clampWalkable(x1, y1);
+  if (strict && (!isWalkablePct(x0, y0) || !isWalkablePct(x1, y1))) return null;
+  const a = strict ? { x: x0, y: y0 } : clampWalkable(x0, y0);
+  const b = strict ? { x: x1, y: y1 } : clampWalkable(x1, y1);
   const sx = Math.max(0, Math.min(COLS - 1, ((a.x / 100) * COLS) | 0));
   const sy = Math.max(0, Math.min(ROWS - 1, ((a.y / 100) * ROWS) | 0));
   const gx = Math.max(0, Math.min(COLS - 1, ((b.x / 100) * COLS) | 0));
@@ -222,7 +223,7 @@ export function findPath(x0, y0, x1, y1) {
     }
   }
 
-  if (!found) return [{ x: b.x, y: b.y, room: roomAtExact(b.x, b.y)?.id || null }];
+  if (!found) return strict ? null : [{ x: b.x, y: b.y, room: roomAtExact(b.x, b.y)?.id || null }];
 
   const cells = [];
   let i = idx(gx, gy);

@@ -116,6 +116,15 @@ export const ROOM_GRAPH = Object.fromEntries(
   ROOMS.map((source) => [source.id, ROOMS.filter((target) => target.id !== source.id).map((target) => target.id)])
 );
 
+// Physical circulation graph: rooms connect only through their authored spine doors.
+export const DOOR_ROUTE_GRAPH = {
+  spine: SPARROW_LAYOUT.doors.map((door) => door.roomId),
+  ...Object.fromEntries(ROOMS.map((room) => [
+    room.id,
+    SPARROW_LAYOUT.doors.some((door) => door.roomId === room.id) ? ['spine'] : [],
+  ])),
+};
+
 const HOME_BY_ROLE = {
   pilot: 'bridge',
   engineer: 'engineering',

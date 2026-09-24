@@ -33,4 +33,12 @@ if (JSON.stringify(authored) !== JSON.stringify(expectedAuthored)) {
   throw new Error(`authored route ${JSON.stringify(authored)}`);
 }
 
+// Strict callers must receive a failure instead of the legacy destination fallback.
+if (findPath(50, 17.5, 56, 84, { strict: true }) !== null) {
+  throw new Error('strict path accepted a blocked bridge chair start');
+}
+if (findPath(-100, -100, 56, 84, { strict: true }) !== null) {
+  throw new Error('strict path accepted an off-hull start');
+}
+
 console.log('ship_pathing.test.mjs OK');

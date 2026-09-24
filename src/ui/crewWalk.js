@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAtExact, pathRooms } from '../data/starterShip.js';
-import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
+import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS } from '../data/starterShip.js';
+import { findPath, isWalkablePct, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
+import { routeToWorkAnchor } from '../data/shipRoutes.js';
 import { walkAssetFor, WALK_FRAMES } from './crewArt.js';
 import { crewPoseForActor, motionPolicy } from './crewAnimation.js';
 import { onTick } from './stageLoop.js';
@@ -105,40 +106,16 @@ function spawn(crew) {
   return a;
 }
 
-function appendPath(pts, x0, y0, x1, y1, roomHint, via = null) {
-  const seg = findPath(x0, y0, x1, y1);
-  for (const p of seg) {
-    pts.push({ x: p.x, y: p.y, room: p.room || roomHint });
-  }
-  if (pts.length && via) {
-    pts[pts.length - 1] = { ...pts[pts.length - 1], room: roomHint, via };
-  }
-}
-
 function beginWalk(a, destId) {
-  const dest = nearestWalkableInRoom(destId, a.jitter);
-  const pts = [];
-  let x = a.x;
-  let y = a.y;
-  let room = a.room;
-
-  if (destId !== room) {
-    const waypoints = pathRooms(room, destId);
-    for (const waypoint of waypoints) {
-      appendPath(pts, x, y, waypoint.x, waypoint.y, waypoint.room, waypoint.via);
-      x = waypoint.x;
-      y = waypoint.y;
-      if (waypoint.via === 'door-enter') room = destId;
-    }
-  }
-  appendPath(pts, x, y, dest.x, dest.y, destId);
-
-  if (!pts.length) {
+  const route = routeToWorkAnchor({ x: a.x, y: a.y, room: a.room }, destId);
+  if (!route.ok) {
+    console.warn('[crew-route]', a.id, route.reason);
+    a.path = [];
     a.state = 'idle';
     a.timer = 1.1 + a.jitter;
     return;
   }
-  a.path = pts;
+  a.path = route.points;
   a.state = 'walk';
   a.timer = 0;
 }
@@ -174,6 +151,41 @@ function beginAuthoredTarget(a, target) {
   a.assignment = assignmentKey(target);
   a.authoredTarget = target;
   const final = target.anchors.at(-1);
+  const route = routeToWorkAnchor({ x: a.x, y: a.y, room: a.room }, target.roomId);
+  if (!route.ok) {
+    console.warn('[crew-route]', a.id, route.reason);
+    a.path = [];
+    a.state = 'doing';
+    a.timer = Infinity;
+    finishAuthoredActor(a);
+    return;
+  }
+  const pts = [...route.points];
+  let previous = pts.at(-1) || a;
+  for (const anchor of target.anchors) {
+    const segment = findPath(previous.x, previous.y, anchor.x, anchor.y, { strict: true });
+    let before = previous;
+    const valid = segment?.length && segment.every((point) => {
+      const steps = Math.max(2, Math.ceil(Math.hypot(point.x - before.x, point.y - before.y) * 4));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        if (!isWalkablePct(before.x + (point.x - before.x) * t, before.y + (point.y - before.y) * t)) return false;
+      }
+      before = point;
+      return true;
+    });
+    if (!valid) {
+      console.warn('[crew-route]', a.id, 'disconnected');
+      a.path = [];
+      a.state = 'doing';
+      a.timer = Infinity;
+      finishAuthoredActor(a);
+      return;
+    }
+    pts.push(...segment.map((point) => ({ ...point, room: target.roomId })));
+    pts.push({ ...anchor, room: target.roomId, via: 'authored-anchor' });
+    previous = anchor;
+  }
   if (target.immediate) {
     a.x = final.x;
     a.y = final.y;
@@ -183,23 +195,6 @@ function beginAuthoredTarget(a, target) {
     a.timer = Infinity;
     a.frame = 0;
     return;
-  }
-
-  const pts = [];
-  let x = a.x;
-  let y = a.y;
-  if (a.room !== target.roomId) {
-    for (const waypoint of pathRooms(a.room, target.roomId)) {
-      appendPath(pts, x, y, waypoint.x, waypoint.y, waypoint.room, waypoint.via);
-      x = waypoint.x;
-      y = waypoint.y;
-    }
-  }
-  for (const anchor of target.anchors) {
-    appendPath(pts, x, y, anchor.x, anchor.y, target.roomId);
-    pts.push({ ...anchor, room: target.roomId, via: 'authored-anchor' });
-    x = anchor.x;
-    y = anchor.y;
   }
   a.path = pts;
   a.state = pts.length ? 'walk' : 'doing';
@@ -240,7 +235,6 @@ function stepAgent(a, dt, animateFrames = true) {
     a.x = tgt.x;
     a.y = tgt.y;
     if (tgt.via === 'door-enter') a.room = tgt.room;
-    else a.room = tgt.room || roomAtExact(a.x, a.y)?.id || a.room;
     a.path.shift();
     if (!a.path.length) {
       a.state = 'doing';
@@ -259,7 +253,6 @@ function stepAgent(a, dt, animateFrames = true) {
   a.y = clamped.y;
   a.dir = faceFrom(ux, uy);
   a.frame = animateFrames ? (a.frame + dt * a.fps) % WALK_FRAMES : 0;
-  a.room = roomAtExact(a.x, a.y)?.id || a.room;
 }
 
 function resize() {
@@ -348,6 +341,36 @@ function drawThrusters(g, dt, policy) {
   }
 }
 
+function drawWayfinding(g) {
+  const px = (point) => ({ x: point.x / 100 * w, y: point.y / 100 * h });
+  g.save();
+  const hall = SPARROW_LAYOUT.halls[0];
+  if (hall) {
+    const centerX = (hall.left + hall.width / 2) / 100 * w;
+    g.fillStyle = 'rgba(92,225,255,0.42)';
+    const top = hall.top / 100 * h;
+    const bottom = (hall.top + hall.height) / 100 * h;
+    for (let y = top; y < bottom; y += 20) g.fillRect(centerX - 1.5, y, 3, 8);
+  }
+  for (const door of SPARROW_LAYOUT.doors) {
+    const inside = px(door.room);
+    const outside = px(door.spine);
+    g.fillStyle = 'rgba(255,225,107,0.76)';
+    g.fillRect(Math.min(inside.x, outside.x) - 2, Math.min(inside.y, outside.y) - 2,
+      Math.abs(outside.x - inside.x) + 4, Math.abs(outside.y - inside.y) + 4);
+    g.fillStyle = '#ffe16b';
+    g.fillRect(inside.x - 5, inside.y - 5, 10, 10);
+  }
+  for (const room of SPARROW_LAYOUT.rooms) {
+    const work = px(room.workAnchor);
+    g.fillStyle = 'rgba(120,255,190,0.85)';
+    g.fillRect(work.x - 7, work.y - 7, 14, 14);
+    g.fillStyle = 'rgba(7,16,26,0.8)';
+    g.fillRect(work.x - 4, work.y - 4, 8, 8);
+  }
+  g.restore();
+}
+
 function drawAgent(g, a) {
   const asset = walkAssetFor(a.templateId, a.role, a.bodyFamily);
   const pose = crewPoseForActor(a, w, h, asset.profile);
@@ -420,6 +443,7 @@ function tick(sim, dt) {
   }
   const g = ctx;
   g.clearRect(0, 0, w, h);
+  drawWayfinding(g);
   list.sort((p, q) => p.y - q.y);
   for (const a of list) drawAgent(g, a);
   drawThrusters(g, dt, policy);
