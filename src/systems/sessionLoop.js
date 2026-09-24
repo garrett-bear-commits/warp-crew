@@ -3,6 +3,7 @@ import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, revi
 import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
 import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
 import { advanceTutorialV4, nameShip, grantWelcomePull } from './tutorialV4.js';
+import { advanceTutorialV5 } from './tutorialV5.js';
 import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs } from './stations.js';
@@ -19,7 +20,7 @@ import { canAfford, formatReward } from './economy.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
-  const early = isTutorialActive(next) && (next.tutorial.script === 4
+  const early = isTutorialActive(next) && ([4, 5].includes(next.tutorial.script)
     || ['distress', 'launch', 'order', 'return', 'recruit'].includes(next.tutorial.phase));
   if (early && !next.contractBoard && !next.activeContract) {
     next = { ...next, contractBoard: { dayKey: next.dailyLoop.dayKey, offers: [tutorialDistressOffer(next)], completedOfferIds: [] } };
@@ -177,12 +178,13 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   let effect = null;
   const fail = reason => ({ ok: false, reason, player: before });
   const v4 = player.tutorial?.script === 4 && !player.tutorial.completed;
+  const v5 = player.tutorial?.script === 5 && !player.tutorial.completed;
   const phase = player.tutorial?.phase;
   if (v4 && phase === 'register' && act === 'tutorial-register-start') return null;
   const tutorial = (name, payload) => {
-    if (v4) {
+    if (v4 || v5) {
       const v4Event = { combat_order_done: 'guided_win', contract_claimed: 'reward_claimed' }[name];
-      if (v4Event) player = advanceTutorialV4(player, v4Event);
+      if (v4Event) player = v4 ? advanceTutorialV4(player, v4Event) : advanceTutorialV5(player, v4Event);
     } else player = noteTutorialEvent(player, name, payload).player;
   };
   if (v4) {
@@ -194,6 +196,26 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     };
     if (!permitted[phase]?.includes(act)) return fail('tutorial_action_locked');
     if (phase === 'station' && (act !== 'station-assign' || data.id !== player.crew.find(c => c.templateId === 'merc_bolt')?.instanceId || data.station !== 'shields')) {
+      return fail('tutorial_station_required');
+    }
+    if (phase === 'fight' && player.activeEncounter?.kind === 'guided' && player.activeEncounter.orderWindow
+      && !player.activeEncounter.orders.brace.used && act !== 'encounter-order') return fail('brace_required');
+    if (phase === 'fight' && act === 'encounter-order' && data.order !== 'brace') return fail('brace_required');
+  }
+  if (v5) {
+    const permitted = {
+      board: ['splash-dismiss'], captain: ['captain-choose'], hire: ['tutorial-first-hire'],
+      assign: ['station-assign'],
+      fight: player.activeEncounter ? ['encounter-order', 'encounter-advance'] : ['tutorial-fight-start'],
+      claim: ['contract-claim'], name_ship: ['tutorial-name'], pull: ['tutorial-welcome-pull'],
+      register: ['tutorial-register-skip', 'tutorial-register-complete'],
+    };
+    if (!permitted[phase]?.includes(act)) return fail('tutorial_action_locked');
+    // Task 4 wires these committed actions. Until then, never acknowledge an
+    // allowlisted action without applying its player transition.
+    if (act === 'captain-choose' || act === 'tutorial-first-hire') return fail('tutorial_action_unavailable');
+    if (phase === 'assign' && (data.id !== player.tutorial.firstHireInstanceId
+      || data.station !== (player.crew.find(c => c.instanceId === data.id)?.templateId === 'merc_bolt' ? 'shields' : 'weapons'))) {
       return fail('tutorial_station_required');
     }
     if (phase === 'fight' && player.activeEncounter?.kind === 'guided' && player.activeEncounter.orderWindow
@@ -212,6 +234,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   if (act === 'splash-dismiss') {
     player = { ...player, flags: { ...player.flags, splashSeen: true } };
     if (v4) player = advanceTutorialV4(player, 'board_ship');
+    if (v5) player = advanceTutorialV5(player, 'board_ship');
   } else if (act === 'tutorial-fight-start') {
     if (!v4 || phase !== 'fight' || player.activeContract || player.activeEncounter) return fail('guided_encounter_unavailable');
     const ready = prepareSession(player, now);
@@ -393,6 +416,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     if (!res.ok) return fail(res.reason);
     player = res.player;
     if (v4) player = advanceTutorialV4(player, 'station_assigned');
+    if (v5) player = advanceTutorialV5(player, 'station_assigned');
   } else if (['ship-upgrade', 'level-crew', 'rank-up'].includes(act)) {
     if (isTutorialActive(player)) return fail('improvements_locked');
     const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);

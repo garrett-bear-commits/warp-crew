@@ -4,6 +4,7 @@ import { starterShip, getShipDef } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
 import { migrateTutorialV3 } from './tutorial.js';
 import { defaultTutorialV4, normalizeTutorialV4 } from './tutorialV4.js';
+import { defaultTutorialV5, normalizeTutorialV5 } from './tutorialV5.js';
 import { normalizeContractState } from './contractState.js';
 import { NODES } from '../data/sectors.js';
 import { encounterById } from './combat.js';
@@ -76,7 +77,7 @@ export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, n
     dailyPullAvailable: true,
     stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {}, contractsCompleted: 0, contractsByProfile: { reliable: 0, risky: 0, strange: 0 } },
     story: { chapter: 0, eclipseIntro: false },
-    tutorial: legacy ? defaultTutorialV4() : { script: 5, phase: 'board', completed: false },
+    tutorial: legacy ? defaultTutorialV4() : defaultTutorialV5(),
   };
 }
 
@@ -90,7 +91,7 @@ export function migratePlayer(player) {
   let reserve = Array.isArray(player.reserve) ? player.reserve.map((c) => recomputeCrew(c)) : [];
   let crewSlots = player.crewSlots ?? base.crewSlots;
   const tutorial = player.tutorial?.script === 5
-    ? { ...base.tutorial, ...player.tutorial, script: 5 }
+    ? normalizeTutorialV5(player.tutorial)
     : player.tutorial?.script === 4
     ? normalizeTutorialV4(player.tutorial)
     : migrateTutorialV3(player).tutorial;

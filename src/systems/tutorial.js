@@ -142,24 +142,24 @@ export function defaultTutorial() {
 export function isTutorialActive(player) {
   const t = player?.tutorial || defaultTutorial();
   if (t.completed || t.dismissed) return false;
-  return t.script === 4 || (t.script || 1) === TUTORIAL_SCRIPT;
+  return t.script === 4 || t.script === 5 || (t.script || 1) === TUTORIAL_SCRIPT;
 }
 
 export function tutorialPhase(player) {
   if (!isTutorialActive(player)) return 'done';
-  if (player.tutorial?.script === 4) return player.tutorial.phase;
+  if (player.tutorial?.script === 4 || player.tutorial?.script === 5) return player.tutorial.phase;
   return player.tutorial?.phase || 'distress';
 }
 
 export function isFeatureUnlocked(player, feature) {
-  if (isTutorialActive(player) && player.tutorial?.script === 4) return feature === 'nav_ship';
+  if (isTutorialActive(player) && [4, 5].includes(player.tutorial?.script)) return feature === 'nav_ship';
   const phase = tutorialPhase(player);
   const list = FEATURES_BY_PHASE[phase] || FEATURES_BY_PHASE.done;
   return list.includes(feature);
 }
 
 export function unlockedTabs(player) {
-  if (isTutorialActive(player) && player.tutorial?.script === 4) return ['ship'];
+  if (isTutorialActive(player) && [4, 5].includes(player.tutorial?.script)) return ['ship'];
   const phase = tutorialPhase(player);
   return TABS_BY_PHASE[phase] || TABS_BY_PHASE.done;
 }
@@ -170,7 +170,7 @@ export function isTabUnlocked(player, tab) {
 
 export function currentTutorialStep(player) {
   if (!isTutorialActive(player)) return null;
-  if (player.tutorial?.script === 4) return null;
+  if ([4, 5].includes(player.tutorial?.script)) return null;
   const phase = tutorialPhase(player);
   return PHASES.find((p) => p.id === phase) || PHASES[0];
 }
@@ -182,7 +182,7 @@ export function preferredTab(player, fallback = 'ship') {
 }
 
 export function hudChips(player) {
-  if (isTutorialActive(player) && player.tutorial?.script === 4) return ['fuel', 'credits'];
+  if (isTutorialActive(player) && [4, 5].includes(player.tutorial?.script)) return ['fuel', 'credits'];
   const phase = tutorialPhase(player);
   if (phase === 'done') return ['fuel', 'credits', 'gems', 'medals'];
   if (['return', 'recruit', 'choose', 'away'].includes(phase)) {
