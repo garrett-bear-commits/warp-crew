@@ -57,7 +57,8 @@ export function advanceTutorialV4(player, event) {
     const encounter = player.activeEncounter;
     if (contract?.offerId === 'offer_tutorial_distress' && contract.profile === 'distress'
       && contract.stage === 'return' && contract.result?.success === true
-      && encounter?.kind === 'guided' && encounter.result === 'win' && encounter.orders?.brace?.used === true) {
+      && encounter?.kind === 'guided' && encounter.acceptanceId === contract.acceptanceId
+      && encounter.result === 'win' && encounter.orders?.brace?.used === true) {
       update = { phase: 'claim', firstWin: true };
     }
   } else if (t.phase === 'claim' && event === 'reward_claimed') {

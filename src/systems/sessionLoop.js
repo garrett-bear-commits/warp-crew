@@ -2,6 +2,7 @@
 import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, reviewContractOffer, contractRewardBand, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract } from './contracts.js';
 import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
 import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
+import { advanceTutorialV4, nameShip, grantWelcomePull } from './tutorialV4.js';
 import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs } from './stations.js';
@@ -18,7 +19,8 @@ import { canAfford, formatReward } from './economy.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
-  const early = isTutorialActive(next) && ['distress', 'launch', 'order', 'return', 'recruit'].includes(next.tutorial.phase);
+  const early = isTutorialActive(next) && (next.tutorial.script === 4
+    || ['distress', 'launch', 'order', 'return', 'recruit'].includes(next.tutorial.phase));
   if (early && !next.contractBoard && !next.activeContract) {
     next = { ...next, contractBoard: { dayKey: next.dailyLoop.dayKey, offers: [tutorialDistressOffer(next)], completedOfferIds: [] } };
   } else if (!early && !next.activeContract && next.contractBoard?.offers.some(x => x.profile === 'distress')) {
@@ -106,6 +108,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         revision: encounter.revision,
         beat: encounter.beat,
         kind: encounter.kind,
+        braceUsed: encounter.orders.brace.used,
         result: encounter.result,
         lossReason: encounter.lossReason,
         hull: encounter.hull,
@@ -173,7 +176,30 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   const nextUi = {};
   let effect = null;
   const fail = reason => ({ ok: false, reason, player: before });
-  const tutorial = (name, payload) => { player = noteTutorialEvent(player, name, payload).player; };
+  const v4 = player.tutorial?.script === 4 && !player.tutorial.completed;
+  const phase = player.tutorial?.phase;
+  if (v4 && phase === 'register' && act === 'tutorial-register-start') return null;
+  const tutorial = (name, payload) => {
+    if (v4) {
+      const v4Event = { combat_order_done: 'guided_win', contract_claimed: 'reward_claimed' }[name];
+      if (v4Event) player = advanceTutorialV4(player, v4Event);
+    } else player = noteTutorialEvent(player, name, payload).player;
+  };
+  if (v4) {
+    const permitted = {
+      board: ['splash-dismiss'], station: ['station-assign'],
+      fight: player.activeEncounter ? ['encounter-order', 'encounter-advance'] : ['tutorial-fight-start'],
+      claim: ['contract-claim'], name: ['tutorial-name'], pull: ['tutorial-welcome-pull'],
+      register: ['tutorial-register-skip', 'tutorial-register-complete'],
+    };
+    if (!permitted[phase]?.includes(act)) return fail('tutorial_action_locked');
+    if (phase === 'station' && (act !== 'station-assign' || data.id !== player.crew.find(c => c.templateId === 'merc_bolt')?.instanceId || data.station !== 'shields')) {
+      return fail('tutorial_station_required');
+    }
+    if (phase === 'fight' && player.activeEncounter?.kind === 'guided' && player.activeEncounter.orderWindow
+      && !player.activeEncounter.orders.brace.used && act !== 'encounter-order') return fail('brace_required');
+    if (phase === 'fight' && act === 'encounter-order' && data.order !== 'brace') return fail('brace_required');
+  }
   const milestone = name => {
     const prior = ensureDailyLoop(before, now).dailyLoop[name] === true;
     player = markDailyMilestone(player, name, now);
@@ -183,7 +209,48 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     const board = player.contractBoard;
     if (!player.activeContract && board?.offers.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: board.offers.map(x => x.destinationId), completedCount: board.offers.filter(x => board.completedOfferIds.includes(x.id)).length }));
   };
-  if (act === 'mission-view' || act === 'goto-contracts' || act === 'goto-away' || act === 'goto-missions') {
+  if (act === 'splash-dismiss') {
+    player = { ...player, flags: { ...player.flags, splashSeen: true } };
+    if (v4) player = advanceTutorialV4(player, 'board_ship');
+  } else if (act === 'tutorial-fight-start') {
+    if (!v4 || phase !== 'fight' || player.activeContract || player.activeEncounter) return fail('guided_encounter_unavailable');
+    const ready = prepareSession(player, now);
+    const accepted = acceptContract(ready, 'offer_tutorial_distress', now);
+    if (!accepted.ok) return fail(accepted.reason);
+    const preview = previewContractAction(accepted.player, { id: 'launch' }, now);
+    if (!preview.ok) return fail(preview.reason);
+    const launched = commitContractAction(accepted.player, preview, { rng, now });
+    if (!launched.ok || !launched.player.activeEncounter) return fail(launched.reason || 'guided_encounter_unavailable');
+    const first = applyEncounterAction(launched.player, {
+      acceptanceId: launched.player.activeEncounter.acceptanceId,
+      revision: launched.player.activeEncounter.revision,
+    }, now);
+    if (!first.ok) return fail(first.reason);
+    player = first.player;
+    events.push(fromAnalytics(accepted.analytics), fromAnalytics(launched.analytics), fromAnalytics(first.analytics));
+    Object.assign(nextUi, { tab: 'ship', selectedRoom: null, reviewedOfferId: null });
+    effect = { kind: 'encounter-beat', events: first.events, outcome: null };
+  } else if (act === 'tutorial-name') {
+    if (!v4 || phase !== 'name') return fail('ship_name_unavailable');
+    try { player = nameShip(player, data.name ?? ''); }
+    catch (error) { return fail(error instanceof RangeError ? 'invalid_ship_name' : 'ship_name_unavailable'); }
+    if (player === before) return fail('ship_name_unavailable');
+  } else if (act === 'tutorial-welcome-pull') {
+    if (!v4 || phase !== 'pull') return fail('welcome_unavailable');
+    const result = grantWelcomePull(player, { rng });
+    if (!result.ok) return fail(result.reason);
+    player = result.player;
+    effect = { kind: 'crew-arrival', crewInstanceId: result.instance.instanceId };
+    events.push(event('gacha_pull', { rarity: 'uncommon', free: true, gems: false, kind: result.kind, source: 'welcome' }));
+  } else if (act === 'tutorial-register-skip' || act === 'tutorial-register-complete') {
+    if (!v4 || phase !== 'register') return fail('registration_unavailable');
+    if (act === 'tutorial-register-complete' && data.registered !== true) return fail('registration_unconfirmed');
+    player = advanceTutorialV4(player, act === 'tutorial-register-skip' ? 'registration_skipped' : 'registration_completed');
+    if (player === before) return fail('registration_unavailable');
+    if (act === 'tutorial-register-complete') player = { ...player, _jestRegistered: true,
+      captainName: data.username || player.captainName };
+    player = prepareSession(player, now);
+  } else if (act === 'mission-view' || act === 'goto-contracts' || act === 'goto-away' || act === 'goto-missions') {
     const view = act === 'mission-view' ? data.view : act === 'goto-away' ? 'away' : 'contracts';
     if (!['contracts', 'away', 'explore'].includes(view)) return fail('unknown_mission_view');
     if (isTutorialActive(player) && view === 'explore') return fail('tutorial_contract_required');
@@ -248,6 +315,10 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       milestone('contract');
       events.push(fromAnalytics(res.analytics));
       tutorial('contract_claimed');
+      if (v4 && player.tutorial.phase === 'name') {
+        player = { ...player, crewSlots: Math.max(3, player.crewSlots || 2),
+          flags: { ...player.flags, berth3Opened: true } };
+      }
       Object.assign(nextUi, improvementFocus(player));
     } else {
       const action = act === 'contract-order' ? { id: 'order', orderId: data.order } : { id: data.action };
@@ -320,6 +391,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     const res = assignStation(player, data.id, data.station === '' ? null : data.station, now);
     if (!res.ok) return fail(res.reason);
     player = res.player;
+    if (v4) player = advanceTutorialV4(player, 'station_assigned');
   } else if (['ship-upgrade', 'level-crew', 'rank-up'].includes(act)) {
     if (isTutorialActive(player)) return fail('improvements_locked');
     const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);
@@ -360,7 +432,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     if (ui.pendingCombat?.tutorialFight) return fail('tutorial_contract_required');
     nextUi.pendingCombat = null;
   } else return null;
-  if (before.tutorial?.phase !== player.tutorial?.phase) events.push(event('tutorial_stage', { script: 3, phase: player.tutorial.phase, elapsedSeconds: elapsed(player.createdAt, now) }));
+  if (before.tutorial?.phase !== player.tutorial?.phase) events.push(event('tutorial_stage', { script: player.tutorial.script, phase: player.tutorial.phase, elapsedSeconds: elapsed(player.createdAt, now) }));
   return { ok: true, player, ui: nextUi, events, effect };
 }
 

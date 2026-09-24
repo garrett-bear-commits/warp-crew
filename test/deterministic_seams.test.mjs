@@ -46,7 +46,7 @@ assert.equal(claimed.player.dailyLoop.dayKey, contractDayKey(claimedAt));
 assert.equal(claimed.analytics.elapsedSeconds, 86_400);
 
 // The session entry points must forward their supplied clock to those transitions.
-const sessionAccepted = sessionAction({ ...a, contractBoard: board }, {}, 'contract-accept', { offer: offer.id }, { now, rng: () => 0 });
+const sessionAccepted = sessionAction({ ...a, tutorial: { script: 3, completed: true, phase: 'done' }, contractBoard: board }, {}, 'contract-accept', { offer: offer.id }, { now, rng: () => 0 });
 assert.equal(sessionAccepted.ok, true);
 assert.equal(sessionAccepted.player.activeContract.acceptedAt, now);
 const sessionInjured = { ...sessionAccepted.player, crew: injured.crew };

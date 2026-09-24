@@ -209,16 +209,16 @@ test('the active UI exposes truthful costs and an always available advance actio
 });
 
 test('entering a new fight keeps controls with the visible ship', () => {
-  let accepted = createNewPlayer({ now, rng: () => 0.1 });
-  accepted = { ...accepted, tutorial: { ...accepted.tutorial, script: 4 },
-    contractBoard: { dayKey: 'tutorial', offers: [tutorialDistressOffer(accepted)], completedOfferIds: [] } };
-  accepted = acceptContract(accepted, 'offer_tutorial_distress', now).player;
-  const result = sessionAction(accepted, {}, 'contract-action', {
-    action: 'launch', revision: 0, acceptanceId: accepted.activeContract.acceptanceId,
-  }, { now });
+  let ready = createNewPlayer({ now, rng: () => 0.1 });
+  const bolt = ready.crew.find(member => member.templateId === 'merc_bolt');
+  ready = { ...ready, tutorial: { ...ready.tutorial, phase: 'fight' },
+    stationAssignments: { ...ready.stationAssignments, [bolt.instanceId]: 'shields' },
+    contractBoard: { dayKey: 'tutorial', offers: [tutorialDistressOffer(ready)], completedOfferIds: [] } };
+  const result = sessionAction(ready, {}, 'tutorial-fight-start', {}, { now });
   assert.equal(result.ok, true);
   assert.equal(result.ui.tab, 'ship');
   assert.equal(result.player.activeEncounter.kind, 'guided');
+  assert.ok(result.player.activeEncounter.orderWindow);
 });
 
 test('a failed durable save publishes neither beat state nor effects', () => {

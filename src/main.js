@@ -36,7 +36,6 @@ import { buyHull, switchHull } from './systems/hangar.js';
 import {
   noteTutorialEvent,
   dismissTutorial,
-  migrateTutorial,
   isTutorialActive,
   isTabUnlocked,
   isFeatureUnlocked,
@@ -68,6 +67,12 @@ let toastTimer = 0;
 let departureInFlight = false;
 let departureRunId = 0;
 let shipSequence = null;
+let guidedBeatTimer = 0;
+
+/** Preserve the saved tutorial script. migratePlayer owns script selection. */
+export function restoreTutorialPlayer(savedPlayer) {
+  return migratePlayer(savedPlayer);
+}
 
 function showToast(next) {
   toast = next || null;
@@ -139,13 +144,12 @@ function hydratePlayer() {
 
   const saved = loadSave();
   if (saved?.player) {
-    player = migrateTutorial(migratePlayer(saved.player));
+    player = restoreTutorialPlayer(saved.player);
     pushLog('Welcome back, Captain.');
   } else {
     player = createNewPlayer({
       captainName: jestPlayer?.username || 'Captain',
     });
-    player = migrateTutorial(player);
     pushLog('Career start aboard Sparrow.');
     pushLog('Two mercs on deck — Rex and Bolt.');
   }
@@ -157,7 +161,7 @@ function hydratePlayer() {
   };
 
   if (isTutorialActive(player)) {
-    tab = preferredTab(player, tab);
+    tab = player.tutorial.script === 4 ? 'ship' : preferredTab(player, tab);
   }
 
   const daily = applyDailyLogin(player);
@@ -249,6 +253,7 @@ async function boot() {
     streak: player.loginStreak,
   });
   render();
+  scheduleGuidedBeat();
 }
 
 function render() {
@@ -297,18 +302,9 @@ function render() {
 
 async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
   const jp = getJestPlayer();
-  const finish = (registered, username) => {
-    player = {
-      ...player,
-      _jestRegistered: Boolean(registered),
-      captainName: username || player.captainName,
-    };
-  };
-
   if (jp?.registered) {
-    finish(true, jp.username);
     pushLog(`Already registered as ${jp.username || jp.playerId}.`);
-    return;
+    return { registered: true, username: jp.username };
   }
 
   if (isReal()) {
@@ -322,8 +318,8 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
       await login({ entryPayload: { reason } });
       const after = getJestPlayer();
       if (after?.registered) {
-        finish(true, after?.username);
         pushLog('Signed in to Jest.');
+        return { registered: true, username: after.username };
       } else {
         pushLog('Sign-in closed.');
       }
@@ -331,13 +327,26 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
       pushLog('Login flow closed.');
       loginButtonAction?.();
     }
-    return;
+    return { registered: false };
   }
 
   await login();
   const after = getJestPlayer();
-  finish(true, after?.username);
-  pushLog('Signed in to Jest.');
+  if (after?.registered) pushLog('Signed in to Jest.');
+  return { registered: Boolean(after?.registered), username: after?.username };
+}
+
+function scheduleGuidedBeat() {
+  if (guidedBeatTimer || !app || player?.tutorial?.script !== 4 || player.tutorial.phase !== 'fight'
+    || !player.activeEncounter?.orders?.brace?.used || player.activeEncounter.result) return;
+  guidedBeatTimer = setTimeout(async () => {
+    guidedBeatTimer = 0;
+    if (!app || player?.tutorial?.script !== 4 || player.tutorial.phase !== 'fight'
+      || !player.activeEncounter?.orders?.brace?.used || player.activeEncounter.result) return;
+    if (isBattlePlaying()) { scheduleGuidedBeat(); return; }
+    const { acceptanceId, revision } = player.activeEncounter;
+    await handleAction('encounter-advance', { acceptanceId, revision });
+  }, 420);
 }
 
 function doHire({ gems = false, ten = false } = {}) {
@@ -467,7 +476,8 @@ async function handleAction(act, data = {}) {
       await refreshNotifs();
     }
     render();
-    return;
+    if (committed.ok) scheduleGuidedBeat();
+    return committed;
   }
   if (act === 'select-room') {
     selectedRoom = selectedRoom === data.room ? null : data.room;
@@ -639,8 +649,6 @@ async function handleAction(act, data = {}) {
     selectedCrewId = data.id || null;
   } else if (act === 'close-crew') {
     selectedCrewId = null;
-  } else if (act === 'splash-dismiss') {
-    player = { ...player, flags: { ...(player.flags || {}), splashSeen: true } };
   } else if (act === 'cinematic-dismiss') {
     cinematic = null;
   } else if (act === 'hull-buy') {
@@ -694,7 +702,14 @@ async function handleAction(act, data = {}) {
       await refreshNotifs();
     }
   } else if (act === 'prompt-login') {
-    await handleJoinJest({ reason: 'shop_prompt' });
+    const result = await handleJoinJest({ reason: 'shop_prompt' });
+    if (result.registered) player = { ...player, _jestRegistered: true, captainName: result.username || player.captainName };
+  } else if (act === 'tutorial-register-start') {
+    if (player.tutorial?.script !== 4 || player.tutorial.phase !== 'register') return;
+    const result = await handleJoinJest({ reason: 'first_session' });
+    if (result.registered) return handleAction('tutorial-register-complete', { registered: true, username: result.username });
+    render();
+    return;
   } else if (act === 'tutorial-dismiss') {
     player = dismissTutorial(player);
     if (player.tutorial?.completed) {
@@ -766,6 +781,8 @@ export function mountWarpCrew(rootEl) {
   });
   return () => {
     if (mountId === gen) app = null;
+    if (guidedBeatTimer) clearTimeout(guidedBeatTimer);
+    guidedBeatTimer = 0;
     stopCrewSim();
   };
 }

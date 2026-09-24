@@ -44,16 +44,18 @@ export function contractShipSignals(player) {
     operationsActive: Boolean(stage && stage !== 'return' && stage !== 'claimed'),
     cargoReady: stage === 'return',
     firstRepairLit: player?.flags?.sparrowFirstRepair === true,
+    berth3Open: player?.flags?.berth3Opened === true && (player?.crewSlots || 0) >= 3,
   };
 }
 
 export function renderShipFeedback(signals = {}) {
-  if (!signals.firstRepairLit) return '';
+  if (!signals.firstRepairLit && !signals.berth3Open) return '';
   return `
-    <div class="sparrow-first-repair is-lit" role="img" aria-label="Sparrow repair online">
+    ${signals.firstRepairLit ? `<div class="sparrow-first-repair is-lit" role="img" aria-label="Sparrow repair online">
       <span class="repair-light" aria-hidden="true"></span>
       <span class="repair-prop" aria-hidden="true"></span>
-    </div>`;
+    </div>` : ''}
+    ${signals.berth3Open ? '<div class="sparrow-berth-open" role="img" aria-label="Third berth open"><span aria-hidden="true">3</span></div>' : ''}`;
 }
 
 export function renderDepartureStatus(active) {

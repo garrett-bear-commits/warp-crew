@@ -28,6 +28,7 @@ assert.deepEqual(contractShipSignals(base), {
   operationsActive: false,
   cargoReady: false,
   firstRepairLit: false,
+  berth3Open: false,
 });
 assert.deepEqual(contractShipSignals({
   ...base,
@@ -36,6 +37,7 @@ assert.deepEqual(contractShipSignals({
   operationsActive: true,
   cargoReady: false,
   firstRepairLit: false,
+  berth3Open: false,
 });
 assert.deepEqual(contractShipSignals({
   ...base,
@@ -45,6 +47,7 @@ assert.deepEqual(contractShipSignals({
   operationsActive: false,
   cargoReady: true,
   firstRepairLit: true,
+  berth3Open: false,
 });
 assert.equal(contractShipSignals({
   ...base,
