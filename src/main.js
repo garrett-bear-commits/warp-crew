@@ -431,7 +431,7 @@ async function handleAction(act, data = {}) {
       },
       capture: captureEvent,
       animate: (effect) => {
-        if (effect.result) logTravelResult(effect.result);
+        if ((effect.kind === 'travel' || effect.kind === 'combat') && effect.result) logTravelResult(effect.result);
         if (effect.kind === 'launch') {
           playLaunch({ onDone: () => { if (shipSequence === 'launch') shipSequence = null; render(); } });
         }

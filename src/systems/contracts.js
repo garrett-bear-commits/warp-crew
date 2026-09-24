@@ -598,8 +598,10 @@ export function claimContractReward(player, now = Date.now()) {
   if (!validContractResult(contract.result)) {
     return { ok: false, reason: 'invalid_contract_state', player: normalizeContractState(player) };
   }
-  if (contract.encounterMode === 'crew' && (
-    player.activeEncounter?.result !== 'win'
+  if ((contract.encounterMode === 'crew' || player.activeEncounter) && (
+    contract.encounterMode !== 'crew'
+    || !player.activeEncounter
+    || player.activeEncounter.result !== 'win'
     || player.activeEncounter.acceptanceId !== contract.acceptanceId
     || !normalizeEncounterState(player).activeContract
   )) return { ok: false, reason: 'invalid_encounter_state', player };

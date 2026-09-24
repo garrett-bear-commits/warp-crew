@@ -34,7 +34,7 @@ import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
 import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
-import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
+import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
 import { makeCamera, focusCamera, resizeCamera, zoomAt } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
@@ -244,6 +244,7 @@ function patchShell(root, ctx) {
     tab,
     pendingCombat = null,
     combatOrders = null,
+    activeContractView = null,
     contractReview = null,
     awayPicker = null,
     selectedRoom = null,
@@ -303,7 +304,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon }));
   setSlot(root, 'hotspots', renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
-  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome }));
+  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
@@ -413,7 +414,8 @@ export function renderHotspots(player, fuel, expReady, selectedRoom) {
   }).join('');
 }
 
-function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome }) {
+export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView }) {
+  if (isHome && player.activeEncounter) return renderShipEncounter(activeContractView);
   const def = SHIPS[player.ship?.shipId] || SHIPS.sparrow;
   const room = ROOMS.find((r) => r.id === selectedRoom);
   const showHangar = isFeatureUnlocked(player, 'hangar');

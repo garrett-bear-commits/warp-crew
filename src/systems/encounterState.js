@@ -5,19 +5,38 @@ import { resolveSimulatedCombatPayout } from './contractRewards.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
 const numberIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+const record = value => Boolean(value && typeof value === 'object' && !Array.isArray(value));
+const targets = ['hull', 'shields', 'weapons', 'engineering'];
+
+function validOrders(encounter) {
+  const { orders, cooldowns } = encounter;
+  return record(orders) && record(orders.brace) && record(orders.repair)
+    && typeof orders.brace.used === 'boolean'
+    && Number.isInteger(orders.brace.uses) && numberIn(orders.brace.uses, 0, encounter.beat)
+    && Number.isInteger(orders.repair.uses) && numberIn(orders.repair.uses, 0, encounter.beat)
+    && orders.brace.used === (orders.brace.uses > 0)
+    && Number.isInteger(encounter.braceThroughBeat) && numberIn(encounter.braceThroughBeat, 0, encounter.beat + 2)
+    && record(cooldowns) && Object.keys(cooldowns).every(name => ['brace', 'repair'].includes(name))
+    && ['brace', 'repair'].every(name => Number.isInteger(cooldowns[name]) && numberIn(cooldowns[name], 0, 4));
+}
 
 function validOrderWindow(window, kind) {
   if (window == null) return true;
   const names = kind === 'guided' ? ['brace'] : ['brace', 'repair'];
   return Boolean(
-    ['hull', 'shields', 'weapons', 'engineering'].includes(window.target)
+    record(window) && targets.includes(window.target)
     && Number.isInteger(window.beatsToImpact) && numberIn(window.beatsToImpact, 1, 3)
     && Array.isArray(window.availableOrders)
+    && window.availableOrders.every(name => names.includes(name))
+    && new Set(window.availableOrders).size === window.availableOrders.length
+    && record(window.orderOptions)
+    && Object.keys(window.orderOptions).length === names.length
     && names.every(name => {
       const option = window.orderOptions?.[name];
-      return option && numberIn(option.cost?.shield, 0, 12)
+      return record(option) && record(option.cost)
+        && option.cost.shield === (name === 'brace' ? 2 : 3)
         && typeof option.available === 'boolean'
-        && (option.reason == null || typeof option.reason === 'string')
+        && (option.available ? option.reason === null : ['insufficient_resource', 'cooldown', 'used', 'hull_full'].includes(option.reason))
         && Number.isInteger(option.cooldownBeats) && numberIn(option.cooldownBeats, 0, 4)
         && window.availableOrders.includes(name) === option.available;
     })
@@ -56,7 +75,7 @@ export function beginContractEncounter(player, now = Date.now()) {
 }
 
 function validSnapshot(encounter, contract) {
-  if (!encounter || encounter.version !== 1 || encounter.acceptanceId !== contract.acceptanceId
+  if (!encounter || contract.encounterMode !== 'crew' || encounter.version !== 1 || encounter.acceptanceId !== contract.acceptanceId
     || encounter.encounterId !== contract.encounterId || !['guided', 'normal'].includes(encounter.kind)
     || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
     || !Number.isInteger(encounter.seed) || encounter.seed !== contract.routeSeed
@@ -65,15 +84,19 @@ function validSnapshot(encounter, contract) {
     || !Number.isInteger(encounter.eventIndex) || encounter.eventIndex < encounter.beat
     || encounter.phase !== (encounter.result === null ? 'combat' : 'complete')
     || !numberIn(encounter.hull, 1, 30) || !numberIn(encounter.shield, 0, 12)
-    || !numberIn(encounter.enemy?.hull, 0, 42)
+    || !record(encounter.enemy) || !numberIn(encounter.enemy.hull, 0, 42)
+    || !targets.includes(encounter.enemy.target)
+    || !['charging_volley', 'reloading', 'broken_contact'].includes(encounter.enemy.pattern)
     || !STATIONS.every(station => numberIn(encounter.outputs?.[station], 0, 10000)
       && numberIn(encounter.systems?.[station], 0, 100))
-    || !encounter.assignments || typeof encounter.assignments !== 'object'
-    || !encounter.cooldowns || !encounter.orders
-    || !['brace', 'repair'].every(name => Number.isInteger(encounter.cooldowns[name]) && numberIn(encounter.cooldowns[name], 0, 4))
+    || !record(encounter.assignments)
+    || !validOrders(encounter)
     || !validOrderWindow(encounter.orderWindow, encounter.kind)
     || (encounter.result !== null && !['win', 'loss'].includes(encounter.result))) return false;
-  if (contract.stage === 'return') return encounter.result === 'win' && contract.result?.success === true;
+  if (encounter.result === 'win' && (encounter.enemy.hull !== 0 || encounter.orderWindow !== null)) return false;
+  if (encounter.result === 'loss' && (encounter.hull !== 1 || encounter.enemy.hull <= 0 || encounter.orderWindow !== null)) return false;
+  if (contract.stage === 'return') return encounter.result === 'win' && contract.result?.success === true
+    && contract.result.hullLoss === 30 - encounter.hull;
   return contract.stage === 'confrontation' && encounter.result !== 'win';
 }
 
@@ -81,9 +104,8 @@ function validSnapshot(encounter, contract) {
 export function normalizeEncounterState(player) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
-  if (contract?.encounterMode !== 'crew') {
-    return encounter ? { ...player, activeEncounter: null } : player;
-  }
+  if (!contract) return encounter ? { ...player, activeEncounter: null } : player;
+  if (!encounter && contract.encounterMode !== 'crew') return player;
   if (validSnapshot(encounter, contract)) return player;
   return {
     ...player,
