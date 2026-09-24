@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createCrewInstance } from '../src/data/crewRoster.js';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { generateContractBoard, acceptContract, previewContractAction, commitContractAction, claimContractReward, tutorialDistressOffer } from '../src/systems/contracts.js';
 import { applyEncounterAction, recoverEncounter } from '../src/systems/encounterState.js';
@@ -23,7 +24,7 @@ const guided = (script = 4) => {
   player = acceptContract(player, 'offer_tutorial_distress', now).player;
   return action(player, 'launch');
 };
-const normal = () => {
+const normal = ({ staffWeapons = false } = {}) => {
   let player = createNewPlayer({ now, rng: () => 0.1 });
   player = { ...player, tutorial: { ...player.tutorial, completed: true, phase: 'done' }, wallet: { ...player.wallet, fuel: 10 } };
   player = { ...player, contractBoard: generateContractBoard(player, now) };
@@ -31,6 +32,14 @@ const normal = () => {
   assert.equal(offer.routeContent.encounterId, 'pirate_scout', 'fixed repeatable route exists in authored content');
   player = acceptContract(player, offer.id, now).player;
   player = action(player, 'launch');
+  if (staffWeapons) {
+    const gunner = createCrewInstance('merc_jen', { rng: () => 0.1 });
+    player = {
+      ...player,
+      crew: [...player.crew, gunner],
+      stationAssignments: { ...player.stationAssignments, [gunner.instanceId]: 'weapons' },
+    };
+  }
   return action(player, 'push');
 };
 const beat = (player, order = null) => {
@@ -87,7 +96,7 @@ test('the next committed beat uses crew availability and never spends route fuel
 });
 
 test('a saved win claims its route reward once, after the final beat', () => {
-  let player = normal();
+  let player = normal({ staffWeapons: true });
   const initial = clone(player.wallet);
   for (let i = 0; i < 30 && !player.activeEncounter.result; i++) player = beat(player);
   assert.equal(player.activeEncounter.result, 'win');
@@ -127,7 +136,7 @@ test('a damaged normal ship can lose, then recover without a reward', () => {
 });
 
 test('mismatched or corrupt encounter snapshots cannot pay rewards', () => {
-  const player = normal();
+  const player = normal({ staffWeapons: true });
   const mismatched = migratePlayer({ ...clone(player), activeEncounter: { ...clone(player.activeEncounter), acceptanceId: 'different' } });
   assert.equal(mismatched.activeEncounter, null);
   assert.equal(mismatched.activeContract, null, 'a broken crew fight cannot fall back to old combat');
@@ -223,7 +232,7 @@ test('a failed durable save publishes neither beat state nor effects', () => {
 });
 
 test('a terminal beat does not enter travel-result logging after its save', () => {
-  let player = normal();
+  let player = normal({ staffWeapons: true });
   let result;
   for (let i = 0; i < 30 && !player.activeEncounter.result; i++) {
     result = sessionAction(player, {}, 'encounter-advance', {

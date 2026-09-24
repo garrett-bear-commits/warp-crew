@@ -36,6 +36,35 @@ function finish(next, result, events, lossReason = null) {
   events.push({ type: 'result', result, reason: lossReason });
 }
 
+function fireWeapons(next, events) {
+  const weaponOutput = Math.floor(next.outputs.weapons * next.systems.weapons / 100);
+  const weaponDamage = Math.max(0, Math.floor((weaponOutput - 50) / 10));
+  if (weaponDamage > 0 && next.enemy.hull > 0) {
+    const amount = Math.min(weaponDamage, next.enemy.hull);
+    next.enemy.hull -= amount;
+    events.push({ type: 'weapon_damage', target: 'enemy', system: 'weapons', amount, output: weaponOutput });
+  }
+}
+
+function resolveEnemyImpact(next, selectedWindow, events) {
+  const target = selectedWindow?.target || next.enemy.target;
+  const rawDamage = next.kind === 'normal' ? 24 : 12;
+  const shieldOutput = Math.floor(next.outputs.shields * next.systems.shields / 100);
+  const helmOutput = Math.floor(next.outputs.helm * next.systems.helm / 100);
+  const mitigation = Math.max(0, Math.floor((shieldOutput - 50) / 10)) + Math.max(0, Math.floor((helmOutput - 100) / 10));
+  let amount = Math.max(1, rawDamage - mitigation);
+  if (next.braceThroughBeat >= next.beat) amount = Math.max(1, Math.floor(amount / 2));
+  const shieldLoss = Math.min(next.shield, amount);
+  next.shield -= shieldLoss;
+  const hullAmount = amount - shieldLoss;
+  if (hullAmount > 0) next.hull = Math.max(1, next.hull - hullAmount);
+  const systemAmount = target === 'hull' ? 0 : Math.min(next.systems[target], amount);
+  if (systemAmount > 0) next.systems[target] -= systemAmount;
+  events.push({ type: 'enemy_impact', target, system: target === 'hull' ? 'shields' : target, amount, systemAmount, shieldLoss, hullAmount });
+  next.enemy.pattern = 'reloading';
+  if (next.hull <= 1) finish(next, 'loss', events, 'Hull breached; retreat with the ship barely holding together.');
+}
+
 /** Create the JSON-safe, replayable snapshot for one crew-run encounter. */
 export function startEncounter({ acceptanceId, encounterId, kind, seed, assignments = {}, outputs = {} }) {
   if (kind !== 'guided' && kind !== 'normal') throw new TypeError("kind must be 'guided' or 'normal'");
@@ -110,13 +139,9 @@ export function advanceEncounter(state, order = null) {
     if (amount > 0) events.push({ type: 'repair', target: 'hull', system: 'engineering', amount, source: 'emergency_order' });
   }
 
-  const weaponOutput = Math.floor(next.outputs.weapons * next.systems.weapons / 100);
-  const weaponDamage = Math.max(0, Math.floor((weaponOutput - 50) / 10));
-  if (weaponDamage > 0 && next.enemy.hull > 0) {
-    const amount = Math.min(weaponDamage, next.enemy.hull);
-    next.enemy.hull -= amount;
-    events.push({ type: 'weapon_damage', target: 'enemy', system: 'weapons', amount, output: weaponOutput });
-  }
+  const impactThisBeat = next.beat % 3 === 0;
+  const normalImpactFirst = next.kind === 'normal' && impactThisBeat;
+  if (!normalImpactFirst) fireWeapons(next, events);
 
   const engineeringOutput = Math.floor(next.outputs.engineering * next.systems.engineering / 100);
   if (next.hull < MAX_HULL && engineeringOutput > 0) {
@@ -137,26 +162,10 @@ export function advanceEncounter(state, order = null) {
     }
   }
 
-  if (next.enemy.hull <= 0) {
-    finish(next, 'win', events);
-  } else if (next.beat % 3 === 0) {
-    const target = selectedWindow?.target || next.enemy.target;
-    const rawDamage = 12;
-    const shieldOutput = Math.floor(next.outputs.shields * next.systems.shields / 100);
-    const helmOutput = Math.floor(next.outputs.helm * next.systems.helm / 100);
-    const mitigation = Math.max(0, Math.floor((shieldOutput - 50) / 10)) + Math.max(0, Math.floor((helmOutput - 100) / 10));
-    let amount = Math.max(1, rawDamage - mitigation);
-    if (next.braceThroughBeat >= next.beat) amount = Math.max(1, Math.floor(amount / 2));
-    const shieldLoss = Math.min(next.shield, amount);
-    next.shield -= shieldLoss;
-    const hullAmount = amount - shieldLoss;
-    if (hullAmount > 0) next.hull = Math.max(1, next.hull - hullAmount);
-    const systemAmount = target === 'hull' ? 0 : Math.min(next.systems[target], amount);
-    if (systemAmount > 0) next.systems[target] -= systemAmount;
-    events.push({ type: 'enemy_impact', target, system: target === 'hull' ? 'shields' : target, amount, systemAmount, shieldLoss, hullAmount });
-    next.enemy.pattern = 'reloading';
-    if (next.hull <= 1) finish(next, 'loss', events, 'Hull breached; retreat with the ship barely holding together.');
-  }
+  if (next.result === null && normalImpactFirst) resolveEnemyImpact(next, selectedWindow, events);
+  if (next.result === null && normalImpactFirst) fireWeapons(next, events);
+  if (next.result === null && next.enemy.hull <= 0) finish(next, 'win', events);
+  else if (next.result === null && impactThisBeat && !normalImpactFirst) resolveEnemyImpact(next, selectedWindow, events);
 
   if (next.result === null) {
     if (next.beat % 3 === 1) {

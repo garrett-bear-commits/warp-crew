@@ -244,8 +244,22 @@ test('offer beat ranges and resolution telemetry match committed route branches 
             player = result.player;
             combatBeats++;
           }
-          assert.equal(result.events.find(e => e.event === 'contract_resolved')?.fields.beats, combatBeats,
-            `${profile} ${day} ${choice}: encounter telemetry counts committed combat beats`);
+          if (player.activeEncounter.result === 'win') {
+            assert.equal(result.events.find(e => e.event === 'contract_resolved')?.fields.beats, combatBeats,
+              `${profile} ${day} ${choice}: win telemetry counts committed combat beats`);
+          } else {
+            assert.equal(player.activeEncounter.result, 'loss', `${profile} ${day} ${choice}: unresolved combat reaches a legal loss`);
+            assert.ok(player.activeEncounter.lossReason, `${profile} ${day} ${choice}: loss explains the retreat`);
+            assert.equal(result.events.find(e => e.event === 'encounter_beat')?.fields.result, 'loss',
+              `${profile} ${day} ${choice}: loss is recorded on the committed beat`);
+            const recovered = sessionAction(player, {}, 'encounter-recover', {
+              acceptanceId: player.activeEncounter.acceptanceId,
+              revision: player.activeEncounter.revision,
+            }, { now });
+            assert.equal(recovered.ok, true, `${profile} ${day} ${choice}: a legal loss can be recovered`);
+            assert.ok(recovered.events.some(e => e.event === 'encounter_recovered'),
+              `${profile} ${day} ${choice}: recovery is recorded without reward resolution`);
+          }
         } else {
           result = sessionAction(player, {}, 'contract-order', { order: 'brace', ...identity(player) }, { now, rng: () => 0 });
         }

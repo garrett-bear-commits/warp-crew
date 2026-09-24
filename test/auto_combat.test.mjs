@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import { advanceEncounter, startEncounter } from '../src/systems/autoCombat.js';
+import { createCrewInstance } from '../src/data/crewRoster.js';
+import { createNewPlayer } from '../src/systems/player.js';
+import { stationOutputs } from '../src/systems/stations.js';
+import { acceptContract, commitContractAction, generateContractBoard, previewContractAction } from '../src/systems/contracts.js';
 
 const baseArgs = {
   acceptanceId: 'acceptance-6a',
@@ -19,6 +23,41 @@ function advanceUntil(state, predicate, limit = 40, orderForState = () => null) 
     state = advanceEncounter(state, orderForState(state)).state;
   }
   return state;
+}
+
+function reliablePushEncounter({ staffWeapons = false } = {}) {
+  const now = Date.UTC(2030, 8, 22, 12);
+  let player = createNewPlayer({ now, rng: () => 0.1 });
+  player = {
+    ...player,
+    tutorial: { ...player.tutorial, completed: true, phase: 'done' },
+    wallet: { ...player.wallet, fuel: 10 },
+    contractBoard: generateContractBoard(player, now),
+  };
+  const offer = player.contractBoard.offers.find(candidate => candidate.profile === 'reliable');
+  assert.equal(offer?.routeContent.encounterId, 'pirate_scout');
+  player = acceptContract(player, offer.id, now).player;
+  for (const id of ['launch', ...(staffWeapons ? [] : ['push'])]) {
+    const preview = previewContractAction(player, { id }, now);
+    assert.equal(preview.ok, true, preview.reason);
+    player = commitContractAction(player, preview, { now, rng: () => 0.5 }).player;
+  }
+  if (staffWeapons) {
+    const gunner = createCrewInstance('merc_jen', { rng: () => 0.1 });
+    player = {
+      ...player,
+      crew: [...player.crew, gunner],
+      stationAssignments: { ...player.stationAssignments, [gunner.instanceId]: 'weapons' },
+    };
+    const preview = previewContractAction(player, { id: 'push' }, now);
+    assert.equal(preview.ok, true, preview.reason);
+    player = commitContractAction(player, preview, { now, rng: () => 0.5 }).player;
+  }
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(stationOutputs(player, now)).map(([station, output]) => [station, output.total])),
+    player.activeEncounter.outputs,
+  );
+  return player.activeEncounter;
 }
 
 // Mutation caught: reading hidden process randomness or unsaved mutable RNG state.
@@ -168,9 +207,25 @@ function advanceUntil(state, predicate, limit = 40, orderForState = () => null) 
 
 // Mutation caught: functional Weapons station failing to defeat an ordinary encounter.
 {
-  let state = encounter({ kind: 'normal' });
+  let state = encounter({ kind: 'normal', outputs: { ...baseArgs.outputs, weapons: 110 } });
   state = advanceUntil(state, current => current.result !== null, 40);
   assert.equal(state.result, 'win');
+}
+
+// Mutation caught: the real reliable Ice Spur Push winning hands-free before station choice matters.
+{
+  const push = reliablePushEncounter();
+  assert.deepEqual(push.outputs, { helm: 110, shields: 100, weapons: 100, engineering: 100 });
+  const noOrder = advanceUntil(push, current => current.result !== null, 40);
+  assert.equal(noOrder.result, 'loss');
+  assert.ok(noOrder.hull >= 1);
+  assert.ok(noOrder.lossReason);
+
+  const staffedPush = reliablePushEncounter({ staffWeapons: true });
+  assert.deepEqual(staffedPush.outputs, { helm: 110, shields: 100, weapons: 110, engineering: 100 });
+  const staffedWin = advanceUntil(staffedPush, current => current.result !== null, 40);
+  assert.equal(staffedWin.result, 'win');
+  assert.ok(staffedWin.beat < noOrder.beat, 'a matching Weapons assignment changes the route from loss to a faster win');
 }
 
 // Mutation caught: changing a terminal encounter after completion.
