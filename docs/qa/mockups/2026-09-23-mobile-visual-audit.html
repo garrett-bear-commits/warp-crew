@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Warp Crew — Mobile visual audit proposal</title>
+  <link rel="stylesheet" href="./2026-09-23-mobile-visual-audit.css">
+</head>
+<body>
+  <main class="audit-page">
+    <header class="page-head">
+      <p class="eyebrow">WARP CREW · MOBILE VISUAL AUDIT</p>
+      <h1>Two first-session screens</h1>
+      <p class="page-note">Unrendered proposals only. The splash uses one newly generated but unapproved art output for review; it is not approved final art.</p>
+    </header>
+
+    <section class="audit-screen" aria-labelledby="splash-title">
+      <div class="screen-heading">
+        <div><p class="eyebrow">01 · OPENING</p><h2 id="splash-title">Splash</h2></div>
+        <p>One clear promise, one clear way aboard.</p>
+      </div>
+      <div class="visual-pair">
+        <figure>
+          <figcaption><span>BEFORE</span><span>Current capture · 390 × 844</span></figcaption>
+          <img class="before-image" src="../../../.superpowers/sdd/2026-09-23-living-ship-vertical-slice/captures/task-8a-splash-390x844.png" alt="Current Warp Crew splash: asteroid field and cockpit behind a small crew pair, logo, loading panel, and Board ship button">
+        </figure>
+        <figure>
+          <figcaption><span>PROPOSED</span><span>New composition · 390 × 844</span></figcaption>
+          <div class="phone splash-mock" role="img" aria-label="Proposed splash screen with a full-screen crew scene, backed logo, loading progress, and one amber Board ship button">
+            <img class="splash-art" src="../../art/outputs/splash-run_m17315921cwcfemzd770esspk58f1v76.png" alt="">
+            <div class="splash-vignette" aria-hidden="true"></div>
+            <div class="splash-logo-card">
+              <span class="logo-mark" aria-hidden="true">✦</span>
+              <span class="logo-type">WARP<br>CREW</span>
+            </div>
+            <div class="splash-panel">
+              <div class="loading-row"><span>SHIP READY</span><span>100%</span></div>
+              <div class="progress-track" aria-hidden="true"><span></span></div>
+              <button class="button button-primary">Board ship</button>
+            </div>
+          </div>
+        </figure>
+      </div>
+      <ol class="findings">
+        <li><b>Make the crew the opening image.</b> The current capture shows an asteroid field and cockpit; Bolt and Nemi read as small cutouts. Use one full-bleed crew scene and remove the separate portrait layer. <span>Seen in capture.</span></li>
+        <li><b>Back the logo.</b> Keep the title inside a dark, high-contrast plaque so it stays legible over any future art. <span>Proposed.</span></li>
+        <li><b>Keep the bottom panel to progress and one action.</b> The loading meter and “Board ship” already do the job; omit the extra tagline. <span>Proposed.</span></li>
+      </ol>
+    </section>
+
+    <section class="audit-screen" aria-labelledby="ship-title">
+      <div class="screen-heading">
+        <div><p class="eyebrow">02 · FIRST JOB</p><h2 id="ship-title">Ship / Shields assignment</h2></div>
+        <p>Make the ship state glanceable and the next move obvious.</p>
+      </div>
+      <div class="visual-pair">
+        <figure>
+          <figcaption><span>BEFORE</span><span>Current capture · 390 × 844</span></figcaption>
+          <img class="before-image" src="../../../.superpowers/sdd/2026-09-23-living-ship-vertical-slice/captures/task-8a-ship-390x844.png" alt="Current ship tutorial screen: small fuel and currency counters, hull and shield meters, camera controls, cutaway ship, and a bottom Send Bolt to Shields instruction">
+        </figure>
+        <figure>
+          <figcaption><span>PROPOSED</span><span>HUD and tutorial cue · 390 × 844</span></figcaption>
+          <div class="phone ship-mock" role="img" aria-label="Proposed ship screen with boxed fuel, credits, and hull stats, larger camera controls, a ship view, and a single amber Shields assignment button">
+            <img class="ship-art" src="../../../.superpowers/sdd/2026-09-23-living-ship-vertical-slice/captures/task-8a-ship-390x844.png" alt="">
+            <div class="ship-wash" aria-hidden="true"></div>
+            <div class="ship-hud">
+              <div class="stat-card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h8l2 3v15H5V7l2-4Z"/><path d="M8 9h6M8 13h6M9 17h4"/></svg><span><small>FUEL</small><b>8 / 10</b></span></div>
+              <div class="stat-card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 6-3 12H7L4 8l8-6Z"/><path d="m4 8 8 4 8-4M12 12v8"/></svg><span><small>CREDITS</small><b>80</b></span></div>
+              <div class="stat-card"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 3v6c0 5-3.4 8.7-8 11-4.6-2.3-8-6-8-11V5l8-3Z"/><path d="m8 12 2.5 2.5L16 9"/></svg><span><small>HULL</small><b>100%</b></span></div>
+            </div>
+            <div class="world-label">SPUR ANCHOR</div>
+            <div class="camera-pad" aria-hidden="true"><button>⌖</button><button>+</button><button>−</button></div>
+            <div class="station-marker"><span class="marker-dot"></span><span>SHIELDS</span><b>BOLT</b></div>
+            <div class="tutorial-panel">
+              <div class="cue-copy"><span class="cue-kicker">DISTRESS CALL</span><b>Shields are down.</b></div>
+              <button class="button button-primary assign-button"><span class="bolt-icon">B</span>Send Bolt to Shields</button>
+            </div>
+          </div>
+        </figure>
+      </div>
+      <ol class="findings">
+        <li><b>Put resources in matching icon-and-number boxes.</b> The current fuel and credits sit directly on the dark bar, with small icons and no card grouping. The proposal uses the same 24px icons and 20px numbers in three equal cards. <span>Current CSS audit: HUD resource icons are 18px; labels can drop to 12px.</span></li>
+        <li><b>Keep hull visible; move “Spur Anchor” to a complete location label.</b> The current chip truncates to “SPUR ANC…”, while shield status has no plain-language label. The proposal names the location and gives the selected station its own marker. <span>Seen in capture.</span></li>
+        <li><b>Give the tutorial one short prompt and one amber action.</b> The current card repeats “send Bolt to Shields” in a sentence and button. “Shields are down.” explains the need; the button says what to do. <span>Seen in capture.</span></li>
+        <li><b>Keep camera controls easy to tap.</b> Use 44px minimum buttons and 8px separation in the ship view; retain pan and pinch zoom gestures. <span>Confirm gesture targets on-device.</span></li>
+      </ol>
+    </section>
+
+    <section class="audit-notes" aria-labelledby="notes-title">
+      <h2 id="notes-title">Checklist results</h2>
+      <p><b>Source CSS measurements:</b> 11 distinct pixel font sizes; 3 of 11 match the 16/18/20/28/40px scale. 21 declarations are below 16px (smallest 2.2px). Spacing: 158 of 243 values are off the 8px grid (65%). Six <code>:active</code> rules; five scaled subtrees.</p>
+      <p><b>Contrast script:</b> 1 pair passes at 14.15–16.00:1; 22 pairs are unchecked because the script could not resolve CSS variables or translucent backgrounds. No failures were reported, but unchecked is not a pass.</p>
+      <p><b>Render unavailable:</b> browser policy blocked opening the local mockup file. The proposed screens have not been rendered. <b>Not verified:</b> 22 source contrast pairs; grayscale separation for both screens; physical-device gesture and safe-area behavior; whether the provisional splash crop and ship marker remain clear on other phone sizes.</p>
+      <p class="approval-line">Approve these changes? You can approve all, pick by number, or reject.</p>
+    </section>
+  </main>
+</body>
+</html>

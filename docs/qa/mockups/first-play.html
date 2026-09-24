@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Warp Crew · first-play UI mockups</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink:#f1f2ee; --soft:#a9b5bb; --dim:#7c8b91; --night:#080e16;
+      --steel:#14212b; --steel2:#1c2a34; --edge:#40515c; --cyan:#66d9e8;
+      --amber:#ffbf69; --red:#ff756b; --green:#7bd69c; --ui:Inter,"Avenir Next",system-ui,sans-serif;
+      --display:"Rajdhani","Arial Narrow",system-ui,sans-serif;
+    }
+    * { box-sizing:border-box; }
+    html { background:#091019; }
+    body { margin:0; color:var(--ink); font-family:var(--ui); background:radial-gradient(ellipse at 50% 0%,#182735 0,#091019 55%); }
+    .intro { max-width:1280px; margin:auto; padding:32px 28px 20px; }
+    .intro .eyebrow { color:var(--cyan); text-transform:uppercase; letter-spacing:.18em; font-size:12px; font-weight:800; }
+    .intro h1 { margin:8px 0 6px; font:700 32px/1 var(--display); letter-spacing:.02em; }
+    .intro p { margin:0; max-width:850px; color:#aebbc1; font-size:14px; line-height:1.5; }
+    .board { display:grid; grid-template-columns:repeat(2,390px); gap:28px; justify-content:center; padding:12px 24px 54px; }
+    .mock { width:390px; }
+    .caption { height:52px; display:flex; align-items:center; gap:12px; color:#aebbc1; font-size:12px; letter-spacing:.04em; }
+    .caption b { display:grid; place-items:center; width:26px; height:26px; color:#0a1117; background:var(--amber); border-radius:50%; font-size:13px; }
+    .caption span { text-transform:uppercase; color:#e2e8e8; font-weight:800; letter-spacing:.14em; }
+    .screen { width:390px; height:844px; position:relative; isolation:isolate; overflow:hidden; border:1px solid #53626a; border-radius:29px; background:#070c12; box-shadow:0 18px 55px #0009, inset 0 0 0 5px #020609; }
+    .safe { position:absolute; inset:0; padding:env(safe-area-inset-top,16px) 18px env(safe-area-inset-bottom,16px); }
+    .sysbar { position:absolute; z-index:9; inset:9px 25px auto; display:flex; justify-content:space-between; font-size:11px; font-weight:700; text-shadow:0 1px 4px #000; }
+    .kicker { font-size:10px; font-weight:800; letter-spacing:.17em; text-transform:uppercase; color:var(--cyan); }
+    .title { margin:3px 0 0; font:700 27px/1.04 var(--display); letter-spacing:.015em; }
+    .body { color:#bec8cb; font-size:16px; line-height:1.4; }
+    .instruction { font-size:18px !important; line-height:1.32; }
+    .plate { background:linear-gradient(115deg,rgba(11,19,28,.96),rgba(14,26,36,.93)); border:1px solid #65778178; box-shadow:0 10px 35px #0008,inset 0 1px #ffffff0b; }
+    .btn { height:54px; display:grid; place-items:center; border:0; border-radius:9px; background:linear-gradient(#ffd18a,#f3a94f); color:#24170e; text-transform:uppercase; font-size:13px; font-weight:900; letter-spacing:.12em; box-shadow:0 4px 0 #9c5c2c,0 8px 24px #ffb7572c; }
+    .btn.ghost { background:#17232d; color:var(--ink); border:1px solid #566873; box-shadow:inset 0 1px #ffffff12; }
+    .scan { position:absolute; inset:0; pointer-events:none; opacity:.16; z-index:6; background:repeating-linear-gradient(0deg,transparent 0 3px,#b9eaf00a 4px); mix-blend-mode:screen; }
+    .corner { position:absolute; z-index:4; width:15px; height:15px; border-color:#f6b86c; opacity:.82; }
+    .tl { top:13px; left:13px; border-top:1px solid; border-left:1px solid; }.tr { top:13px;right:13px;border-top:1px solid;border-right:1px solid; }
+    .bl { bottom:13px;left:13px;border-bottom:1px solid;border-left:1px solid; }.br { bottom:13px;right:13px;border-bottom:1px solid;border-right:1px solid; }
+
+    /* 01 — opening / captain choice */
+    .opening { background:#08111b url('../../../public/art/pixel/vertical-slice/splash-five-crew-v3.png') center 34% / auto 100% no-repeat; }
+    .opening:before { content:""; position:absolute; inset:0; background:linear-gradient(180deg,#07101d22 5%,#07101d12 28%,#07101db8 53%,#070c12 75%); }
+    .wordmark { position:absolute; top:42px; left:24px; right:24px; z-index:2; text-align:center; font:900 28px/.95 var(--display); letter-spacing:.19em; text-shadow:0 2px 0 #111,0 0 22px #59c7ff66; }
+    .wordmark small { display:block; color:var(--amber); font:800 9px/1.4 var(--ui); letter-spacing:.32em; margin-top:5px; }
+    .choose { position:absolute; z-index:3; left:14px; right:14px; bottom:17px; padding:16px; border-radius:13px; }
+    .choose .title { font-size:24px; }
+    .choose .body { margin:5px 0 10px; font-size:16px; }
+    .captains { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin-bottom:10px; }
+    .captain { min-width:0; height:119px; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; overflow:hidden; padding:5px 3px 8px; border:1px solid #50616c; border-radius:8px; background:linear-gradient(180deg,#253541,#111a22 73%); }
+    .captain.selected { border-color:var(--amber); box-shadow:0 0 0 1px #ffc76a55,inset 0 0 18px #fcae3730; }
+    .captain img { position:absolute; top:2px; width:84px; height:78px; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 4px 4px #0009); }
+    .captain .role { position:relative; z-index:1; padding:2px 4px; color:#eff5f3; background:#081018d9; font-size:10px; font-weight:800; letter-spacing:.06em; }
+    .name-entry { height:48px; margin:0 0 9px; padding:0 12px; display:flex; align-items:center; gap:8px; border:1px solid #596a73; border-radius:7px; background:#080e15; color:#eff5f3; font-size:14px; }
+    .name-entry b { color:var(--amber); font-size:10px; letter-spacing:.1em; }
+    .choose .btn { height:49px; }
+    .micro { margin-top:8px; text-align:center; color:#a9b5bb; font-size:10px; }
+
+    /* 02 — close ship / assign one crew member */
+    .assignment { background:radial-gradient(ellipse at 49% 35%,#203747,#080e16 71%); }
+    .hud { position:absolute; top:33px; left:18px; right:18px; z-index:2; display:flex; align-items:center; justify-content:space-between; }
+    .hud .title { font-size:19px; }
+    .credits { height:34px; padding:0 10px; display:flex; align-items:center; gap:7px; border:1px solid #4c606d; border-radius:6px; background:#0a131d; color:#f6c77e; font:700 12px var(--display); }
+    .ship-glow { position:absolute; z-index:0; inset:104px -28px 182px; background:radial-gradient(ellipse at center,#6ecbe814,transparent 67%); }
+    .ship-image { position:absolute; top:38px; left:-98px; width:585px; height:1040px; object-fit:contain; image-rendering:pixelated; filter:drop-shadow(0 12px 15px #000b); }
+    .ship-badge { position:absolute; z-index:2; left:50%; top:108px; transform:translateX(-50%); padding:5px 10px; background:#09111bdc; border:1px solid #52d6e590; border-radius:99px; font-size:10px; letter-spacing:.12em; font-weight:800; color:#93eff1; }
+    .mission-tag { position:absolute; top:162px; left:17px; z-index:2; padding:7px 9px; background:#08121be8; border-left:2px solid var(--amber); font-size:11px; line-height:1.3; color:#edf1ed; }
+    .room-tag { position:absolute; z-index:3; display:flex; gap:5px; align-items:center; padding:5px 7px; border:1px solid #ffbf69; border-radius:4px; background:#111b23eF; box-shadow:0 0 18px #ffbf6945; font-size:10px; font-weight:900; letter-spacing:.1em; text-transform:uppercase; }
+    .room-tag:before { content:""; width:6px;height:6px;background:var(--amber);box-shadow:0 0 7px var(--amber); }
+    .bridge-tag { top:143px; left:50%; transform:translateX(-50%); }
+    .shields-tag { top:300px; left:23px; }
+    .weapons-tag { top:430px; right:25px; }
+    .assignment-sheet { position:absolute; z-index:4; left:10px; right:10px; bottom:10px; padding:14px 13px 12px; border-radius:12px; }
+    .step-line { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .step { color:var(--amber); font-size:10px; font-weight:900; letter-spacing:.16em; text-transform:uppercase; }
+    .dots { color:#8b999c; font-size:11px; letter-spacing:.12em; }
+    .assignment-sheet .title { font-size:22px; }
+    .assignment-sheet .body { margin:5px 0 9px; }
+    .crew-pick { height:56px; display:flex; align-items:center; gap:10px; padding:5px 9px; border:1px solid #d7aa67; border-radius:7px; background:#1b2328; margin-bottom:9px; }
+    .crew-pick img { width:43px;height:43px;object-fit:contain;image-rendering:pixelated; }
+    .crew-pick strong { display:block; font-size:13px; }.crew-pick small { display:block;color:#aebbbd;font-size:11px; }
+    .crew-pick em { margin-left:auto; color:var(--amber); font-size:10px; font-style:normal; font-weight:900; letter-spacing:.08em; }
+    .assignment-sheet .btn { width:100%;height:48px; }
+
+    /* 03 — threat and one legible tactical order */
+    .combat { background:radial-gradient(ellipse at 50% 40%,#172c41,#070c15 71%); }
+    .combat .hud { top:31px; }
+    .combat .hud .title { font-size:16px; letter-spacing:.12em; text-transform:uppercase; }
+    .combat-info { position:absolute; z-index:2; top:83px; left:18px; right:18px; display:flex; justify-content:space-between; align-items:center; }
+    .threat { display:flex; gap:6px; align-items:center; color:#ffc1a0; font-size:11px; font-weight:800; letter-spacing:.1em; }
+    .threat i { width:7px;height:7px;border-radius:50%;background:#ff6e61;box-shadow:0 0 11px #ff564c; }
+    .timer { color:#b7c6cc; font:700 12px var(--display); }
+    .spacefield { position:absolute; inset:0; background:radial-gradient(circle at 16% 23%,#d3eaf2 0 1px,transparent 2px),radial-gradient(circle at 78% 30%,#cad9ee 0 1px,transparent 2px),radial-gradient(circle at 22% 47%,#8bc0dc 0 1px,transparent 2px),radial-gradient(circle at 86% 62%,#e3dcff 0 1px,transparent 2px),radial-gradient(circle at 51% 20%,#b5d2e2 0 1px,transparent 2px),radial-gradient(circle at 66% 75%,#fff 0 1px,transparent 2px),radial-gradient(ellipse at 50% 44%,#1d3a551f,transparent 48%); }
+    .battle-lanes { position:absolute; top:135px; left:0; right:0; height:287px; border-block:1px solid #68c4e22c; background:linear-gradient(90deg,#10213320,transparent 50%,#391c2420); }
+    .lane { position:absolute; left:24px; right:24px; top:50%; border-top:1px dashed #6381973c; }
+    .ship { position:absolute; object-fit:contain; image-rendering:pixelated; }
+    .ship.ours { left:1px; top:1px; width:208px; height:283px; object-fit:cover; object-position:center; filter:drop-shadow(0 0 20px #3dd9ff64); mask-image:linear-gradient(90deg,transparent,#000 11% 85%,transparent),linear-gradient(#000 0 80%,transparent); mask-composite:intersect; }
+    .ship.enemy { right:0; top:0; width:166px; height:170px; transform:rotate(180deg); filter:drop-shadow(0 0 20px #ff573b75); }
+    .target-ring { position:absolute; right:55px; top:36px; width:66px;height:75px;border:1px solid #ff8475b8;border-radius:44%; box-shadow:0 0 0 7px #ff655018,0 0 30px #fc493d55; }
+    .target-ring:after { content:"WEAPONS"; position:absolute; top:-19px; left:13px; color:#ffad9e; font-size:9px; font-weight:900; letter-spacing:.14em; }
+    .beam { position:absolute; top:155px; left:134px; width:135px; height:2px; background:linear-gradient(90deg,#54f1ff,#ffd27f); box-shadow:0 0 10px #5deaff; transform:rotate(-39deg); transform-origin:left center; }
+    .status-row { position:absolute; z-index:3; top:443px; left:17px; right:17px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .ship-status { padding:9px 10px; border:1px solid #384d59; border-radius:6px; background:#0b141ddf; }
+    .ship-status header { display:flex; justify-content:space-between; margin-bottom:7px; font-size:11px; font-weight:800; }
+    .ship-status header span { color:var(--soft); font-size:10px; font-weight:600; }
+    .meter { height:6px; background:#29343a; border-radius:10px; overflow:hidden; margin-top:5px; }
+    .meter i { display:block;height:100%;background:#54cfdd;box-shadow:0 0 9px #4ad5e1; }.meter.hull i{background:#e18569;box-shadow:0 0 9px #e18569;}
+    .order-sheet { position:absolute; z-index:4; bottom:11px; left:11px; right:11px; padding:15px 14px 13px; border-radius:12px; }
+    .order-sheet .title { font-size:23px; }.order-sheet .body { margin:5px 0 10px; }
+    .order { height:54px; display:flex; align-items:center; gap:10px; padding:0 12px; border:1px solid #e7a954; border-radius:8px; background:linear-gradient(110deg,#503920,#2a241d); color:#fff1d6; font-size:14px; font-weight:900; }
+    .crosshair { width:22px;height:22px;display:grid;place-items:center;border:1px solid var(--amber);border-radius:50%; color:var(--amber);font-size:13px; }
+    .order em { margin-left:auto; font-size:10px; color:#ffd08c; font-style:normal; letter-spacing:.12em; }
+    .order-sheet .micro { margin-top:8px; }
+
+    /* 04 — free crew arrival */
+    .recruit { background:radial-gradient(ellipse at 50% 42%,#263947,#080e16 72%); }
+    .recruit .hud { top:32px; }
+    .recruit-art { position:absolute; z-index:1; top:89px; left:0; width:100%; height:422px; object-fit:cover; object-position:center 37%; image-rendering:pixelated; mask-image:linear-gradient(#000 77%,transparent 100%); }
+    .incoming { position:absolute; z-index:2; top:101px; left:19px; right:19px; padding:10px 11px; display:flex; justify-content:space-between; align-items:center; border:1px solid #546b75; background:#0a131ddf; border-radius:6px; }
+    .incoming strong { font:700 16px var(--display); letter-spacing:.1em; }.incoming small { color:#bdc9cc; font-size:10px; letter-spacing:.11em; text-transform:uppercase; }
+    .arrival-card { position:absolute; z-index:3; left:13px; right:13px; bottom:15px; padding:17px 15px 14px; border-radius:13px; text-align:center; }
+    .arrival-card .kicker { color:var(--amber); }.arrival-card .title { margin-top:6px; font-size:29px; }
+    .arrival-card .body { max-width:300px; margin:8px auto 13px; font-size:14px; }
+    .portrait { width:88px;height:88px; margin:0 auto 8px; display:grid;place-items:center;border:1px solid #eba64e;border-radius:50%;background:radial-gradient(circle,#4a3d2c,#141c20);box-shadow:0 0 0 5px #f5b85d12,0 0 30px #ffc36d25; }
+    .portrait img { width:78px;height:78px;object-fit:contain;image-rendering:pixelated; }
+    .recruit-specs { display:flex; justify-content:center; align-items:center; gap:7px; margin:0 0 12px; color:#f1d19a; font-size:13px; font-weight:800; letter-spacing:.04em; }
+    .recruit-specs span { padding:5px 8px; border:1px solid #78858a; border-radius:5px; background:#0c151c; }
+    .recruit-specs .rarity { color:#dfbbff; border-color:#a174c4; }.recruit-specs .stars { color:#ffca6d; letter-spacing:.08em; }
+    .arrival-pills { display:flex;justify-content:center;gap:7px;margin-bottom:13px; }
+    .arrival-pills span { padding:5px 8px;border:1px solid #51616a;border-radius:99px;color:#c3cdd0;font-size:10px;letter-spacing:.08em;text-transform:uppercase; }
+    .arrival-card .btn { width:100%;height:51px; }
+    .no-cost { color:#8ea1a7;font-size:11px;margin-top:8px; }
+    @media(max-width:850px) { .board { grid-template-columns:390px; } .intro { padding-inline:20px; } }
+    @media(max-width:430px) { .board { padding-inline:0; } .mock,.screen { width:100vw; } .screen { border-radius:0; } .caption { padding-left:18px; } }
+  </style>
+</head>
+<body>
+  <header class="intro">
+    <div class="eyebrow">Warp Crew · first-play visual pass</div>
+    <h1>Four moments aboard the Sparrow</h1>
+    <p>Static 390 × 844 explorations using the current splash candidate and existing ship / crew art. Character cards are role placeholders for composition only; the portrait identities and tutorial behavior remain subject to the game’s design decisions.</p>
+  </header>
+  <main class="board">
+    <section class="mock">
+      <div class="caption"><b>01</b><span>Opening · choose your captain</span></div>
+      <div class="screen opening">
+        <div class="sysbar"><span>9:41</span><span>◖◗ &nbsp; ▰</span></div>
+        <div class="wordmark">WARP CREW<small>YOUR SHIP. YOUR CREW.</small></div>
+        <div class="choose plate">
+          <div class="kicker">Your first command</div>
+          <h2 class="title">Choose your captain</h2>
+          <p class="body">Choose a captain and name your callsign.</p>
+          <div class="captains">
+            <div class="captain selected"><img src="../../../public/art/pixel/crew/rex.png" alt="Human man captain portrait"><span class="role">PILOT</span></div>
+            <div class="captain"><img src="../../../public/art/pixel/crew/yara.png" alt="Human woman captain portrait with medium brown complexion"><span class="role">MEDIC</span></div>
+            <div class="captain"><img src="../../../public/art/pixel/crew/nemi.png" alt="Alien captain portrait"><span class="role">SCOUT</span></div>
+            <div class="captain"><img src="../../../public/art/pixel/crew/tink.png" alt="Droid captain portrait"><span class="role">ENGINEER</span></div>
+          </div>
+          <div class="name-entry"><b>CALLSIGN</b><span>Rook</span><span style="margin-left:auto;color:#91a4ad">✎</span></div>
+          <div class="btn">Board the Sparrow</div>
+        </div>
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="scan"></div>
+      </div>
+    </section>
+
+    <section class="mock">
+      <div class="caption"><b>02</b><span>Tutorial · put the crew to work</span></div>
+      <div class="screen assignment">
+        <div class="sysbar"><span>9:41</span><span>◖◗ &nbsp; ▰</span></div>
+        <div class="hud"><div><div class="kicker">Sparrow · Deck 01</div><div class="title">Bridge &amp; systems</div></div><div class="credits">◆ 80 CR</div></div>
+        <div class="ship-glow"></div>
+        <img class="ship-image" src="../../../public/art/pixel/ships/sparrow-cutaway.jpg" alt="Top-down Sparrow ship interior with rooms and crew">
+        <div class="ship-badge">CREW AT STATIONS · 1 / 2</div>
+        <div class="room-tag bridge-tag">Helm · Rook</div>
+        <div class="room-tag shields-tag">Shields · online</div>
+        <div class="room-tag weapons-tag">Weapons · empty</div>
+        <div class="assignment-sheet plate">
+          <div class="step-line"><span class="step">Crew tutorial · 2 of 4</span><span class="dots">● ● ◌ ◌</span></div>
+          <h2 class="title">Give the cannons a hand.</h2>
+          <p class="body instruction">Your hired Gunner is ready. Assign Kira to Weapons.</p>
+          <div class="crew-pick"><img src="../../../public/art/pixel/crew/kira.png" alt="Kira Nyx, human Gunner portrait"><span><strong>Kira Nyx</strong><small>Hired Gunner · available</small></span><em>SELECTED</em></div>
+          <div class="btn">Assign Kira to Weapons</div>
+        </div>
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="scan"></div>
+      </div>
+    </section>
+
+    <section class="mock">
+      <div class="caption"><b>03</b><span>Combat · choose the target</span></div>
+      <div class="screen combat">
+        <div class="sysbar"><span>9:41</span><span>◖◗ &nbsp; ▰</span></div><div class="spacefield"></div>
+        <div class="hud"><div class="kicker">Sparrow · first contact</div><div class="title">Intercept</div></div>
+        <div class="combat-info"><div class="threat"><i></i> PIRATE SCOUT · HOSTILE</div><div class="timer">01:12 · SAMPLE</div></div>
+        <div class="battle-lanes"><div class="lane"></div><img class="ship ours" src="../../../public/art/pixel/ships/sparrow-cutaway.jpg" alt="Sparrow cutaway, large in the foreground"><img class="ship enemy" src="../../../public/art/pixel/ships/corvette.png" alt="Top-down corvette concept art for the pirate ship"><div class="target-ring"></div><div class="beam"></div><div style="position:absolute;right:6px;top:146px;padding:4px 6px;border:1px solid #e27f70;background:#111820;color:#ffc2b8;font-size:9px;font-weight:900;letter-spacing:.08em">ENEMY CONCEPT ART</div></div>
+        <div class="status-row">
+          <div class="ship-status"><header>SPARROW <span>SHIELDS 12 / 12</span></header><div class="meter"><i style="width:100%"></i></div><div class="meter hull"><i style="width:100%"></i></div><small style="color:#aab8bc;font-size:10px">HULL &nbsp; 30 / 30</small></div>
+          <div class="ship-status"><header>PIRATE SCOUT <span>SHIELDS · SAMPLE</span></header><div class="meter"><i style="width:34%"></i></div><div class="meter hull"><i style="width:75%"></i></div><small style="color:#ffb5a7;font-size:10px">ENEMY CONDITION · SAMPLE</small></div>
+        </div>
+        <div class="order-sheet plate">
+          <div class="step">Guided order · 1 of 1</div>
+          <h2 class="title">Pirate weapons charging.</h2>
+          <p class="body instruction">Order your crew to hit the weapons system.</p>
+          <div class="order"><span class="crosshair">⌖</span> Target their weapons <em>FIRE</em></div>
+        </div>
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="scan"></div>
+      </div>
+    </section>
+
+    <section class="mock">
+      <div class="caption"><b>04</b><span>Reward · new crew comes aboard</span></div>
+      <div class="screen recruit">
+        <div class="sysbar"><span>9:41</span><span>◖◗ &nbsp; ▰</span></div>
+        <div class="hud"><div><div class="kicker">Sparrow · Docking bay</div><div class="title">Airlock cycling</div></div><div class="credits">✦ CREW FOUND</div></div>
+        <img class="recruit-art" src="../../../public/art/pixel/vertical-slice/splash-five-crew-v3.png" alt="The Sparrow's existing crew in the ship's bridge">
+        <div class="incoming"><strong>DOCKING COMPLETE</strong><small>New crew aboard</small></div>
+        <div class="arrival-card plate">
+          <div class="kicker">Free crew recruit</div>
+          <div class="portrait"><img src="../../../public/art/pixel/crew/nemi.png" alt="Nemi, alien Scout portrait"></div>
+          <h2 class="title">Nemi</h2>
+          <div class="recruit-specs"><span class="rarity">UNCOMMON</span><span class="stars">★</span><span>SCOUT</span></div>
+          <p class="body">Nemi joins the Sparrow, ready to chart the next route.</p>
+          <div class="btn">Meet Nemi</div>
+        </div>
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><div class="scan"></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

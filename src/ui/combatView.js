@@ -3,6 +3,8 @@ import { SPACE_ART } from '../data/portraits.js';
 import { onTick } from './stageLoop.js';
 import { addTrauma, hitstop, sfx, unlockSfx, applyShake } from './juice.js';
 import { setBattleStations } from './crewWalk.js';
+import { effectScreenPoint } from './worldProjection.js';
+import { makeCamera } from './shipCamera.js';
 
 let canvas = null;
 let stageEl = null;
@@ -11,9 +13,14 @@ let w = 0;
 let h = 0;
 let dpr = 1;
 let battle = null;
+let crewEncounter = null;
+let crewShots = [];
+let crewEffects = [];
 let started = false;
 let pirateImg = null;
 let impactImg = null;
+let getCamera = null;
+let setCamera = null;
 
 function img(src) {
   const im = new Image();
@@ -38,10 +45,12 @@ function resize() {
   if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-export function attachCombat(el, stage) {
+export function attachCombat(el, stage, cameraGetter, cameraSetter) {
   ensureFx();
   canvas = el;
   stageEl = stage || el?.parentElement;
+  getCamera = cameraGetter;
+  setCamera = cameraSetter;
   if (el) {
     resize();
     el.style.pointerEvents = 'none';
@@ -61,25 +70,64 @@ export function isBattlePlaying() {
   return Boolean(battle);
 }
 
+/** Derive visible ship condition from committed encounter state. */
+export function encounterVisualFrame(encounter, events = []) {
+  return {
+    playerHull: Math.max(0, Math.min(1, (encounter?.hull || 0) / 30)),
+    enemyHull: Math.max(0, Math.min(1, (encounter?.enemy?.hull || 0) / (encounter?.kind === 'guided' ? 25 : 42))),
+    shield: Math.max(0, Math.min(1, (encounter?.shield || 0) / 12)),
+    shots: events.filter(event => ['weapon_damage', 'enemy_impact'].includes(event.type)).map(event => ({ ally: event.type === 'weapon_damage' })),
+    weaponDisabled: events.some(event => event.type === 'enemy_weapon_disabled' || event.type === 'enemy_volley_canceled'),
+    impact: events.some(event => event.type === 'enemy_impact'),
+  };
+}
+
+export function pirateDrawSize(naturalWidth, naturalHeight, scale) {
+  const size = 500 * scale;
+  const denominator = Math.max(naturalWidth, naturalHeight);
+  return { width: size * naturalWidth / denominator, height: size * naturalHeight / denominator };
+}
+
+export function setEncounterSnapshot(encounter) {
+  const entering = !crewEncounter && Boolean(encounter);
+  const leaving = Boolean(crewEncounter) && !encounter;
+  crewEncounter = encounter || null;
+  if (entering && !battle) {
+    const currentCamera = getCamera?.();
+    if (currentCamera && setCamera) setCamera(makeCamera(currentCamera.viewport, currentCamera.world));
+    setBattleStations(true);
+  }
+  if (leaving && !battle) {
+    crewShots = [];
+    crewEffects = [];
+    setBattleStations(false);
+  }
+}
+
+export function playEncounterBeat(events = []) {
+  if (!crewEncounter) return;
+  const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const frame = encounterVisualFrame(crewEncounter, events);
+  crewShots = reduced ? [] : frame.shots.map(shot => ({ ...shot, life: 0.45 }));
+  crewEffects = reduced ? [] : [
+    ...(frame.weaponDisabled ? [{ kind: 'disabled', life: 0.7 }] : []),
+    ...(frame.impact ? [{ kind: 'impact', life: 0.5 }] : []),
+  ];
+  if (events.some(event => event.type === 'weapon_damage' || event.type === 'enemy_impact')) sfx('pew');
+  if (events.some(event => event.type === 'result' && event.result === 'win')) sfx('win');
+}
+
 export function playCombat({ preview, win = true, onDone } = {}) {
   unlockSfx();
-  resize();
-  let nose = { x: w * 0.5, y: h * 0.2 };
-  let px = w * 0.78;
-  let py = h * 0.2;
-  if (canvas && stageEl) {
-    const ship = stageEl.querySelector('.ship-fit');
-    const cr = canvas.getBoundingClientRect();
-    if (ship && cr.width) {
-      const sr = ship.getBoundingClientRect();
-      nose = {
-        x: sr.left - cr.left + sr.width * 0.5,
-        y: sr.top - cr.top + sr.height * 0.07,
-      };
-      px = Math.min(w - 64, sr.right - cr.left + 12);
-      py = Math.max(56, sr.top - cr.top + sr.height * 0.08);
-    }
+  const nose = { worldX: 576, worldY: 121 };
+  const pirateTarget = { worldX: 1030, worldY: 240 };
+  // The presentation starts wide enough to show the Sparrow and its target.
+  // This does not lock the camera: gestures may pan and zoom after the start.
+  const currentCamera = getCamera?.();
+  if (currentCamera && setCamera) {
+    setCamera(makeCamera(currentCamera.viewport, currentCamera.world));
   }
+  resize();
   const name = preview?.encounter?.name || 'Pirate Scout';
   battle = {
     t: 0,
@@ -92,7 +140,8 @@ export function playCombat({ preview, win = true, onDone } = {}) {
     sparks: [],
     flashes: [],
     done: false,
-    pirate: { x: px + 80, y: -30, tx: px, ty: py, a: 0, dead: 0 },
+    pirate: { worldX: 1100, worldY: -100,
+      targetWorldX: pirateTarget.worldX, targetWorldY: pirateTarget.worldY, a: 0, dead: 0 },
     nose,
     nextVolley: 0.55,
     volley: 0,
@@ -113,34 +162,34 @@ export function playCombat({ preview, win = true, onDone } = {}) {
 
 function spawnLaser(from, to, ally) {
   battle.lasers.push({
-    x0: from.x,
-    y0: from.y,
-    x1: to.x,
-    y1: to.y,
+    from: { worldX: from.worldX, worldY: from.worldY },
+    to: { worldX: to.worldX, worldY: to.worldY },
     life: 0.14,
     max: 0.14,
     ally,
   });
   battle.sparks.push({
-    x: to.x,
-    y: to.y,
+    worldX: to.worldX,
+    worldY: to.worldY,
     life: 0.28,
     max: 0.28,
     n: 8 + ((Math.random() * 5) | 0),
   });
-  battle.flashes.push({ x: from.x, y: from.y, life: 0.08, ally });
+  battle.flashes.push({ worldX: from.worldX, worldY: from.worldY, life: 0.08, ally });
 }
 
 function tick(sim, dt) {
   if (stageEl) applyShake(stageEl);
   if (!battle || !ctx) {
-    if (canvas && !battle) {
-      ctx?.clearRect(0, 0, w, h);
-      canvas.classList.remove('is-live');
+    if (canvas && !battle && ctx) {
+      ctx.clearRect(0, 0, w, h);
+      if (crewEncounter) drawCrewEncounter(ctx, getCamera?.() || { x: 0, y: 0, scale: 1 }, dt);
+      canvas.classList.toggle('is-live', Boolean(crewEncounter));
     }
     return;
   }
   const b = battle;
+  const camera = getCamera?.() || { x: 0, y: 0, scale: 1 };
   b.t += dt;
   const g = ctx;
   g.clearRect(0, 0, w, h);
@@ -149,12 +198,12 @@ function tick(sim, dt) {
   const ease = 1 - Math.exp(-dt * 4.2);
   if (b.win && b.t > 2.7) {
     p.dead += dt;
-    p.x += 40 * dt;
-    p.y -= 18 * dt;
+    p.worldX += 180 * dt;
+    p.worldY -= 80 * dt;
     p.a = Math.max(0, 1 - p.dead * 1.6);
   } else {
-    p.x += (p.tx - p.x) * ease;
-    p.y += (p.ty - p.y) * ease;
+    p.worldX += (p.targetWorldX - p.worldX) * ease;
+    p.worldY += (p.targetWorldY - p.worldY) * ease;
     p.a = Math.min(1, p.a + dt * 3);
   }
 
@@ -165,33 +214,32 @@ function tick(sim, dt) {
   // pirate
   g.save();
   g.globalAlpha = p.a;
-  g.translate(p.x, p.y);
+  const piratePoint = effectScreenPoint(camera, p);
+  g.translate(piratePoint.x, piratePoint.y);
   if (p.dead) g.rotate(p.dead * 0.6);
-  const pw = 118;
-  const ph = 70;
-  if (pirateImg.complete && pirateImg.naturalWidth) {
+  const { width: pw, height: ph } = pirateDrawSize(pirateImg?.naturalWidth || 5, pirateImg?.naturalHeight || 3, camera.scale);
+  if (pirateImg?.complete && pirateImg.naturalWidth) {
     g.drawImage(pirateImg, -pw / 2, -ph / 2, pw, ph);
   } else {
     g.fillStyle = '#c45';
     g.beginPath();
-    g.moveTo(40, 0);
-    g.lineTo(-36, 18);
-    g.lineTo(-36, -18);
+    g.moveTo(pw * 0.34, 0);
+    g.lineTo(-pw * 0.3, ph * 0.26);
+    g.lineTo(-pw * 0.3, -ph * 0.26);
     g.closePath();
     g.fill();
   }
   g.restore();
-
   // volleys
   if (b.t > 0.55 && b.t < 2.65 && b.t >= b.nextVolley) {
     b.nextVolley = b.t + 0.28;
     b.volley++;
     const ally = b.volley % 2 === 1;
-    const jitter = () => (Math.random() - 0.5) * 18;
+    const jitter = () => (Math.random() - 0.5) * 80;
     if (ally) {
       spawnLaser(
-        { x: b.nose.x + jitter() * 0.3, y: b.nose.y },
-        { x: p.x + jitter(), y: p.y + jitter() },
+        { worldX: b.nose.worldX + jitter() * 0.3, worldY: b.nose.worldY },
+        { worldX: p.worldX + jitter(), worldY: p.worldY + jitter() },
         true
       );
       b.enemyHp = Math.max(0, b.enemyHp - (b.win ? 0.18 : 0.08));
@@ -201,8 +249,8 @@ function tick(sim, dt) {
       setTimeout(() => sfx('hit'), 40);
     } else {
       spawnLaser(
-        { x: p.x, y: p.y },
-        { x: b.nose.x + jitter(), y: b.nose.y + 30 + jitter() },
+        { worldX: p.worldX, worldY: p.worldY },
+        { worldX: b.nose.worldX + jitter(), worldY: b.nose.worldY + 130 + jitter() },
         false
       );
       b.playerHp = Math.max(0.35, b.playerHp - (b.win ? 0.06 : 0.16));
@@ -220,8 +268,8 @@ function tick(sim, dt) {
     sfx('boom');
     for (let i = 0; i < 22; i++) {
       b.sparks.push({
-        x: p.x + (Math.random() - 0.5) * 40,
-        y: p.y + (Math.random() - 0.5) * 24,
+        worldX: p.worldX + (Math.random() - 0.5) * 180,
+        worldY: p.worldY + (Math.random() - 0.5) * 110,
         life: 0.4 + Math.random() * 0.3,
         max: 0.55,
         n: 10,
@@ -238,14 +286,16 @@ function tick(sim, dt) {
       continue;
     }
     const a = L.life / L.max;
+    const from = effectScreenPoint(camera, L.from);
+    const to = effectScreenPoint(camera, L.to);
     g.save();
     g.strokeStyle = L.ally ? `rgba(92,225,255,${0.25 + a * 0.75})` : `rgba(255,90,90,${0.25 + a * 0.75})`;
     g.shadowColor = L.ally ? '#5ce1ff' : '#ff6b6b';
     g.shadowBlur = 12;
     g.lineWidth = 2 + a * 2;
     g.beginPath();
-    g.moveTo(L.x0, L.y0);
-    g.lineTo(L.x1, L.y1);
+    g.moveTo(from.x, from.y);
+    g.lineTo(to.x, to.y);
     g.stroke();
     g.restore();
   }
@@ -258,23 +308,25 @@ function tick(sim, dt) {
       continue;
     }
     const a = s.life / s.max;
-    if (impactImg.complete && impactImg.naturalWidth && a > 0.4) {
-      const sz = 28 + (1 - a) * 36;
+    const point = effectScreenPoint(camera, s);
+    if (impactImg?.complete && impactImg.naturalWidth && a > 0.4) {
+      const sz = (120 + (1 - a) * 150) * camera.scale;
       g.globalAlpha = a * 0.8;
-      g.drawImage(impactImg, s.x - sz / 2, s.y - sz / 2, sz, sz);
+      g.drawImage(impactImg, point.x - sz / 2, point.y - sz / 2, sz, sz);
       g.globalAlpha = 1;
     }
     g.fillStyle = `rgba(255,220,140,${a})`;
     for (let k = 0; k < s.n; k++) {
       const ang = (k / s.n) * Math.PI * 2 + b.t * 6;
-      const rad = (1 - a) * 22;
-      g.fillRect(s.x + Math.cos(ang) * rad, s.y + Math.sin(ang) * rad, 2, 2);
+      const rad = (1 - a) * 100 * camera.scale;
+      g.fillRect(point.x + Math.cos(ang) * rad, point.y + Math.sin(ang) * rad, 2, 2);
     }
   }
 
   // HP bars
-  drawBar(g, 16, 10, w * 0.4, 'SPARROW', b.playerHp, '#3ddc97');
-  drawBar(g, w - 16 - w * 0.4, 10, w * 0.4, b.name.toUpperCase(), b.enemyHp, '#ff6b6b');
+  const barY = Math.max(50, h - 46);
+  drawBar(g, 16, barY, w * 0.4, 'SPARROW', b.playerHp, '#3ddc97');
+  drawBar(g, w - 16 - w * 0.4, barY, w * 0.4, b.name.toUpperCase(), b.enemyHp, '#ff6b6b');
 
   if (b.t > 3.45 && !b.done) {
     b.done = true;
@@ -291,6 +343,69 @@ function tick(sim, dt) {
       cb?.();
     }, 180);
   }
+}
+
+function drawCrewEncounter(g, camera, dt) {
+  const frame = encounterVisualFrame(crewEncounter);
+  const enemy = effectScreenPoint(camera, { worldX: 1030, worldY: 240 });
+  const ship = effectScreenPoint(camera, { worldX: 576, worldY: 121 });
+  const { width: pw, height: ph } = pirateDrawSize(pirateImg?.naturalWidth || 5, pirateImg?.naturalHeight || 3, camera.scale);
+  g.save();
+  g.globalAlpha = crewEncounter.result === 'win' ? 0.25 : 0.95;
+  if (pirateImg?.complete && pirateImg.naturalWidth) g.drawImage(pirateImg, enemy.x - pw / 2, enemy.y - ph / 2, pw, ph);
+  else {
+    g.fillStyle = '#c45';
+    g.beginPath();
+    g.moveTo(enemy.x + pw * 0.34, enemy.y);
+    g.lineTo(enemy.x - pw * 0.3, enemy.y + ph * 0.26);
+    g.lineTo(enemy.x - pw * 0.3, enemy.y - ph * 0.26);
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
+  if (crewEncounter.orderWindow?.orderOptions?.target_weapons?.available) {
+    g.save();
+    g.strokeStyle = '#ffb65f';
+    g.lineWidth = 3;
+    g.setLineDash([7, 5]);
+    g.beginPath();
+    g.ellipse(enemy.x + pw * 0.13, enemy.y, pw * 0.28, Math.max(18, ph * 0.32), 0, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  }
+  for (const effect of crewEffects) {
+    effect.life -= dt;
+    const point = effect.kind === 'disabled' ? enemy : ship;
+    g.save();
+    g.globalAlpha = Math.max(0, effect.life / 0.7);
+    g.strokeStyle = effect.kind === 'disabled' ? '#ffb65f' : '#ff6b6b';
+    g.lineWidth = 4;
+    g.beginPath();
+    g.arc(point.x, point.y, effect.kind === 'disabled' ? Math.max(22, pw * 0.28) : 34, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  }
+  crewEffects = crewEffects.filter(effect => effect.life > 0);
+  for (const shot of crewShots) {
+    shot.life -= dt;
+    const from = shot.ally ? ship : enemy;
+    const to = shot.ally ? enemy : ship;
+    g.save();
+    g.globalAlpha = Math.max(0, shot.life / 0.45);
+    g.strokeStyle = shot.ally ? '#5ce1ff' : '#ff6b6b';
+    g.shadowColor = g.strokeStyle;
+    g.shadowBlur = 15;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(from.x, from.y);
+    g.lineTo(to.x, to.y);
+    g.stroke();
+    g.restore();
+  }
+  crewShots = crewShots.filter(shot => shot.life > 0);
+  const barY = Math.max(50, h - 46);
+  drawBar(g, 16, barY, w * 0.4, 'SPARROW', frame.playerHull, '#3ddc97');
+  drawBar(g, w - 16 - w * 0.4, barY, w * 0.4, 'PIRATE', frame.enemyHull, '#ff6b6b');
 }
 
 function drawBar(g, x, y, width, label, pct, color) {

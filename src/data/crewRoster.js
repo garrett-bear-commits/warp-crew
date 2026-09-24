@@ -88,6 +88,22 @@ function m(id, name, role, rarity, species, extra) {
 }
 
 export const CREW_CATALOG = [
+  m('captain_cyborg', 'Cyborg Captain', 'pilot', 'common', 'human', {
+    faction: 'freelance', origin: 'The Spur', basePower: 10,
+    passive: { fuelCostReduce: 0 }, blurb: 'Cyborg-eyed pilot with a steady hand.',
+  }),
+  m('captain_gunner', 'Gunner Captain', 'gunner', 'common', 'human', {
+    faction: 'freelance', origin: 'The Spur', basePower: 10,
+    passive: { critChance: 0.02 }, blurb: 'Sharp-eyed gunner at the weapons station.',
+  }),
+  m('captain_alien', 'Alien Captain', 'scout', 'common', 'alien', {
+    faction: 'freelance', origin: 'The Spur', basePower: 10,
+    passive: { expeditionSuccess: 0.03 }, blurb: 'Alien scout who reads the lanes.',
+  }),
+  m('captain_droid', 'Droid Captain', 'engineer', 'common', 'droid', {
+    faction: 'freelance', origin: 'The Spur', basePower: 10,
+    passive: { repairBonus: 0.05 }, blurb: 'Small droid with a knack for repairs.',
+  }),
   m('merc_rex', 'Rex Vale', 'pilot', 'common', 'human', {
     faction: 'haulers', origin: 'Spur Anchor', basePower: 10, hireCost: { credits: 180 },
     passive: { fuelCostReduce: 0 },
@@ -418,20 +434,24 @@ export const CREW_CATALOG = [
   }),
 ];
 
+export const STARTER_CAPTAINS = ['captain_cyborg', 'captain_gunner', 'captain_alien', 'captain_droid'];
+
 export function catalogById(id) {
   return CREW_CATALOG.find((c) => c.id === id) || null;
 }
 
-export function createCrewInstance(templateId, { level = 1, stars = 1, rank = 1 } = {}) {
+export function createCrewInstance(templateId, { level = 1, stars = 1, rank = 1, instanceId = null, rng = Math.random } = {}) {
   const t = catalogById(templateId);
   if (!t) throw new Error('Unknown crew template ' + templateId);
   const st = Math.max(1, stars | 0);
   const rk = Math.max(1, rank | 0);
   const lv = Math.max(1, level | 0);
   return {
-    instanceId: `${templateId}_${Math.random().toString(36).slice(2, 9)}`,
+    instanceId: instanceId || `${templateId}_${rng().toString(36).slice(2, 9)}`,
     templateId: t.id,
     name: t.name,
+    customName: null,
+    isCaptain: false,
     role: t.role,
     rarity: t.rarity,
     species: t.species,
@@ -460,7 +480,9 @@ export function recomputeCrew(c) {
   const level = Math.max(1, c.level || 1);
   return {
     ...c,
-    name: t.name,
+    name: c.customName || t.name,
+    customName: c.customName || null,
+    isCaptain: c.isCaptain === true,
     role: t.role,
     rarity: t.rarity,
     species: t.species,

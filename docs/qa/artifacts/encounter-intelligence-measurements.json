@@ -1,0 +1,799 @@
+{
+  "browser": "Chrome/153.0.8010.53",
+  "pageUrl": "http://127.0.0.1:4173/?fresh=1",
+  "deviceScaleFactor": 1,
+  "scenarios": [
+    {
+      "viewport": "390x844",
+      "reduced": false,
+      "measurements": [
+        {
+          "label": "board-risky",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "documentScrollWidth": 390,
+          "scope": {
+            "x": 12,
+            "y": 204.84375,
+            "width": 366,
+            "height": 428.203125,
+            "right": 378,
+            "bottom": 633.046875
+          },
+          "scopeScrollHeight": 426,
+          "scopeClientHeight": 426,
+          "navTop": 779,
+          "payout": "26–150 credits · 2–12 medals · 0–5 reputation",
+          "actions": [
+            {
+              "label": "Review Risky, Raiders on the Clock, 2F, High danger, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+              "x": 29,
+              "y": 572.046875,
+              "width": 332,
+              "height": 44,
+              "right": 361,
+              "bottom": 616.046875,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "3 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "26–150 credits · 2–12 medals · 0–5 reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": false
+        },
+        {
+          "label": "review",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "documentScrollWidth": 390,
+          "scope": {
+            "x": 8,
+            "y": 221.546875,
+            "width": 374,
+            "height": 550.453125,
+            "right": 382,
+            "bottom": 772
+          },
+          "scopeScrollHeight": 548,
+          "scopeClientHeight": 548,
+          "navTop": 779,
+          "payout": "26–150 credits · 2–12 medals · 0–5 reputation",
+          "actions": [
+            {
+              "label": "Close contract review",
+              "x": 325,
+              "y": 234.546875,
+              "width": 44,
+              "height": 44,
+              "right": 369,
+              "bottom": 278.546875,
+              "fontSize": 16
+            },
+            {
+              "label": "Accept contract, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+              "x": 25,
+              "y": 707,
+              "width": 144.921875,
+              "height": 44,
+              "right": 169.921875,
+              "bottom": 751,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "26–150 credits · 2–12 medals · 0–5 reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Possible hull or crew consequence.",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": false
+        },
+        {
+          "label": "encounter-orders",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "documentScrollWidth": 390,
+          "scope": {
+            "x": 29,
+            "y": 300.390625,
+            "width": 332,
+            "height": 923.015625,
+            "right": 361,
+            "bottom": 1223.40625
+          },
+          "scopeScrollHeight": 923,
+          "scopeClientHeight": 923,
+          "navTop": 779,
+          "payout": null,
+          "actions": [
+            {
+              "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+              "x": 46,
+              "y": 678.625,
+              "width": 298,
+              "height": 44,
+              "right": 344,
+              "bottom": 722.625,
+              "fontSize": 16
+            },
+            {
+              "label": "Choose Burn, 76%, 1F extra, +12 effective power · normal failure hull loss and injury",
+              "x": 46,
+              "y": 920.515625,
+              "width": 298,
+              "height": 44,
+              "right": 344,
+              "bottom": 964.515625,
+              "fontSize": 16
+            },
+            {
+              "label": "Choose Board, 52%, 0F extra, −10% effective power · failure injures one crew member",
+              "x": 46,
+              "y": 1162.40625,
+              "width": 298,
+              "height": 44,
+              "right": 344,
+              "bottom": 1206.40625,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "The hunting pack is separating to strike from both sides.",
+              "fontSize": 16
+            },
+            {
+              "text": "Halve failure hull loss and prevent crew injury if the pack gets through.",
+              "fontSize": 16
+            },
+            {
+              "text": "58% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: half hull loss · no crew injury",
+              "fontSize": 16
+            },
+            {
+              "text": "76% · 1F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "+12 effective power · normal failure hull loss and injury",
+              "fontSize": 16
+            },
+            {
+              "text": "52% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Victory: +25% credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "−10% effective power · failure injures one crew member",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": false
+        }
+      ],
+      "screenshots": [
+        "encounter-intelligence-board-390x844.png",
+        "encounter-intelligence-review-390x844.png",
+        "encounter-intelligence-390x844.png",
+        "encounter-intelligence-order-burn-390x844.png",
+        "encounter-intelligence-order-board-390x844.png"
+      ],
+      "contractFocus": {
+        "matches": true,
+        "label": "Review Risky, Raiders on the Clock, 2F, High danger, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+        "outline": "solid",
+        "focusVisible": true
+      },
+      "reviewAccessibleLabel": "Accept contract, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+      "orderFocus": {
+        "matches": true,
+        "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+        "outline": "solid",
+        "focusVisible": true
+      },
+      "orderFacts": {
+        "tell": "Pack spreading wide.",
+        "reason": "Halve failure hull loss and prevent crew injury if the pack gets through.",
+        "orders": [
+          {
+            "text": "Brace · Recommended\n\n58% · 0F extra\n\nNormal payout\n\nFailure: half hull loss · no crew injury\n\nChoose Brace",
+            "enabled": true
+          },
+          {
+            "text": "Burn\n\n76% · 1F extra\n\nNormal payout\n\n+12 effective power · normal failure hull loss and injury\n\nChoose Burn",
+            "enabled": true
+          },
+          {
+            "text": "Board\n\n52% · 0F extra\n\nVictory: +25% credits and medals\n\n−10% effective power · failure injures one crew member\n\nChoose Board",
+            "enabled": true
+          }
+        ],
+        "recommendations": 1
+      }
+    },
+    {
+      "viewport": "360x800",
+      "reduced": false,
+      "measurements": [
+        {
+          "label": "board-risky",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "documentScrollWidth": 360,
+          "scope": {
+            "x": 12,
+            "y": 171.03125,
+            "width": 336,
+            "height": 451.390625,
+            "right": 348,
+            "bottom": 622.421875
+          },
+          "scopeScrollHeight": 449,
+          "scopeClientHeight": 449,
+          "navTop": 735,
+          "payout": "26–150 credits · 2–12 medals · 0–5 reputation",
+          "actions": [
+            {
+              "label": "Review Risky, Raiders on the Clock, 2F, High danger, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+              "x": 29,
+              "y": 561.421875,
+              "width": 302,
+              "height": 44,
+              "right": 331,
+              "bottom": 605.421875,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "3 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "26–150 credits · 2–12 medals · 0–5 reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": false
+        },
+        {
+          "label": "review",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "documentScrollWidth": 360,
+          "scope": {
+            "x": 8,
+            "y": 177.546875,
+            "width": 344,
+            "height": 550.453125,
+            "right": 352,
+            "bottom": 728
+          },
+          "scopeScrollHeight": 548,
+          "scopeClientHeight": 548,
+          "navTop": 735,
+          "payout": "26–150 credits · 2–12 medals · 0–5 reputation",
+          "actions": [
+            {
+              "label": "Close contract review",
+              "x": 295,
+              "y": 190.546875,
+              "width": 44,
+              "height": 44,
+              "right": 339,
+              "bottom": 234.546875,
+              "fontSize": 16
+            },
+            {
+              "label": "Accept contract, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+              "x": 25,
+              "y": 663,
+              "width": 144.921875,
+              "height": 44,
+              "right": 169.921875,
+              "bottom": 707,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "26–150 credits · 2–12 medals · 0–5 reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Possible hull or crew consequence.",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": false
+        },
+        {
+          "label": "encounter-orders",
+          "viewport": {
+            "width": 360,
+            "height": 800
+          },
+          "documentScrollWidth": 360,
+          "scope": {
+            "x": 29,
+            "y": 300.390625,
+            "width": 302,
+            "height": 923.015625,
+            "right": 331,
+            "bottom": 1223.40625
+          },
+          "scopeScrollHeight": 923,
+          "scopeClientHeight": 923,
+          "navTop": 735,
+          "payout": null,
+          "actions": [
+            {
+              "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+              "x": 46,
+              "y": 678.625,
+              "width": 268,
+              "height": 44,
+              "right": 314,
+              "bottom": 722.625,
+              "fontSize": 16
+            },
+            {
+              "label": "Choose Burn, 76%, 1F extra, +12 effective power · normal failure hull loss and injury",
+              "x": 46,
+              "y": 920.515625,
+              "width": 268,
+              "height": 44,
+              "right": 314,
+              "bottom": 964.515625,
+              "fontSize": 16
+            },
+            {
+              "label": "Choose Board, 52%, 0F extra, −10% effective power · failure injures one crew member",
+              "x": 46,
+              "y": 1162.40625,
+              "width": 268,
+              "height": 44,
+              "right": 314,
+              "bottom": 1206.40625,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "The hunting pack is separating to strike from both sides.",
+              "fontSize": 16
+            },
+            {
+              "text": "Halve failure hull loss and prevent crew injury if the pack gets through.",
+              "fontSize": 16
+            },
+            {
+              "text": "58% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: half hull loss · no crew injury",
+              "fontSize": 16
+            },
+            {
+              "text": "76% · 1F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "+12 effective power · normal failure hull loss and injury",
+              "fontSize": 16
+            },
+            {
+              "text": "52% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Victory: +25% credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "−10% effective power · failure injures one crew member",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": false
+        }
+      ],
+      "screenshots": [
+        "encounter-intelligence-board-360x800.png",
+        "encounter-intelligence-review-360x800.png",
+        "encounter-intelligence-360x800.png",
+        "encounter-intelligence-order-burn-360x800.png",
+        "encounter-intelligence-order-board-360x800.png"
+      ],
+      "contractFocus": {
+        "matches": true,
+        "label": "Review Risky, Raiders on the Clock, 2F, High danger, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+        "outline": "solid",
+        "focusVisible": true
+      },
+      "reviewAccessibleLabel": "Accept contract, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+      "orderFocus": {
+        "matches": true,
+        "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+        "outline": "solid",
+        "focusVisible": true
+      },
+      "orderFacts": {
+        "tell": "Pack spreading wide.",
+        "reason": "Halve failure hull loss and prevent crew injury if the pack gets through.",
+        "orders": [
+          {
+            "text": "Brace · Recommended\n\n58% · 0F extra\n\nNormal payout\n\nFailure: half hull loss · no crew injury\n\nChoose Brace",
+            "enabled": true
+          },
+          {
+            "text": "Burn\n\n76% · 1F extra\n\nNormal payout\n\n+12 effective power · normal failure hull loss and injury\n\nChoose Burn",
+            "enabled": true
+          },
+          {
+            "text": "Board\n\n52% · 0F extra\n\nVictory: +25% credits and medals\n\n−10% effective power · failure injures one crew member\n\nChoose Board",
+            "enabled": true
+          }
+        ],
+        "recommendations": 1
+      }
+    },
+    {
+      "viewport": "390x844",
+      "reduced": true,
+      "measurements": [
+        {
+          "label": "board-risky",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "documentScrollWidth": 390,
+          "scope": {
+            "x": 12,
+            "y": 204.84375,
+            "width": 366,
+            "height": 428.203125,
+            "right": 378,
+            "bottom": 633.046875
+          },
+          "scopeScrollHeight": 426,
+          "scopeClientHeight": 426,
+          "navTop": 779,
+          "payout": "26–150 credits · 2–12 medals · 0–5 reputation",
+          "actions": [
+            {
+              "label": "Review Risky, Raiders on the Clock, 2F, High danger, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+              "x": 29,
+              "y": 572.046875,
+              "width": 332,
+              "height": 44,
+              "right": 361,
+              "bottom": 616.046875,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "3 beats",
+              "fontSize": 16
+            },
+            {
+              "text": "26–150 credits · 2–12 medals · 0–5 reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": true
+        },
+        {
+          "label": "review",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "documentScrollWidth": 390,
+          "scope": {
+            "x": 8,
+            "y": 221.546875,
+            "width": 374,
+            "height": 550.453125,
+            "right": 382,
+            "bottom": 772
+          },
+          "scopeScrollHeight": 548,
+          "scopeClientHeight": 548,
+          "navTop": 779,
+          "payout": "26–150 credits · 2–12 medals · 0–5 reputation",
+          "actions": [
+            {
+              "label": "Close contract review",
+              "x": 325,
+              "y": 234.546875,
+              "width": 44,
+              "height": 44,
+              "right": 369,
+              "bottom": 278.546875,
+              "fontSize": 16
+            },
+            {
+              "label": "Accept contract, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+              "x": 25,
+              "y": 707,
+              "width": 144.921875,
+              "height": 44,
+              "right": 169.921875,
+              "bottom": 751,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "2F",
+              "fontSize": 16
+            },
+            {
+              "text": "26–150 credits · 2–12 medals · 0–5 reputation",
+              "fontSize": 16
+            },
+            {
+              "text": "High",
+              "fontSize": 16
+            },
+            {
+              "text": "Possible hull or crew consequence.",
+              "fontSize": 16
+            },
+            {
+              "text": "Favored: Gunner · A gunner turns a dangerous contract into a payout.",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": true
+        },
+        {
+          "label": "encounter-orders",
+          "viewport": {
+            "width": 390,
+            "height": 844
+          },
+          "documentScrollWidth": 390,
+          "scope": {
+            "x": 29,
+            "y": 300.390625,
+            "width": 332,
+            "height": 923.015625,
+            "right": 361,
+            "bottom": 1223.40625
+          },
+          "scopeScrollHeight": 923,
+          "scopeClientHeight": 923,
+          "navTop": 779,
+          "payout": null,
+          "actions": [
+            {
+              "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+              "x": 46,
+              "y": 678.625,
+              "width": 298,
+              "height": 44,
+              "right": 344,
+              "bottom": 722.625,
+              "fontSize": 16
+            },
+            {
+              "label": "Choose Burn, 76%, 1F extra, +12 effective power · normal failure hull loss and injury",
+              "x": 46,
+              "y": 920.515625,
+              "width": 298,
+              "height": 44,
+              "right": 344,
+              "bottom": 964.515625,
+              "fontSize": 16
+            },
+            {
+              "label": "Choose Board, 52%, 0F extra, −10% effective power · failure injures one crew member",
+              "x": 46,
+              "y": 1162.40625,
+              "width": 298,
+              "height": 44,
+              "right": 344,
+              "bottom": 1206.40625,
+              "fontSize": 16
+            }
+          ],
+          "text": [
+            {
+              "text": "The hunting pack is separating to strike from both sides.",
+              "fontSize": 16
+            },
+            {
+              "text": "Halve failure hull loss and prevent crew injury if the pack gets through.",
+              "fontSize": 16
+            },
+            {
+              "text": "58% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "Failure: half hull loss · no crew injury",
+              "fontSize": 16
+            },
+            {
+              "text": "76% · 1F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Normal payout",
+              "fontSize": 16
+            },
+            {
+              "text": "+12 effective power · normal failure hull loss and injury",
+              "fontSize": 16
+            },
+            {
+              "text": "52% · 0F extra",
+              "fontSize": 16
+            },
+            {
+              "text": "Victory: +25% credits and medals",
+              "fontSize": 16
+            },
+            {
+              "text": "−10% effective power · failure injures one crew member",
+              "fontSize": 16
+            }
+          ],
+          "reducedMotion": true
+        }
+      ],
+      "screenshots": [
+        "encounter-intelligence-board-reduced-390x844.png",
+        "encounter-intelligence-review-reduced-390x844.png",
+        "encounter-intelligence-reduced-motion.png",
+        "encounter-intelligence-order-burn-reduced-390x844.png",
+        "encounter-intelligence-order-board-reduced-390x844.png"
+      ],
+      "contractFocus": {
+        "matches": true,
+        "label": "Review Risky, Raiders on the Clock, 2F, High danger, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+        "outline": "solid",
+        "focusVisible": true
+      },
+      "reviewAccessibleLabel": "Accept contract, Possible payout now: 26–150 credits · 2–12 medals · 0–5 reputation",
+      "orderFocus": {
+        "matches": true,
+        "label": "Choose Brace, 58%, 0F extra, Failure: half hull loss · no crew injury",
+        "outline": "solid",
+        "focusVisible": true
+      },
+      "orderFacts": {
+        "tell": "Pack spreading wide.",
+        "reason": "Halve failure hull loss and prevent crew injury if the pack gets through.",
+        "orders": [
+          {
+            "text": "Brace · Recommended\n\n58% · 0F extra\n\nNormal payout\n\nFailure: half hull loss · no crew injury\n\nChoose Brace",
+            "enabled": true
+          },
+          {
+            "text": "Burn\n\n76% · 1F extra\n\nNormal payout\n\n+12 effective power · normal failure hull loss and injury\n\nChoose Burn",
+            "enabled": true
+          },
+          {
+            "text": "Board\n\n52% · 0F extra\n\nVictory: +25% credits and medals\n\n−10% effective power · failure injures one crew member\n\nChoose Board",
+            "enabled": true
+          }
+        ],
+        "recommendations": 1
+      }
+    }
+  ]
+}

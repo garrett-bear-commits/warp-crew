@@ -1,17 +1,16 @@
 // @ts-nocheck
-import { createNewPlayer, migratePlayer, tickCrewStatus, grantCrewXp, applyCrewInjury } from './systems/player.js';
+import { createNewPlayer, migratePlayer, tickCrewStatus } from './systems/player.js';
 import { loadSave, writeSave, clearSave } from './systems/save.js';
+import { consumeFreshStart } from './systems/qaFreshStart.js';
 import { claimFuelRegen } from './systems/fuel.js';
-import { previewTravel, commitTravel } from './systems/travel.js';
-import { ASSIST_CAP } from './systems/combat.js';
-import { pullOnce, pullTen, buyLuck, contractHire, rankUpCrew, levelCrew, callUpReserve, sellReserve, benchCrew, LUCK_CAP } from './systems/gacha.js';
+import { prepareSession, sessionModels, sessionAction, persistSessionTransition } from './systems/sessionLoop.js';
+import { pullOnce, pullTen, buyLuck, contractHire, callUpReserve, sellReserve, benchCrew, LUCK_CAP } from './systems/gacha.js';
 import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, clampFuel } from './systems/economy.js';
 import {
-  startExpedition,
   resolveExpedition,
+  applyExpeditionResult,
   skipExpeditionJob,
   EXPEDITION_SKIP_GEMS,
-  previewExpedition,
   abortPayoutFrac,
 } from './systems/expedition.js';
 import { applyDailyLogin } from './systems/daily.js';
@@ -21,7 +20,7 @@ import {
   buyProduct,
   fulfillIncompletePurchases,
 } from './systems/iap.js';
-import { repairHull, injuryMinutesFor } from './systems/passives.js';
+import { repairHull } from './systems/passives.js';
 import {
   init as platformInit,
   markGameLoaded,
@@ -34,27 +33,27 @@ import {
   login,
 } from './shared/platform.js';
 import { renderApp } from './ui/bridge.js';
-import { buyHull, switchHull, upgradeSystem } from './systems/hangar.js';
+import { buyHull, switchHull } from './systems/hangar.js';
 import {
   noteTutorialEvent,
-  advanceTutorial,
   dismissTutorial,
-  migrateTutorial,
-  currentTutorialStep,
   isTutorialActive,
   isTabUnlocked,
   isFeatureUnlocked,
-  grantTutorialRecruit,
-  beginJoinPrompt,
-  completeTutorial,
   preferredTab,
   skipOrders,
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
-import { stopCrewSim } from './ui/crewWalk.js';
-import { playCombat, isBattlePlaying } from './ui/combatView.js';
-import { unlockSfx, sfx } from './ui/juice.js';
+import { cancelCrewDeparture, holdCrewForDeparture, moveCrewToDeparture, holdCrewForArrival, moveCrewToArrival, stopCrewSim } from './ui/crewWalk.js';
+import { playLaunch } from './ui/spaceFlight.js';
+import { playCombat, playEncounterBeat, isBattlePlaying } from './ui/combatView.js';
+import { createGuidedBeatScheduler } from './ui/guidedBeatScheduler.js';
+import { sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
+import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
+import { ART_VERTICAL_SLICE } from './data/artManifest.js';
+import { artUrl } from './shared/artUrl.js';
+import { applyResolvedSlicePortraits } from './data/portraits.js';
 
 let app = null;
 let mountId = 0;
@@ -62,7 +61,7 @@ const log = [];
 let player = null;
 let tab = 'ship';
 let pendingCombat = null;
-let selectedAssists = [];
+let sessionUi = { missionView: 'contracts', reviewedOfferId: null, selectedExpeditionId: null, selectedExpeditionCrewIds: [] };
 let selectedRoom = null;
 let selectedCrewId = null;
 let cinematic = null;
@@ -71,13 +70,30 @@ let shopProducts = null;
 let artReady = false;
 let toast = null;
 let toastTimer = 0;
+let departureInFlight = false;
+let departureRunId = 0;
+let shipSequence = null;
+let essentialProgress = 0;
+let essentialReady = false;
+let essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
 
-const TRAVEL_FAIL = {
-  not_enough_fuel: 'Not enough fuel.',
-  hull_critical: 'Hull is critical — repair in Engineering.',
-  locked_node: 'That lane is locked.',
-  unknown_node: 'Unknown jump.',
-};
+/** Preserve the saved tutorial script. migratePlayer owns script selection. */
+export function restoreTutorialPlayer(savedPlayer) {
+  return migratePlayer(savedPlayer);
+}
+
+export function resolveEntryTab(currentPlayer, entry, currentTab = 'ship') {
+  if ([4, 5].includes(currentPlayer?.tutorial?.script) && isTutorialActive(currentPlayer)) return 'ship';
+  if (entry?.notification_type === 'daily_pull') return 'crew';
+  if (entry?.notification_type === 'expedition_done' || entry?.notification_type === 'fuel_full') return 'missions';
+  return currentTab;
+}
+
+export function freshBootCrewMessage(currentPlayer) {
+  const names = (currentPlayer?.crew || []).map(member => member.name);
+  if (!names.length) return 'No crew on deck yet. Choose your captain.';
+  return `Crew on deck — ${names.join(' and ')}.`;
+}
 
 function showToast(next) {
   toast = next || null;
@@ -99,8 +115,34 @@ function pushLog(msg) {
   while (log.length > 50) log.shift();
 }
 
+const SESSION_ERROR_COPY = {
+  save_failed: 'Could not save. Try again.',
+  tutorial_action_locked: 'Finish the current step first.',
+  tutorial_station_required: 'Assign your crew member to the required station first.',
+  brace_required: 'Brace before the pirate fires.',
+  target_weapons_required: 'Target the pirate weapons before advancing.',
+  guided_encounter_unavailable: 'The distress call is no longer available.',
+  ship_name_unavailable: 'Name the ship after the first job.',
+  invalid_ship_name: 'Use a ship name up to 24 characters.',
+  welcome_unavailable: 'The welcome recruit is no longer available.',
+  registration_unavailable: 'Finish meeting your new crew first.',
+  registration_unconfirmed: 'Jest sign-in did not finish. You can skip it.',
+  stale_encounter_action: 'The fight moved on. Choose again.',
+  encounter_finished: 'The fight is over. Bring the cargo aboard.',
+  not_enough_fuel: 'Not enough fuel for this job.',
+  hull_critical: 'Repair your hull before the next job.',
+};
+
+export function sessionFailureMessage(reason, currentPlayer = null) {
+  if (reason === 'tutorial_station_required' && currentPlayer?.tutorial?.script === 5) {
+    const member = currentPlayer.crew?.find(c => c.instanceId === currentPlayer.tutorial.firstHireInstanceId);
+    if (member) return `Assign ${member.name} to ${member.templateId === 'merc_bolt' ? 'Shields' : 'Weapons'} first.`;
+  }
+  return SESSION_ERROR_COPY[reason] || 'That action is unavailable right now.';
+}
+
 function persist() {
-  writeSave(player);
+  return writeSave(player);
 }
 
 async function refreshNotifs() {
@@ -112,27 +154,9 @@ async function refreshNotifs() {
 }
 
 function finishExpeditionResult(res) {
-  const planetId = res.planet?.id || player.activeExpedition?.payload?.planetId;
-  const planetRuns = { ...(player.stats?.planetRuns || {}) };
-  if (planetId) planetRuns[planetId] = (planetRuns[planetId] || 0) + 1;
-  player = {
-    ...player,
-    wallet: grant(player.wallet, res.rewards),
-    activeExpedition: null,
-    crew: player.crew.map((c) =>
-      res.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c
-    ),
-    stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1, planetRuns },
-  };
-  if (res.success) {
-    player = grantCrewXp(player, res.crewInstanceIds, 18);
-  } else if (!res.aborted) {
-    player = applyCrewInjury(player, res.crewInstanceIds, injuryMinutesFor(player, 18));
-  }
-  {
-    const te = noteTutorialEvent(player, 'expedition_done');
-    player = te.player;
-  }
+  const transition = applyExpeditionResult(player, res);
+  if (!transition.ok) return;
+  player = transition.player;
   const skipNote = res.skipped ? ' (skipped)' : res.aborted ? ' (extract)' : '';
   const paid = formatReward(res.rewards);
   pushLog(
@@ -159,23 +183,21 @@ function hydratePlayer() {
   const jestPlayer = getJestPlayer();
 
   try {
-    if (new URLSearchParams(location.search).get('fresh') === '1') {
-      clearSave();
+    if (consumeFreshStart({ location, history, clearSave })) {
       pushLog('QA fresh start (?fresh=1).');
     }
   } catch { /* ignore */ }
 
   const saved = loadSave();
   if (saved?.player) {
-    player = migrateTutorial(migratePlayer(saved.player));
+    player = restoreTutorialPlayer(saved.player);
     pushLog('Welcome back, Captain.');
   } else {
     player = createNewPlayer({
       captainName: jestPlayer?.username || 'Captain',
     });
-    player = migrateTutorial(player);
     pushLog('Career start aboard Sparrow.');
-    pushLog('Two mercs on deck — Rex and Bolt.');
+    pushLog(freshBootCrewMessage(player));
   }
 
   player = {
@@ -185,7 +207,7 @@ function hydratePlayer() {
   };
 
   if (isTutorialActive(player)) {
-    tab = preferredTab(player, tab);
+    tab = [4, 5].includes(player.tutorial.script) ? 'ship' : preferredTab(player, tab);
   }
 
   const daily = applyDailyLogin(player);
@@ -209,9 +231,16 @@ function hydratePlayer() {
   player = tickCrewStatus(claimed.player);
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
+  player = prepareSession(player);
+  if (player.activeContract?.stage === 'return') { tab = 'ship'; selectedRoom = 'cargo'; }
+  else if (player.tutorial?.phase === 'away') sessionUi.missionView = 'away';
 }
 
 async function boot() {
+  sessionUi.guidedBeatSaveFailed = null;
+  essentialProgress = 0;
+  essentialReady = false;
+  essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
   try {
     hydratePlayer();
     artReady = hasCrewArt();
@@ -220,28 +249,40 @@ async function boot() {
     console.warn('hydrate', e);
   }
 
+  const sliceKeys = ['splash', 'rex', 'bolt', 'kira', 'tink', 'nemi'];
+  const essentials = sliceKeys
+    .map(key => ({ src: artUrl(ART_VERTICAL_SLICE[key].path), fallback: artUrl(ART_VERTICAL_SLICE[key].fallback) }));
+  essentials.push({ src: artUrl('art/space/sparrow-hull-v3.png'), fallback: artUrl('art/pixel/ships/sparrow-cutaway.jpg') });
+  const essentialP = preloadEssentialAssets(essentials, loadEssentialImage, progress => {
+    essentialProgress = progress;
+    setLoadingProgress(progress);
+    render();
+  }).then(paths => {
+    essentialScene = paths[0];
+    applyResolvedSlicePortraits(Object.fromEntries(sliceKeys.map((key, index) => [key, paths[index]])));
+    essentialReady = true;
+    render();
+  });
+
   const initResult = await platformInit();
   platformStatus = isReal()
     ? `jest (${initResult.mode})`
     : `local mock (${initResult.mode})`;
-  setLoadingProgress(10);
+  setLoadingProgress(essentialProgress);
 
   const jestPlayer = getJestPlayer();
   if (player && jestPlayer?.username && player.captainName === 'Captain') {
     player = { ...player, captainName: jestPlayer.username };
   }
-  setLoadingProgress(40);
 
   const entry = getEntryPayload();
   if (entry?.notification_type) {
     pushLog(`Opened from notification: ${entry.notification_type}`);
     captureEvent('open_from_notification', entry);
-    if (entry.notification_type === 'expedition_done') tab = 'missions';
-    if (entry.notification_type === 'daily_pull') tab = 'crew';
-    if (entry.notification_type === 'fuel_full') tab = 'missions';
   }
+  tab = resolveEntryTab(player, entry, tab);
 
-  const artP = prepareCrewArt()
+  const crewArtP = prepareCrewArt()
     .then(() => {
       artReady = true;
       render();
@@ -264,16 +305,16 @@ async function boot() {
     shopProducts = null;
   }
 
-  setLoadingProgress(90);
-  await Promise.all([artP, refreshNotifs().catch((e) => console.warn('notif sync', e))]);
+  await Promise.all([essentialP, crewArtP, refreshNotifs().catch((e) => console.warn('notif sync', e))]);
   persist();
-  setLoadingProgress(100);
+  setLoadingProgress(essentialProgress);
   markGameLoaded();
   captureEvent('session_start', {
     platform: isReal() ? 'jest' : 'local',
     streak: player.loginStreak,
   });
   render();
+  scheduleGuidedBeat();
 }
 
 function render() {
@@ -283,72 +324,59 @@ function render() {
     player = ticked;
     persist();
   }
+  const prepared = prepareSession(player);
+  if (prepared !== player && writeSave(prepared)) player = prepared;
+  const models = sessionModels(player, { ...sessionUi, pendingCombat });
+  sessionUi.contractPreviews = models.contractPreviews;
   renderApp(app, {
+    ...sessionUi,
+    ...models,
     player,
     log,
     tab,
     pendingCombat,
-    selectedAssists,
     selectedRoom,
     selectedCrewId,
     cinematic,
     platformStatus,
+    jestLive: isReal(),
     shopProducts,
     artReady,
+    splashProgress: essentialProgress,
+    splashReady: essentialReady,
+    splashScene: essentialScene,
     toast,
+    departureInFlight,
+    shipSequence,
     handlers: {
       setTab: (t) => {
         if (isBattlePlaying()) return;
         if (!isTabUnlocked(player, t)) return;
-        if (t === 'missions' && player.tutorial?.phase === 'meet' && isTutorialActive(player)) {
-          player = advanceTutorial(player);
-          persist();
-          captureEvent('tutorial_stage', { stage: 'jump' });
+        if (t === 'missions') {
+          handleAction(player.tutorial?.phase === 'away' ? 'goto-away' : 'goto-contracts');
+          return;
         }
         tab = t;
         selectedRoom = null;
         render();
       },
       onAction: handleAction,
-      toggleAssist: (id) => {
-        if (selectedAssists.includes(id)) {
-          selectedAssists = selectedAssists.filter((x) => x !== id);
-        } else if (selectedAssists.length >= ASSIST_CAP) {
-          selectedAssists = [...selectedAssists.slice(1), id];
-        } else {
-          selectedAssists = [...selectedAssists, id];
-        }
-        render();
-      },
     },
   });
 }
 
 async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
+  if (reason === 'first_session' && !isReal()) return { registered: false, unavailable: true };
   const jp = getJestPlayer();
-  const finish = (registered, username) => {
-    player = {
-      ...player,
-      _jestRegistered: Boolean(registered),
-      captainName: username || player.captainName,
-    };
-    if (isTutorialActive(player) || player.tutorial?.phase === 'join') {
-      player = completeTutorial(player, { registered: Boolean(registered) });
-      tab = 'ship';
-      captureEvent('tutorial_complete', { joined: Boolean(registered) });
-    }
-  };
-
   if (jp?.registered) {
-    finish(true, jp.username);
     pushLog(`Already registered as ${jp.username || jp.playerId}.`);
-    return;
+    return { registered: true, username: jp.username };
   }
 
   if (isReal()) {
     const { loginButtonAction } = showRegistrationOverlay({
       theme: 'dark',
-      message: 'Save Warp Crew progress! {{registrationCode}} is my code.',
+      message: 'Optional Jest sign-in. {{registrationCode}} is my code.',
       entryPayload: { reason },
       onClose: () => {},
     });
@@ -356,23 +384,35 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
       await login({ entryPayload: { reason } });
       const after = getJestPlayer();
       if (after?.registered) {
-        finish(true, after?.username);
-        pushLog('Registered on Jest. Crew, shop, and log are open.');
+        pushLog('Signed in to Jest.');
+        return { registered: true, username: after.username };
       } else {
-        pushLog('Join closed — you can still play as guest.');
+        pushLog('Sign-in closed.');
       }
     } catch {
       pushLog('Login flow closed.');
       loginButtonAction?.();
     }
-    return;
+    return { registered: false };
   }
 
   await login();
   const after = getJestPlayer();
-  finish(true, after?.username);
-  pushLog('Joined Jest. Crew, shop, and log are open.');
+  if (after?.registered) pushLog('Signed in to Jest.');
+  return { registered: Boolean(after?.registered), username: after?.username };
 }
+
+const guidedBeatScheduler = createGuidedBeatScheduler({
+  getPlayer: () => app ? player : null,
+  advance: data => handleAction('encounter-advance', data),
+  isBattlePlaying,
+  onSaveFailure: failedIdentity => {
+    sessionUi.guidedBeatSaveFailed = failedIdentity;
+    render();
+  },
+});
+
+function scheduleGuidedBeat() { guidedBeatScheduler.schedule(); }
 
 function doHire({ gems = false, ten = false } = {}) {
   if (!isFeatureUnlocked(player, 'gacha')) {
@@ -426,6 +466,88 @@ function doHire({ gems = false, ten = false } = {}) {
 }
 
 async function handleAction(act, data = {}) {
+  if (isBattlePlaying()) return;
+  // Tutorial CTAs navigate to or invoke the same production actions as the board.
+  if (['tutorial-next', 'tutorial-go', 'tutorial-jump'].includes(act)) {
+    const phase = player.tutorial?.phase;
+    if (phase === 'distress' || (phase === 'launch' && !player.activeContract)) {
+      return handleAction('contract-review', { offer: 'offer_tutorial_distress' });
+    }
+    if (phase === 'recruit') return handleAction('tutorial-draw');
+    if (phase === 'away') return handleAction('exp-choose', { planet: 'dustfall' });
+    if (phase === 'return') { tab = 'ship'; selectedRoom = 'cargo'; render(); return; }
+    return handleAction('goto-contracts');
+  }
+  const transition = sessionAction(player, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId }, act, data);
+  if (transition) {
+    const departure = transition.effect?.kind === 'expedition';
+    let startedDepartureId = null;
+    const publishSessionResult = (result) => {
+      player = result.player;
+      sessionUi = { ...sessionUi, ...result.ui };
+      if (result.effect?.kind === 'encounter-beat') sessionUi.guidedBeatSaveFailed = null;
+      if ('pendingCombat' in result.ui) pendingCombat = result.ui.pendingCombat;
+      if ('tab' in result.ui) tab = result.ui.tab;
+      if ('selectedRoom' in result.ui) selectedRoom = result.ui.selectedRoom;
+      if ('selectedCrewId' in result.ui) selectedCrewId = result.ui.selectedCrewId;
+      render();
+    };
+    const committed = persistSessionTransition(transition, {
+      save: writeSave,
+      publish: (result) => {
+        if (departure) {
+          startedDepartureId = ++departureRunId;
+          departureInFlight = true;
+          holdCrewForDeparture(transition.effect.crewInstanceIds);
+        }
+        if (result.effect?.kind === 'crew-arrival') holdCrewForArrival(result.player, result.effect.crewInstanceId);
+        if (['launch', 'crew-arrival'].includes(result.effect?.kind)) shipSequence = result.effect.kind === 'crew-arrival'
+          ? { kind: 'crew-arrival', member: result.player.crew.find(c => c.instanceId === result.effect.crewInstanceId) }
+          : 'launch';
+        publishSessionResult(result);
+      },
+      capture: captureEvent,
+      animate: (effect) => {
+        if ((effect.kind === 'travel' || effect.kind === 'combat') && effect.result) logTravelResult(effect.result);
+        if (effect.kind === 'launch') {
+          playLaunch({ onDone: () => { if (shipSequence === 'launch') shipSequence = null; render(); } });
+        }
+        if (effect.kind === 'crew-arrival') {
+          moveCrewToArrival(player, effect.crewInstanceId, { onDone: () => { if (shipSequence?.kind === 'crew-arrival') shipSequence = null; render(); } });
+        }
+        if (effect.kind === 'expedition') {
+          const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+          moveCrewToDeparture(player, effect.crewInstanceIds, {
+            reducedMotion,
+            onDone: () => {
+              if (startedDepartureId !== departureRunId) return;
+              departureInFlight = false;
+              render();
+            },
+          });
+        }
+        if (effect.kind === 'combat') {
+          if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+            showToast({ title: effect.win ? 'Victory' : 'Hull holds' });
+          } else {
+            playCombat({ preview: effect.preview, win: effect.win, onDone: () => render() });
+          }
+        }
+        if (effect.kind === 'encounter-beat') playEncounterBeat(effect.events);
+      },
+    });
+    if (!committed.ok) {
+      const message = sessionFailureMessage(committed.reason, player);
+      pushLog(message);
+      showToast({ title: message });
+      if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
+    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'exp-start', 'exp-launch'].includes(act)) {
+      await refreshNotifs();
+    }
+    render();
+    if (committed.ok) scheduleGuidedBeat();
+    return committed;
+  }
   if (act === 'select-room') {
     selectedRoom = selectedRoom === data.room ? null : data.room;
     render();
@@ -496,142 +618,6 @@ async function handleAction(act, data = {}) {
         pushLog(`Bought ${n} fuel (−${cost}cr).`);
         showToast({ title: `+${n} fuel` });
         sfx('coin');
-      }
-    }
-  } else if (act === 'travel-to') {
-    const nodeId = data.node;
-    if (!nodeId) return;
-    if (nodeId === player.location) {
-      pushLog('Already here.');
-      return;
-    }
-    const preview = previewTravel(player, nodeId);
-    if (!preview.ok) {
-      pushLog(`Travel failed: ${TRAVEL_FAIL[preview.reason] || preview.reason}`);
-    } else if (preview.needsAssists) {
-      pendingCombat = preview;
-      selectedAssists = ['shield_boost'];
-      pushLog(`Contact at ${preview.node.name} — choose assists.`);
-      if (isTutorialActive(player)) {
-        const te = noteTutorialEvent(player, 'combat_ready');
-        player = te.player;
-      }
-    } else {
-      const res = commitTravel(player, preview);
-      if (!res.ok) pushLog(`Travel failed: ${TRAVEL_FAIL[res.reason] || res.reason}`);
-      else {
-        player = res.player;
-        logTravelResult(res.result);
-        const te = noteTutorialEvent(player, 'travel_success');
-        player = te.player;
-        if (te.advanced) pushLog('Tutorial: first jump logged.');
-        if (res.result.rewards) {
-          showToast({
-            title: res.result.beat?.title || `${res.result.kind} · ${res.result.node.name}`,
-            rewards: res.result.rewards,
-          });
-          sfx('coin');
-        } else if (res.result.beat) {
-          showToast({ title: res.result.beat.title });
-        }
-        captureEvent('travel', { node: nodeId, kind: res.result.kind });
-        await refreshNotifs();
-      }
-    }
-  } else if (act === 'combat-confirm') {
-    if (!pendingCombat || isBattlePlaying()) return;
-    const preview = pendingCombat;
-    const assists = [...selectedAssists];
-    pendingCombat = null;
-    selectedAssists = [];
-    tab = 'ship';
-    selectedRoom = null;
-    unlockSfx();
-    const res = commitTravel(player, preview, { assistsUsed: assists });
-    render();
-    requestAnimationFrame(() => {
-      playCombat({
-        preview,
-        win: Boolean(res.result?.combat?.success ?? res.ok),
-        onDone: async () => {
-          if (!res.ok) {
-            pushLog(`Engage failed: ${TRAVEL_FAIL[res.reason] || res.reason}`);
-            persist();
-            render();
-            return;
-          }
-          player = res.player;
-          logTravelResult(res.result);
-          let te = noteTutorialEvent(player, 'travel_success');
-          player = te.player;
-          te = noteTutorialEvent(player, 'combat_done', { rewards: res.result.rewards });
-          player = te.player;
-          captureEvent('combat', {
-            success: res.result.combat?.success,
-            encounter: res.result.combat?.encounter?.id,
-          });
-          tab = 'ship';
-          if (!isTutorialActive(player)) {
-            showToast({
-              title: res.result.combat?.success ? 'Victory' : 'Hull holds',
-              rewards: res.result.rewards,
-            });
-          }
-          sfx(res.result.combat?.success ? 'win' : 'hit');
-          await refreshNotifs();
-          persist();
-          render();
-        },
-      });
-      render();
-    });
-    return;
-  } else if (act === 'combat-cancel') {
-    if (isTutorialActive(player) && player.tutorial?.phase === 'combat') {
-      // First fight cannot be aborted — stay on the assist picker.
-      render();
-      return;
-    }
-    pendingCombat = null;
-    selectedAssists = [];
-    pushLog('Jump aborted. Fuel not spent.');
-    if (isTutorialActive(player)) {
-      const te = noteTutorialEvent(player, 'combat_abort');
-      player = te.player;
-    }
-  } else if (act === 'exp-start') {
-    if (!isFeatureUnlocked(player, 'expeditions')) {
-      pushLog('Expeditions unlock after the first fight.');
-      return;
-    }
-    if (player.activeExpedition) pushLog('Expedition already active.');
-    else {
-      const prev = previewExpedition(player, data.planet);
-      const crew = prev.crew;
-      if (!crew.length) pushLog('No ready crew.');
-      else {
-        const job = startExpedition({
-          planetId: prev.planet.id,
-          crewInstanceIds: crew.map((c) => c.instanceId),
-          minutes: prev.planet.minutes,
-          successChance: prev.chance,
-          roleHit: prev.roleHit,
-        });
-        player = {
-          ...player,
-          activeExpedition: job,
-          crew: player.crew.map((c) =>
-            crew.some((x) => x.instanceId === c.instanceId) ? { ...c, status: 'expedition' } : c
-          ),
-        };
-        const names = crew.map((c) => c.name).join(', ');
-        pushLog(`Launched ${prev.planet.name} with ${names} (${(prev.chance * 100) | 0}% · ${prev.planet.minutes || 15}m).`);
-        {
-          const te = noteTutorialEvent(player, 'expedition_start');
-          player = te.player;
-        }
-        captureEvent('expedition_start', { planet: prev.planet.id });
-        await refreshNotifs();
       }
     }
   } else if (act === 'exp-skip') {
@@ -732,48 +718,8 @@ async function handleAction(act, data = {}) {
     selectedCrewId = data.id || null;
   } else if (act === 'close-crew') {
     selectedCrewId = null;
-  } else if (act === 'splash-dismiss') {
-    player = { ...player, flags: { ...(player.flags || {}), splashSeen: true } };
   } else if (act === 'cinematic-dismiss') {
     cinematic = null;
-  } else if (act === 'rank-up') {
-    const res = rankUpCrew(player, data.id);
-    if (!res.ok) {
-      pushLog(res.reason === 'cannot_afford' ? `Need ${formatReward(res.cost)} to rank up.` : `Rank failed: ${res.reason}`);
-    } else {
-      player = res.player;
-      pushLog(`${res.crew.name} ranked up.`);
-      showToast({ title: `${res.crew.name} ranked` });
-    }
-  } else if (act === 'level-crew') {
-    const res = levelCrew(player, data.id);
-    if (!res.ok) {
-      pushLog(res.reason === 'cannot_afford' ? `Need ${res.cost?.medals} medals to level.` : `Level failed: ${res.reason}`);
-    } else {
-      player = res.player;
-      pushLog(`${res.crew.name} → Lv ${res.crew.level}.`);
-      showToast({ title: `${res.crew.name} Lv ${res.crew.level}` });
-    }
-  } else if (act === 'ship-upgrade') {
-    if (isTutorialActive(player) && !isFeatureUnlocked(player, 'hangar')) {
-      pushLog('Ship upgrades open after the intro.');
-      return;
-    }
-    const system = data.system || 'quarters';
-    const res = upgradeSystem(player, system);
-    if (!res.ok) {
-      pushLog(res.reason === 'cannot_afford'
-        ? `Need ${JSON.stringify(res.cost)} for ${system}.`
-        : res.reason === 'max_berths'
-          ? 'Berths maxed for this hull — buy a larger hull first.'
-          : `Upgrade failed: ${res.reason}`);
-    } else {
-      player = res.player;
-      const spent = res.cost?.credits ? ` (−${res.cost.credits}cr)` : '';
-      pushLog(`Upgraded ${system} to lv ${res.nextLevel}.${spent} Crew slots: ${player.crewSlots}.`);
-      showToast({ title: `${system} lv ${res.nextLevel}` });
-      captureEvent('ship_upgrade', { system });
-    }
   } else if (act === 'hull-buy') {
     if (!isFeatureUnlocked(player, 'shop')) {
       pushLog('Hangar unlocks after the intro.');
@@ -822,46 +768,17 @@ async function handleAction(act, data = {}) {
       showToast({ title: 'Purchase applied' });
       sfx('coin');
       captureEvent('iap_success', { sku });
-      const jp = getJestPlayer();
-      if (jp && !jp.registered) {
-        pushLog('Tip: register to keep purchases across devices.');
-      }
       await refreshNotifs();
     }
-  } else if (act === 'prompt-login' || act === 'tutorial-join') {
-    await handleJoinJest({ reason: act === 'tutorial-join' ? 'tutorial_peak' : 'shop_prompt' });
-  } else if (act === 'tutorial-next' || act === 'tutorial-go' || act === 'tutorial-jump') {
-    const step = currentTutorialStep(player);
-    if (!step) return;
-    if (step.id === 'meet') {
-      player = advanceTutorial(player);
-      tab = 'missions';
-      selectedRoom = null;
-      captureEvent('tutorial_stage', { stage: 'jump' });
-      pushLog('Missions open. Dust Lane is the only jump.');
-    } else if (step.tab) {
-      tab = step.tab;
-      selectedRoom = null;
-    }
-  } else if (act === 'tutorial-draw') {
-    const granted = grantTutorialRecruit(player);
-    player = granted.player;
-    tab = 'crew';
-    selectedRoom = null;
-    pushLog(`${granted.instance.name} signs on as gunner.`);
-    sfx('coin');
-    captureEvent('tutorial_stage', { stage: 'recruit' });
-  } else if (act === 'tutorial-to-join') {
-    player = completeTutorial(player, { registered: Boolean(getJestPlayer()?.registered) });
-    tab = 'ship';
-    selectedRoom = null;
-    captureEvent('tutorial_complete', { joined: false, skipped_save_prompt: true });
-    pushLog('Ship, crew, shop, and map are open.');
-  } else if (act === 'tutorial-skip-join') {
-    player = completeTutorial(player, { registered: Boolean(getJestPlayer()?.registered) });
-    tab = 'ship';
-    captureEvent('tutorial_complete', { joined: false });
-    pushLog('Playing as guest. Crew, shop, and log are open.');
+  } else if (act === 'prompt-login') {
+    const result = await handleJoinJest({ reason: 'shop_prompt' });
+    if (result.registered) player = { ...player, _jestRegistered: true, captainName: result.username || player.captainName };
+  } else if (act === 'tutorial-register-start') {
+    if (![4, 5].includes(player.tutorial?.script) || player.tutorial.phase !== 'register') return;
+    const result = await handleJoinJest({ reason: 'first_session' });
+    if (result.registered) return handleAction('tutorial-register-complete', { registered: true, username: result.username });
+    render();
+    return;
   } else if (act === 'tutorial-dismiss') {
     player = dismissTutorial(player);
     if (player.tutorial?.completed) {
@@ -876,9 +793,9 @@ async function handleAction(act, data = {}) {
     pushLog('QA +100 gems.');
   } else if (act === 'qa-reset') {
     clearSave();
-    player = createNewPlayer();
+    player = prepareSession(createNewPlayer());
     pendingCombat = null;
-    selectedAssists = [];
+    sessionUi = { missionView: 'contracts', reviewedOfferId: null, selectedExpeditionId: null, selectedExpeditionCrewIds: [] };
     selectedCrewId = null;
     cinematic = null;
     tab = 'ship';
@@ -886,16 +803,23 @@ async function handleAction(act, data = {}) {
     pushLog('Save reset.');
   }
 
-  persist();
+  const saved = persist();
+  if (saved && !player.activeExpedition) {
+    if (departureInFlight) {
+      departureRunId++;
+      departureInFlight = false;
+    }
+    cancelCrewDeparture();
+  }
   render();
 }
 
 function logTravelResult(r) {
   const pay = r.rewards ? formatReward(r.rewards) : '';
   if (r.combat) {
-    const a = (r.combat.assistsUsed || []).join(', ') || 'none';
+    const a = r.combat.orderId || 'brace';
     const hurt = r.injured ? ` · ${r.injured} injured` : '';
-    pushLog(`${r.combat.encounter.name}: ${r.combat.log} [assists: ${a}]${pay ? ` · ${pay}` : ''}${hurt}`);
+    pushLog(`${r.combat.encounter.name}: ${r.combat.log} [order: ${a}]${pay ? ` · ${pay}` : ''}${hurt}`);
   } else if (r.already) {
     pushLog(r.flavor || `Already logged at ${r.node.name}.`);
   } else if (r.beat) {
@@ -926,6 +850,7 @@ export function mountWarpCrew(rootEl) {
   });
   return () => {
     if (mountId === gen) app = null;
+    guidedBeatScheduler.cancel();
     stopCrewSim();
   };
 }
