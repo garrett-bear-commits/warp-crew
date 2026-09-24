@@ -8,6 +8,7 @@
   --text: #e8edf6;
   --muted: #8b97ab;
   --accent: #c5d3e4;
+  --intro-accent: #f1b66b;
   --cyan: #9bb8ce;
   --hull: #5dba8e;
   --shield: #7aa3c7;
@@ -1549,12 +1550,18 @@ button:focus-visible {
 .splash-loading-label { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; }
 .splash-progress { height: 12px; border: 1px solid #b2a286; background: #182338; overflow: hidden; }
 .splash-progress span { display: block; height: 100%; background: linear-gradient(90deg, #b85f54, #f1b66b); }
-.splash-copy .primary { width: 100%; min-height: 52px; font-size: 18px; background: #f1b66b; }
+.splash-copy .primary { width: 100%; min-height: 52px; font-size: 18px; background: var(--intro-accent); }
 .splash-copy .primary:disabled { opacity: .68; }
 
 .wc-shell.first-session {
   font-size: 16px;
 }
+.wc-shell.first-session button.primary {
+  background: var(--intro-accent);
+  color: #0b1018;
+}
+.wc-shell.first-session button.primary:active { background: #ffd098; }
+.wc-shell.first-session button.primary:focus-visible { outline-color: var(--intro-accent); }
 .wc-shell.first-session .bottom-nav {
   display: none;
 }
@@ -1632,6 +1639,10 @@ button:focus-visible {
 }
 .wc-shell.first-session .ship-encounter {
   bottom: calc(12px + env(safe-area-inset-bottom));
+  font-size: 16px;
+}
+.wc-shell.first-session .ship-encounter button {
+  min-height: 44px;
   font-size: 16px;
 }
 .wc-shell.first-session .ship-encounter .encounter-threat {
