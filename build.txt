@@ -1,6 +1,12 @@
-Warp Crew Pages QA build 2026-09-23
-Source: codex/contract-route-overhaul@07ebcacaa7567450e8077014c55afb829607859d
-Scope: living-ship first-play tutorial, approved five-crew splash, first crew-run contract, one-shot fresh save
-Platform: GitHub Pages local/mock mode; not a Jest production build
-JavaScript SHA-256: 16a6a6b131dfa4887e991832320d405bfeefbe0cb39dd19a0a08cf761d1d4011
-Splash SHA-256: 353ff73314b2bd088d3e3d88df6933aa4e11be1d277a9c028887dfa85cb021fd
+Warp Crew Pages QA build 2026-09-24
+Source: codex/contract-route-overhaul@0c1f4ce97309f06f862cc8b00efa1628e517d07e
+Runtime fixes: 867c142d90763c40ab9b3fe4e431186a67d56a31
+Local QA evidence: 6c2c40581794b64b947bcda30e82065a082c8e20
+Scope: captain-first tutorial, crew-managed pirate rescue, portrait-backed alien/droid markers, next normal job
+Platform: GitHub Pages local/mock mode; not a Jest production build; no purchase or cloud-save claim
+Index SHA-256: e3692c21e43a9d141c37c7a9cfde7921bae03b79acd55d1b0fea1ab2cc860608
+QA hub SHA-256: 2f2e4f352d525d1be42e0069a2b9c6a18ea536e61d1d79098a77d9516923ead3
+JavaScript SHA-256: 026ebb80475778007bab35b32346c25684c8be631edf415ec6b50040c862241d
+CSS SHA-256: 7e594d0a2408b78ea1f8f7fef52bd6a2431e411299238b0464f5fd0559e3f735
+Splash SHA-256: f716761790dd244c39471bd25e2eeebdd331e6820c89a9f1a47f403fd898982a
+Pirate SHA-256: f0fb9394355bf89b2570b64fb4bf282446e77a706f15fc00020e6730be8345e9
