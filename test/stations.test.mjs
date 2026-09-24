@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
-import { assignStation, normalizeAssignments, stationOutputs } from '../src/systems/stations.js';
+import { assignStation, normalizeAssignments, previewStationAssignment, stationOutputs } from '../src/systems/stations.js';
 import { crewTargetStates } from '../src/ui/crewWalk.js';
-import { renderRoomSheet } from '../src/ui/bridge.js';
+import { renderCrew, renderRoomSheet } from '../src/ui/bridge.js';
 import { ROOMS } from '../src/data/starterShip.js';
 import { createCrewInstance } from '../src/data/crewRoster.js';
 
@@ -15,6 +15,15 @@ const bolt = player.crew.find(c => c.templateId === 'merc_bolt');
 assert.deepEqual(normalizeAssignments(player), { [rex.instanceId]: 'helm', [bolt.instanceId]: null });
 assert.equal(stationOutputs(player, now).helm.total, 110);
 assert.equal(stationOutputs(player, now).shields.total, 100);
+assert.deepEqual(previewStationAssignment(player, bolt.instanceId, 'helm', now), {
+  ok: true, before: 110, after: 100, delta: -10,
+});
+assert.deepEqual(previewStationAssignment(player, bolt.instanceId, 'shields', now), {
+  ok: true, before: 100, after: 110, delta: 10,
+});
+assert.deepEqual(previewStationAssignment(player, bolt.instanceId, null, now), {
+  ok: false, reason: 'unknown_station',
+});
 
 // Catches lost assignment persistence, missing role benefit, and direct mutation of input.
 const assigned = assignStation(player, bolt.instanceId, 'shields', now);
@@ -66,6 +75,14 @@ const sheet = renderRoomSheet(assigned.player, shieldsRoom, {}, now);
 assert.match(sheet, /Bolt/);
 assert.match(sheet, /Shields output: 100 \+ 10 = 110/);
 assert.match(sheet, new RegExp(`data-act="station-assign" data-id="${bolt.instanceId}" data-station="shields"`));
+// Catches a choice that advertises role bonus instead of the actual result when it displaces a worker.
+const helmRoom = ROOMS.find(room => room.id === 'bridge');
+const helmSheet = renderRoomSheet(player, helmRoom, {}, now);
+assert.match(helmSheet, new RegExp(`data-id="${bolt.instanceId}" data-station="helm"[^>]*>Bolt · 100 [(][-]10[)]</button>`));
+assert.match(renderRoomSheet(player, shieldsRoom, {}, now), new RegExp(`data-id="${bolt.instanceId}" data-station="shields"[^>]*>Bolt · 110 [(][+]10[)]</button>`));
+const crewPanel = renderCrew(player, now);
+assert.match(crewPanel, new RegExp(`data-id="${bolt.instanceId}" data-station="helm"[^>]*>Helm 100 [(][-]10[)]</button>`));
+assert.match(crewPanel, new RegExp(`data-id="${bolt.instanceId}" data-station="shields"[^>]*>Shields 110 [(][+]10[)]</button>`));
 const targets = crewTargetStates(assigned.player);
 assert.equal(targets.find(target => target.crewInstanceId === bolt.instanceId)?.roomId, 'operations');
 assert.equal(targets.find(target => target.crewInstanceId === rex.instanceId)?.roomId, 'bridge');

@@ -17,7 +17,7 @@ import {
   tutorialPhase,
 } from '../systems/tutorial.js';
 import { readyCrew, fightingCrew } from '../systems/player.js';
-import { normalizeAssignments, stationOutputs, STATIONS } from '../systems/stations.js';
+import { normalizeAssignments, previewStationAssignment, stationOutputs, STATIONS } from '../systems/stations.js';
 import { portraitFor, shipArtFor, SPACE_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
 import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP } from '../systems/gacha.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
@@ -621,9 +621,9 @@ export function renderRoomSheet(player, room, fuel, now) {
     <div class="muted">${output.staffedBy ? '● Working here' : assigned ? '● Assigned · unavailable' : '○ Work marker · open'}</div>
     <div class="row crew-actions">
       ${player.crew.map(c => {
-        const unavailable = c.status === 'expedition' || c.status === 'reserve' || (c.injuredUntil || 0) > now;
-        const delta = c.role === STATIONS[stationId].role ? '+10' : '+0';
-        return `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${stationId}" ${unavailable ? 'disabled' : ''}>${escapeHtml(c.name)} · ${delta}${assignments[c.instanceId] === stationId ? ' · assigned' : ''}</button>`;
+        const preview = previewStationAssignment(player, c.instanceId, stationId, now);
+        const label = preview.ok ? `${preview.after} (${preview.delta >= 0 ? '+' : ''}${preview.delta})` : 'Unavailable';
+        return `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${stationId}" ${preview.ok ? '' : 'disabled'}>${escapeHtml(c.name)} · ${label}${assignments[c.instanceId] === stationId ? ' · assigned' : ''}</button>`;
       }).join('')}
     </div>` : '';
   return `
@@ -911,12 +911,11 @@ function crewPortrait(c) {
   return `<img class="portrait" src="${portraitFor(c.templateId, c.role)}" alt="" width="64" height="64" />`;
 }
 
-function renderCrew(player) {
+export function renderCrew(player, now = Date.now()) {
   const canHire = isFeatureUnlocked(player, 'gacha');
   const free = player.dailyPullAvailable;
   const open = Math.max(0, player.crewSlots - player.crew.length);
   const teachHire = player.tutorial?.ordersBeat === 'hire';
-  const now = Date.now();
   const g = { ...defaultGacha(), ...(player.gacha || {}) };
   const ownedIds = new Set([
     ...(player.crew || []).map((c) => c.templateId),
@@ -965,7 +964,11 @@ function renderCrew(player) {
             <div class="crew-meta">${escapeHtml(c.role)} · Lv ${c.level}${hurt}</div>
             <div class="crew-meta">${assignments[c.instanceId] ? `● ${escapeHtml(STATIONS[assignments[c.instanceId]].label)} work marker` : '○ Reserve from station duty'}</div>
             <div class="row crew-actions">
-              ${Object.entries(STATIONS).map(([id, station]) => `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${id}" ${c.status === 'expedition' || (c.injuredUntil || 0) > now ? 'disabled' : ''}>${escapeHtml(station.label)} ${c.role === station.role ? '+10' : '+0'}</button>`).join('')}
+              ${Object.entries(STATIONS).map(([id, station]) => {
+                const preview = previewStationAssignment(player, c.instanceId, id, now);
+                const label = preview.ok ? `${preview.after} (${preview.delta >= 0 ? '+' : ''}${preview.delta})` : 'Unavailable';
+                return `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${id}" ${preview.ok ? '' : 'disabled'}>${escapeHtml(station.label)} ${label}</button>`;
+              }).join('')}
               ${assignments[c.instanceId] ? `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="">Leave station</button>` : ''}
             </div>
             <div>${starsHtml(c.stars)}</div>

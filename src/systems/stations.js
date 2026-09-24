@@ -58,3 +58,12 @@ export function stationOutputs(player, now = Date.now()) {
   }
   return output;
 }
+
+export function previewStationAssignment(player, crewId, stationId, now = Date.now()) {
+  if (!isStation(stationId)) return { ok: false, reason: 'unknown_station' };
+  const proposal = assignStation(player, crewId, stationId, now);
+  if (!proposal.ok) return { ok: false, reason: proposal.reason };
+  const before = stationOutputs(player, now)[stationId].total;
+  const after = stationOutputs(proposal.player, now)[stationId].total;
+  return { ok: true, before, after, delta: after - before };
+}
