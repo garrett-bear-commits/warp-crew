@@ -1,6 +1,6 @@
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
 const MAX_HULL = 30;
-const MAX_SHIELD = 1;
+const MAX_SHIELD = 12;
 
 function outputValue(outputs, station) {
   const value = outputs?.[station];
@@ -73,6 +73,8 @@ export function advanceEncounter(state, order = null) {
     if (order === 'repair' && state.cooldowns.repair > 0) {
       return { ok: false, reason: 'order_unavailable', state };
     }
+    const cost = order === 'brace' ? 2 : 3;
+    if (state.shield < cost) return { ok: false, reason: 'insufficient_resource', state };
   }
 
   const next = structuredClone(state);
@@ -86,7 +88,7 @@ export function advanceEncounter(state, order = null) {
 
   if (order === 'brace') {
     const cost = { shield: 2 };
-    next.shield = Math.max(0, next.shield - cost.shield);
+    next.shield -= cost.shield;
     next.orders.brace.used = true;
     next.orders.brace.uses += 1;
     next.braceThroughBeat = next.beat + 1;
@@ -94,7 +96,7 @@ export function advanceEncounter(state, order = null) {
     events.push({ type: 'order', order: 'brace', cost, amount: 2, cooldownBeats: next.cooldowns.brace, target: 'incoming_damage' });
   } else if (order === 'repair') {
     const cost = { shield: 3 };
-    next.shield = Math.max(0, next.shield - cost.shield);
+    next.shield -= cost.shield;
     const amount = Math.min(8, MAX_HULL - next.hull);
     next.hull += amount;
     next.cooldowns.repair = 4;
@@ -103,7 +105,7 @@ export function advanceEncounter(state, order = null) {
     if (amount > 0) events.push({ type: 'repair', target: 'hull', system: 'engineering', amount, source: 'emergency_order' });
   }
 
-  const weaponOutput = next.outputs.weapons;
+  const weaponOutput = Math.floor(next.outputs.weapons * next.systems.weapons / 100);
   const weaponDamage = Math.max(0, Math.floor((weaponOutput - 50) / 10));
   if (weaponDamage > 0 && next.enemy.hull > 0) {
     const amount = Math.min(weaponDamage, next.enemy.hull);
@@ -111,11 +113,22 @@ export function advanceEncounter(state, order = null) {
     events.push({ type: 'weapon_damage', target: 'enemy', system: 'weapons', amount, output: weaponOutput });
   }
 
-  if (next.hull < MAX_HULL && next.outputs.engineering > 0) {
-    const amount = Math.min(1 + Math.floor((next.outputs.engineering - 100) / 10), MAX_HULL - next.hull);
+  const engineeringOutput = Math.floor(next.outputs.engineering * next.systems.engineering / 100);
+  if (next.hull < MAX_HULL && engineeringOutput > 0) {
+    const amount = Math.min(Math.max(0, 1 + Math.floor((engineeringOutput - 100) / 10)), MAX_HULL - next.hull);
     if (amount > 0) {
       next.hull += amount;
       events.push({ type: 'repair', target: 'hull', system: 'engineering', amount, output: next.outputs.engineering });
+    }
+  }
+
+  if (next.outputs.engineering > 0) {
+    const damagedSystem = STATIONS.find(station => next.systems[station] < 100);
+    if (damagedSystem) {
+      const amount = Math.max(1, Math.floor(next.outputs.engineering / 100));
+      const restored = Math.min(amount, 100 - next.systems[damagedSystem]);
+      next.systems[damagedSystem] += restored;
+      events.push({ type: 'repair', target: 'system', system: damagedSystem, amount: restored, output: next.outputs.engineering });
     }
   }
 
@@ -124,15 +137,18 @@ export function advanceEncounter(state, order = null) {
   } else if (next.beat % 3 === 0) {
     const target = selectedWindow?.target || next.enemy.target;
     const rawDamage = 12;
-    const mitigation = Math.max(0, Math.floor((next.outputs.shields - 50) / 10)) + Math.max(0, Math.floor((next.outputs.helm - 100) / 10));
+    const shieldOutput = Math.floor(next.outputs.shields * next.systems.shields / 100);
+    const helmOutput = Math.floor(next.outputs.helm * next.systems.helm / 100);
+    const mitigation = Math.max(0, Math.floor((shieldOutput - 50) / 10)) + Math.max(0, Math.floor((helmOutput - 100) / 10));
     let amount = Math.max(1, rawDamage - mitigation);
     if (next.braceThroughBeat >= next.beat) amount = Math.max(1, Math.floor(amount / 2));
     const shieldLoss = Math.min(next.shield, amount);
     next.shield -= shieldLoss;
     const hullAmount = amount - shieldLoss;
     if (hullAmount > 0) next.hull = Math.max(1, next.hull - hullAmount);
-    if (target !== 'hull') next.systems[target] = Math.max(0, next.systems[target] - amount);
-    events.push({ type: 'enemy_impact', target, system: target === 'hull' ? 'shields' : target, amount, shieldLoss, hullAmount });
+    const systemAmount = target === 'hull' ? 0 : Math.min(next.systems[target], amount);
+    if (systemAmount > 0) next.systems[target] -= systemAmount;
+    events.push({ type: 'enemy_impact', target, system: target === 'hull' ? 'shields' : target, amount, systemAmount, shieldLoss, hullAmount });
     next.enemy.pattern = 'reloading';
     if (next.hull <= 1) finish(next, 'loss', events, 'Hull breached; retreat with the ship barely holding together.');
   }
