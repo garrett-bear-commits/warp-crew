@@ -252,6 +252,50 @@ test('malformed v5 contract revision keeps paid launch credit on retry', () => {
   assert.equal(retried.player.gacha.pulls, 0);
 });
 
+for (const [label, corrupt] of [
+  ['missing return rewards', player => ({ ...player, activeContract: {
+    ...player.activeContract, result: { ...player.activeContract.result, rewards: null },
+  } })],
+  ['missing return encounter', player => ({ ...player, activeEncounter: null })],
+  ['unsupported return encounter version', player => ({ ...player, activeEncounter: {
+    ...player.activeEncounter, version: 3,
+  } })],
+]) {
+  test(`corrupt v5 claim with ${label} recovers a single paid guided retry`, () => {
+    const won = guidedWin(staffed());
+    const fuel = won.wallet.fuel;
+    const credits = won.wallet.credits;
+    const staleClaim = contractIdentity(won);
+    const recovered = reload(corrupt(won));
+    assert.equal(recovered.tutorial.phase, 'fight');
+    assert.equal(recovered.tutorial.firstWin, false);
+    assert.equal(recovered.tutorial.contractRecoveryFuelSpent, 1);
+    assert.equal(recovered.activeContract, null);
+    assert.equal(recovered.activeEncounter, null);
+    assert.deepEqual(recovered.contractBoard.completedOfferIds, []);
+    assert.equal(act(recovered, 'contract-claim', staleClaim).ok, false);
+    const restarted = act(recovered, 'tutorial-fight-start');
+    assert.equal(restarted.ok, true);
+    let player = restarted.player;
+    assert.equal(player.wallet.fuel, fuel);
+    assert.equal(player.wallet.credits, credits);
+    assert.notEqual(player.activeContract.acceptanceId, staleClaim.acceptanceId);
+    player = act(player, 'encounter-order', { ...encounterIdentity(player), order: 'target_weapons' }).player;
+    for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) {
+      player = act(player, 'encounter-advance', encounterIdentity(player)).player;
+    }
+    assert.equal(player.tutorial.phase, 'claim');
+    assert.equal(player.wallet.credits, credits);
+    assert.equal(player.gacha.pulls, 0);
+    const claim = contractIdentity(player);
+    player = act(player, 'contract-claim', claim).player;
+    assert.equal(player.wallet.credits, credits + 120);
+    assert.deepEqual(player.contractBoard.completedOfferIds, ['offer_tutorial_distress']);
+    assert.equal(act(player, 'contract-claim', claim).ok, false);
+    assert.equal(player.gacha.pulls, 0);
+  });
+}
+
 test('corrupted v5 welcome flags reconcile to recorded pull without another recruit', () => {
   let player = guidedWin(staffed());
   player = act(player, 'contract-claim', contractIdentity(player)).player;

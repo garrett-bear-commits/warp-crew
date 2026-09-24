@@ -71,9 +71,11 @@ export function normalizeContractState(player, { nodes, encounterById }) {
   if (!valid) {
     const tutorial = player.tutorial;
     const recoveringTutorial = tutorialIdentity && tutorial?.script === 3 && !tutorial.completed && !tutorial.dismissed;
+    const alreadyRewarded = (player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress') || player.flags?.sparrowFirstRepair;
     const recoveringGuidedFight = tutorialIdentity && [4, 5].includes(tutorial?.script)
       && tutorial?.phase === 'fight' && !tutorial.completed;
-    const alreadyRewarded = (player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress') || player.flags?.sparrowFirstRepair;
+    const recoveringGuidedClaim = tutorialIdentity && tutorial?.script === 5 && tutorial?.phase === 'claim'
+      && contract.stage === 'return' && !tutorial.completed && !alreadyRewarded;
     const recoveryPhase = tutorial?.hiredThird ? 'choose' : alreadyRewarded || tutorial?.firstCombat ? 'recruit' : 'distress';
     return {
       ...player,
@@ -90,8 +92,9 @@ export function normalizeContractState(player, { nodes, encounterById }) {
         },
         crewSlots: recoveryPhase === 'recruit' || recoveryPhase === 'choose' ? Math.max(3, player.crewSlots || 2) : player.crewSlots,
       } : {}),
-      ...(recoveringGuidedFight ? {
+      ...(recoveringGuidedFight || recoveringGuidedClaim ? {
         tutorial: { ...tutorial,
+          ...(recoveringGuidedClaim ? { phase: 'fight', firstWin: false, firstClaim: false } : {}),
           contractRecoveryFuelSpent: Math.max(tutorial.contractRecoveryFuelSpent || 0,
             Math.min(1, Number.isFinite(contract.fuelSpent) ? Math.max(0, contract.fuelSpent) : 0)),
         },

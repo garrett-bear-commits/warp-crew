@@ -134,14 +134,19 @@ export function normalizeEncounterState(player) {
   const tutorial = player.tutorial;
   const recoveringGuidedDistress = contract.profile === 'distress'
     && [4, 5].includes(tutorial?.script) && tutorial.phase === 'fight' && !tutorial.completed;
-  const paidFuel = Number.isFinite(contract.fuelSpent) ? Math.max(0, contract.fuelSpent) : 0;
+  const recoveringGuidedClaim = contract.offerId === 'offer_tutorial_distress' && contract.profile === 'distress'
+    && contract.stage === 'return' && tutorial?.script === 5 && tutorial.phase === 'claim'
+    && !tutorial.completed && !(player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress')
+    && !player.flags?.sparrowFirstRepair;
+  const paidFuel = Math.min(1, Number.isFinite(contract.fuelSpent) ? Math.max(0, contract.fuelSpent) : 0);
   return {
     ...player,
     activeContract: null,
     activeEncounter: null,
-    ...(recoveringGuidedDistress ? {
+    ...(recoveringGuidedDistress || recoveringGuidedClaim ? {
       tutorial: {
         ...tutorial,
+        ...(recoveringGuidedClaim ? { phase: 'fight', firstWin: false, firstClaim: false } : {}),
         // Carry paid launch fuel into the next acceptance without refunding it.
         contractRecoveryFuelSpent: Math.max(tutorial.contractRecoveryFuelSpent || 0, paidFuel),
       },
