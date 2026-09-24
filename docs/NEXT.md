@@ -1,7 +1,16 @@
 # Warp Crew next-work checklist
 
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
+
+## Captain-first package — local QA gate
+
+- [x] Run the script-5 first-play, saved script-4 Brace, next normal pirate job, in-progress and completed reload, and corrupt encounter retry in isolated local Chrome at 390×844, 360×800, and 390×844 reduced motion. [Evidence and limits](qa/2026-09-24-captain-first-play-qa.md). The `?fresh=1` link clears once; refreshing after the first hire preserves progress.
+- [x] Fix and regress the v5 corrupt-fight double fuel charge and the normal-fight 18px threat copy found by the local QA gate.
+- [ ] Complete the bounded read-only audit of the exact captain-first diff and resolve any reproduced findings.
+- [ ] Prepare a provenance-checked Pages QA build and live smoke only after the audit disposition. No Pages build was published in this gate.
+- [ ] Get Garrett's physical iPhone and Android play/readability pass. Local Chrome emulation is not device acceptance.
+- [ ] Finish reviewing distinct alien/droid movement art; the current static markers are an honest partial art state.
 
 ## Tomorrow — verify first
 

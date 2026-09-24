@@ -1,14 +1,16 @@
-/** Isolated Chrome DevTools Protocol QA of the fresh script-4 first session. */
+/** Isolated Chrome DevTools Protocol QA of script-5 first play and saved script 4. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { createNewPlayer } from '../src/systems/player.js';
+import { prepareSession, sessionAction } from '../src/systems/sessionLoop.js';
 
 const cdpUrl = process.env.QA_CDP || 'http://127.0.0.1:9342';
 const pageUrl = process.env.QA_URL || 'http://127.0.0.1:4173/?fresh=1';
-const captureDir = new URL('../.superpowers/sdd/2026-09-23-living-ship-vertical-slice/captures/', import.meta.url);
+const captureDir = new URL('../.superpowers/sdd/2026-09-24-captain-first-play-combat/captures/', import.meta.url);
 await mkdir(captureDir, { recursive: true });
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 const browser = await (await fetch(`${cdpUrl}/json/version`)).json();
-const report = { browser: browser.Browser, pageUrl, screens: [] };
+const report = { browser: browser.Browser, pageUrl, sourceCommit: process.env.QA_SOURCE_COMMIT || null, screens: [], checks: {} };
 
 async function openPage(width, height, reduced = false) {
   const target = await (await fetch(`${cdpUrl}/json/new?about:blank`, { method: 'PUT' })).json();
@@ -62,7 +64,7 @@ async function openPage(width, height, reduced = false) {
     await wait(150);
   };
   const capture = async label => {
-    const filename = `slice-${width}x${height}${reduced ? '-reduced' : ''}-${label}.png`;
+    const filename = `captain-${width}x${height}${reduced ? '-reduced' : ''}-${label}.png`;
     const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     await writeFile(new URL(filename, captureDir), Buffer.from(screenshot.data, 'base64'));
     const metrics = await evaluate(`(() => ({ width: innerWidth, height: innerHeight,
@@ -71,8 +73,24 @@ async function openPage(width, height, reduced = false) {
       cameraScale: document.querySelector('#app')?._wcCamera?.scale || null,
       splash: document.querySelector('.splash-scene img')?.getAttribute('src') || null,
       artLoaded: document.querySelector('.splash-scene img')?.naturalWidth || null,
-      text: document.body.innerText.slice(0, 420) }))()`);
+      images: [...document.querySelectorAll('img')].filter(el => { const r = el.getBoundingClientRect(); return r.width && r.height; }).map(el => ({ src: el.getAttribute('src'), naturalWidth: el.naturalWidth, naturalHeight: el.naturalHeight, displayWidth: Math.round(el.getBoundingClientRect().width) })),
+      bottomNav: (() => { const r = document.querySelector('.bottom-nav')?.getBoundingClientRect(); return r && { top: Math.round(r.top), bottom: Math.round(r.bottom) }; })(),
+      activeDialog: (() => { const r = document.querySelector('[role="dialog"]')?.getBoundingClientRect(); return r && { top: Math.round(r.top), bottom: Math.round(r.bottom), width: Math.round(r.width) }; })(),
+      visibleButtons: [...document.querySelectorAll('button')].filter(el => { const r = el.getBoundingClientRect(); return r.width && r.height && getComputedStyle(el).visibility !== 'hidden'; }).map(el => ({ label: (el.innerText || el.ariaLabel || '').trim().slice(0, 40), action: el.dataset.act || null, disabled: el.disabled, width: Math.round(el.getBoundingClientRect().width), height: Math.round(el.getBoundingClientRect().height) })),
+      requiredText: [...document.querySelectorAll('.v5-modal p, .v5-modal label, .first-session-cue p, .encounter-threat, .target-caption, .contract-consequence')].filter(el => { const r = el.getBoundingClientRect(); return r.width && r.height; }).map(el => ({ text: el.innerText.trim().slice(0, 80), fontSize: parseFloat(getComputedStyle(el).fontSize), instruction: el.matches('.first-session-cue p, .encounter-threat') })),
+      primaryPulses: document.querySelectorAll('[data-primary-pulse]').length,
+      pulseAnimations: [...document.querySelectorAll('[data-primary-pulse]')].map(el => getComputedStyle(el).animationName),
+      badges: [...document.querySelectorAll('.attention-dot, .nav-badge, [data-attention]')].map(el => el.outerHTML.slice(0, 160)),
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      save: (() => { const p = JSON.parse(localStorage.getItem('warpcrew.save.v2') || '{}').player; return p && { script: p.tutorial?.script, phase: p.tutorial?.phase, crew: p.crew?.map(c => ({ id: c.templateId, name: c.name, captain: c.isCaptain, rarity: c.rarity })), credits: p.wallet?.credits, fuel: p.wallet?.fuel, pulls: p.gacha?.pulls, contract: p.activeContract?.stage, encounterVersion: p.activeEncounter?.version, encounterResult: p.activeEncounter?.result, targetUsed: p.activeEncounter?.orders?.targetWeapons?.used, braceUsed: p.activeEncounter?.orders?.brace?.used }; })(),
+      text: document.body.innerText.slice(0, 500) }))()`);
     assert.ok(metrics.scrollWidth <= width, `${label}: horizontal overflow ${metrics.scrollWidth}>${width}`);
+    assert.equal(metrics.reducedMotion, reduced, `${label}: media emulation mismatch`);
+    assert.ok(metrics.primaryPulses <= 1, `${label}: more than one pulsing primary action`);
+    if (reduced) assert.ok(metrics.pulseAnimations.every(name => name === 'none'), `${label}: animated primary cue under reduced motion`);
+    assert.ok(metrics.visibleButtons.every(button => button.disabled || (button.width >= 44 && button.height >= 44)), `${label}: enabled button below 44px`);
+    assert.ok(metrics.requiredText.every(item => item.fontSize >= 16), `${label}: required text below 16px`);
+    assert.ok(metrics.requiredText.filter(item => item.instruction).every(item => item.fontSize >= 18), `${label}: instruction text below 18px`);
     report.screens.push({ label, filename, reduced, ...metrics });
     return metrics;
   };
@@ -87,23 +105,64 @@ async function openPage(width, height, reduced = false) {
 
 async function play(width, height, reduced = false) {
   const page = await openPage(width, height, reduced);
+  const key = `${width}x${height}${reduced ? '-reduced' : ''}`;
+  const sessionStarted = Date.now();
   try {
     await page.until('Boolean(document.querySelector(\'[data-act="splash-dismiss"]:not([disabled])\'))');
     const splash = await page.capture('splash');
     assert.match(splash.splash, /splash-five-crew-v3\.png$/);
     assert.equal(splash.artLoaded, 941);
+    if (splash.save) {
+      assert.equal(splash.save.script, 5);
+      assert.equal(splash.save.crew.length, 0);
+    }
+    const freshUrl = await page.evaluate('location.href');
+    assert.equal(new URL(freshUrl).searchParams.has('fresh'), false, 'fresh=1 must be removed after its one clear');
     await page.click('[data-act="splash-dismiss"]');
-    await page.until('Boolean(document.querySelector(\'[data-act="station-assign"][data-station="shields"]\'))');
-    await page.capture('station');
-    await page.click('[data-act="station-assign"][data-station="shields"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="captain-choose"]\'))');
+    const captain = await page.capture('captain');
+    assert.equal(captain.save.script, 5);
+    assert.equal(captain.save.crew.length, 0);
+    assert.equal(captain.save.phase, 'captain');
+    assert.equal(await page.evaluate('document.querySelectorAll("[data-captain-option]").length'), 4);
+    await page.click('[data-captain-option="captain_alien"]');
+    await page.evaluate('document.querySelector("[data-captain-name]").value = "QA Aster"');
+    await page.click('[data-act="captain-choose"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-first-hire"]\'))');
+    const hire = await page.capture('hire');
+    assert.equal(hire.save.crew.length, 1);
+    assert.equal(hire.save.crew[0].id, 'captain_alien');
+    assert.equal(hire.save.crew[0].name, 'QA Aster');
+    await page.click('[data-act="tutorial-first-hire"]');
+    await page.until('Boolean(document.querySelector(\'.first-session-cue [data-act="station-assign"][data-station="weapons"]\'))');
+    const assign = await page.capture('assign');
+    assert.equal(assign.save.crew.length, 2);
+    assert.equal(assign.save.crew[1].id, 'merc_jen');
+    const introReloadUrl = await page.evaluate('location.href');
+    assert.equal(new URL(introReloadUrl).searchParams.has('fresh'), false, 'intro refresh must not repeat fresh clear');
+    await page.send('Page.navigate', { url: introReloadUrl });
+    await page.until('Boolean(document.querySelector(\'.first-session-cue [data-act="station-assign"][data-station="weapons"]\'))');
+    const introReload = await page.capture('assign-reload');
+    assert.equal(introReload.save.phase, 'assign');
+    assert.equal(introReload.save.crew.length, 2);
+    assert.equal(introReload.save.crew.filter(c => c.captain).length, 1);
+    assert.equal(introReload.save.crew[0].name, 'QA Aster');
+    await page.click('.first-session-cue [data-act="station-assign"][data-station="weapons"]');
     await page.until('Boolean(document.querySelector(\'[data-act="tutorial-fight-start"]\'))');
     await page.capture('distress');
+    const fightStarted = Date.now();
     await page.click('[data-act="tutorial-fight-start"]');
-    await page.until('Boolean(document.querySelector(\'[data-act="encounter-order"][data-order="brace"]:not([disabled])\'))');
-    await page.capture('threat');
-    await page.click('[data-act="encounter-order"][data-order="brace"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="encounter-order"][data-order="target_weapons"]:not([disabled])\'))');
+    const target = await page.capture('target-window');
+    assert.equal(target.save.encounterVersion, 2);
+    await page.click('[data-act="encounter-order"][data-order="target_weapons"]');
+    const ordered = await page.capture('target-ordered');
+    assert.equal(ordered.save.targetUsed, true);
     await page.until('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))', 30000);
-    await page.capture('win');
+    const firstWinSeconds = (Date.now() - sessionStarted) / 1000;
+    const fightSeconds = (Date.now() - fightStarted) / 1000;
+    const win = await page.capture('win');
+    assert.equal(win.save.encounterResult, 'win');
     await page.click('[data-act="contract-claim"]');
     await page.until('Boolean(document.querySelector(\'[data-act="tutorial-name"]\'))');
     await page.capture('name');
@@ -112,7 +171,10 @@ async function play(width, height, reduced = false) {
     await page.capture('pull');
     await page.click('[data-act="tutorial-welcome-pull"]');
     await page.until('Boolean(document.querySelector(\'[data-act="tutorial-register-skip"]\'))');
-    await page.capture('register');
+    const register = await page.capture('register');
+    assert.equal(register.save.crew.length, 3);
+    assert.equal(register.save.pulls, 1);
+    assert.match(register.text, /Uncommon/i);
     await page.click('[data-act="tutorial-register-skip"]');
     await page.until('Boolean(document.querySelector(\'[aria-label="Next job"]\'))');
     const nextJob = await page.capture('next-job');
@@ -123,16 +185,31 @@ async function play(width, height, reduced = false) {
     await page.until('Boolean(document.querySelector(\'[aria-label="Next job"]\'))');
     const reloaded = await page.capture('reload');
     assert.ok(reloaded.cameraScale > 0.45, 'freshly completed tutorial reload keeps an inspectable ship view');
-    const saved = await page.evaluate(`(() => { const values = Object.values(localStorage).map(value => {
-      try { return JSON.parse(value); } catch { return null; }
-    }); const p = values.map(value => value?.player).find(value => value?.tutorial?.script === 4);
-    return p ? { phase: p.tutorial.phase, completed: p.tutorial.completed,
-      crew: p.crew.length, name: p.ship.name, pulls: p.gacha.pulls, credits: p.wallet.credits } : null; })()`);
-    assert.ok(saved, 'script-4 save survives reload');
+    const saved = await page.evaluate(`(() => { const p = JSON.parse(localStorage.getItem('warpcrew.save.v2')).player;
+      return { script: p.tutorial.script, phase: p.tutorial.phase, completed: p.tutorial.completed,
+      crew: p.crew.map(c => ({ id: c.templateId, name: c.name, captain: c.isCaptain })),
+      name: p.ship.name, pulls: p.gacha.pulls, pullRarity: p.gacha.history[0]?.rarity,
+      credits: p.wallet.credits, claims: p.contractBoard.completedOfferIds.filter(id => id === 'offer_tutorial_distress').length }; })()`);
+    assert.equal(saved.script, 5);
     assert.equal(saved.completed, true);
-    assert.equal(saved.crew, 3);
+    assert.equal(saved.crew.length, 3);
+    assert.equal(saved.crew.filter(c => c.captain).length, 1);
+    assert.equal(saved.crew[0].name, 'QA Aster');
     assert.equal(saved.pulls, 1);
-    report[`save-${width}x${height}${reduced ? '-reduced' : ''}`] = saved;
+    assert.equal(saved.pullRarity, 'uncommon');
+    assert.equal(saved.claims, 1);
+    report[`save-${key}`] = { ...saved, firstWinSeconds, fightSeconds, overTwoMinutes: firstWinSeconds > 120 };
+    if (width === 390 && !reduced) {
+      const crewBadgeBefore = await page.evaluate('Boolean(document.querySelector(\'[data-tab="crew"] .nav-badge\'))');
+      await page.click('[data-tab="crew"]');
+      await page.capture('crew-badge-cleared');
+      const crewBadgeAfter = await page.evaluate('Boolean(document.querySelector(\'[data-tab="crew"] .nav-badge\'))');
+      assert.equal(crewBadgeBefore, true, 'crew attention dot is actionable before Crew opens');
+      assert.equal(crewBadgeAfter, false, 'crew attention dot clears when Crew opens');
+      report.checks.crewBadge = { before: crewBadgeBefore, after: crewBadgeAfter };
+      await page.click('[data-tab="ship"]');
+      await page.until('Boolean(document.querySelector(\'[aria-label="Next job"]\'))');
+    }
     if (width === 390 && !reduced) {
       await page.click('[aria-label="Next job"] [data-act="goto-contracts"]');
       await page.until('Boolean(document.querySelector(\'.contract-card[data-profile="reliable"] [data-act="contract-review"]:not([disabled])\'))');
@@ -145,7 +222,7 @@ async function play(width, height, reduced = false) {
       await page.click('[data-act="contract-action"][data-action="push"]');
       await page.until('Boolean(document.querySelector(\'[data-act="encounter-advance"], [data-act="encounter-order"]\'))');
       await page.capture('normal-fight');
-      let usedBrace = false;
+      let usedOrder = null;
       let terminal = null;
       for (let beat = 0; beat < 20; beat++) {
         terminal = await page.evaluate(`(() => {
@@ -153,24 +230,109 @@ async function play(width, height, reduced = false) {
           return p.activeEncounter?.result || null;
         })()`);
         if (terminal) break;
-        const brace = await page.evaluate(`Boolean(document.querySelector('[data-act="encounter-order"][data-order="brace"]:not([disabled])'))`);
-        if (brace && !usedBrace) {
-          await page.click('[data-act="encounter-order"][data-order="brace"]');
-          usedBrace = true;
+        const targetOrder = await page.evaluate(`Boolean(document.querySelector('[data-act="encounter-order"][data-order="target_weapons"]:not([disabled])'))`);
+        if (targetOrder && !usedOrder) {
+          await page.click('[data-act="encounter-order"][data-order="target_weapons"]');
+          usedOrder = 'target_weapons';
         } else await page.click('[data-act="encounter-advance"]');
       }
       assert.ok(['win', 'loss'].includes(terminal), 'normal job reaches a terminal result');
       await page.capture('normal-result');
-      report.normalJob = { result: terminal, usedBrace };
+      report.normalJob = { result: terminal, usedOrder };
       if (terminal === 'win') await page.click('[data-act="contract-claim"]');
       else await page.click('[data-act="encounter-recover"]');
     }
   } finally { await page.close(); }
 }
 
+function v4BraceFixture() {
+  const now = Date.UTC(2030, 8, 23, 12);
+  let player = prepareSession(createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 }), now);
+  for (const [action, data] of [
+    ['splash-dismiss', {}],
+    ['station-assign', { id: player.crew.find(c => c.templateId === 'merc_bolt').instanceId, station: 'shields' }],
+    ['tutorial-fight-start', {}],
+  ]) {
+    const result = sessionAction(player, {}, action, data, { now, rng: () => 0.1 });
+    assert.equal(result.ok, true, `script-4 fixture ${action}`);
+    player = result.player;
+  }
+  assert.equal(player.activeEncounter.version, 1);
+  assert.equal(player.activeEncounter.orders.brace.used, false);
+  return player;
+}
+
+async function legacyV4() {
+  const page = await openPage(390, 844);
+  try {
+    const fixture = v4BraceFixture();
+    await page.until('Boolean(document.querySelector(\'.wc-shell\'))');
+    await page.evaluate(`localStorage.setItem('warpcrew.save.v2', ${JSON.stringify(JSON.stringify({ player: fixture, savedAt: Date.now() }))})`);
+    await page.send('Page.navigate', { url: await page.evaluate('location.href') });
+    await page.until('Boolean(document.querySelector(\'[data-act="encounter-order"][data-order="brace"]:not([disabled])\'))');
+    const brace = await page.capture('legacy-v4-brace');
+    assert.equal(brace.save.script, 4);
+    assert.equal(brace.save.encounterVersion, 1);
+    assert.equal(brace.save.targetUsed, undefined);
+    await page.click('[data-act="encounter-order"][data-order="brace"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))', 30000);
+    const won = await page.capture('legacy-v4-win');
+    assert.equal(won.save.braceUsed, true);
+    assert.equal(won.save.encounterResult, 'win');
+    await page.click('[data-act="contract-claim"]');
+    const claimed = await page.capture('legacy-v4-claimed');
+    assert.equal(claimed.save.phase, 'name');
+    report.checks.legacyV4 = { braceUsed: true, version: 1, claimedOnce: true };
+  } finally { await page.close(); }
+}
+
+async function corruptV5() {
+  const page = await openPage(390, 844);
+  try {
+    const now = Date.UTC(2030, 8, 23, 12);
+    let player = prepareSession(createNewPlayer({ now, rng: () => 0.1 }), now);
+    for (const [action, data] of [
+      ['splash-dismiss', {}],
+      ['captain-choose', { templateId: 'captain_droid', name: 'QA Unit' }],
+      ['tutorial-first-hire', {}],
+      ['station-assign', { id: null, station: 'weapons' }],
+      ['tutorial-fight-start', {}],
+    ]) {
+      if (action === 'station-assign') data.id = player.tutorial.firstHireInstanceId;
+      const result = sessionAction(player, {}, action, data, { now, rng: () => 0.1 });
+      assert.equal(result.ok, true, `script-5 corrupt fixture ${action}: ${result.reason}`);
+      player = result.player;
+    }
+    const spentFuel = player.wallet.fuel;
+    const originalCredits = player.wallet.credits;
+    player = { ...player, activeEncounter: { ...player.activeEncounter, seed: player.activeEncounter.seed + 1 } };
+    await page.until('Boolean(document.querySelector(\'.wc-shell\'))');
+    await page.evaluate(`localStorage.setItem('warpcrew.save.v2', ${JSON.stringify(JSON.stringify({ player, savedAt: Date.now() }))})`);
+    await page.send('Page.navigate', { url: await page.evaluate('location.href') });
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-fight-start"]\'))');
+    const recovered = await page.capture('corrupt-recovery');
+    assert.equal(recovered.save.script, 5);
+    assert.equal(recovered.save.phase, 'fight');
+    assert.equal(await page.evaluate('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))'), false);
+    assert.equal(recovered.save.credits, originalCredits);
+    assert.equal(recovered.save.fuel, spentFuel);
+    await page.click('[data-act="tutorial-fight-start"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="encounter-order"][data-order="target_weapons"]\'))');
+    const retry = await page.capture('corrupt-retry');
+    assert.equal(retry.save.fuel, spentFuel, 'guided retry cannot charge launch fuel twice');
+    assert.equal(retry.save.encounterVersion, 2);
+    report.checks.corruptV5 = { recoveredToFight: true, fuelBeforeRetry: spentFuel, fuelAfterRetry: retry.save.fuel,
+      creditsBeforeRetry: originalCredits, creditsAfterRetry: retry.save.credits,
+      fuelChargedOnce: true, creditsUnchanged: true,
+      rawCorruptSaveRemainsUntilRetry: recovered.save.contract === 'confrontation' };
+  } finally { await page.close(); }
+}
+
 await play(390, 844);
 await play(360, 800);
 await play(390, 844, true);
-await writeFile(new URL('living-ship-qa.json', captureDir), `${JSON.stringify(report, null, 2)}\n`);
+await legacyV4();
+await corruptV5();
+await writeFile(new URL('captain-first-play-qa.json', captureDir), `${JSON.stringify(report, null, 2)}\n`);
 console.log(JSON.stringify({ browser: report.browser, screens: report.screens.length,
   saves: Object.fromEntries(Object.entries(report).filter(([key]) => key.startsWith('save-'))) }, null, 2));

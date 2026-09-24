@@ -132,14 +132,14 @@ export function normalizeEncounterState(player) {
   if (!encounter && contract.encounterMode !== 'crew') return player;
   if (validSnapshot(encounter, contract, player.tutorial)) return player;
   const tutorial = player.tutorial;
-  const recoveringV4Distress = contract.profile === 'distress'
-    && tutorial?.script === 4 && tutorial.phase === 'fight' && !tutorial.completed;
+  const recoveringGuidedDistress = contract.profile === 'distress'
+    && [4, 5].includes(tutorial?.script) && tutorial.phase === 'fight' && !tutorial.completed;
   const paidFuel = Number.isFinite(contract.fuelSpent) ? Math.max(0, contract.fuelSpent) : 0;
   return {
     ...player,
     activeContract: null,
     activeEncounter: null,
-    ...(recoveringV4Distress ? {
+    ...(recoveringGuidedDistress ? {
       tutorial: {
         ...tutorial,
         // Carry paid launch fuel into the next acceptance without refunding it.

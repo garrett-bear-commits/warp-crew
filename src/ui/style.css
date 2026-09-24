@@ -965,7 +965,7 @@ button:focus-visible {
 .encounter-bars { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 12px; }
 .encounter-bars meter { width: 100%; height: 16px; }
 .encounter-stations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; font-size: 16px; color: var(--muted); }
-.encounter-threat { padding: 10px; background: var(--panel2); border-left: 3px solid var(--cyan); }
+.encounter-threat { padding: 10px; background: var(--panel2); border-left: 3px solid var(--cyan); font-size: 18px; }
 .encounter-actions { display: grid; gap: 8px; }
 .encounter-actions button { width: 100%; }
 .encounter-actions button span { display: block; font-size: 16px; font-weight: 400; }
@@ -1752,7 +1752,7 @@ button:focus-visible {
 .crew-identity .stars { color: #ffd18c; white-space: nowrap; }
 .crew-card .crew-actions button { min-height: 44px; font-size: 16px; }
 .room-sheet .crew-identity { margin-bottom: 8px; }
-.target-caption { margin: 0; font-size: 17px; color: #ffcc92; font-weight: 700; }
+.target-caption { margin: 0; font-size: 18px; color: #ffcc92; font-weight: 700; }
 .attention-dot { position: absolute; top: 5px; right: 5px; width: 10px; height: 10px; border-radius: 50%; background: #e96161; box-shadow: 0 0 0 2px #111824; }
 .encounter-panel.target-window { border: 2px solid #f5a967; padding: 10px; }
 .ship-encounter .encounter-bars { font-size: 16px; }

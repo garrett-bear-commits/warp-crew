@@ -184,6 +184,21 @@ test('a reloaded fight with a missing saved first hire cannot launch or claim a 
   assert.deepEqual(claim.player.wallet, wallet);
 });
 
+test('a corrupted saved v5 fight retries without charging launch fuel twice', () => {
+  let player = act(staffed(), 'tutorial-fight-start').player;
+  const spentFuel = player.wallet.fuel;
+  const credits = player.wallet.credits;
+  player = reload({ ...player, activeEncounter: { ...player.activeEncounter, seed: player.activeEncounter.seed + 1 } });
+  assert.equal(player.activeContract, null);
+  assert.equal(player.activeEncounter, null);
+  assert.equal(player.tutorial.phase, 'fight');
+  assert.equal(player.tutorial.contractRecoveryFuelSpent, 1);
+  player = act(player, 'tutorial-fight-start').player;
+  assert.equal(player.wallet.fuel, spentFuel);
+  assert.equal(player.wallet.credits, credits);
+  assert.equal(player.activeEncounter.version, 2);
+});
+
 test('v5 launch requires the actual matched hire at its assigned station', () => {
   const ready = staffed();
   const captain = ready.crew.find(member => member.isCaptain);
