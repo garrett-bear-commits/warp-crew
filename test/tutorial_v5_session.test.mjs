@@ -162,6 +162,54 @@ test('save failure publishes no captain, hire, target order, or reward claim', (
   assert.deepEqual(failed.animations, []);
 });
 
+test('a reloaded fight with a missing saved first hire cannot launch or claim a payout', () => {
+  const ready = staffed();
+  const captain = ready.crew.find(member => member.isCaptain);
+  const corrupted = reload({
+    ...ready,
+    crew: [captain],
+    stationAssignments: { [captain.instanceId]: 'helm' },
+    tutorial: { ...ready.tutorial, phase: 'fight', firstHireUsed: true, firstHireInstanceId: 'missing' },
+  });
+  assert.equal(corrupted.tutorial.phase, 'fight');
+  assert.equal(corrupted.tutorial.firstHireInstanceId, 'missing');
+  const wallet = { ...corrupted.wallet };
+  const launch = act(corrupted, 'tutorial-fight-start');
+  assert.equal(launch.ok, false);
+  assert.equal(launch.player.activeContract, null);
+  assert.equal(launch.player.activeEncounter, null);
+  assert.deepEqual(launch.player.wallet, wallet);
+  const claim = act(reload(launch.player), 'contract-claim', { acceptanceId: 'forged', revision: 0 });
+  assert.equal(claim.ok, false);
+  assert.deepEqual(claim.player.wallet, wallet);
+});
+
+test('v5 launch requires the actual matched hire at its assigned station', () => {
+  const ready = staffed();
+  const captain = ready.crew.find(member => member.isCaptain);
+  const hired = ready.crew.find(member => member.instanceId === ready.tutorial.firstHireInstanceId);
+  const corruptions = [
+    ['captain forged as hire', { tutorial: { ...ready.tutorial, firstHireInstanceId: captain.instanceId } }],
+    ['Jen unassigned', { stationAssignments: { ...ready.stationAssignments, [hired.instanceId]: null } }],
+    ['Bolt forged for pilot', { crew: [captain, { ...hired, templateId: 'merc_bolt' }],
+      stationAssignments: { ...ready.stationAssignments, [hired.instanceId]: 'shields' } }],
+  ];
+  for (const [label, changes] of corruptions) {
+    const corrupted = reload({ ...ready, ...changes });
+    const result = act(corrupted, 'tutorial-fight-start');
+    assert.equal(result.ok, false, label);
+    assert.equal(result.player.activeContract, null, label);
+  }
+
+  let gunner = act(fresh(), 'splash-dismiss').player;
+  gunner = act(gunner, 'captain-choose', { templateId: 'captain_gunner', name: 'Mara' }).player;
+  gunner = act(gunner, 'tutorial-first-hire').player;
+  assert.equal(gunner.crew[1].templateId, 'merc_bolt');
+  gunner = act(gunner, 'station-assign', { id: gunner.tutorial.firstHireInstanceId, station: 'shields' }).player;
+  assert.equal(gunner.tutorial.phase, 'fight');
+  assert.equal(act(gunner, 'tutorial-fight-start').ok, true);
+});
+
 test('saved script-4 players never switch to script 5', () => {
   const saved = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
   const loaded = reload(saved);

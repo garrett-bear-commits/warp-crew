@@ -38,6 +38,15 @@ const traitMatch = (player, trait) => trait?.kind === 'role'
   ? readyCrew(player).some(c => c.role === trait.id) : (player.ship?.systems?.[trait?.id] || 0) > 0;
 const validIdentity = (contract, data) => contract && data.revision != null
   && String(contract.revision) === String(data.revision) && contract.acceptanceId === data.acceptanceId;
+const v5FirstHire = player => {
+  const tutorial = player.tutorial;
+  const captain = player.crew?.find(member => member.instanceId === player.captainInstanceId && member.isCaptain);
+  const hired = player.crew?.find(member => member.instanceId === tutorial?.firstHireInstanceId);
+  const templateId = captain?.role === 'gunner' ? 'merc_bolt' : 'merc_jen';
+  if (!tutorial?.firstHireUsed || !captain || !hired || hired.isCaptain
+    || hired.instanceId === captain.instanceId || hired.templateId !== templateId) return null;
+  return { hired, station: templateId === 'merc_bolt' ? 'shields' : 'weapons' };
+};
 
 export function improvementFocus(player) {
   const base = { tab: 'ship', selectedRoom: null, selectedCrewId: null };
@@ -213,10 +222,8 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     };
     if (!permitted[phase]?.includes(act)) return fail('tutorial_action_locked');
     if (phase === 'assign') {
-      const hired = player.crew.find(c => c.instanceId === player.tutorial.firstHireInstanceId);
-      const required = hired?.templateId === 'merc_bolt' ? 'shields' : hired?.templateId === 'merc_jen' ? 'weapons' : null;
-      if (!player.tutorial.firstHireUsed || !hired || hired.isCaptain || !required
-        || data.id !== hired.instanceId || data.station !== required) return fail('tutorial_station_required');
+      const firstHire = v5FirstHire(player);
+      if (!firstHire || data.id !== firstHire.hired.instanceId || data.station !== firstHire.station) return fail('tutorial_station_required');
     }
     if (phase === 'fight' && player.activeEncounter?.kind === 'guided' && player.activeEncounter.orderWindow
       && !player.activeEncounter.orders.targetWeapons?.used && act !== 'encounter-order') return fail('target_weapons_required');
@@ -255,8 +262,9 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     effect = { kind: 'crew-arrival', crewInstanceId: hired.instance.instanceId };
     Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
   } else if (act === 'tutorial-fight-start') {
+    const firstHire = v5 ? v5FirstHire(player) : null;
     if (!(v4 || v5) || phase !== 'fight' || player.activeContract || player.activeEncounter
-      || (v5 && (!player.tutorial.firstHireUsed || !player.tutorial.firstHireInstanceId))) return fail('guided_encounter_unavailable');
+      || (v5 && (!firstHire || player.stationAssignments?.[firstHire.hired.instanceId] !== firstHire.station))) return fail('guided_encounter_unavailable');
     const ready = prepareSession(player, now);
     const accepted = acceptContract(ready, 'offer_tutorial_distress', now);
     if (!accepted.ok) return fail(accepted.reason);
