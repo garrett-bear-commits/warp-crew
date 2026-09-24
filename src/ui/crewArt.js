@@ -202,14 +202,20 @@ export function hasCrewArt() {
   return Object.keys(sheets).length > 0;
 }
 
-export function sheetFor(templateId, role) {
+export function resolveCrewSheet(templateId, role, library) {
+  // Rejected alien and droid walk sheets must never become a human sprite.
+  if (templateId === 'captain_alien' || templateId === 'captain_droid') return null;
   const id = lookIdFor(templateId, role);
-  return sheets[id] || sheets.merc_rex || null;
+  if (library[id]) return library[id];
+  return library.merc_rex || null;
+}
+
+export function sheetFor(templateId, role) {
+  return resolveCrewSheet(templateId, role, sheets);
 }
 
 export function walkSheetFor(templateId, role) {
-  const id = lookIdFor(templateId, role);
-  return walkImgs[id] || walkImgs.merc_rex || null;
+  return resolveCrewSheet(templateId, role, walkImgs);
 }
 
 export function walkAssetFor(templateId, role, bodyFamily = 'standard_humanoid') {

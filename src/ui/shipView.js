@@ -63,9 +63,12 @@ export function renderDepartureStatus(active) {
   return '<div class="departure-status" id="departure-status-message" role="status" aria-live="polite">Away team boarding through Cargo…</div>';
 }
 
-export function renderShipSequence(sequence) {
-  const message = sequence === 'launch' ? 'Sparrow launched · en route'
-    : sequence === 'crew-arrival' ? 'Jen aboard · heading to Workshop' : '';
+export function renderShipSequence(sequence, recruit = null) {
+  const kind = typeof sequence === 'object' ? sequence?.kind : sequence;
+  const member = recruit || (sequence && typeof sequence === 'object' ? sequence.member : null);
+  const station = member?.templateId === 'merc_bolt' ? 'Shields' : member?.templateId === 'merc_jen' ? 'Weapons' : null;
+  const message = kind === 'launch' ? 'Sparrow launched · en route'
+    : kind === 'crew-arrival' ? `${member?.name || 'Crew member'} aboard · ${station ? `heading to ${station}` : 'new crew ready'}` : '';
   return message ? `<div class="ship-sequence-status" role="status" aria-live="polite">${message}</div>` : '';
 }
 
@@ -86,6 +89,7 @@ export function renderRoomHotspot({ room, selected = false, alert = '', signal =
       style="${roomStyle(room)}"
       aria-label="${escapeHtml(aria)}">
       ${alert ? `<span class="pip ${escapeHtml(alert)}"></span>` : ''}
+      ${signal === 'return' ? '<span class="attention-dot" aria-hidden="true"></span>' : ''}
       ${signal ? `<span class="ship-signal" aria-hidden="true">${signal === 'route' ? 'ROUTE' : 'REWARD'}</span>` : ''}
     </button>
     <span class="room-tag" data-room-label="${escapeHtml(room.id)}" aria-hidden="true"

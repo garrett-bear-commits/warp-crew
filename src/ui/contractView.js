@@ -67,18 +67,24 @@ const orderReason = { insufficient_resource: 'Needs more shield charge', cooldow
 export function renderEncounter(model = {}, { compact = false } = {}) {
   const identity = `data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}"`;
   const target = { hull: 'hull', weapons: 'weapons', shields: 'shields', engineering: 'engineering' }[model.target] || 'ship';
-  const guidedBrace = model.kind === 'guided' && !model.braceUsed && model.beat > 0;
-  const guidedAfterBrace = model.kind === 'guided' && model.braceUsed;
+  const v2 = model.version === 2 || (model.orders || []).some(order => order.id === 'target_weapons');
+  const guidedBrace = !v2 && model.kind === 'guided' && !model.braceUsed && model.beat > 0;
+  const guidedAfterBrace = !v2 && model.kind === 'guided' && model.braceUsed;
+  const targetOrder = (model.orders || []).find(order => order.id === 'target_weapons' && order.available);
+  const guidedTarget = v2 && model.kind === 'guided' && targetOrder;
+  const orders = (model.orders || []).filter(order => !(order.id === 'target_weapons' && !order.available) && !(v2 && model.kind === 'guided' && order.id !== 'target_weapons'));
   const status = model.result === 'loss' ? `<p role="status">${e(model.lossReason || 'The ship needs repairs.')}</p><button type="button" class="primary" data-act="encounter-recover" ${identity}>Recover ship</button>`
     : model.result === 'win' ? '<p role="status">The pirate breaks off. Bring the cargo aboard.</p>'
-      : `<p class="encounter-threat" role="status">${model.beatsToImpact ? `Incoming fire at ${e(target)} · ${e(model.beatsToImpact)} ${model.beatsToImpact === 1 ? 'beat' : 'beats'}` : 'Pirate weapons charging'}</p>
-        <div class="encounter-actions">${guidedAfterBrace ? '<span>Crew engaging…</span>' : (model.orders || []).map(order => `<button type="button" class="${guidedBrace ? 'primary' : ''}" data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
-          ${guidedBrace && order.id === 'brace' ? `Brace<span>Spend ${e(order.cost)} shield to block the hit.</span>` : `${e(order.id === 'brace' ? 'Brace' : 'Repair')} · ${e(order.cost)} shield <span>${e(order.effectLabel)} · ${e(order.cooldownLabel)}</span>`}${order.available ? '' : ` · ${e(orderReason[order.reason] || order.reason || 'Unavailable')}${order.cooldownBeats ? ` (${e(order.cooldownBeats)} beats)` : ''}`}
-        </button>`).join('')}${guidedBrace ? '' : `<button type="button" class="${guidedAfterBrace ? '' : 'primary'}" data-act="encounter-advance" ${identity}>${guidedAfterBrace ? 'Continue fight' : model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button>`}</div>`;
-  return `<section class="encounter-panel${compact ? ' compact' : ''}" aria-label="Crew combat">
+      : `<p class="encounter-threat" role="status">${model.weaponDisabled ? 'Next pirate volley canceled. Crew firing.' : model.beatsToImpact ? `Incoming fire at ${e(target)} · ${e(model.beatsToImpact)} ${model.beatsToImpact === 1 ? 'beat' : 'beats'}` : 'Pirate weapons charging'}</p>
+        <div class="encounter-actions">${guidedAfterBrace ? '<span>Crew engaging…</span>' : orders.map(order => `<button type="button" class="${(guidedBrace || guidedTarget) && order.available ? 'primary' : ''}" ${(guidedTarget && order.id === 'target_weapons') ? 'data-primary-pulse data-spotlight-target' : ''} data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
+          ${order.id === 'target_weapons' ? `Target their weapons<span>Stop the next volley · free · once this fight</span>` : guidedBrace && order.id === 'brace' ? `Brace<span>Spend ${e(order.cost)} shield to block the hit.</span>` : `${e(order.id === 'brace' ? 'Brace' : 'Repair')} · ${e(order.cost)} shield <span>${e(order.effectLabel)} · ${e(order.cooldownLabel || '')}</span>`}${order.available ? '' : ` · ${e(orderReason[order.reason] || order.reason || 'Unavailable')}${order.cooldownBeats ? ` (${e(order.cooldownBeats)} beats)` : ''}`}
+        </button>`).join('')}${guidedBrace || guidedTarget ? '' : `<button type="button" class="${guidedAfterBrace ? '' : 'primary'}" data-act="encounter-advance" ${identity}>${guidedAfterBrace || v2 && model.kind === 'guided' ? 'Continue fight' : model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button>`}</div>`;
+  return `<section class="encounter-panel${compact ? ' compact' : ''}${guidedTarget ? ' target-window' : ''}" aria-label="Crew combat">
     <div class="encounter-bars"><span>Hull ${e(model.hull)}/30</span><meter min="0" max="30" value="${e(model.hull)}" aria-label="Ship hull"></meter>
       <span>Shield ${e(model.shield)}/12</span><meter min="0" max="12" value="${e(model.shield)}" aria-label="Shield charge"></meter>
       <span>Pirate ${e(model.enemyHull)}</span><meter min="0" max="${model.kind === 'guided' ? 25 : 42}" value="${e(model.enemyHull)}" aria-label="Pirate hull"></meter></div>
+    ${guidedTarget ? '<p class="target-caption">◎ Pirate weapons charging</p>' : ''}
+    ${model.weaponDisabled && !model.result ? '<p class="target-caption" role="status">✕ Pirate weapons disabled · next volley canceled</p>' : ''}
     ${compact ? '<details class="encounter-stations"><summary>Station status</summary>' : '<div class="encounter-stations">'}${Object.entries({ helm: 'Helm · evade', shields: 'Shields · block', weapons: 'Weapons · fire', engineering: 'Engineering · repair' }).map(([id, label]) => `<span>${e(label)} ${e(model.outputs?.[id])} · ${e(model.systems?.[id])}%</span>`).join('')}${compact ? '</details>' : '</div>'}
     ${status}
   </section>`;

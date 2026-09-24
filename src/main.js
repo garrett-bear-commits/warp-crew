@@ -133,7 +133,11 @@ const SESSION_ERROR_COPY = {
   hull_critical: 'Repair your hull before the next job.',
 };
 
-export function sessionFailureMessage(reason) {
+export function sessionFailureMessage(reason, currentPlayer = null) {
+  if (reason === 'tutorial_station_required' && currentPlayer?.tutorial?.script === 5) {
+    const member = currentPlayer.crew?.find(c => c.instanceId === currentPlayer.tutorial.firstHireInstanceId);
+    if (member) return `Assign ${member.name} to ${member.templateId === 'merc_bolt' ? 'Shields' : 'Weapons'} first.`;
+  }
   return SESSION_ERROR_COPY[reason] || 'That action is unavailable right now.';
 }
 
@@ -496,7 +500,9 @@ async function handleAction(act, data = {}) {
           holdCrewForDeparture(transition.effect.crewInstanceIds);
         }
         if (result.effect?.kind === 'crew-arrival') holdCrewForArrival(result.player, result.effect.crewInstanceId);
-        if (['launch', 'crew-arrival'].includes(result.effect?.kind)) shipSequence = result.effect.kind;
+        if (['launch', 'crew-arrival'].includes(result.effect?.kind)) shipSequence = result.effect.kind === 'crew-arrival'
+          ? { kind: 'crew-arrival', member: result.player.crew.find(c => c.instanceId === result.effect.crewInstanceId) }
+          : 'launch';
         publishSessionResult(result);
       },
       capture: captureEvent,
@@ -506,7 +512,7 @@ async function handleAction(act, data = {}) {
           playLaunch({ onDone: () => { if (shipSequence === 'launch') shipSequence = null; render(); } });
         }
         if (effect.kind === 'crew-arrival') {
-          moveCrewToArrival(player, effect.crewInstanceId, { onDone: () => { if (shipSequence === 'crew-arrival') shipSequence = null; render(); } });
+          moveCrewToArrival(player, effect.crewInstanceId, { onDone: () => { if (shipSequence?.kind === 'crew-arrival') shipSequence = null; render(); } });
         }
         if (effect.kind === 'expedition') {
           const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
@@ -530,7 +536,7 @@ async function handleAction(act, data = {}) {
       },
     });
     if (!committed.ok) {
-      const message = sessionFailureMessage(committed.reason);
+      const message = sessionFailureMessage(committed.reason, player);
       pushLog(message);
       showToast({ title: message });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }

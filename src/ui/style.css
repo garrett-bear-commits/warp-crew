@@ -342,6 +342,8 @@ button.hud-chip {
   gap: 6px;
   pointer-events: auto;
 }
+.camera-actions { display: none; gap: 6px; }
+.camera-controls.is-open .camera-actions { display: flex; }
 .camera-controls button {
   min-width: 44px;
   min-height: 44px;
@@ -643,7 +645,7 @@ button:focus-visible {
 
 .crew-card {
   display: grid;
-  grid-template-columns: 52px 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   border: 0;
@@ -764,7 +766,7 @@ button:focus-visible {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--warn);
+  background: #e96161;
 }
 
 #boot { text-align: center; padding: 48px 12px; color: var(--muted); font-size: var(--size); }
@@ -1630,6 +1632,136 @@ button:focus-visible {
 }
 .wc-shell.first-session .ship-encounter .encounter-threat {
   font-size: 18px;
+}
+
+/* Captain-first ship surface: the real action sits above a viewport-safe scrim. */
+.first-session-spotlight { z-index: 31; isolation: isolate; }
+.first-session-spotlight::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(2, 5, 12, .66);
+  pointer-events: auto;
+}
+.first-session-spotlight [data-spotlight-target] { position: relative; z-index: 1; }
+.distress-pair {
+  position: absolute;
+  z-index: 32;
+  top: max(152px, calc(120px + env(safe-area-inset-top)));
+  right: max(18px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+.distress-pair img { display: block; width: 84px; height: 126px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 8px #b84d4d); }
+.trader-signal { display: grid; place-items: center; width: 64px; height: 64px; border: 2px solid #5ce1ff; background: #102431; color: #9ff0ff; font-size: 26px; border-radius: 50%; }
+.trader-signal small { font-size: 11px; letter-spacing: .04em; }
+.threat-line { width: 24px; height: 2px; border-top: 2px dashed #e96161; }
+.first-session-cue { max-width: 440px; margin-inline: auto; }
+.first-session-cue .primary { background: var(--intro-accent); color: #0b1018; }
+.first-session-cue[data-phase="fight"] { border-color: #b86a5b; }
+[data-primary-pulse] {
+  box-shadow: 0 0 0 2px #ffd18c, 0 0 22px rgba(255, 175, 72, .58);
+  animation: first-action-pulse 1.7s ease-in-out infinite;
+}
+@keyframes first-action-pulse {
+  50% { box-shadow: 0 0 0 3px #ffe1ad, 0 0 30px rgba(255, 175, 72, .78); }
+}
+.camera-orientation-cue {
+  position: absolute;
+  top: max(76px, calc(58px + env(safe-area-inset-top)));
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 32;
+  padding: 12px 16px;
+  border: 1px solid #608ea8;
+  border-radius: var(--radius-md);
+  background: rgba(9, 22, 34, .96);
+  color: #eef9ff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.camera-orientation-cue p { margin: 0; font-size: 18px; line-height: 1.3; flex: 1; }
+.camera-orientation-cue button { min-width: 64px; min-height: 44px; }
+.captain-marker {
+  position: absolute;
+  z-index: 5;
+  width: 56px;
+  min-height: 56px;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  transform: translate(-50%, -50%) scale(calc(1 / var(--camera-scale, .4)));
+  border: 2px solid #ffd18c;
+  border-radius: 50%;
+  background: #0b1727;
+  color: #fff2d9;
+  box-shadow: 0 0 0 4px rgba(7, 11, 20, .8);
+}
+.captain-marker img { display: block; width: 32px; height: 32px; object-fit: cover; border-radius: 50%; }
+.captain-marker span { font-size: 11px; line-height: 1; }
+.captain-inspect-card {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  top: max(78px, calc(56px + env(safe-area-inset-top)));
+  z-index: 34;
+  max-width: 440px;
+  margin-inline: auto;
+  padding: 12px;
+  background: #101827;
+  border: 1px solid #b48d58;
+  border-radius: var(--radius-md);
+}
+.captain-inspect-card button { min-height: 44px; }
+.v5-modal {
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  border: 1px solid #69594a;
+  background: linear-gradient(165deg, #151d2a, #0c1421 72%);
+}
+.v5-modal > p { color: #e3e9ed; }
+.captain-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.captain-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 155px;
+  padding: 8px;
+  border: 2px solid #4c5d70;
+  background: #111d2c;
+  color: #edf4fa;
+  text-align: center;
+}
+.captain-option[aria-pressed="true"] { border-color: #ffc47a; background: #273042; }
+.captain-option img { width: 72px; height: 72px; object-fit: cover; image-rendering: pixelated; }
+.captain-option span { min-width: 0; display: grid; gap: 2px; }
+.captain-option b { font-size: 16px; }
+.captain-option small { font-size: 16px; line-height: 1.2; color: #d7e0e8; }
+.crew-identity { min-width: 0; display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 12px; }
+.crew-identity .portrait { width: 88px; height: 88px; object-fit: cover; }
+.crew-identity.compact { grid-template-columns: 64px minmax(0, 1fr); }
+.crew-identity.compact .portrait { width: 64px; height: 64px; }
+.crew-identity-copy { min-width: 0; }
+.crew-identity-copy b { font-size: 18px; }
+.crew-identity .crew-meta { font-size: 16px; line-height: 1.25; color: #dae5ee; }
+.crew-identity .stars { color: #ffd18c; white-space: nowrap; }
+.crew-card .crew-actions button { min-height: 44px; font-size: 16px; }
+.room-sheet .crew-identity { margin-bottom: 8px; }
+.target-caption { margin: 0; font-size: 17px; color: #ffcc92; font-weight: 700; }
+.attention-dot { position: absolute; top: 5px; right: 5px; width: 10px; height: 10px; border-radius: 50%; background: #e96161; box-shadow: 0 0 0 2px #111824; }
+.encounter-panel.target-window { border: 2px solid #f5a967; padding: 10px; }
+.ship-encounter .encounter-bars { font-size: 16px; }
+.ship-encounter .encounter-stations { font-size: 16px; }
+@media (max-width: 380px) {
+  .captain-option { min-height: 158px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-primary-pulse] { animation: none; box-shadow: 0 0 0 3px #ffe1ad; }
 }
 
 .cinematic-still {

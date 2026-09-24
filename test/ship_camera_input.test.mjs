@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createCameraController } from '../src/ui/shipCameraController.js';
+import { guidedStationTap } from '../src/ui/bridge.js';
 
 function setup(scale = 0.25, cameraDisabled = false) {
   const handlers = new Map();
@@ -18,8 +19,9 @@ function setup(scale = 0.25, cameraDisabled = false) {
   const taps = [];
   const control = createCameraController({ surface, getCamera: () => camera,
     setCamera: next => { camera = next; }, onTap: point => taps.push(point), onFocus() {} });
-  const send = (name, id, x, y, detail = 1) => {
+  const send = (name, id, x, y, detail = 1, target = null) => {
     const event = { pointerId: id, clientX: x, clientY: y, button: 0, detail,
+      target,
       prevented: false, stopped: false,
       preventDefault() { this.prevented = true; },
       stopImmediatePropagation() { this.stopped = true; } };
@@ -27,6 +29,18 @@ function setup(scale = 0.25, cameraDisabled = false) {
     return event;
   };
   return { send, taps, control, get camera() { return camera; }, handlers };
+}
+
+// A captain identity marker remains a real button; camera capture must not consume its click.
+{
+  const s = setup();
+  const target = { closest: selector => selector.includes('.captain-marker') ? {} : null };
+  s.send('pointerdown', 1, 110, 120, 1, target);
+  s.send('pointerup', 1, 110, 120, 1, target);
+  const click = s.send('click', 1, 110, 120, 1, target);
+  assert.equal(click.stopped, false);
+  assert.equal(s.taps.length, 0);
+  s.control.destroy();
 }
 
 // Lost capture must consume a following pointer click without blocking a new tap or keyboard click.
@@ -127,3 +141,9 @@ for (const endedBy of ['pointercancel', 'lostpointercapture']) {
 }
 
 console.log('ship_camera_input.test.mjs OK');
+
+const assignment = { tutorial: { script: 5, phase: 'assign', firstHireInstanceId: 'jen-1' },
+  crew: [{ instanceId: 'jen-1', templateId: 'merc_jen' }] };
+assert.deepEqual(guidedStationTap(assignment, 'workshop', 0.2, 0.2), { kind: 'focus', room: 'workshop' });
+assert.deepEqual(guidedStationTap(assignment, 'workshop', 0.5, 0.2), { kind: 'assign', id: 'jen-1', station: 'weapons' });
+assert.equal(guidedStationTap(assignment, 'bridge', 0.5, 0.2), null);

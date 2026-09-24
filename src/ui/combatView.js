@@ -15,6 +15,7 @@ let dpr = 1;
 let battle = null;
 let crewEncounter = null;
 let crewShots = [];
+let crewEffects = [];
 let started = false;
 let pirateImg = null;
 let impactImg = null;
@@ -76,7 +77,15 @@ export function encounterVisualFrame(encounter, events = []) {
     enemyHull: Math.max(0, Math.min(1, (encounter?.enemy?.hull || 0) / (encounter?.kind === 'guided' ? 25 : 42))),
     shield: Math.max(0, Math.min(1, (encounter?.shield || 0) / 12)),
     shots: events.filter(event => ['weapon_damage', 'enemy_impact'].includes(event.type)).map(event => ({ ally: event.type === 'weapon_damage' })),
+    weaponDisabled: events.some(event => event.type === 'enemy_weapon_disabled' || event.type === 'enemy_volley_canceled'),
+    impact: events.some(event => event.type === 'enemy_impact'),
   };
+}
+
+export function pirateDrawSize(naturalWidth, naturalHeight, scale) {
+  const size = 500 * scale;
+  const denominator = Math.max(naturalWidth, naturalHeight);
+  return { width: size * naturalWidth / denominator, height: size * naturalHeight / denominator };
 }
 
 export function setEncounterSnapshot(encounter) {
@@ -90,6 +99,7 @@ export function setEncounterSnapshot(encounter) {
   }
   if (leaving && !battle) {
     crewShots = [];
+    crewEffects = [];
     setBattleStations(false);
   }
 }
@@ -97,7 +107,12 @@ export function setEncounterSnapshot(encounter) {
 export function playEncounterBeat(events = []) {
   if (!crewEncounter) return;
   const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
-  crewShots = reduced ? [] : encounterVisualFrame(crewEncounter, events).shots.map(shot => ({ ...shot, life: 0.45 }));
+  const frame = encounterVisualFrame(crewEncounter, events);
+  crewShots = reduced ? [] : frame.shots.map(shot => ({ ...shot, life: 0.45 }));
+  crewEffects = reduced ? [] : [
+    ...(frame.weaponDisabled ? [{ kind: 'disabled', life: 0.7 }] : []),
+    ...(frame.impact ? [{ kind: 'impact', life: 0.5 }] : []),
+  ];
   if (events.some(event => event.type === 'weapon_damage' || event.type === 'enemy_impact')) sfx('pew');
   if (events.some(event => event.type === 'result' && event.result === 'win')) sfx('win');
 }
@@ -202,8 +217,7 @@ function tick(sim, dt) {
   const piratePoint = effectScreenPoint(camera, p);
   g.translate(piratePoint.x, piratePoint.y);
   if (p.dead) g.rotate(p.dead * 0.6);
-  const pw = 500 * camera.scale;
-  const ph = 300 * camera.scale;
+  const { width: pw, height: ph } = pirateDrawSize(pirateImg?.naturalWidth || 5, pirateImg?.naturalHeight || 3, camera.scale);
   if (pirateImg?.complete && pirateImg.naturalWidth) {
     g.drawImage(pirateImg, -pw / 2, -ph / 2, pw, ph);
   } else {
@@ -216,7 +230,6 @@ function tick(sim, dt) {
     g.fill();
   }
   g.restore();
-
   // volleys
   if (b.t > 0.55 && b.t < 2.65 && b.t >= b.nextVolley) {
     b.nextVolley = b.t + 0.28;
@@ -336,8 +349,7 @@ function drawCrewEncounter(g, camera, dt) {
   const frame = encounterVisualFrame(crewEncounter);
   const enemy = effectScreenPoint(camera, { worldX: 1030, worldY: 240 });
   const ship = effectScreenPoint(camera, { worldX: 576, worldY: 121 });
-  const pw = 500 * camera.scale;
-  const ph = 300 * camera.scale;
+  const { width: pw, height: ph } = pirateDrawSize(pirateImg?.naturalWidth || 5, pirateImg?.naturalHeight || 3, camera.scale);
   g.save();
   g.globalAlpha = crewEncounter.result === 'win' ? 0.25 : 0.95;
   if (pirateImg?.complete && pirateImg.naturalWidth) g.drawImage(pirateImg, enemy.x - pw / 2, enemy.y - ph / 2, pw, ph);
@@ -351,6 +363,29 @@ function drawCrewEncounter(g, camera, dt) {
     g.fill();
   }
   g.restore();
+  if (crewEncounter.orderWindow?.orderOptions?.target_weapons?.available) {
+    g.save();
+    g.strokeStyle = '#ffb65f';
+    g.lineWidth = 3;
+    g.setLineDash([7, 5]);
+    g.beginPath();
+    g.ellipse(enemy.x + pw * 0.13, enemy.y, pw * 0.28, Math.max(18, ph * 0.32), 0, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  }
+  for (const effect of crewEffects) {
+    effect.life -= dt;
+    const point = effect.kind === 'disabled' ? enemy : ship;
+    g.save();
+    g.globalAlpha = Math.max(0, effect.life / 0.7);
+    g.strokeStyle = effect.kind === 'disabled' ? '#ffb65f' : '#ff6b6b';
+    g.lineWidth = 4;
+    g.beginPath();
+    g.arc(point.x, point.y, effect.kind === 'disabled' ? Math.max(22, pw * 0.28) : 34, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  }
+  crewEffects = crewEffects.filter(effect => effect.life > 0);
   for (const shot of crewShots) {
     shot.life -= dt;
     const from = shot.ally ? ship : enemy;

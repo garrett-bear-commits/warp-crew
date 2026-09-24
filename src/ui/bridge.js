@@ -26,13 +26,13 @@ import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, 
 import { INTEL_TRACKS } from '../data/intel.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS, SPARROW_LAYOUT } from '../data/starterShip.js';
-import { medalLevelCostFor, rankTitle, rankUpCost } from '../data/crewRoster.js';
+import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS } from '../data/crewRoster.js';
 import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatView.js';
 import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
-import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence } from './shipView.js';
+import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence, roomStyle } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
@@ -118,16 +118,52 @@ function bindOnce(root, ctx) {
   root.addEventListener('click', (ev) => {
     const handlers = root._wcHandlers;
     if (!handlers) return;
+    if (isGuidedSpotlightBlocked(root._wcPlayer, ev.target.closest('[data-act]')?.dataset.act)) {
+      ev.preventDefault();
+      return;
+    }
     const cameraButton = ev.target.closest('[data-camera]');
     if (cameraButton && root.contains(cameraButton)) {
       const action = cameraButton.dataset.camera;
+      if (action === 'toggle') {
+        root._wcCameraOpen = !root._wcCameraOpen;
+        root.querySelector('.camera-controls')?.classList.toggle('is-open', root._wcCameraOpen);
+        cameraButton.setAttribute('aria-expanded', String(root._wcCameraOpen));
+        return;
+      }
       if (action === 'focus') root._wcFocusRoom?.();
       else root._wcSetCamera?.(zoomAt(root._wcCamera, action === 'zoom-in' ? 1.25 : 0.8,
         { x: root._wcCamera.viewport.w / 2, y: root._wcCamera.viewport.h / 2 }));
       return;
     }
+    const captainOption = ev.target.closest('[data-captain-option]');
+    if (captainOption && root.contains(captainOption)) {
+      for (const option of root.querySelectorAll('[data-captain-option]')) option.setAttribute('aria-pressed', String(option === captainOption));
+      root._wcCaptainChoice = captainOption.dataset.captainOption;
+      return;
+    }
+    if (ev.target.closest('[data-act="camera-cue-dismiss"]')) {
+      root._wcCameraCueDismissed = true;
+      root.querySelector('.camera-orientation-cue')?.remove();
+      return;
+    }
+    if (ev.target.closest('[data-act="captain-inspect"]')) {
+      root._wcCaptainCardOpen = true;
+      root._wcCameraCueDismissed = true;
+      root.querySelector('.camera-orientation-cue')?.remove();
+      root.querySelector('[data-slot="overlays"]')?.insertAdjacentHTML('beforeend', renderCaptainInspect(root._wcPlayer));
+      return;
+    }
+    if (ev.target.closest('[data-act="captain-inspect-close"]')) {
+      root._wcCaptainCardOpen = false;
+      root.querySelector('.captain-inspect-card')?.remove();
+      return;
+    }
     const tabBtn = ev.target.closest('[data-tab]');
     if (tabBtn && root.contains(tabBtn)) {
+      if (tabBtn.dataset.tab === 'crew' && root._wcAttentionKey) {
+        try { window.sessionStorage.setItem(root._wcAttentionKey, '1'); } catch { /* storage can be unavailable */ }
+      }
       handlers.setTab(tabBtn.getAttribute('data-tab'));
       return;
     }
@@ -139,7 +175,14 @@ function bindOnce(root, ctx) {
         return;
       }
       const action = actBtn.getAttribute('data-act');
-      handlers.onAction(action, action === 'tutorial-name'
+      if (action === 'station-assign' && actBtn.classList.contains('guided-station')) {
+        const intent = guidedStationTap(root._wcPlayer, actBtn.dataset.room, root._wcCamera.scale, root._wcCamera.minScale);
+        if (!intent) return;
+        if (intent.kind === 'focus') { root._wcFocusRoom?.(intent.room); return; }
+      }
+      handlers.onAction(action, action === 'captain-choose'
+        ? { ...actBtn.dataset, templateId: root._wcCaptainChoice || STARTER_CAPTAINS[0], name: root.querySelector('[data-captain-name]')?.value ?? '' }
+        : action === 'tutorial-name'
         ? { ...actBtn.dataset, name: root.querySelector('[data-ship-name]')?.value ?? '' }
         : { ...actBtn.dataset });
       return;
@@ -172,12 +215,13 @@ function bindCamera(root, ctx) {
     }
   });
   const size = () => ({ w: stage.clientWidth || 390, h: stage.clientHeight || 620 });
-  root._wcCamera = ctx?.player?.tutorial?.script === 4
+  root._wcCamera = [4, 5].includes(ctx?.player?.tutorial?.script)
     && (!ctx.player.tutorial.completed || (ctx.player.stats?.contractsCompleted || 0) <= 1)
     ? initialSessionCamera(size()) : makeCamera(size(), { w: 1152, h: 1728 });
   root._wcSetCamera = camera => {
     root._wcCamera = camera;
     fit.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
+    fit.style.setProperty('--camera-scale', camera.scale);
   };
   const focus = (worldPoint, scale = root._wcCamera.maxScale) => {
     root._wcSetCamera(focusCamera(root._wcCamera, worldPoint, scale));
@@ -195,9 +239,16 @@ function bindCamera(root, ctx) {
     getCamera: () => root._wcCamera,
     setCamera: root._wcSetCamera,
     onTap: point => {
-      if (root._wcBattleActive || root._wcFirstSession) return;
+      if (root._wcBattleActive) return;
       const room = roomAt(point);
       if (!room) return;
+      if (root._wcPlayer?.tutorial?.script === 5 && root._wcPlayer.tutorial.phase === 'assign') {
+        const intent = guidedStationTap(root._wcPlayer, room.id, root._wcCamera.scale, root._wcCamera.minScale);
+        if (intent?.kind === 'focus') root._wcFocusRoom(room.id);
+        if (intent?.kind === 'assign') root._wcHandlers?.onAction('station-assign', { id: intent.id, station: intent.station });
+        return;
+      }
+      if (root._wcFirstSession) return;
       if (root._wcCamera.scale <= root._wcCamera.minScale * 1.1) root._wcFocusRoom(room.id);
       else root._wcHandlers?.onAction('select-room', { act: 'select-room', room: room.id });
     },
@@ -229,6 +280,7 @@ function buildShell() {
           <div class="ship-feedback-layer" data-slot="ship-feedback"></div>
           <canvas class="crew-canvas" data-slot="crew"></canvas>
           <div class="hotspot-layer" data-slot="hotspots"></div>
+          <div data-slot="captain-marker"></div>
           ${showShipDebug ? renderShipDebug(SPARROW_LAYOUT) : ''}
         </div>
         <canvas class="combat-canvas" data-slot="combat"></canvas>
@@ -279,9 +331,14 @@ function patchShell(root, ctx) {
   const isHome = tab === 'ship';
   const chips = hudChips(player);
   const tabs = unlockedTabs(player);
+  root._wcAttentionKey = `wc:crew-ready:${player.createdAt || 'existing'}:${player.dailyLoop?.dayKey || player.lastLoginDay || 'day'}`;
+  let crewAttentionSeen = false;
+  try { crewAttentionSeen = window.sessionStorage.getItem(root._wcAttentionKey) === '1'; } catch { /* storage can be unavailable */ }
   const firstSession = isTutorialActive(player) && player.tutorial?.script === 4;
-  const leavingFirstSession = root._wcFirstSession === true && !firstSession;
-  root._wcFirstSession = firstSession;
+  const v5Session = isTutorialActive(player) && player.tutorial?.script === 5;
+  root._wcPlayer = player;
+  const leavingFirstSession = root._wcFirstSession === true && !(firstSession || v5Session);
+  root._wcFirstSession = firstSession || v5Session;
   if (leavingFirstSession) root._wcSetCamera(initialSessionCamera(root._wcCamera.viewport));
   const fighting = isBattlePlaying();
   let coachStep = step && !step.modal ? step : null;
@@ -309,19 +366,21 @@ function patchShell(root, ctx) {
   root._wcBattleActive = fighting;
   root._wcSelectedRoom = selectedRoom;
   root.querySelector('.wc-shell')?.classList.toggle('in-battle', fighting);
-  root.querySelector('.wc-shell')?.classList.toggle('first-session', firstSession);
+  root.querySelector('.wc-shell')?.classList.toggle('first-session', firstSession || v5Session);
   root.querySelector('.wc-shell')?.setAttribute('data-phase', phase);
   root.querySelector('.bottom-nav')?.style.setProperty('--nav-cols', String(tabs.length));
   root.querySelector('.hud-bar')?.style.setProperty('--hud-cols', String(chips.length));
 
-  setSlot(root, 'hud', renderHud(player, fuel, chips, firstSession));
-  setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now));
+  setSlot(root, 'hud', renderHud(player, fuel, chips, firstSession || v5Session));
+  setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, root._wcCameraOpen));
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
-  setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
+  setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
   setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene }));
-  setSlot(root, 'hotspots', firstSession ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
+  setSlot(root, 'hotspots', v5Session && phase === 'assign' ? renderV5AssignmentHotspot(player)
+    : firstSession || v5Session ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
+  setSlot(root, 'captain-marker', v5Session && phase === 'assign' ? renderCaptainMarker(player) : '');
   setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
-  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView }));
+  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, cameraCueDismissed: root._wcCameraCueDismissed, captainCardOpen: root._wcCaptainCardOpen }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
@@ -373,7 +432,7 @@ function renderHud(player, fuel, chips, firstSession = false) {
   return list.map((id) => map[id] || '').join('');
 }
 
-function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now) {
+function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, cameraOpen = false) {
   const filled = Math.max(0, Math.min(10, Math.round(hullPct / 10)));
   const pips = Array.from({ length: 10 }, (_, i) => `<i class="${i < filled ? 'on' : ''}"></i>`).join('');
   const stationId = Object.keys(STATIONS).find(id => STATIONS[id].roomId === selectedRoom);
@@ -389,20 +448,24 @@ function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now) 
           <span class="lbl">SHLD</span>
           <div class="meter shield"><span style="width:${shieldPct}%"></span></div>
         </div>
-        <div class="camera-controls" aria-label="Ship view controls">
+        <div class="camera-controls${cameraOpen ? ' is-open' : ''}" aria-label="Ship view controls">
+          <button type="button" data-camera="toggle" aria-label="Camera controls" aria-expanded="${cameraOpen}">Camera</button>
+          <div class="camera-actions">
           <button type="button" data-camera="focus" aria-label="Focus ship view">Focus</button>
           <button type="button" data-camera="zoom-in" aria-label="Zoom in">+</button>
           <button type="button" data-camera="zoom-out" aria-label="Zoom out">−</button>
+          </div>
         </div>
   `;
 }
 
-function renderNav(tab, player, expReady, tabs, step) {
+export function renderNav(tab, player, expReady, tabs, step, crewAttentionSeen = false) {
   const ids = tabs && tabs.length ? tabs : unlockedTabs(player);
   const labels = { ship: 'Ship', crew: 'Crew', missions: 'Missions', shop: 'Shop', log: 'Log' };
   const badge = {
     ship: false,
-    crew: player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha'),
+    crew: tab !== 'crew' && !crewAttentionSeen && player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha')
+      && ((player.crew || []).length < (player.crewSlots || 0) || (player.reserve || []).length < RESERVE_CAP),
     missions: expReady,
     shop: false,
     log: false,
@@ -431,8 +494,34 @@ export function renderHotspots(player, fuel, expReady, selectedRoom) {
   }).join('');
 }
 
-export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView }) {
-  if (isHome && player.activeEncounter) return renderShipEncounter(activeContractView);
+export function guidedStationTap(player, roomId, scale, minScale) {
+  if (player?.tutorial?.script !== 5 || player.tutorial.phase !== 'assign') return null;
+  const member = player.crew?.find(c => c.instanceId === player.tutorial.firstHireInstanceId);
+  if (!member) return null;
+  const station = member.templateId === 'merc_bolt' ? 'shields' : member.templateId === 'merc_jen' ? 'weapons' : null;
+  if (!station || STATIONS[station].roomId !== roomId) return null;
+  return scale <= minScale * 1.1 ? { kind: 'focus', room: roomId }
+    : { kind: 'assign', id: member.instanceId, station };
+}
+
+function renderV5AssignmentHotspot(player) {
+  const member = player.crew?.find(c => c.instanceId === player.tutorial.firstHireInstanceId);
+  const station = member?.templateId === 'merc_bolt' ? 'shields' : 'weapons';
+  const room = ROOMS.find(r => r.id === STATIONS[station].roomId);
+  if (!member || !room) return '';
+  return `<button type="button" class="hotspot guided-station" data-act="station-assign" data-room="${escapeHtml(room.id)}" data-id="${escapeHtml(member.instanceId)}" data-station="${station}" style="${roomStyle(room)}" aria-label="Assign ${escapeHtml(member.name)} to ${escapeHtml(STATIONS[station].label)}"><span class="ship-signal" aria-hidden="true">${escapeHtml(STATIONS[station].label)}</span></button>`;
+}
+
+export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, cameraCueDismissed = false, captainCardOpen = false }) {
+  if (isHome && player.activeEncounter) return renderShipEncounter({ ...activeContractView,
+    encounter: { ...activeContractView?.encounter, version: player.activeEncounter.version,
+      weaponDisabled: player.activeEncounter.orders?.targetWeapons?.used === true
+        && player.activeEncounter.enemy?.weaponDisabledThroughBeat >= player.activeEncounter.beat } });
+  if (isHome && player.tutorial?.script === 5 && !player.tutorial.completed) {
+    return `${player.tutorial.phase === 'fight' && !player.activeEncounter ? `<div class="distress-pair" aria-label="Trader threatened by pirate scout"><span class="trader-signal" role="img" aria-label="Trader ship">◇<small>TRADER</small></span><span class="threat-line" aria-hidden="true"></span><img src="${escapeHtml(SPACE_ART.pirate)}" alt="Pirate scout ship" /></div>` : ''}${renderSessionGuidance(player, now)}${player.tutorial.phase === 'assign' && !cameraCueDismissed
+      ? '<aside class="camera-orientation-cue" aria-label="Ship camera help"><p>Drag to look around. Pinch to zoom. Tap your captain.</p><button type="button" data-act="camera-cue-dismiss" aria-label="Dismiss camera help">Got it</button></aside>' : ''}
+      ${captainCardOpen ? renderCaptainInspect(player) : ''}`;
+  }
   if (isHome && player.tutorial?.script === 4 && !player.tutorial.completed) return renderSessionGuidance(player, now);
   if (isHome && player.activeContract?.stage === 'choice' && activeContractView?.actions?.length) {
     const choices = activeContractView.actions.filter(action => action.id === 'secure' || action.id === 'push');
@@ -440,6 +529,8 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
   }
   if (isHome && player.tutorial?.script === 4 && player.tutorial.completed && !player.activeContract
     && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return `<aside class="first-session-cue" aria-label="Next job"><p>Next job is ready.</p><button class="primary" data-act="goto-contracts">See contracts</button><small>Away teams are on Missions when you're ready.</small></aside>`;
+  if (isHome && player.tutorial?.script === 5 && player.tutorial.completed && !player.activeContract
+    && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return '<aside class="first-session-cue" aria-label="Next job"><p>Your crew is ready for another job.</p><button class="primary" data-act="goto-contracts">See contracts</button></aside>';
   const def = SHIPS[player.ship?.shipId] || SHIPS.sparrow;
   const room = ROOMS.find((r) => r.id === selectedRoom);
   const showHangar = isFeatureUnlocked(player, 'hangar');
@@ -465,6 +556,20 @@ function renderCoach(step) {
 }
 
 export function renderSessionGuidance(player, now = Date.now()) {
+  if (player.tutorial?.script === 5 && !player.tutorial.completed) {
+    const phase = player.tutorial.phase;
+    if (phase === 'assign') {
+      const member = player.crew?.find(c => c.instanceId === player.tutorial.firstHireInstanceId);
+      if (!member) return '';
+      const station = member.templateId === 'merc_bolt' ? 'shields' : 'weapons';
+      const label = station === 'shields' ? 'Shields' : 'Weapons';
+      return `<aside class="first-session-cue" aria-label="First assignment"><p>${escapeHtml(member.name)} is ready. Put ${escapeHtml(member.name)} at ${label}.</p><button class="primary" data-primary-pulse data-spotlight-target data-act="station-assign" data-id="${escapeHtml(member.instanceId)}" data-station="${station}">Assign ${escapeHtml(member.name)} to ${label}</button></aside>`;
+    }
+    if (phase === 'fight' && !player.activeEncounter) {
+      return '<aside class="first-session-cue first-session-spotlight" aria-label="Trader distress"><p>Pirates are firing on a trader. Help them.</p><button class="primary" data-primary-pulse data-spotlight-target data-act="tutorial-fight-start">Intercept</button></aside>';
+    }
+    return '';
+  }
   if (player.tutorial?.script === 4 && !player.tutorial.completed) {
     if (player.tutorial.phase === 'station') {
       const bolt = player.crew.find(member => member.templateId === 'merc_bolt');
@@ -476,6 +581,12 @@ export function renderSessionGuidance(player, now = Date.now()) {
     return '';
   }
   return isTutorialActive(player) ? renderCoach(currentTutorialStep(player)) : renderDailyPlan(dailyPlan(player, now));
+}
+
+export function isGuidedSpotlightBlocked(player, action) {
+  return player?.tutorial?.script === 5 && !player.tutorial.completed
+    && player.tutorial.phase === 'fight' && !player.activeEncounter
+    && action !== 'tutorial-fight-start';
 }
 
 function isTutorialCta(step) {
@@ -502,6 +613,7 @@ function renderToast(toast) {
 
 function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon, jestLive, splashProgress, splashReady, splashScene }) {
   if (!player.flags?.splashSeen) return renderSplash({ progress: splashProgress, ready: splashReady, scene: splashScene });
+  if (player.tutorial?.script === 5 && !player.tutorial.completed) return renderV5Modal(player, { jestLive });
   if (player.tutorial?.script === 4 && !player.tutorial.completed) return renderV4Modal(player, { jestLive });
   if (cinematic) return renderCinematic(cinematic);
   if (confirmAbandon) return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Break contract"><h2>Break contract?</h2><p>No pending reward. Fuel already spent is not refunded.</p><button data-act="contract-abandon-confirm" data-revision="${escapeHtml(confirmAbandon.revision)}" data-acceptance-id="${escapeHtml(confirmAbandon.acceptanceId)}">Break contract</button><button data-act="contract-abandon-cancel">Keep contract</button></section></div>`;
@@ -519,6 +631,50 @@ function renderModals(player, { pendingCombat, combatOrders, contractReview, awa
 function starsHtml(n = 1) {
   const s = Math.max(1, Math.min(5, n || 1));
   return `<span class="stars">${'★'.repeat(s)}${'☆'.repeat(5 - s)}</span>`;
+}
+
+function identityCard(c, { compact = false } = {}) {
+  const station = c.currentJob || c.job || 'Ready for duty';
+  return `<div class="crew-identity${compact ? ' compact' : ''}"><img class="portrait" src="${escapeHtml(portraitFor(c.templateId || c.id, c.role))}" alt="" /><div class="crew-identity-copy"><b>${escapeHtml(c.name)}</b><div class="crew-meta">${escapeHtml(c.role)} · ${escapeHtml(c.rarity || 'Common')} · ${starsHtml(c.stars)}</div><div class="crew-meta">${escapeHtml(station)}</div><div class="crew-meta">Power ${escapeHtml(c.power ?? c.basePower ?? 10)} · Lv ${escapeHtml(c.level ?? 1)}</div></div></div>`;
+}
+
+export function renderV5Modal(player, { jestLive = false } = {}) {
+  const phase = player.tutorial?.phase;
+  if (phase === 'captain') {
+    const labels = { captain_cyborg: ['Cyborg', 'Pilot', 'Helm'], captain_gunner: ['Human', 'Gunner', 'Weapons'], captain_alien: ['Alien', 'Scout', 'Helm'], captain_droid: ['Droid', 'Engineer', 'Shields'] };
+    return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal v5-modal" role="dialog" aria-modal="true" aria-label="Choose your captain"><h2>Choose your captain</h2><p>Pick the person who will command and work aboard the Sparrow.</p><div class="captain-grid">${STARTER_CAPTAINS.map((id, index) => {
+      const [species, role, job] = labels[id];
+      return `<button type="button" class="captain-option" data-captain-option="${id}" aria-pressed="${index === 0}"><img src="${escapeHtml(portraitFor(id, role.toLowerCase()))}" alt="" /><span><b>${species}</b><small>${role} · ${job}</small><small>★ Common · Power 10</small></span></button>`;
+    }).join('')}</div><label for="captain-name">Captain name</label><input id="captain-name" data-captain-name maxlength="48" value="Captain" autocomplete="off" /><button class="primary" data-act="captain-choose" data-primary-pulse>Take command</button></section></div>`;
+  }
+  if (phase === 'hire') {
+    const captain = player.crew?.find(c => c.instanceId === player.captainInstanceId);
+    const bolt = captain?.role === 'gunner';
+    const recruit = CREW_CATALOG.find(c => c.id === (bolt ? 'merc_bolt' : 'merc_jen'));
+    const member = { ...recruit, templateId: recruit?.id, name: recruit?.name || (bolt ? 'Bolt' : 'Jen Park'), stars: 1, level: 1, currentJob: bolt ? 'Shields · keeps the Sparrow protected' : 'Weapons · fires on the pirate' };
+    return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal v5-modal" role="dialog" aria-modal="true" aria-label="First hire"><h2>One free crew member</h2>${identityCard(member)}<p>${escapeHtml(member.name)} can work beside your captain.</p><button class="primary" data-primary-pulse data-act="tutorial-first-hire">Hire for free</button></section></div>`;
+  }
+  if (phase === 'name_ship') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal v5-modal" role="dialog" aria-modal="true" aria-label="Name your ship"><h2>Cargo aboard. Third berth open.</h2><p>Give your ship a name or keep Sparrow.</p><label for="ship-name">Ship name</label><input id="ship-name" data-ship-name maxlength="24" value="${escapeHtml(player.ship?.name || 'Sparrow')}" autocomplete="off" /><button class="primary" data-primary-pulse data-act="tutorial-name">Keep sailing</button></section></div>`;
+  if (phase === 'pull') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal v5-modal" role="dialog" aria-modal="true" aria-label="Free recruit"><h2>Third berth ready</h2><p>Meet one free Uncommon recruit.</p><button class="primary" data-primary-pulse data-act="tutorial-welcome-pull">Meet your recruit</button></section></div>`;
+  if (phase === 'register') {
+    const member = player.crew?.find(c => c.instanceId === player.tutorial.welcomeInstanceId);
+    const station = player.tutorial.suggestedRole === 'away' ? 'Future Away team' : player.tutorial.suggestedStation === 'weapons' ? 'Weapons' : 'Shields';
+    return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal v5-modal" role="dialog" aria-modal="true" aria-label="New crew aboard"><h2>${escapeHtml(member?.name || 'New recruit')} joins the crew</h2>${member ? identityCard({ ...member, currentJob: station }) : ''}<p>Progress is saved in this browser. Jest sign-in is optional.</p>${jestLive ? '<button type="button" data-act="tutorial-register-start">Sign in to Jest</button>' : '<p>Jest sign-in is unavailable in this preview.</p>'}<button class="primary" data-primary-pulse data-act="tutorial-register-skip">Continue to ship</button></section></div>`;
+  }
+  return '';
+}
+
+function renderCaptainMarker(player) {
+  const captain = player.crew?.find(c => c.instanceId === player.captainInstanceId);
+  if (!captain) return '';
+  const stationId = player.stationAssignments?.[captain.instanceId];
+  const room = ROOMS.find(r => r.id === STATIONS[stationId]?.roomId) || ROOMS.find(r => r.id === 'bridge');
+  return `<button type="button" class="captain-marker" data-act="captain-inspect" style="left:${room.labelAnchor.x}%;top:${room.labelAnchor.y}%" aria-label="Inspect captain ${escapeHtml(captain.name)}"><img src="${escapeHtml(portraitFor(captain.templateId, captain.role))}" alt="" /><span>Captain</span></button>`;
+}
+
+function renderCaptainInspect(player) {
+  const captain = player?.crew?.find(c => c.instanceId === player.captainInstanceId);
+  return captain ? `<aside class="captain-inspect-card" aria-label="Captain ${escapeHtml(captain.name)}">${identityCard({ ...captain, currentJob: STATIONS[player.stationAssignments?.[captain.instanceId]]?.label || 'On deck' }, { compact: true })}<button type="button" data-act="captain-inspect-close" aria-label="Close captain card">Close</button></aside>` : '';
 }
 
 export function renderSplash({ progress = 0, ready = false, scene = SPLASH_ART } = {}) {
@@ -577,21 +733,13 @@ function renderDossier(player, id) {
     <div class="modal-backdrop">
       <div class="modal panel dossier">
         <div class="sheet-head">
-          <div class="recruit-card dossier-head">
-            ${crewPortrait(c)}
-            <div>
-              <b>${escapeHtml(c.name)}</b>
-              <div><span class="tag">${escapeHtml(c.role)}</span><span class="tag">${escapeHtml(c.rarity)}</span></div>
-              ${starsHtml(c.stars)}
-              <div class="muted">${escapeHtml(title)} · Lv ${c.level} · ${c.power}${passive ? ` · ${escapeHtml(passive)}` : ''}</div>
-            </div>
-          </div>
+          <div class="recruit-card dossier-head">${identityCard({ ...c, currentJob: STATIONS[player.stationAssignments?.[c.instanceId]]?.label || 'Ready for duty' })}<div class="muted">${escapeHtml(title)}${passive ? ` · ${escapeHtml(passive)}` : ''}</div></div>
           <button class="icon-close" data-act="close-crew" aria-label="Close">×</button>
         </div>
         <div class="row" style="margin-top:10px;flex-direction:column">
           ${c.status !== 'expedition' ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${lvlCost} medals</button>` : ''}
           <button data-act="rank-up" data-id="${c.instanceId}">Rank up · ${rankCost.medals} med · ${rankCost.credits}cr</button>
-          ${c.status !== 'expedition' && (player.crew || []).length > 1 ? `<button data-act="crew-bench" data-id="${c.instanceId}">Bench to reserve</button>` : ''}
+          ${!c.isCaptain && c.status !== 'expedition' && (player.crew || []).length > 1 ? `<button data-act="crew-bench" data-id="${c.instanceId}">Bench to reserve</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -665,7 +813,6 @@ export function renderRoomSheet(player, room, fuel, now) {
   const assigned = stationId
     ? player.crew.find(c => c.instanceId === assignedId) || player.reserve?.find(c => c.instanceId === assignedId)
     : room.role ? player.crew.find(c => c.role === room.role && c.status !== 'expedition') : null;
-  const sheet = assigned ? sheetFor(assigned.templateId, assigned.role) : null;
   const sys = room.system ? player.ship.systems?.[room.system] || 1 : null;
   const actions = roomActions(room, player);
   const sysLine = sys != null
@@ -690,13 +837,7 @@ export function renderRoomSheet(player, room, fuel, now) {
         </div>
         <button class="icon-close" data-act="close-room" aria-label="Close">×</button>
       </div>
-      <div class="sheet-crew">
-        ${sheet ? `<div class="portrait idle-portrait" style="background-image:url('${sheet.url}')"></div>` : '<div class="portrait"></div>'}
-        <div>
-          <b>${assigned ? escapeHtml(assigned.name) : 'Empty'}</b>
-          <div class="muted">${assigned ? `Lv ${assigned.level}${output && !output.staffedBy ? ' · unavailable' : ''}` : 'Unassigned'}</div>
-        </div>
-      </div>
+      <div class="sheet-crew">${assigned ? identityCard({ ...assigned, currentJob: `${stationId ? STATIONS[stationId].label : room.name}${output && !output.staffedBy ? ' · unavailable' : ''}` }, { compact: true }) : '<span>Empty station</span>'}</div>
       ${crewChoices}
       <div class="sheet-actions">${actions}</div>
     </div>`;
@@ -1010,14 +1151,9 @@ export function renderCrew(player, now = Date.now()) {
           : '';
         return `
         <div class="crew-card">
-          ${crewPortrait(c)}
           <div class="crew-body">
-            <div class="crew-top">
-              <b>${escapeHtml(c.name)}</b>
-              <span class="crew-power">${c.power}</span>
-            </div>
-            <div class="crew-meta">${escapeHtml(c.role)} · Lv ${c.level}${hurt}</div>
-            <div class="crew-meta">${assignments[c.instanceId] ? `● ${escapeHtml(STATIONS[assignments[c.instanceId]].label)} work marker` : '○ Reserve from station duty'}</div>
+            ${identityCard({ ...c, currentJob: assignments[c.instanceId] ? `${STATIONS[assignments[c.instanceId]].label} · working` : 'On deck' })}
+            ${hurt ? `<div class="crew-meta">${hurt.slice(3)}</div>` : ''}
             <div class="row crew-actions">
               ${Object.entries(STATIONS).map(([id, station]) => {
                 const preview = previewStationAssignment(player, c.instanceId, id, now);
@@ -1026,13 +1162,12 @@ export function renderCrew(player, now = Date.now()) {
               }).join('')}
               ${assignments[c.instanceId] ? `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="">Leave station</button>` : ''}
             </div>
-            <div>${starsHtml(c.stars)}</div>
             <div class="row crew-actions">
               <button class="ghost" data-act="select-crew" data-id="${c.instanceId}">Dossier</button>
               ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
                 ? `<button data-act="level-crew" data-id="${c.instanceId}">Lv ${c.level + 1} · ${cost} med</button>`
                 : ''}
-              ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition' && player.crew.length > 1
+              ${isFeatureUnlocked(player, 'gacha') && !c.isCaptain && c.status !== 'expedition' && player.crew.length > 1
                 ? `<button class="ghost" data-act="crew-bench" data-id="${c.instanceId}">Bench</button>`
                 : ''}
             </div>
@@ -1074,7 +1209,7 @@ export function renderCrew(player, now = Date.now()) {
             </div>
           </div>
         </div>`).join('')}
-    </div>` : canHire && !open ? '<div class="muted" style="margin:8px 0 16px">Berths full. Bench someone to hire.</div>' : ''}
+    </div>` : canHire && !open ? '<div class="muted" style="margin:8px 0 16px">Berths full. A new recruit joins reserve.</div>' : ''}
   `;
 }
 

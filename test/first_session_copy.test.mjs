@@ -40,6 +40,8 @@ const fight = renderShipEncounter({ revision: 1, acceptanceId: 'job-1', encounte
 } });
 assert.match(fight, /Brace<span>/);
 assert.match(fight, /Spend 2 shield to block the hit/);
-assert.equal(sessionFailureMessage('tutorial_station_required'), 'Send Bolt to Shields first.');
+assert.equal(sessionFailureMessage('tutorial_station_required'), 'Assign your crew member to the required station first.');
+assert.equal(sessionFailureMessage('tutorial_station_required', { tutorial: { script: 5, firstHireInstanceId: 'jen-1' }, crew: [{ instanceId: 'jen-1', templateId: 'merc_jen', name: 'Jen Park' }] }), 'Assign Jen Park to Weapons first.');
+assert.equal(sessionFailureMessage('tutorial_station_required', { tutorial: { script: 5, firstHireInstanceId: 'bolt-1' }, crew: [{ instanceId: 'bolt-1', templateId: 'merc_bolt', name: 'Bolt' }] }), 'Assign Bolt to Shields first.');
 assert.equal(sessionFailureMessage('brace_required'), 'Brace before the pirate fires.');
 assert.equal(sessionFailureMessage('save_failed'), 'Could not save. Try again.');
