@@ -155,10 +155,6 @@ button.hud-chip {
   z-index: 2;
   filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55));
 }
-.ship-fit.is-focusing { transition: transform 250ms var(--ease-out); }
-@media (prefers-reduced-motion: reduce) {
-  .ship-fit.is-focusing { transition: none; }
-}
 .hotspot-layer {
   position: absolute;
   inset: 0;

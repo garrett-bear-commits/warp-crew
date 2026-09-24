@@ -167,12 +167,6 @@ function bindCamera(root) {
     fit.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
   };
   const focus = (worldPoint, scale = root._wcCamera.maxScale) => {
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    if (!reduced) {
-      fit.classList.add('is-focusing');
-      clearTimeout(root._wcFocusTimer);
-      root._wcFocusTimer = setTimeout(() => fit.classList.remove('is-focusing'), 270);
-    }
     root._wcSetCamera(focusCamera(root._wcCamera, worldPoint, scale));
   };
   const roomAt = point => ROOMS.find(room => point.x >= room.left * 11.52
@@ -196,7 +190,6 @@ function bindCamera(root) {
     },
     onFocus: point => focus(point),
   });
-  stage.addEventListener('pointerdown', () => fit.classList.remove('is-focusing'));
   root._wcSetCamera(root._wcCamera);
   if (typeof ResizeObserver !== 'undefined') {
     root._wcCameraResize = new ResizeObserver(() => root._wcSetCamera(resizeCamera(root._wcCamera, size())));
@@ -319,7 +312,8 @@ function patchShell(root, ctx) {
   setSlot(root, 'coach', showCoach ? renderSessionGuidance(player, now) : '');
 
   attachSpace(root.querySelector('[data-slot="space"]'), () => root._wcCamera, 77);
-  attachCombat(root.querySelector('[data-slot="combat"]'), root.querySelector('.stage'), () => root._wcCamera);
+  attachCombat(root.querySelector('[data-slot="combat"]'), root.querySelector('.stage'),
+    () => root._wcCamera, camera => root._wcSetCamera(camera));
   syncCrewLayer(root.querySelector('[data-slot="crew"]'), player);
 
   if (!isHome) {

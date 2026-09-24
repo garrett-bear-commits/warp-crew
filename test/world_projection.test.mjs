@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import { effectScreenPoint, visibleLandmarks, worldProjection } from '../src/ui/worldProjection.js';
+import { makeCamera } from '../src/ui/shipCamera.js';
+import { attachCombat, playCombat } from '../src/ui/combatView.js';
+import { stopStageLoop } from '../src/ui/stageLoop.js';
 
 const base = { x: 0, y: 0, scale: 1, viewport: { w: 390, h: 620 }, world: { w: 1152, h: 1728 } };
 const fx = { worldX: 100, worldY: 150 };
@@ -25,5 +28,33 @@ assert.notDeepEqual(
 const wideView = { ...base, x: 600, y: 600, viewport: { w: 2400, h: 3000 } };
 assert.ok(visibleLandmarks(77, wideView).some(item => item.kind === 'hole'),
   'the existing black-hole landmark remains in the world');
+
+// A close station view must become a battle overview before the first draw.
+globalThis.Image = class { complete = true; naturalWidth = 64; };
+globalThis.window = { devicePixelRatio: 1, addEventListener() {} };
+globalThis.ResizeObserver = class { observe() {} };
+globalThis.requestAnimationFrame = () => 1;
+globalThis.cancelAnimationFrame = () => {};
+let camera = makeCamera({ w: 390, h: 620 }, { w: 1152, h: 1728 }, { x: 400, y: 1400 }, 0.9);
+const closeScale = camera.scale;
+let cameraSets = 0;
+const combatCanvas = {
+  width: 0, height: 0, style: {}, classList: { add() {} },
+  getBoundingClientRect: () => ({ width: 390, height: 620 }),
+  getContext: () => ({ setTransform() {} }),
+};
+attachCombat(combatCanvas, { style: {} }, () => camera, next => {
+  camera = next;
+  cameraSets++;
+});
+playCombat({ preview: { encounter: { name: 'Pirate Scout' } }, win: true });
+assert.equal(cameraSets, 1, 'combat applies a camera overview before drawing');
+assert.ok(camera.scale < closeScale, 'battle starts at a wider scale than a close station view');
+for (const point of [{ worldX: 576, worldY: 121 }, { worldX: 1030, worldY: 240 }]) {
+  const screen = effectScreenPoint(camera, point);
+  assert.ok(screen.x >= 55 && screen.x <= 335 && screen.y >= 40 && screen.y <= 580,
+    `both combat anchors fit inside safe screen bounds: ${JSON.stringify(screen)}`);
+}
+stopStageLoop();
 
 console.log('world projection tests passed');

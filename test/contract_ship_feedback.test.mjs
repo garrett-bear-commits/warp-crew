@@ -165,7 +165,13 @@ const context = {
   createLinearGradient: () => gradient,
   ellipse(x, y, rx, ry) {
     if (rx === 9 && ry === 2.5) {
-      shadowFeet.push({ crewInstanceId: this.__wcActorInstanceId ?? null, x, y });
+      // Recover authored percent-space feet from the world-pixel bitmap.
+      // The shadow's 1 world-pixel vertical offset is presentation only.
+      shadowFeet.push({
+        crewInstanceId: this.__wcActorInstanceId ?? null,
+        x: Number((x / canvas.width * 100).toFixed(3)),
+        y: Number(((y - 1) / canvas.height * 100).toFixed(3)),
+      });
     }
   },
   imageSmoothingEnabled: false,
@@ -198,6 +204,7 @@ const awayPlayer = {
 };
 
 syncCrewLayer(canvas, readyPlayer);
+assert.deepEqual([canvas.width, canvas.height], [1152, 1728], 'crew bitmap uses world pixels inside the transformed ship');
 holdCrewForDeparture(selectedIds);
 syncCrewLayer(canvas, awayPlayer);
 let normalCompletions = 0;
@@ -210,7 +217,7 @@ moveCrewToDeparture(awayPlayer, selectedIds, {
     normalCompletions++;
     shadowFeet.length = 0;
     runFrame();
-    completionAirlockIds = shadowFeet.filter(foot => Math.abs(foot.x - 47) < 0.001 && Math.abs(foot.y - 65) < 0.001).map(foot => foot.crewInstanceId);
+    completionAirlockIds = shadowFeet.filter(foot => Math.abs(foot.x - 47) < 0.001 && Math.abs(foot.y - 64) < 0.001).map(foot => foot.crewInstanceId);
     syncCrewLayer(canvas, awayPlayer);
   },
 });
@@ -220,7 +227,7 @@ for (let i = 0; i < 400 && !normalCompletions; i++) {
   runFrame();
   for (const foot of shadowFeet) {
     if (Math.abs(foot.x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001
-      && Math.abs(foot.y - (SPARROW_LAYOUT.anchors.airlock.y + 1)) < 0.001) interruptedAirlock.add(foot.crewInstanceId);
+      && Math.abs(foot.y - SPARROW_LAYOUT.anchors.airlock.y) < 0.001) interruptedAirlock.add(foot.crewInstanceId);
   }
   if (interruptedAirlock.size && !interruptedAfterArrival) {
     interruptedAfterArrival = true;
@@ -263,7 +270,7 @@ moveCrewToDeparture(awayPlayer, selectedIds, {
     runFrame();
     changedMotionAirlockIds = shadowFeet.filter(({ x, y }) => (
       Math.abs(x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001
-      && Math.abs(y - (SPARROW_LAYOUT.anchors.airlock.y + 1)) < 0.001
+      && Math.abs(y - SPARROW_LAYOUT.anchors.airlock.y) < 0.001
     )).map(({ crewInstanceId }) => crewInstanceId);
     syncCrewLayer(canvas, awayPlayer);
     shadowFeet.length = 0;
@@ -292,8 +299,8 @@ runFrame();
 motion.set(true);
 shadowFeet.length = 0;
 runFrame();
-assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 21) < 0.001), `Bridge actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
-assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 85) < 0.001), `Engineering actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
+assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 20) < 0.001), `Bridge actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
+assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 84) < 0.001), `Engineering actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
 
 // Disabling walk frames alone still lets idle actors slide and collision pushes
 // move them. Record actual rendered feet across live preference changes.
@@ -319,14 +326,14 @@ crewPresentation.holdCrewForArrival(recruited, jen.instanceId);
 syncCrewLayer(canvas, recruited);
 shadowFeet.length = 0;
 runFrame();
-assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 47, y: 65 }, 'Jen appears at authored Airlock');
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 47, y: 64 }, 'Jen appears at authored Airlock');
 crewPresentation.moveCrewToArrival(recruited, jen.instanceId, { onDone: () => arrivalCompletions++ });
 setBattleStations(true);
 syncCrewLayer(canvas, recruited);
 runUntil(() => arrivalCompletions === 1);
 shadowFeet.length = 0;
 runFrame();
-assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 64, y: 52 }, 'Jen walks to authored Workshop');
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 64, y: 51 }, 'Jen walks to authored Workshop');
 setBattleStations(false);
 motion.set(true);
 const reducedJen = { ...jen, instanceId: 'arriving-jen-reduced' };
@@ -337,7 +344,7 @@ crewPresentation.moveCrewToArrival(reducedRecruit, reducedJen.instanceId, { onDo
 shadowFeet.length = 0;
 runFrame();
 assert.equal(arrivalCompletions, 2, 'reduced arrival completes exactly once');
-assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === reducedJen.instanceId), { crewInstanceId: reducedJen.instanceId, x: 64, y: 52 }, 'reduced Jen snaps to the same Workshop anchor');
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === reducedJen.instanceId), { crewInstanceId: reducedJen.instanceId, x: 64, y: 51 }, 'reduced Jen snaps to the same Workshop anchor');
 motion.set(true);
 assert.equal(arrivalCompletions, 2);
 

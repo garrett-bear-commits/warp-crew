@@ -4,6 +4,7 @@ import { onTick } from './stageLoop.js';
 import { addTrauma, hitstop, sfx, unlockSfx, applyShake } from './juice.js';
 import { setBattleStations } from './crewWalk.js';
 import { effectScreenPoint } from './worldProjection.js';
+import { makeCamera } from './shipCamera.js';
 
 let canvas = null;
 let stageEl = null;
@@ -16,6 +17,7 @@ let started = false;
 let pirateImg = null;
 let impactImg = null;
 let getCamera = null;
+let setCamera = null;
 
 function img(src) {
   const im = new Image();
@@ -40,11 +42,12 @@ function resize() {
   if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-export function attachCombat(el, stage, cameraGetter) {
+export function attachCombat(el, stage, cameraGetter, cameraSetter) {
   ensureFx();
   canvas = el;
   stageEl = stage || el?.parentElement;
   getCamera = cameraGetter;
+  setCamera = cameraSetter;
   if (el) {
     resize();
     el.style.pointerEvents = 'none';
@@ -66,9 +69,15 @@ export function isBattlePlaying() {
 
 export function playCombat({ preview, win = true, onDone } = {}) {
   unlockSfx();
-  resize();
   const nose = { worldX: 576, worldY: 121 };
   const pirateTarget = { worldX: 1030, worldY: 240 };
+  // The presentation starts wide enough to show the Sparrow and its target.
+  // This does not lock the camera: gestures may pan and zoom after the start.
+  const currentCamera = getCamera?.();
+  if (currentCamera && setCamera) {
+    setCamera(makeCamera(currentCamera.viewport, currentCamera.world));
+  }
+  resize();
   const name = preview?.encounter?.name || 'Pirate Scout';
   battle = {
     t: 0,

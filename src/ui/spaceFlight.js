@@ -2,6 +2,7 @@
 import { SPACE_ART } from '../data/portraits.js';
 import { onTick } from './stageLoop.js';
 import { effectScreenPoint, visibleLandmarks } from './worldProjection.js';
+import { makeCamera } from './shipCamera.js';
 
 let canvas = null, ctx = null, w = 0, h = 0, dpr = 1, started = false;
 let motionQuery = null, getCamera = null, landmarkSeed = 77, launch = null, clock = 0;
@@ -143,12 +144,14 @@ function tick(sim, dt) {
 
 export function attachSpace(el, cameraGetter, seed = 77) {
   if (!el) return;
-  getCamera = cameraGetter;
+  getCamera = typeof cameraGetter === 'function' ? cameraGetter
+    : () => makeCamera({ w, h }, { w: 1152, h: 1728 });
   landmarkSeed = seed;
   if (!motionQuery) motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
   if (canvas === el && started) return;
   canvas = el;
   resize();
+  if (!rocks.length) for (let i = 0; i < 3; i++) spawnRock(getCamera());
   if (!el._wcRo) {
     el._wcRo = new ResizeObserver(resize);
     el._wcRo.observe(el);
