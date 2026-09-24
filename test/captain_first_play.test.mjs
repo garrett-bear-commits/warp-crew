@@ -55,6 +55,10 @@ test('captain name defaults, rejects controls and invisible or overlong names', 
     assert.equal(picked('captain_alien', name).reason, 'invalid_captain_name');
   }
   assert.equal(picked('captain_alien', '🌌'.repeat(24)).ok, true);
+  assert.equal(picked('captain_alien', '👩‍🚀').ok, true);
+  assert.equal(picked('captain_alien', '👩‍🚀').instance?.name, '👩‍🚀');
+  assert.equal(picked('captain_alien', '👩‍🚀'.repeat(24)).ok, true);
+  assert.equal(picked('captain_alien', '👩‍🚀'.repeat(25)).reason, 'invalid_captain_name');
   assert.equal(picked('merc_rex', 'Rex').ok, false);
 });
 
