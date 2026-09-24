@@ -16,6 +16,17 @@ function seededIndex(seed, beat, eventIndex, size) {
   return hash % size;
 }
 
+function orderStatus(state, order) {
+  const cost = order === 'brace' ? 2 : 3;
+  const cooldownBeats = Math.max(0, state.cooldowns?.[order] || 0);
+  let reason = null;
+  if (order === 'brace' && state.kind === 'guided' && state.orders.brace.used) reason = 'used';
+  else if (cooldownBeats > 0) reason = 'cooldown';
+  else if (order === 'repair' && state.hull >= MAX_HULL) reason = 'hull_full';
+  else if (state.shield < cost) reason = 'insufficient_resource';
+  return { cost: { shield: cost }, available: reason === null, reason, cooldownBeats };
+}
+
 function finish(next, result, events, lossReason = null) {
   next.result = result;
   next.lossReason = lossReason;
@@ -64,17 +75,11 @@ export function advanceEncounter(state, order = null) {
 
   if (order !== null) {
     if (!['brace', 'repair'].includes(order)) return { ok: false, reason: 'order_unavailable', state };
-    if (!state.orderWindow || !state.orderWindow.availableOrders.includes(order)) {
+    if (!state.orderWindow?.orderOptions?.[order]) {
       return { ok: false, reason: 'order_unavailable', state };
     }
-    if (order === 'brace' && ((state.orders.brace.used && state.kind === 'guided') || state.cooldowns.brace > 0)) {
-      return { ok: false, reason: 'order_unavailable', state };
-    }
-    if (order === 'repair' && state.cooldowns.repair > 0) {
-      return { ok: false, reason: 'order_unavailable', state };
-    }
-    const cost = order === 'brace' ? 2 : 3;
-    if (state.shield < cost) return { ok: false, reason: 'insufficient_resource', state };
+    const availability = orderStatus(state, order);
+    if (!availability.available) return { ok: false, reason: availability.reason, state };
   }
 
   const next = structuredClone(state);
@@ -159,10 +164,13 @@ export function advanceEncounter(state, order = null) {
       const target = next.beat === 1 ? 'hull' : targets[seededIndex(next.seed, next.beat, next.eventIndex, targets.length)];
       next.enemy.target = target;
       next.enemy.pattern = 'charging_volley';
+      const orderNames = next.kind === 'guided' ? ['brace'] : ['brace', 'repair'];
+      const orderOptions = Object.fromEntries(orderNames.map(name => [name, orderStatus(next, name)]));
       next.orderWindow = {
         target,
         beatsToImpact: 2,
-        availableOrders: next.kind === 'guided' ? ['brace'] : ['brace', 'repair'],
+        availableOrders: orderNames.filter(name => orderOptions[name].available),
+        orderOptions,
       };
       events.push({ type: 'tell', target, system: target, beatsToImpact: 2, pattern: next.enemy.pattern });
     }

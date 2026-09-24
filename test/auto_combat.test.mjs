@@ -87,9 +87,13 @@ function advanceUntil(state, predicate, limit = 40, orderForState = () => null) 
   assert.ok(repaired.events.some(event => event.type === 'order' && event.order === 'repair' && event.cost.shield === 3));
   assert.equal(repaired.state.shield, beforeShield - 3);
   const nextWindow = advanceUntil(repaired.state, state => Boolean(state.orderWindow), 8);
+  assert.equal(nextWindow.orderWindow.orderOptions.repair.available, false);
+  assert.equal(nextWindow.orderWindow.orderOptions.repair.reason, 'cooldown');
+  assert.equal(nextWindow.orderWindow.orderOptions.repair.cooldownBeats, 2);
+  assert.equal(nextWindow.orderWindow.availableOrders.includes('repair'), false);
   const rejected = advanceEncounter(nextWindow, 'repair');
   assert.equal(rejected.ok, false);
-  assert.equal(rejected.reason, 'order_unavailable');
+  assert.equal(rejected.reason, 'cooldown');
   assert.equal(rejected.state.beat, nextWindow.beat);
 }
 
@@ -226,6 +230,44 @@ function impactAtSecondTell(seed, target) {
   assert.equal(degraded.events.some(event => event.type === 'repair' && event.target === 'hull'), false);
   assert.equal(degraded.state.systems.engineering, damaged.systems.engineering + 1);
   assert.ok(degraded.events.some(event => event.type === 'repair' && event.target === 'system' && event.system === 'engineering'));
+}
+
+// Mutation caught: order windows advertising unaffordable orders without their cost/reason.
+{
+  let state = encounter({ kind: 'normal', seed: 1 });
+  while (state.beat < 7) state = advanceEncounter(state).state;
+  assert.equal(state.shield, 0);
+  assert.deepEqual(state.orderWindow.availableOrders, []);
+  assert.deepEqual(state.orderWindow.orderOptions.brace, {
+    cost: { shield: 2 }, available: false, reason: 'insufficient_resource', cooldownBeats: 0,
+  });
+  assert.deepEqual(state.orderWindow.orderOptions.repair, {
+    cost: { shield: 3 }, available: false, reason: 'insufficient_resource', cooldownBeats: 0,
+  });
+  assert.equal(advanceEncounter(state, 'brace').reason, 'insufficient_resource');
+}
+
+// Mutation caught: Brace remaining advertised while its normal-fight cooldown is active.
+{
+  let state = advanceEncounter(encounter({ kind: 'normal' })).state;
+  state = advanceEncounter(state, 'brace').state;
+  while (state.beat < 4) state = advanceEncounter(state).state;
+  assert.equal(state.orderWindow.orderOptions.brace.cost.shield, 2);
+  assert.equal(state.orderWindow.orderOptions.brace.available, false);
+  assert.equal(state.orderWindow.orderOptions.brace.reason, 'cooldown');
+  assert.equal(state.orderWindow.orderOptions.brace.cooldownBeats, 1);
+  assert.equal(state.orderWindow.availableOrders.includes('brace'), false);
+  assert.equal(advanceEncounter(state, 'brace').reason, 'cooldown');
+}
+
+// Mutation caught: charging for an emergency repair that cannot heal a full hull.
+{
+  const state = advanceEncounter(encounter({ kind: 'normal' })).state;
+  assert.equal(state.orderWindow.orderOptions.repair.cost.shield, 3);
+  assert.equal(state.orderWindow.orderOptions.repair.available, false);
+  assert.equal(state.orderWindow.orderOptions.repair.reason, 'hull_full');
+  assert.equal(state.orderWindow.availableOrders.includes('repair'), false);
+  assert.equal(advanceEncounter(state, 'repair').reason, 'hull_full');
 }
 
 console.log('auto combat reducer tests passed');
