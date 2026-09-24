@@ -17,8 +17,10 @@ function setup(scale = 0.25, cameraDisabled = false) {
   let camera = { x: 0, y: 0, scale, minScale: 0.2, maxScale: 2,
     viewport: { w: 390, h: 620 }, world: { w: 1152, h: 1728 } };
   const taps = [];
+  const gestures = [];
   const control = createCameraController({ surface, getCamera: () => camera,
-    setCamera: next => { camera = next; }, onTap: point => taps.push(point), onFocus() {} });
+    setCamera: next => { camera = next; }, onTap: point => taps.push(point), onFocus() {},
+    onGesture: kind => gestures.push(kind) });
   const send = (name, id, x, y, detail = 1, target = null) => {
     const event = { pointerId: id, clientX: x, clientY: y, button: 0, detail,
       target,
@@ -28,7 +30,21 @@ function setup(scale = 0.25, cameraDisabled = false) {
     handlers.get(name)?.(event);
     return event;
   };
-  return { send, taps, control, get camera() { return camera; }, handlers };
+  return { send, taps, gestures, control, get camera() { return camera; }, handlers };
+}
+
+// The tutorial can dismiss its camera hint only after a real drag and zoom.
+{
+  const s = setup(0.4);
+  s.send('pointerdown', 1, 110, 120);
+  s.send('pointermove', 1, 140, 120);
+  s.send('pointerup', 1, 140, 120);
+  assert.deepEqual(s.gestures, ['pan']);
+  s.send('pointerdown', 1, 110, 120);
+  s.send('pointerdown', 2, 210, 120);
+  s.send('pointermove', 2, 240, 120);
+  assert.deepEqual(s.gestures, ['pan', 'zoom']);
+  s.control.destroy();
 }
 
 // A captain identity marker remains a real button; camera capture must not consume its click.

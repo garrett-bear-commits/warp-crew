@@ -1645,20 +1645,33 @@ button:focus-visible {
   pointer-events: auto;
 }
 .first-session-spotlight [data-spotlight-target] { position: relative; z-index: 1; }
-.distress-pair {
-  position: absolute;
-  z-index: 32;
-  top: max(152px, calc(120px + env(safe-area-inset-top)));
-  right: max(18px, env(safe-area-inset-right));
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  pointer-events: none;
+.distress-transmission {
+  gap: 10px;
+  border-color: #80544d;
+  background: linear-gradient(145deg, rgba(25, 34, 47, .98), rgba(8, 13, 23, .98));
 }
-.distress-pair img { display: block; width: 84px; height: 126px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 0 8px #b84d4d); }
-.trader-signal { display: grid; place-items: center; width: 64px; height: 64px; border: 2px solid #5ce1ff; background: #102431; color: #9ff0ff; font-size: 26px; border-radius: 50%; }
-.trader-signal small { font-size: 11px; letter-spacing: .04em; }
-.threat-line { width: 24px; height: 2px; border-top: 2px dashed #e96161; }
+.distress-heading { display: flex; align-items: center; gap: 8px; color: #ffd6aa; font-size: 12px; letter-spacing: .12em; }
+.distress-heading span:last-child { margin-left: auto; color: #ff8b7e; font-size: 11px; }
+.distress-dot { width: 8px; height: 8px; border-radius: 50%; background: #ff6a5c; box-shadow: 0 0 10px #f55; }
+.distress-scene {
+  position: relative;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 126px;
+  overflow: hidden;
+  border: 1px solid #3c5365;
+  background: radial-gradient(circle at 32% 50%, #193747 0, #101f31 36%, #090e19 76%);
+}
+.distress-scene::before { content: ''; position: absolute; inset: 0; opacity: .45; background-image: radial-gradient(#8ecade 1px, transparent 1px); background-size: 37px 41px; }
+.distress-scene img { position: relative; z-index: 1; display: block; object-fit: contain; image-rendering: pixelated; }
+.distress-trader { width: 92px; height: 120px; filter: drop-shadow(0 0 7px #50b3c6); }
+.distress-pirate { width: 78px; height: 112px; filter: drop-shadow(0 0 8px #b84d4d); }
+.distress-laser { position: absolute; z-index: 2; left: 38%; top: 47%; width: 29%; height: 3px; transform: rotate(-8deg); background: #ff796c; box-shadow: 0 0 10px #ff5348; animation: distress-fire 1.6s steps(2, end) infinite; }
+.distress-impact { position: absolute; z-index: 3; left: 35%; top: 43%; width: 12px; height: 12px; border: 2px solid #ffbb7f; transform: rotate(45deg); box-shadow: 0 0 12px #ff775a; animation: distress-hit 1.6s steps(2, end) infinite; }
+@keyframes distress-fire { 0%, 36%, 70%, 100% { opacity: .65; } 42%, 60% { opacity: 1; } }
+@keyframes distress-hit { 0%, 48%, 70%, 100% { opacity: 0; } 52%, 63% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .distress-laser, .distress-impact { animation: none; opacity: 1; } }
 .first-session-cue { max-width: 440px; margin-inline: auto; }
 .first-session-cue .primary { background: var(--intro-accent); color: #0b1018; }
 .first-session-cue[data-phase="fight"] { border-color: #b86a5b; }

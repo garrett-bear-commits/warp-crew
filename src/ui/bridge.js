@@ -132,8 +132,12 @@ function bindOnce(root, ctx) {
         return;
       }
       if (action === 'focus') root._wcFocusRoom?.();
-      else root._wcSetCamera?.(zoomAt(root._wcCamera, action === 'zoom-in' ? 1.25 : 0.8,
-        { x: root._wcCamera.viewport.w / 2, y: root._wcCamera.viewport.h / 2 }));
+      else {
+        const before = root._wcCamera.scale;
+        root._wcSetCamera?.(zoomAt(root._wcCamera, action === 'zoom-in' ? 1.25 : 0.8,
+          { x: root._wcCamera.viewport.w / 2, y: root._wcCamera.viewport.h / 2 }));
+        if (Math.abs(root._wcCamera.scale - before) > 0.005) markCameraPractice(root, 'zoom');
+      }
       return;
     }
     const captainOption = ev.target.closest('[data-captain-option]');
@@ -143,14 +147,12 @@ function bindOnce(root, ctx) {
       return;
     }
     if (ev.target.closest('[data-act="camera-cue-dismiss"]')) {
-      root._wcCameraCueDismissed = true;
-      root.querySelector('.camera-orientation-cue')?.remove();
+      dismissCameraCue(root);
       return;
     }
     if (ev.target.closest('[data-act="captain-inspect"]')) {
       root._wcCaptainCardOpen = true;
-      root._wcCameraCueDismissed = true;
-      root.querySelector('.camera-orientation-cue')?.remove();
+      dismissCameraCue(root);
       root.querySelector('[data-slot="overlays"]')?.insertAdjacentHTML('beforeend', renderCaptainInspect(root._wcPlayer));
       return;
     }
@@ -238,6 +240,7 @@ function bindCamera(root, ctx) {
     surface: stage,
     getCamera: () => root._wcCamera,
     setCamera: root._wcSetCamera,
+    onGesture: kind => markCameraPractice(root, kind),
     onTap: point => {
       if (root._wcBattleActive) return;
       const room = roomAt(point);
@@ -259,6 +262,22 @@ function bindCamera(root, ctx) {
     root._wcCameraResize = new ResizeObserver(() => root._wcSetCamera(resizeCamera(root._wcCamera, size())));
     root._wcCameraResize.observe(stage);
   }
+}
+
+function dismissCameraCue(root) {
+  root._wcCameraCueDismissed = true;
+  root.querySelector('.camera-orientation-cue')?.remove();
+  if (root._wcCameraCueKey) {
+    try { window.sessionStorage.setItem(root._wcCameraCueKey, '1'); } catch { /* storage can be unavailable */ }
+  }
+}
+
+function markCameraPractice(root, kind) {
+  if (root._wcPlayer?.tutorial?.script !== 5 || root._wcPlayer.tutorial.phase !== 'assign'
+    || root._wcCameraCueDismissed) return;
+  if (kind === 'pan') root._wcCameraPracticedPan = true;
+  if (kind === 'zoom') root._wcCameraPracticedZoom = true;
+  if (root._wcCameraPracticedPan && root._wcCameraPracticedZoom) dismissCameraCue(root);
 }
 
 function buildShell() {
@@ -332,6 +351,10 @@ function patchShell(root, ctx) {
   const chips = hudChips(player);
   const tabs = unlockedTabs(player);
   root._wcAttentionKey = `wc:crew-ready:${player.createdAt || 'existing'}:${player.dailyLoop?.dayKey || player.lastLoginDay || 'day'}`;
+  root._wcCameraCueKey = `wc:camera-cue:${player.createdAt || player.captainInstanceId || 'existing'}`;
+  if (!root._wcCameraCueDismissed) {
+    try { root._wcCameraCueDismissed = window.sessionStorage.getItem(root._wcCameraCueKey) === '1'; } catch { /* storage can be unavailable */ }
+  }
   let crewAttentionSeen = false;
   try { crewAttentionSeen = window.sessionStorage.getItem(root._wcAttentionKey) === '1'; } catch { /* storage can be unavailable */ }
   const firstSession = isTutorialActive(player) && player.tutorial?.script === 4;
@@ -518,7 +541,7 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
       weaponDisabled: player.activeEncounter.orders?.targetWeapons?.used === true
         && player.activeEncounter.enemy?.weaponDisabledThroughBeat >= player.activeEncounter.beat } });
   if (isHome && player.tutorial?.script === 5 && !player.tutorial.completed) {
-    return `${player.tutorial.phase === 'fight' && !player.activeEncounter ? `<div class="distress-pair" aria-label="Trader threatened by pirate scout"><span class="trader-signal" role="img" aria-label="Trader ship">◇<small>TRADER</small></span><span class="threat-line" aria-hidden="true"></span><img src="${escapeHtml(SPACE_ART.pirate)}" alt="Pirate scout ship" /></div>` : ''}${renderSessionGuidance(player, now)}${player.tutorial.phase === 'assign' && !cameraCueDismissed
+    return `${renderSessionGuidance(player, now)}${player.tutorial.phase === 'assign' && !cameraCueDismissed
       ? '<aside class="camera-orientation-cue" aria-label="Ship camera help"><p>Drag to look around. Pinch to zoom. Tap your captain.</p><button type="button" data-act="camera-cue-dismiss" aria-label="Dismiss camera help">Got it</button></aside>' : ''}
       ${captainCardOpen ? renderCaptainInspect(player) : ''}`;
   }
@@ -566,7 +589,7 @@ export function renderSessionGuidance(player, now = Date.now()) {
       return `<aside class="first-session-cue" aria-label="First assignment"><p>${escapeHtml(member.name)} is ready. Put ${escapeHtml(member.name)} at ${label}.</p><button class="primary" data-primary-pulse data-spotlight-target data-act="station-assign" data-id="${escapeHtml(member.instanceId)}" data-station="${station}">Assign ${escapeHtml(member.name)} to ${label}</button></aside>`;
     }
     if (phase === 'fight' && !player.activeEncounter) {
-      return '<aside class="first-session-cue first-session-spotlight" aria-label="Trader distress"><p>Pirates are firing on a trader. Help them.</p><button class="primary" data-primary-pulse data-spotlight-target data-act="tutorial-fight-start">Intercept</button></aside>';
+      return `<aside class="first-session-cue first-session-spotlight distress-transmission" aria-label="Trader distress"><div class="distress-heading"><span class="distress-dot" aria-hidden="true"></span><b>DISTRESS SIGNAL</b><span>LIVE</span></div><div class="distress-scene" role="img" aria-label="Pirate scout firing on a trader ship"><img class="distress-trader" src="${escapeHtml(SPACE_ART.trader)}" alt="" /><span class="distress-laser" aria-hidden="true"></span><span class="distress-impact" aria-hidden="true"></span><img class="distress-pirate" src="${escapeHtml(SPACE_ART.pirate)}" alt="" /></div><p>Pirates are firing on a trader. Help them.</p><button class="primary" data-primary-pulse data-spotlight-target data-act="tutorial-fight-start">Intercept</button></aside>`;
     }
     return '';
   }

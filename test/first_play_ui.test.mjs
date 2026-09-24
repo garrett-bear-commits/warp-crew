@@ -39,7 +39,12 @@ assert.match(cue, /data-id="bolt-1" data-station="shields"/);
 assert.equal((cue.match(/data-spotlight-target/g) || []).length, 1);
 assert.match(renderSessionGuidance({ ...assigned, tutorial: { ...assigned.tutorial, phase: 'fight' } }), /Pirates are firing on a trader\. Help them\./);
 const distress = { ...assigned, tutorial: { ...assigned.tutorial, phase: 'fight' } };
-assert.match(renderOverlays(distress, { isHome: true }), /distress-pair/);
+const distressScreen = renderOverlays(distress, { isHome: true });
+assert.match(distressScreen, /distress-transmission/);
+assert.match(distressScreen, /trader-freighter-topdown-v1\.png/);
+assert.match(distressScreen, /pirate-scout-topdown-v1\.png/);
+assert.equal((distressScreen.match(/data-act="tutorial-fight-start"/g) || []).length, 1);
+assert.doesNotMatch(distressScreen, /distress-pair|trader-signal/);
 assert.equal(isGuidedSpotlightBlocked(distress, 'select-room'), true);
 assert.equal(isGuidedSpotlightBlocked(distress, 'tutorial-fight-start'), false);
 

@@ -99,6 +99,7 @@ export const SPACE_ART = {
   planetIce: artUrl('art/space/planet-ice.png'),
   blackhole: artUrl('art/space/blackhole.png'),
   pirate: sliceUrl('pirate_scout'),
+  trader: artUrl('art/pixel/vertical-slice/trader-freighter-topdown-v1.png'),
   impact: artUrl('art/fx/impact.png'),
   laser: artUrl('art/fx/laser.png'),
   asteroids: [

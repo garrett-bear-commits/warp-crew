@@ -3,7 +3,7 @@ import { pan, unproject, zoomAt } from './shipCamera.js';
 const DRAG_THRESHOLD = 8;
 const CLICK_SUPPRESSION_MS = 350;
 
-export function createCameraController({ surface, getCamera, setCamera, onTap, onFocus }) {
+export function createCameraController({ surface, getCamera, setCamera, onTap, onFocus, onGesture }) {
   const pointers = new Map();
   let gestureMoved = false;
   let lastGesture = false;
@@ -38,6 +38,7 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
       if (gestureMoved) {
         const from = alreadyDragging ? previous : moving.start;
         setCamera(pan(getCamera(), next.x - from.x, next.y - from.y));
+        onGesture?.('pan');
       }
     } else if (pointers.size === 2) {
       const other = [...pointers.values()].find(pointer => pointer !== moving);
@@ -47,8 +48,10 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
       const newDistance = Math.hypot(next.x - other.current.x, next.y - other.current.y);
       const rect = surface.getBoundingClientRect();
       const anchor = { x: oldMid.x - rect.left, y: oldMid.y - rect.top };
-      const zoomed = zoomAt(getCamera(), oldDistance ? newDistance / oldDistance : 1, anchor);
+      const before = getCamera();
+      const zoomed = zoomAt(before, oldDistance ? newDistance / oldDistance : 1, anchor);
       setCamera(pan(zoomed, newMid.x - oldMid.x, newMid.y - oldMid.y));
+      if (Math.abs(zoomed.scale - before.scale) > 0.005) onGesture?.('zoom');
       gestureMoved = true;
     }
     moving.current = next;
@@ -63,6 +66,7 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
       && Math.hypot(event.clientX - ending.start.x, event.clientY - ending.start.y) >= DRAG_THRESHOLD) {
       gestureMoved = true;
       setCamera(pan(getCamera(), event.clientX - ending.start.x, event.clientY - ending.start.y));
+      onGesture?.('pan');
     }
     if (!cancelled) {
       const rect = surface.getBoundingClientRect();
