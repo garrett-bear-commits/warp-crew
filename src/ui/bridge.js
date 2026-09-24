@@ -307,7 +307,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now));
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
-  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon }));
+  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive }));
   setSlot(root, 'hotspots', firstSession ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView }));
@@ -424,7 +424,7 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
   if (isHome && player.activeEncounter) return renderShipEncounter(activeContractView);
   if (isHome && player.tutorial?.script === 4 && !player.tutorial.completed) return renderSessionGuidance(player, now);
   if (isHome && player.tutorial?.script === 4 && player.tutorial.completed && !player.activeContract
-    && (player.stats?.contractsCompleted || 0) <= 1) return `<aside class="first-session-cue" aria-label="Next job"><p>Next job is ready.</p><button class="primary" data-act="goto-contracts">See contracts</button><small>Away teams are on Missions when you're ready.</small></aside>`;
+    && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return `<aside class="first-session-cue" aria-label="Next job"><p>Next job is ready.</p><button class="primary" data-act="goto-contracts">See contracts</button><small>Away teams are on Missions when you're ready.</small></aside>`;
   const def = SHIPS[player.ship?.shipId] || SHIPS.sparrow;
   const room = ROOMS.find((r) => r.id === selectedRoom);
   const showHangar = isFeatureUnlocked(player, 'hangar');
@@ -485,9 +485,9 @@ function renderToast(toast) {
     </div>`;
 }
 
-function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon }) {
+function renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon, jestLive }) {
   if (!player.flags?.splashSeen) return renderSplash();
-  if (player.tutorial?.script === 4 && !player.tutorial.completed) return renderV4Modal(player);
+  if (player.tutorial?.script === 4 && !player.tutorial.completed) return renderV4Modal(player, { jestLive });
   if (cinematic) return renderCinematic(cinematic);
   if (confirmAbandon) return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Break contract"><h2>Break contract?</h2><p>No pending reward. Fuel already spent is not refunded.</p><button data-act="contract-abandon-confirm" data-revision="${escapeHtml(confirmAbandon.revision)}" data-acceptance-id="${escapeHtml(confirmAbandon.acceptanceId)}">Break contract</button><button data-act="contract-abandon-cancel">Keep contract</button></section></div>`;
   if (pendingCombat) {
@@ -520,7 +520,7 @@ function renderSplash() {
     </div>`;
 }
 
-function renderV4Modal(player) {
+export function renderV4Modal(player, { jestLive = false } = {}) {
   const phase = player.tutorial.phase;
   if (phase === 'name') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Name your ship"><h2>Cargo aboard. Third berth open.</h2><p>Name your ship.</p><label for="ship-name">Ship name</label><input id="ship-name" data-ship-name maxlength="48" value="${escapeHtml(player.ship?.name || 'Sparrow')}" autocomplete="off" /><button class="primary" data-act="tutorial-name">Continue</button></section></div>`;
   if (phase === 'pull') return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Welcome crew"><h2>One free crew member</h2><p>Guaranteed Uncommon. They join your open berth.</p><button class="primary" data-act="tutorial-welcome-pull">Meet your crew</button></section></div>`;
@@ -528,7 +528,7 @@ function renderV4Modal(player) {
     const member = player.crew.find(crew => crew.instanceId === player.tutorial.welcomeInstanceId);
     const suggestion = player.tutorial.suggestedRole === 'away' ? 'Good for a future Away team.'
       : player.tutorial.suggestedStation === 'weapons' ? 'Try them at Weapons.' : 'Try them at Shields.';
-    return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Jest sign-in"><h2>${escapeHtml(member?.name || 'Crew member')} joins the crew</h2><p>Uncommon ${escapeHtml(member?.role || 'crew')} · ${escapeHtml(suggestion)} You can change their job later.</p><p>Progress is saved on this device. Jest sign-in is optional.</p><button class="primary" data-act="tutorial-register-start">Sign in to Jest</button><button data-act="tutorial-register-skip">Continue to ship</button></section></div>`;
+    return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal" role="dialog" aria-modal="true" aria-label="Jest sign-in"><h2>${escapeHtml(member?.name || 'Crew member')} joins the crew</h2><p>Uncommon ${escapeHtml(member?.role || 'crew')} · ${escapeHtml(suggestion)} You can change their job later.</p><p>Progress is saved on this device. Jest sign-in is optional.</p>${jestLive ? '<button class="primary" data-act="tutorial-register-start">Sign in to Jest</button>' : '<p>Jest sign-in is unavailable in this preview.</p>'}<button class="${jestLive ? '' : 'primary'}" data-act="tutorial-register-skip">Continue to ship</button></section></div>`;
   }
   return '';
 }

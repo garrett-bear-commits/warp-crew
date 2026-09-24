@@ -6,6 +6,7 @@ import { prepareSession, sessionAction, sessionModels, persistSessionTransition 
 import { unlockedTabs, isFeatureUnlocked, defaultTutorial } from '../src/systems/tutorial.js';
 import { advanceTutorialV4 } from '../src/systems/tutorialV4.js';
 import { renderOverlays, renderSessionGuidance, renderCrew } from '../src/ui/bridge.js';
+import * as bridge from '../src/ui/bridge.js';
 import { contractShipSignals, renderShipFeedback } from '../src/ui/shipView.js';
 import { renderEncounter } from '../src/ui/contractView.js';
 
@@ -129,6 +130,11 @@ test('guided distress, Brace, claim, ship name, welcome crew and Skip survive ea
   const nextJob = renderOverlays(player, { isHome: true });
   assert.match(nextJob, /See contracts/);
   assert.match(nextJob, /Away teams/);
+  const stationSheet = renderOverlays(player, { isHome: true, selectedRoom: 'operations', fuel: {}, now });
+  assert.match(stationSheet, /class="room-sheet"/);
+  assert.match(stationSheet, /Operations/);
+  const hangarSheet = renderOverlays(player, { isHome: true, selectedRoom: 'hangar', fuel: {}, now });
+  assert.match(hangarSheet, /hangar-sheet/);
 });
 
 test('registration completion requires confirmed Jest registration; failed save publishes no reward', () => {
@@ -182,4 +188,30 @@ test('saved script-3 route and completed veteran retain their existing path', ()
   assert.equal(veteran.tutorial.script, 3);
   assert.equal(veteran.tutorial.completed, true);
   assert.equal(veteran.wallet.reputation, 23);
+});
+
+test('notification entry keeps every unfinished script-4 phase on the visible ship', () => {
+  assert.equal(typeof main.resolveEntryTab, 'function');
+  for (const phase of ['board', 'station', 'fight', 'claim', 'name', 'pull', 'register']) {
+    const player = { ...fresh(), tutorial: { ...fresh().tutorial, phase } };
+    for (const notification_type of ['fuel_full', 'daily_pull', 'expedition_done']) {
+      assert.equal(main.resolveEntryTab(player, { notification_type }, 'ship'), 'ship', `${phase}/${notification_type}`);
+    }
+  }
+  const completed = { ...fresh(), tutorial: { ...fresh().tutorial, phase: 'done', completed: true } };
+  assert.equal(main.resolveEntryTab(completed, { notification_type: 'fuel_full' }, 'ship'), 'missions');
+  assert.equal(main.resolveEntryTab(completed, { notification_type: 'daily_pull' }, 'ship'), 'crew');
+});
+
+test('local preview offers Skip without pretending its mock login is Jest registration', () => {
+  assert.equal(typeof bridge.renderV4Modal, 'function');
+  const player = fresh();
+  const registration = { ...player, tutorial: { ...player.tutorial, phase: 'register',
+    welcomeInstanceId: boltId(player), suggestedStation: 'shields' } };
+  const local = bridge.renderV4Modal(registration, { jestLive: false });
+  assert.match(local, /data-act="tutorial-register-skip"/);
+  assert.match(local, /Jest sign-in is unavailable in this preview/);
+  assert.doesNotMatch(local, /data-act="tutorial-register-start"/);
+  const live = bridge.renderV4Modal(registration, { jestLive: true });
+  assert.match(live, /data-act="tutorial-register-start"/);
 });

@@ -74,6 +74,13 @@ export function restoreTutorialPlayer(savedPlayer) {
   return migratePlayer(savedPlayer);
 }
 
+export function resolveEntryTab(currentPlayer, entry, currentTab = 'ship') {
+  if (currentPlayer?.tutorial?.script === 4 && isTutorialActive(currentPlayer)) return 'ship';
+  if (entry?.notification_type === 'daily_pull') return 'crew';
+  if (entry?.notification_type === 'expedition_done' || entry?.notification_type === 'fuel_full') return 'missions';
+  return currentTab;
+}
+
 function showToast(next) {
   toast = next || null;
   if (toastTimer) {
@@ -215,10 +222,8 @@ async function boot() {
   if (entry?.notification_type) {
     pushLog(`Opened from notification: ${entry.notification_type}`);
     captureEvent('open_from_notification', entry);
-    if (entry.notification_type === 'expedition_done') tab = 'missions';
-    if (entry.notification_type === 'daily_pull') tab = 'crew';
-    if (entry.notification_type === 'fuel_full') tab = 'missions';
   }
+  tab = resolveEntryTab(player, entry, tab);
 
   const artP = prepareCrewArt()
     .then(() => {
@@ -278,6 +283,7 @@ function render() {
     selectedCrewId,
     cinematic,
     platformStatus,
+    jestLive: isReal(),
     shopProducts,
     artReady,
     toast,
@@ -301,6 +307,7 @@ function render() {
 }
 
 async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
+  if (reason === 'first_session' && !isReal()) return { registered: false, unavailable: true };
   const jp = getJestPlayer();
   if (jp?.registered) {
     pushLog(`Already registered as ${jp.username || jp.playerId}.`);
