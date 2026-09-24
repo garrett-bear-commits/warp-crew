@@ -37,4 +37,34 @@ export const ART_VERTICAL_SLICE = Object.freeze({
     sha256: '2228ac36b4f36a6bfcc2999f425347590eaffa1448aac94c89fbda62db562334',
     status: 'provisional',
   }),
+  captain_cyborg: Object.freeze({
+    path: '/art/pixel/vertical-slice/captain-cyborg-portrait-v1.png', fallback: '/art/pixel/crew/rex.png',
+    width: 256, height: 256,
+    sha256: '40f580a158453d4081ea7a3d9e1a33274a39bcd11d1beb5dfeff8ec5001429a0',
+    status: 'qa-candidate',
+  }),
+  captain_gunner: Object.freeze({
+    path: '/art/pixel/vertical-slice/captain-gunner-portrait-v1.png', fallback: '/art/pixel/crew/jen.png',
+    width: 256, height: 256,
+    sha256: '6ad1541898d54cefa8b1a83d3fbfc5cc446ff980c5a31856a9db17559ec342e7',
+    status: 'qa-candidate',
+  }),
+  captain_alien: Object.freeze({
+    path: '/art/pixel/vertical-slice/captain-alien-portrait-v1.png', fallback: '/art/pixel/crew/nemi.png',
+    width: 256, height: 256,
+    sha256: '384a34f435ee3ceaaf5a4f8254d5428ff7d8ab2e3e31c11a14bc75c2c505bd7f',
+    status: 'qa-candidate',
+  }),
+  captain_droid: Object.freeze({
+    path: '/art/pixel/vertical-slice/captain-droid-portrait-v1.png', fallback: '/art/pixel/crew/bolt.png',
+    width: 256, height: 256,
+    sha256: 'c93f9ef7acbb3d309ece97f57e2a149bc5482897592cb11b859b21c9580e5064',
+    status: 'qa-candidate',
+  }),
+  pirate_scout: Object.freeze({
+    path: '/art/pixel/vertical-slice/pirate-scout-topdown-v1.png', fallback: '/art/space/pirate-scout.png',
+    width: 512, height: 768,
+    sha256: 'f0fb9394355bf89b2570b64fb4bf282446e77a706f15fc00020e6730be8345e9',
+    status: 'qa-candidate',
+  }),
 });

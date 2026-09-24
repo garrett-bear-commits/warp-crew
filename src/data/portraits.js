@@ -53,6 +53,10 @@ export const CREW_PORTRAITS = {
   merc_eclipse: artUrl('art/pixel/crew/eclipse.png'),
   merc_archon: artUrl('art/pixel/crew/archon.png'),
   merc_voidwake: artUrl('art/pixel/crew/voidwake.png'),
+  captain_cyborg: sliceUrl('captain_cyborg'),
+  captain_gunner: sliceUrl('captain_gunner'),
+  captain_alien: sliceUrl('captain_alien'),
+  captain_droid: sliceUrl('captain_droid'),
 };
 
 /** Use a successfully loaded fallback for every later portrait render. */
@@ -94,7 +98,7 @@ export const SPACE_ART = {
   planet: artUrl('art/space/planet.png'),
   planetIce: artUrl('art/space/planet-ice.png'),
   blackhole: artUrl('art/space/blackhole.png'),
-  pirate: artUrl('art/space/pirate-scout.png'),
+  pirate: sliceUrl('pirate_scout'),
   impact: artUrl('art/fx/impact.png'),
   laser: artUrl('art/fx/laser.png'),
   asteroids: [

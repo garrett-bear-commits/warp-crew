@@ -4,11 +4,16 @@ import { createHash } from 'node:crypto';
 import { ART_VERTICAL_SLICE } from '../src/data/artManifest.js';
 import { preloadEssentialAssets } from '../src/ui/essentialPreload.js';
 import { renderSplash } from '../src/ui/bridge.js';
-import { portraitFor, applyResolvedSlicePortraits } from '../src/data/portraits.js';
+import { portraitFor, applyResolvedSlicePortraits, SPACE_ART } from '../src/data/portraits.js';
+import { lookIdFor } from '../src/data/looks.js';
 
-assert.deepEqual(Object.keys(ART_VERTICAL_SLICE).sort(), ['bolt', 'kira', 'nemi', 'rex', 'splash', 'tink']);
+assert.deepEqual(Object.keys(ART_VERTICAL_SLICE).sort(), [
+  'bolt', 'captain_alien', 'captain_cyborg', 'captain_droid', 'captain_gunner',
+  'kira', 'nemi', 'pirate_scout', 'rex', 'splash', 'tink',
+]);
+const qaCandidates = new Set(['splash', 'captain_cyborg', 'captain_gunner', 'captain_alien', 'captain_droid', 'pirate_scout']);
 for (const [name, art] of Object.entries(ART_VERTICAL_SLICE)) {
-  assert.equal(art.status, name === 'splash' ? 'qa-candidate' : 'provisional', `${name} art review status`);
+  assert.equal(art.status, qaCandidates.has(name) ? 'qa-candidate' : 'provisional', `${name} art review status`);
   assert.ok(art.path.startsWith('/art/'));
   assert.ok(art.fallback.startsWith('/art/'));
   assert.ok(art.width > 0 && art.height > 0);
@@ -16,6 +21,28 @@ for (const [name, art] of Object.entries(ART_VERTICAL_SLICE)) {
   const bytes = await readFile(file);
   assert.equal(createHash('sha256').update(bytes).digest('hex'), art.sha256, `${name} source hash`);
   await readFile(new URL(`../public${art.fallback}`, import.meta.url));
+}
+
+for (const id of ['captain_cyborg', 'captain_gunner', 'captain_alien', 'captain_droid']) {
+  const art = ART_VERTICAL_SLICE[id];
+  assert.ok(art, `${id} has canonical art`);
+  assert.notEqual(portraitFor(id), portraitFor('merc_rex'), `${id} must not silently become Rex art`);
+  assert.equal(portraitFor(id), art.path, `${id} portrait uses its manifest export`);
+  assert.ok(art.path.startsWith('/art/pixel/vertical-slice/'));
+  assert.equal(art.width, art.height, `${id} portrait is square`);
+  const bytes = await readFile(new URL(`../public${art.path}`, import.meta.url));
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), art.sha256, `${id} source hash`);
+  assert.ok(art.fallback.startsWith('/art/'));
+  await readFile(new URL(`../public${art.fallback}`, import.meta.url));
+}
+
+assert.equal(lookIdFor('captain_alien', 'scout'), 'captain_alien');
+assert.equal(lookIdFor('captain_droid', 'engineer'), 'captain_droid');
+assert.equal(SPACE_ART.pirate, ART_VERTICAL_SLICE.pirate_scout.path);
+for (const id of ['captain_alien', 'captain_droid']) {
+  assert.equal(ART_VERTICAL_SLICE[`${id}_walk`], undefined, `${id} rejected sheet is not mapped`);
+  const file = new URL(`../public/art/pixel/vertical-slice/${id.replace('_', '-')}-walk-v1.png`, import.meta.url);
+  await assert.rejects(readFile(file), { code: 'ENOENT' }, `${id} rejected sheet is not installed`);
 }
 
 const settled = [];
