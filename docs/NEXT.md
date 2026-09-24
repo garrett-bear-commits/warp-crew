@@ -5,8 +5,8 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 
 ## Captain-first package — local QA gate
 
-- [x] Run the script-5 first-play, saved script-4 Brace, next normal pirate job, in-progress and completed reload, and corrupt encounter retry in isolated local Chrome at 390×844, 360×800, and 390×844 reduced motion. [Evidence and limits](qa/2026-09-24-captain-first-play-qa.md). The `?fresh=1` link clears once; refreshing after the first hire preserves progress.
-- [x] Fix and regress the v5 corrupt-fight double fuel charge and the normal-fight 18px threat copy found by the local QA gate.
+- [x] Run the post-repair `867c142` script-5 first-play, saved script-4 Brace, next normal pirate job, in-progress and completed reload, corrupt encounter/contract retry, missing-hire recovery, and duplicate welcome-history guard in isolated local Chrome at 390×844, 360×800, and 390×844 reduced motion. [Evidence and limits](qa/2026-09-24-captain-first-play-qa.md). The `?fresh=1` link clears once; refreshing after the first hire preserves progress. One earlier v4 browser attempt timed out; its cause is unproven, while the instrumented full rerun passed.
+- [x] Fix and regress the v5 corrupt-fight and malformed-contract double fuel charge, missing first-hire dead end, duplicate welcome pull, and normal-fight 18px threat copy. Distinct static alien/droid markers resolve the generic cyan fallback, but not final nonhuman walking art.
 - [ ] Complete the bounded read-only audit of the exact captain-first diff and resolve any reproduced findings.
 - [ ] Prepare a provenance-checked Pages QA build and live smoke only after the audit disposition. No Pages build was published in this gate.
 - [ ] Get Garrett's physical iPhone and Android play/readability pass. Local Chrome emulation is not device acceptance.

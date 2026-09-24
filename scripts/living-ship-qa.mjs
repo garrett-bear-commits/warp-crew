@@ -48,6 +48,7 @@ async function verifyBuild() {
 const provenance = await verifyBuild();
 const browser = await (await fetch(`${cdpUrl}/json/version`)).json();
 const report = { browser: browser.Browser, pageUrl, provenance, screens: [], checks: {} };
+let welcomeFixture = null;
 const arrivalRoute = routeToWorkAnchor(SPARROW_LAYOUT.anchors.airlock, 'workshop');
 assert.equal(arrivalRoute.ok, true, 'first hire must have a walkable airlock-to-workshop route');
 assert.ok(arrivalRoute.points.some(point => point.via === 'door-enter' && point.room === 'workshop'), 'first hire route must enter the workshop through its door');
@@ -252,6 +253,7 @@ async function play(width, height, reduced = false) {
     assert.equal(register.save.crew.length, 3);
     assert.equal(register.save.pulls, 1);
     assert.match(register.text, /Uncommon/i);
+    if (width === 390 && !reduced) welcomeFixture = await page.evaluate("JSON.parse(localStorage.getItem('warpcrew.save.v2')).player");
     await page.click('[data-act="tutorial-register-skip"]');
     await page.until('Boolean(document.querySelector(\'[aria-label="Next job"]\'))');
     const nextJob = await page.capture('next-job');
@@ -362,6 +364,8 @@ async function legacyV4() {
     assert.equal(brace.save.encounterVersion, 1);
     assert.equal(brace.save.targetUsed, undefined);
     await page.click('[data-act="encounter-order"][data-order="brace"]');
+    await page.until(`JSON.parse(localStorage.getItem('warpcrew.save.v2')).player.activeEncounter?.orders?.brace?.used === true`, 3000);
+    await page.capture('legacy-v4-ordered');
     await page.until('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))', 30000);
     const won = await page.capture('legacy-v4-win');
     assert.equal(won.save.braceUsed, true);
@@ -381,7 +385,7 @@ async function legacyV4() {
   } finally { await page.close(); }
 }
 
-async function corruptV5() {
+async function corruptV5(kind = 'seed') {
   const page = await openPage(390, 844);
   try {
     const now = Date.UTC(2030, 8, 23, 12);
@@ -400,12 +404,14 @@ async function corruptV5() {
     }
     const spentFuel = player.wallet.fuel;
     const originalCredits = player.wallet.credits;
-    player = { ...player, activeEncounter: { ...player.activeEncounter, seed: player.activeEncounter.seed + 1 } };
+    player = kind === 'seed'
+      ? { ...player, activeEncounter: { ...player.activeEncounter, seed: player.activeEncounter.seed + 1 } }
+      : { ...player, activeContract: { ...player.activeContract, revision: 'bad' } };
     await page.until('Boolean(document.querySelector(\'.wc-shell\'))');
     await page.evaluate(`localStorage.setItem('warpcrew.save.v2', ${JSON.stringify(JSON.stringify({ player, savedAt: Date.now() }))})`);
     await page.send('Page.navigate', { url: await page.evaluate('location.href') });
     await page.until('Boolean(document.querySelector(\'[data-act="tutorial-fight-start"]\'))');
-    const recovered = await page.capture('corrupt-recovery');
+    const recovered = await page.capture(kind === 'seed' ? 'corrupt-recovery' : 'corrupt-contract-recovery');
     assert.equal(recovered.save.script, 5);
     assert.equal(recovered.save.phase, 'fight');
     assert.equal(await page.evaluate('Boolean(document.querySelector(\'[data-act="contract-claim"]\'))'), false);
@@ -413,13 +419,85 @@ async function corruptV5() {
     assert.equal(recovered.save.fuel, spentFuel);
     await page.click('[data-act="tutorial-fight-start"]');
     await page.until('Boolean(document.querySelector(\'[data-act="encounter-order"][data-order="target_weapons"]\'))');
-    const retry = await page.capture('corrupt-retry');
+    const retry = await page.capture(kind === 'seed' ? 'corrupt-retry' : 'corrupt-contract-retry');
     assert.equal(retry.save.fuel, spentFuel, 'guided retry cannot charge launch fuel twice');
     assert.equal(retry.save.encounterVersion, 2);
-    report.checks.corruptV5 = { recoveredToFight: true, fuelBeforeRetry: spentFuel, fuelAfterRetry: retry.save.fuel,
+    report.checks[kind === 'seed' ? 'corruptV5' : 'corruptContractRevision'] = { recoveredToFight: true, fuelBeforeRetry: spentFuel, fuelAfterRetry: retry.save.fuel,
       creditsBeforeRetry: originalCredits, creditsAfterRetry: retry.save.credits,
       fuelChargedOnce: true, creditsUnchanged: true,
       rawCorruptSaveRemainsUntilRetry: recovered.save.contract === 'confrontation' };
+  } finally { await page.close(); }
+}
+
+async function missingHireV5() {
+  const page = await openPage(390, 844);
+  try {
+    const now = Date.UTC(2030, 8, 23, 12);
+    let player = prepareSession(createNewPlayer({ now, rng: () => 0.1 }), now);
+    for (const [action, data] of [
+      ['splash-dismiss', {}],
+      ['captain-choose', { templateId: 'captain_droid', name: 'QA Unit' }],
+      ['tutorial-first-hire', {}],
+    ]) {
+      const result = sessionAction(player, {}, action, data, { now, rng: () => 0.1 });
+      assert.equal(result.ok, true, `missing-hire fixture ${action}: ${result.reason}`);
+      player = result.player;
+    }
+    const originalFuel = player.wallet.fuel;
+    player = { ...player, crew: player.crew.filter(member => member.isCaptain) };
+    await page.until('Boolean(document.querySelector(\'.wc-shell\'))');
+    await page.evaluate(`localStorage.setItem('warpcrew.save.v2', ${JSON.stringify(JSON.stringify({ player, savedAt: Date.now() }))})`);
+    await page.send('Page.navigate', { url: await page.evaluate('location.href') });
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-first-hire"]\'))');
+    const recovered = await page.capture('missing-hire-recovery');
+    assert.equal(recovered.tutorial, 'hire');
+    assert.equal(recovered.save.crew.length, 1);
+    assert.equal(recovered.save.fuel, originalFuel);
+    await page.click('[data-act="tutorial-first-hire"]');
+    await page.until('Boolean(document.querySelector(\'.first-session-cue [data-act="station-assign"]\'))');
+    const rehired = await page.capture('missing-hire-rehired');
+    assert.equal(rehired.save.phase, 'assign', 're-hire must durably advance the repaired save');
+    assert.equal(rehired.save.crew.length, 2);
+    assert.equal(rehired.save.crew.filter(member => member.captain).length, 1);
+    assert.equal(await page.evaluate('Boolean(document.querySelector(\'[data-act="tutorial-first-hire"]\'))'), false);
+    await page.click('.first-session-cue [data-act="station-assign"][data-station="weapons"]');
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-fight-start"]\'))');
+    const assigned = await page.capture('missing-hire-assigned');
+    assert.equal(assigned.save.phase, 'fight');
+    assert.equal(assigned.save.fuel, originalFuel);
+    report.checks.missingHireV5 = { renderedRecoveryPhase: recovered.tutorial, rawCorruptPhaseBeforeWrite: recovered.save.phase,
+      crewAfterRehire: rehired.save.crew.length,
+      captainCount: rehired.save.crew.filter(member => member.captain).length,
+      fuelBeforeLaunch: assigned.save.fuel, duplicateHireAction: false, reachedFight: true };
+  } finally { await page.close(); }
+}
+
+async function duplicateWelcomeV5() {
+  assert.ok(welcomeFixture, 'completed first-run pull fixture missing');
+  const page = await openPage(390, 844);
+  try {
+    const player = { ...welcomeFixture, tutorial: { ...welcomeFixture.tutorial,
+      phase: 'pull', welcomePulled: false, welcomeInstanceId: null } };
+    await page.until('Boolean(document.querySelector(\'.wc-shell\'))');
+    await page.evaluate(`localStorage.setItem('warpcrew.save.v2', ${JSON.stringify(JSON.stringify({ player, savedAt: Date.now() }))})`);
+    await page.send('Page.navigate', { url: await page.evaluate('location.href') });
+    await page.until('Boolean(document.querySelector(\'[data-act="tutorial-register-skip"]\'))');
+    const recovered = await page.capture('welcome-history-recovery');
+    assert.equal(recovered.tutorial, 'register');
+    assert.equal(recovered.save.pulls, 1);
+    assert.equal(recovered.save.crew.length, 3);
+    assert.equal(await page.evaluate('Boolean(document.querySelector(\'[data-act="tutorial-welcome-pull"]\'))'), false);
+    await page.click('[data-act="tutorial-register-skip"]');
+    await page.send('Page.navigate', { url: await page.evaluate('location.href') });
+    await page.until('Boolean(document.querySelector(\'[aria-label="Next job"]\'))');
+    const reloaded = await page.capture('welcome-history-reload');
+    assert.equal(reloaded.save.phase, 'done');
+    assert.equal(reloaded.save.pulls, 1);
+    assert.equal(reloaded.save.crew.length, 3);
+    report.checks.duplicateWelcomeV5 = { renderedRecoveryPhase: recovered.tutorial,
+      rawCorruptPhaseBeforeWrite: recovered.save.phase,
+      pullsAfterRecovery: recovered.save.pulls, pullsAfterReload: reloaded.save.pulls,
+      crewAfterReload: reloaded.save.crew.length, duplicatePullAction: false };
   } finally { await page.close(); }
 }
 
@@ -428,6 +506,9 @@ await play(360, 800);
 await play(390, 844, true);
 await legacyV4();
 await corruptV5();
+await corruptV5('contract');
+await missingHireV5();
+await duplicateWelcomeV5();
 await writeFile(new URL('captain-first-play-qa.json', captureDir), `${JSON.stringify(report, null, 2)}\n`);
 console.log(JSON.stringify({ browser: report.browser, screens: report.screens.length,
   saves: Object.fromEntries(Object.entries(report).filter(([key]) => key.startsWith('save-'))) }, null, 2));
