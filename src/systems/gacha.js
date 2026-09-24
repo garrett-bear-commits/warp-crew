@@ -14,7 +14,7 @@ export const RESERVE_CAP = 8;
 export const LUCK_CAP = 15;
 
 export function defaultGacha() {
-  return { pityRare: 0, pityLegend: 0, luck: 0, pulls: 0, lastRarity: null };
+  return { pityRare: 0, pityLegend: 0, luck: 0, pulls: 0, lastRarity: null, history: [] };
 }
 
 export function rarityWeights(reputation = 0, luck = 0) {
@@ -77,7 +77,7 @@ function rarityRank(id) {
   return RARITY[id]?.rank || 1;
 }
 
-function applyPity(rarity, gacha, weights) {
+function applyPity(rarity, gacha, weights, rng = Math.random) {
   const g = { ...defaultGacha(), ...(gacha || {}) };
   let w = { ...weights };
   if (g.pityRare >= PITY.rareSoft) {
@@ -92,7 +92,7 @@ function applyPity(rarity, gacha, weights) {
     w.apex *= extra;
   }
   let pick = rarity;
-  if (!pick) pick = pickRarity(w);
+  if (!pick) pick = pickRarity(w, rng);
   if (g.pityRare + 1 >= PITY.rareHard && rarityRank(pick) < 3) pick = 'rare';
   if (g.pityLegend + 1 >= PITY.legendHard && rarityRank(pick) < 5) pick = 'legendary';
   return pick;
@@ -107,13 +107,13 @@ export function pullMerc({
   minRarity = null,
 } = {}) {
   const weights = rarityWeights(reputation, luck);
-  let rarity = guaranteedRarity || applyPity(null, gacha, weights);
+  let rarity = guaranteedRarity || applyPity(null, gacha, weights, rng);
   if (minRarity && rarityRank(rarity) < rarityRank(minRarity)) rarity = minRarity;
   const pool = CREW_CATALOG.filter((c) => c.rarity === rarity);
   const fallback = CREW_CATALOG.filter((c) => c.rarity === 'common');
   const list = pool.length ? pool : fallback;
-  const template = list[Math.floor(rng() * list.length)];
-  const instance = createCrewInstance(template.id);
+  const template = list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
+  const instance = createCrewInstance(template.id, { rng });
   return { instance, rarity, template };
 }
 
@@ -133,6 +133,16 @@ export function tickPity(gacha, rarity) {
     g.pityLegend = (g.pityLegend || 0) + 1;
   }
   return g;
+}
+
+/** The actual roster outcome is recorded for regular and welcome draws alike. */
+export function recordPull(gacha, instance, kind, source) {
+  const history = Array.isArray(gacha?.history) ? gacha.history : [];
+  return {
+    ...gacha,
+    history: [...history, { templateId: instance.templateId, instanceId: instance.instanceId,
+      rarity: instance.rarity, kind, source }].slice(-40),
+  };
 }
 
 export function luckCreditCost(luck = 0) {
@@ -337,9 +347,10 @@ export function pullOnce(player, { gems = false, free = false, rng = Math.random
   });
   next = { ...next, gacha: tickPity(gacha, rarity) };
   const applied = applyPullToRoster(next, instance);
+  const source = free ? 'daily' : gems ? 'gems' : 'credits';
   return {
     ok: true,
-    player: applied.player,
+    player: { ...applied.player, gacha: recordPull(applied.player.gacha, applied.instance, applied.kind, source) },
     instance: applied.instance,
     rarity,
     kind: applied.kind,
@@ -368,7 +379,7 @@ export function pullTen(player, { rng = Math.random } = {}) {
     if (rarityRank(rarity) >= 3) rareHit = true;
     next = { ...next, gacha: tickPity(gacha, rarity) };
     const applied = applyPullToRoster(next, instance);
-    next = applied.player;
+    next = { ...applied.player, gacha: recordPull(applied.player.gacha, applied.instance, applied.kind, 'gems10') };
     results.push({ rarity, kind: applied.kind, instance: applied.instance, sold: applied.sold });
   }
   return { ok: true, player: next, results, cost };

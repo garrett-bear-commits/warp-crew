@@ -2,7 +2,8 @@
 import { createCrewInstance, recomputeCrew } from '../data/crewRoster.js';
 import { starterShip, getShipDef } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
-import { defaultTutorial, migrateTutorialV3 } from './tutorial.js';
+import { migrateTutorialV3 } from './tutorial.js';
+import { defaultTutorialV4, normalizeTutorialV4 } from './tutorialV4.js';
 import { normalizeContractState } from './contractState.js';
 import { NODES } from '../data/sectors.js';
 import { encounterById } from './combat.js';
@@ -12,11 +13,12 @@ import { clampFuel } from './economy.js';
 import { normalizeAssignments } from './stations.js';
 import { normalizeEncounterState } from './encounterState.js';
 
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
 
 function ensureShip(ship) {
   const base = starterShip();
   const next = { ...base, ...(ship || {}) };
+  if (typeof next.name !== 'string' || !next.name.trim()) next.name = 'Sparrow';
   next.systems = {
     engines: 1,
     shields: 1,
@@ -72,7 +74,7 @@ export function createNewPlayer({ captainName = 'Captain', now = Date.now(), rng
     dailyPullAvailable: true,
     stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {}, contractsCompleted: 0, contractsByProfile: { reliable: 0, risky: 0, strange: 0 } },
     story: { chapter: 0, eclipseIntro: false },
-    tutorial: defaultTutorial(),
+    tutorial: defaultTutorialV4(),
   };
 }
 
@@ -85,7 +87,9 @@ export function migratePlayer(player) {
   let crew = Array.isArray(player.crew) ? player.crew.map((c) => recomputeCrew(c)) : base.crew;
   let reserve = Array.isArray(player.reserve) ? player.reserve.map((c) => recomputeCrew(c)) : [];
   let crewSlots = player.crewSlots ?? base.crewSlots;
-  const tutorial = migrateTutorialV3(player).tutorial;
+  const tutorial = player.tutorial?.script === 4
+    ? normalizeTutorialV4(player.tutorial)
+    : migrateTutorialV3(player).tutorial;
 
   const veteran = (player.version || 0) < SAVE_VERSION && (jumps > 0 || combats > 0);
   const flags = { ...(player.flags || {}) };
@@ -106,7 +110,7 @@ export function migratePlayer(player) {
     crew,
     reserve,
     stationAssignments: normalizeAssignments({ crew, reserve, stationAssignments: player.stationAssignments }),
-    gacha: { ...defaultGacha(), ...(player.gacha || {}) },
+    gacha: { ...defaultGacha(), ...(player.gacha || {}), history: Array.isArray(player.gacha?.history) ? [...player.gacha.history] : [] },
     crewSlots,
     stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) }, contractsByProfile: { ...base.stats.contractsByProfile, ...(player.stats?.contractsByProfile || {}) } },
     dailyLoop: { ...base.dailyLoop, ...(player.dailyLoop || {}) },

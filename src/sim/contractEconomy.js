@@ -2,7 +2,7 @@ import { createNewPlayer, tickCrewStatus } from '../systems/player.js';
 import { prepareSession, sessionAction, sessionModels } from '../systems/sessionLoop.js';
 import { claimFuelRegen } from '../systems/fuel.js';
 import { applyDailyLogin } from '../systems/daily.js';
-import { isTutorialActive } from '../systems/tutorial.js';
+import { defaultTutorial, isTutorialActive } from '../systems/tutorial.js';
 import { resolveExpedition, applyExpeditionResult, visiblePlanets } from '../systems/expedition.js';
 import { nextUpgradeCost, upgradeSystem, SHIP_SYSTEMS } from '../systems/hangar.js';
 import { markDailyMilestone } from '../systems/dailyLoop.js';
@@ -53,7 +53,9 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
   const rules = STRATEGIES[strategy];
   if (!rules) throw new Error(`Unknown strategy: ${strategy}`);
   const rng = createSeededRng(seed);
-  let player = createNewPlayer({ now: startAt, rng });
+  // Preserve the approved script-3 baseline for historical 30-day comparisons.
+  // Script-4 first-session economics need a dedicated simulation after UI wiring.
+  let player = { ...createNewPlayer({ now: startAt, rng }), version: 7, tutorial: defaultTutorial() };
   let ui = {};
   const run = { seed, strategy, startAt, policy: { ads: false, purchases: false, skips: false, forceComplete: false },
     initialWallet: wallet(player), days: [], totals: { sources: zero(), sinks: zero(), rewardsBySource: {}, costsByAction: {} } };

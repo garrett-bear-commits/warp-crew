@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { createCrewInstance } from '../src/data/crewRoster.js';
-import { TUTORIAL_SCRIPT, currentTutorialStep } from '../src/systems/tutorial.js';
+import { TUTORIAL_SCRIPT, defaultTutorial, currentTutorialStep } from '../src/systems/tutorial.js';
 import { ensureContractBoard, acceptContract, previewContractAction, commitContractAction, normalizeContractState } from '../src/systems/contracts.js';
 import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 
 // Catches replaying completed tutorials, resetting paid/player data, and
 // assigning the wrong continuation phase when a version-two save is loaded.
 assert.equal(TUTORIAL_SCRIPT, 3, 'script version');
-const fresh = createNewPlayer();
+const fresh = { ...createNewPlayer(), version: 7, tutorial: defaultTutorial() };
 assert.equal(fresh.version, 7, 'save version');
 assert.equal(fresh.tutorial.phase, 'distress');
 assert.equal(fresh.contractBoard, null);

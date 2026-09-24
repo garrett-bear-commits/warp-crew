@@ -4,7 +4,7 @@ import { prepareSession, sessionModels, sessionAction, persistSessionTransition,
 import { renderActiveContract, renderCombatOrders } from '../src/ui/contractView.js';
 import { renderSessionGuidance, renderRoomSheet } from '../src/ui/bridge.js';
 import { ROOMS } from '../src/data/starterShip.js';
-import { ordersStep, sessionHint } from '../src/systems/tutorial.js';
+import { defaultTutorial, ordersStep, sessionHint } from '../src/systems/tutorial.js';
 
 // A bad saved route must not enter the acceptance transition, and live modifiers
 // must change the displayed band without replacing the saved route identity.
@@ -27,7 +27,7 @@ assert.notEqual(sessionModels(injuredBand, {}, fixedNow + 1000).activeContractVi
 
 // Catches production actions that skip tutorial steps, lose rendered identity, auto-pick
 // a different away party, or publish effects before a failed local save.
-let player = prepareSession(createNewPlayer());
+let player = prepareSession({ ...createNewPlayer(), version: 7, tutorial: defaultTutorial() });
 let ui = { missionView: 'contracts' };
 const events = [];
 function act(name, data = {}, options = {}) {

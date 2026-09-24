@@ -5,6 +5,7 @@ import { ensureContractBoard, acceptContract, previewContractAction, commitContr
 import { prepareSession, sessionAction, sessionModels, persistSessionTransition } from '../src/systems/sessionLoop.js';
 import { NODES } from '../src/data/sectors.js';
 import { encounterById } from '../src/systems/combat.js';
+import { defaultTutorial } from '../src/systems/tutorial.js';
 
 const now = new Date(2026, 8, 21, 12).getTime();
 const reload = player => prepareSession(migratePlayer(JSON.parse(JSON.stringify(player))), now);
@@ -29,7 +30,7 @@ function accepted(profile = 'risky', destinationId = null, day = now) {
   return acceptContract(player, offer.id).player;
 }
 function tutorialAt(stage) {
-  let player = prepareSession(createNewPlayer(), now);
+  let player = prepareSession({ ...createNewPlayer(), version: 7, tutorial: defaultTutorial() }, now);
   for (const [act, data] of [['contract-review', { offer: 'offer_tutorial_distress' }], ['contract-accept', { offer: 'offer_tutorial_distress' }]]) {
     player = sessionAction(player, {}, act, data, { now }).player;
   }
@@ -153,7 +154,7 @@ for (const profile of [undefined, 'unknown_profile', 'risky']) {
 test('invalid normal contracts at the tutorial destination do not reconcile tutorial phase or fuel', () => {
   for (const profile of [undefined, 'unknown_profile', 'distress']) {
     let player = accepted('risky', 'lane_a');
-    player.tutorial = { ...createNewPlayer().tutorial, phase: 'away', firstTravel: true, firstCombat: true, hiredThird: true };
+    player.tutorial = { ...defaultTutorial(), phase: 'away', firstTravel: true, firstCombat: true, hiredThird: true };
     const tutorial = structuredClone(player.tutorial);
     const wallet = { ...player.wallet };
     player.activeContract.profile = profile;

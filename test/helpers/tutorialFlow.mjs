@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createNewPlayer, migratePlayer } from '../../src/systems/player.js';
-import { PHASES, currentTutorialStep, noteTutorialEvent, grantTutorialRecruit, isFeatureUnlocked, advanceTutorial, beginJoinPrompt } from '../../src/systems/tutorial.js';
+import { PHASES, defaultTutorial, currentTutorialStep, noteTutorialEvent, grantTutorialRecruit, isFeatureUnlocked, advanceTutorial, beginJoinPrompt } from '../../src/systems/tutorial.js';
 import { tutorialDistressOffer, reviewContractOffer, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract, ensureContractBoard } from '../../src/systems/contracts.js';
 import { previewExpedition, startExpedition } from '../../src/systems/expedition.js';
 
@@ -12,7 +12,7 @@ export function completeFreshTutorial() {
     assert.notEqual(phase.modal, 'join');
     assert.doesNotMatch([phase.title, phase.body, phase.cta].join(' '), /Register|gems|shop|buy|another device|cross.device/i);
   }
-  let player = createNewPlayer();
+  let player = { ...createNewPlayer(), version: 7, tutorial: defaultTutorial() };
   const initialWallet = { ...player.wallet };
   function phase(expected) {
     assert.equal(player.tutorial.phase, expected);
