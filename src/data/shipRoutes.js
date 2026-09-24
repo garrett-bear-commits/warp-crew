@@ -1,6 +1,6 @@
 // @ts-nocheck
 /** Authored door graph plus collision-checked walking segments. */
-import { DOOR_ROUTE_GRAPH, SPARROW_LAYOUT } from './starterShip.js';
+import { DOOR_ROUTE_GRAPH, SPARROW_LAYOUT, roomAtExact } from './starterShip.js';
 import { findPath, isWalkablePct } from './navGrid.js';
 
 const disconnected = () => ({ ok: false, reason: 'disconnected' });
@@ -48,14 +48,17 @@ function pathSegment(from, to, room, via, nextRoom) {
 
 /** Return a walk to the room's work marker, or an explicit disconnected result. */
 export function routeToWorkAnchor(from, roomId) {
-  const source = SPARROW_LAYOUT.rooms.find((room) => room.id === from?.room);
   const target = SPARROW_LAYOUT.rooms.find((room) => room.id === roomId);
-  if (!source || !target || !Number.isFinite(from.x) || !Number.isFinite(from.y)) return disconnected();
+  if (!target || !Number.isFinite(from?.x) || !Number.isFinite(from?.y)) return disconnected();
   if (!isWalkablePct(from.x, from.y)) return disconnected();
+  // An actor keeps its last room identity while crossing the hall. The
+  // physical position is authoritative when selecting the next doorway.
+  const source = roomAtExact(from.x, from.y);
+  const sourceId = source?.id || 'spine';
 
   const points = [];
   let current = { x: from.x, y: from.y };
-  let room = source.id;
+  let room = source?.id || null;
   const append = (destination, via = null, nextRoom = room) => {
     const segment = pathSegment(current, destination, room, via, nextRoom);
     if (!segment) return false;
@@ -65,14 +68,17 @@ export function routeToWorkAnchor(from, roomId) {
     return true;
   };
 
-  if (source.id !== target.id) {
-    const graphPath = graphRoute(source.id, target.id);
-    if (!graphPath || graphPath.length !== 3 || graphPath[1] !== 'spine') return disconnected();
-    const sourceDoor = SPARROW_LAYOUT.doors.find((door) => door.roomId === source.id);
+  if (sourceId !== target.id) {
+    const graphPath = graphRoute(sourceId, target.id);
+    if (!graphPath || graphPath.at(-2) !== 'spine') return disconnected();
     const targetDoor = SPARROW_LAYOUT.doors.find((door) => door.roomId === target.id);
-    if (!sourceDoor || !targetDoor) return disconnected();
-    if (!append(sourceDoor.room, 'door-exit')) return disconnected();
-    if (!append(sourceDoor.spine)) return disconnected();
+    if (!targetDoor) return disconnected();
+    if (source) {
+      const sourceDoor = SPARROW_LAYOUT.doors.find((door) => door.roomId === source.id);
+      if (!sourceDoor || graphPath.length !== 3) return disconnected();
+      if (!append(sourceDoor.room, 'door-exit')) return disconnected();
+      if (!append(sourceDoor.spine, null, null)) return disconnected();
+    }
     if (!append(targetDoor.spine)) return disconnected();
     if (!append(targetDoor.room, 'door-enter', target.id)) return disconnected();
   }

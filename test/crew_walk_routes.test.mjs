@@ -50,4 +50,17 @@ assert.deepEqual(
   { ok: false, reason: 'disconnected' },
 );
 
+// The actor still calls its last room "bridge" while crossing the spine.
+// Returning to Bridge must enter its authored doorway from the hall.
+const fromSpine = routeToWorkAnchor({ x: 50, y: 45, room: 'bridge' }, 'bridge');
+assert.equal(fromSpine.ok, true);
+assert.ok(fromSpine.points.some((point) => point.via === 'door-enter' && point.room === 'bridge'));
+assertWalkableRoute({ x: 50, y: 45, room: 'bridge' }, 'bridge', fromSpine);
+
+// Physical room geometry overrides a stale room hint during mid-walk rerouting.
+const staleRoom = routeToWorkAnchor({ x: 56, y: 84, room: 'bridge' }, 'workshop');
+assert.equal(staleRoom.ok, true);
+assert.ok(staleRoom.points.some((point) => point.via === 'door-exit' && point.room === 'engineering'));
+assertWalkableRoute({ x: 56, y: 84, room: 'engineering' }, 'workshop', staleRoom);
+
 console.log('crew_walk_routes.test.mjs OK');

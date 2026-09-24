@@ -44,7 +44,7 @@ import {
   skipOrders,
 } from './systems/tutorial.js';
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
-import { departureActionBlocked, holdCrewForDeparture, moveCrewToDeparture, holdCrewForArrival, moveCrewToArrival, stopCrewSim } from './ui/crewWalk.js';
+import { cancelCrewDeparture, holdCrewForDeparture, moveCrewToDeparture, holdCrewForArrival, moveCrewToArrival, stopCrewSim } from './ui/crewWalk.js';
 import { playLaunch } from './ui/spaceFlight.js';
 import { playCombat, isBattlePlaying } from './ui/combatView.js';
 import { sfx } from './ui/juice.js';
@@ -66,6 +66,7 @@ let artReady = false;
 let toast = null;
 let toastTimer = 0;
 let departureInFlight = false;
+let departureRunId = 0;
 let shipSequence = null;
 
 function showToast(next) {
@@ -391,7 +392,7 @@ function doHire({ gems = false, ten = false } = {}) {
 }
 
 async function handleAction(act, data = {}) {
-  if (isBattlePlaying() || (departureInFlight && departureActionBlocked(act))) return;
+  if (isBattlePlaying()) return;
   // Tutorial CTAs navigate to or invoke the same production actions as the board.
   if (['tutorial-next', 'tutorial-go', 'tutorial-jump'].includes(act)) {
     const phase = player.tutorial?.phase;
@@ -406,6 +407,7 @@ async function handleAction(act, data = {}) {
   const transition = sessionAction(player, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId }, act, data);
   if (transition) {
     const departure = transition.effect?.kind === 'expedition';
+    let startedDepartureId = null;
     const publishSessionResult = (result) => {
       player = result.player;
       sessionUi = { ...sessionUi, ...result.ui };
@@ -419,6 +421,7 @@ async function handleAction(act, data = {}) {
       save: writeSave,
       publish: (result) => {
         if (departure) {
+          startedDepartureId = ++departureRunId;
           departureInFlight = true;
           holdCrewForDeparture(transition.effect.crewInstanceIds);
         }
@@ -440,6 +443,7 @@ async function handleAction(act, data = {}) {
           moveCrewToDeparture(player, effect.crewInstanceIds, {
             reducedMotion,
             onDone: () => {
+              if (startedDepartureId !== departureRunId) return;
               departureInFlight = false;
               render();
             },
@@ -714,7 +718,14 @@ async function handleAction(act, data = {}) {
     pushLog('Save reset.');
   }
 
-  persist();
+  const saved = persist();
+  if (saved && !player.activeExpedition) {
+    if (departureInFlight) {
+      departureRunId++;
+      departureInFlight = false;
+    }
+    cancelCrewDeparture();
+  }
   render();
 }
 

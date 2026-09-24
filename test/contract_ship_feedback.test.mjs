@@ -10,7 +10,7 @@ import { renderHotspots, renderMissions, renderPlatformLoginEntry } from '../src
 import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 import {
   crewTargetStates,
-  departureActionBlocked,
+  cancelCrewDeparture,
   holdCrewForDeparture,
   moveCrewToDeparture,
   syncCrewLayer,
@@ -293,6 +293,24 @@ for (const id of selectedIds) {
 motion.set(true);
 assert.equal(changedMotionCompletions, 1, 'motion change completion is exact once');
 
+// A committed claim, skip, or extract can end the job before the walk ends.
+// Cancellation must prevent the old animation completion from firing later.
+motion.set(false);
+syncCrewLayer(canvas, readyPlayer);
+holdCrewForDeparture(selectedIds);
+syncCrewLayer(canvas, awayPlayer);
+let cancelledCompletions = 0;
+moveCrewToDeparture(awayPlayer, selectedIds, {
+  reducedMotion: false,
+  onDone: () => cancelledCompletions++,
+});
+for (let i = 0; i < 4; i++) runFrame();
+assert.equal(cancelledCompletions, 0);
+cancelCrewDeparture();
+motion.set(true);
+for (let i = 0; i < 5; i++) runFrame();
+assert.equal(cancelledCompletions, 0, 'cancelled departure cannot complete after a later motion change');
+
 motion.set(false);
 syncCrewLayer(canvas, { crew, activeContract: { stage: 'choice' } });
 runFrame();
@@ -391,14 +409,6 @@ assert.match(loginEntry, /data-act="prompt-login"/);
 assert.match(loginEntry, /Optional Jest sign-in/);
 assert.doesNotMatch(loginEntry, /register|save|sync|across devices?/i);
 
-assert.equal(departureActionBlocked('goto-contracts'), false);
-assert.equal(departureActionBlocked('select-room'), false);
-assert.equal(departureActionBlocked('close-toast'), false);
-assert.equal(departureActionBlocked('exp-start'), true);
-assert.equal(departureActionBlocked('exp-launch'), true);
-assert.equal(departureActionBlocked('exp-claim'), true);
-assert.equal(departureActionBlocked('exp-skip'), true);
-assert.equal(departureActionBlocked('exp-abort'), true);
 const departureStatus = renderDepartureStatus(true);
 assert.match(departureStatus, /role="status"/);
 assert.match(departureStatus, /aria-live="polite"/);
@@ -417,10 +427,10 @@ const settledAway = renderMissions(activeExpeditionPlayer, Date.now(), {
 });
 for (const action of ['exp-claim', 'exp-skip', 'exp-abort']) {
   const control = departingAway.match(new RegExp(`<button[^>]*data-act="${action}"[^>]*>`))?.[0];
-  assert.ok(control?.includes('disabled'), `${action} is visibly disabled while departure is active`);
-  assert.ok(control?.includes('aria-describedby="departure-status-message"'), `${action} is explained by departure status`);
+  assert.ok(control, `${action} is present immediately after durable expedition start`);
+  assert.equal(control.includes('disabled'), false, `${action} is immediately available while boarding animates`);
   const settledControl = settledAway.match(new RegExp(`<button[^>]*data-act="${action}"[^>]*>`))?.[0];
-  assert.equal(settledControl?.includes('disabled'), false, `${action} is restored after departure completes`);
+  assert.equal(settledControl?.includes('disabled'), false, `${action} stays available after departure completes`);
 }
 
 console.log('contract_ship_feedback.test.mjs OK');

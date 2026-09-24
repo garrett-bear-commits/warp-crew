@@ -25,10 +25,6 @@ const ARRIVE = 1.2;
 
 const readyForShipTask = (crew) => !['expedition', 'injured', 'reserve'].includes(crew.status);
 
-export function departureActionBlocked(action) {
-  return ['exp-start', 'exp-launch', 'exp-claim', 'exp-skip', 'exp-abort'].includes(action);
-}
-
 export function crewTargetStates(player, {
   departingCrewInstanceIds = [],
   reducedMotion: immediate = false,
@@ -496,6 +492,19 @@ export function holdCrewForDeparture(crewInstanceIds) {
   for (const id of crewInstanceIds || []) {
     const a = agents.get(id);
     if (a) a.assignment = 'expedition-departure:held';
+  }
+}
+
+/** Drop obsolete boarding animation without delivering its completion callback. */
+export function cancelCrewDeparture() {
+  activeDeparture = null;
+  for (const a of agents.values()) {
+    if (!a.assignment?.startsWith('expedition-departure') && a.assignment !== 'departure-complete') continue;
+    a.assignment = null;
+    a.authoredTarget = null;
+    a.path = [];
+    a.state = 'idle';
+    a.timer = 0;
   }
 }
 
