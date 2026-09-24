@@ -5,6 +5,7 @@ import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRe
 import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs } from './stations.js';
+import { applyEncounterAction, recoverEncounter } from './encounterState.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
 import { nextUpgradeCost, upgradeSystem } from './hangar.js';
@@ -95,9 +96,29 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
     models.activeContractView = { ...contract, actions,
       crewLabel: readyCrew(player, now).map(c => c.name).join(', ') || 'No ready crew',
       result: contract.result ? { ...contract.result, rewardLabel: formatReward(contract.result.rewards) } : null,
-      abandon: contract.profile === 'distress' ? null : { enabled: true, label: contract.stage === 'briefing' ? 'Abandon' : 'Break contract', consequence: 'No pending reward. Spent fuel is not refunded.' },
+      abandon: contract.profile === 'distress' || player.activeEncounter ? null : { enabled: true, label: contract.stage === 'briefing' ? 'Abandon' : 'Break contract', consequence: 'No pending reward. Spent fuel is not refunded.' },
     };
-    if (contract.stage === 'confrontation') {
+    if (player.activeEncounter) {
+      const encounter = player.activeEncounter;
+      const options = encounter.orderWindow?.orderOptions || {};
+      models.activeContractView.encounter = {
+        acceptanceId: encounter.acceptanceId,
+        revision: encounter.revision,
+        beat: encounter.beat,
+        kind: encounter.kind,
+        result: encounter.result,
+        lossReason: encounter.lossReason,
+        hull: encounter.hull,
+        shield: encounter.shield,
+        systems: encounter.systems,
+        enemyHull: encounter.enemy.hull,
+        target: encounter.orderWindow?.target || encounter.enemy.target,
+        beatsToImpact: encounter.orderWindow?.beatsToImpact || null,
+        outputs: encounter.outputs,
+        orders: Object.entries(options).map(([id, option]) => ({ id, cost: option.cost.shield,
+          available: option.available, reason: option.reason, cooldownBeats: option.cooldownBeats })),
+      };
+    } else if (contract.stage === 'confrontation') {
       const encounter = encounterById(contract.encounterId);
       const guaranteed = contract.profile === 'distress';
       const orders = listCombatOrders({ tutorial: guaranteed }).map(({ id, extraFuel }) => {
@@ -110,7 +131,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
           : preview;
         return orderDisplay(id, facts, encounter, guaranteed);
       });
-      models.activeContractView.combat = combatModel(encounter, orders, guaranteed, { action: 'contract-order', revision: contract.revision, acceptanceId: contract.acceptanceId, stationOutputs: stations });
+      models.activeContractView.combat = combatModel(encounter, orders, guaranteed, { legacy: true, action: 'contract-order', revision: contract.revision, acceptanceId: contract.acceptanceId, stationOutputs: stations });
     }
   }
   if (ui.pendingCombat) {
@@ -183,6 +204,26 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     events.push(fromAnalytics({ ...res.analytics, traitMatch: traitMatch(player, player.activeContract.favoredTrait) }));
     tutorial('contract_accepted');
     Object.assign(nextUi, { reviewedOfferId: null, tab: 'missions', selectedRoom: null, missionView: player.tutorial.phase === 'away' ? 'away' : 'contracts' });
+  } else if (['encounter-advance', 'encounter-order', 'encounter-recover'].includes(act)) {
+    const result = act === 'encounter-recover'
+      ? recoverEncounter(player, data)
+      : applyEncounterAction(player, { acceptanceId: data.acceptanceId, revision: data.revision,
+        order: act === 'encounter-order' ? data.order : null }, now);
+    if (!result.ok) return result;
+    player = result.player;
+    events.push(fromAnalytics(result.analytics));
+    if (act === 'encounter-recover') {
+      Object.assign(nextUi, { tab: 'ship', selectedRoom: 'engineering' });
+    } else {
+      for (const beatEvent of result.events) events.push(event('encounter_event', { acceptanceId: data.acceptanceId, beat: player.activeEncounter.beat, ...beatEvent }));
+      if (player.activeEncounter.result === 'win') {
+        tutorial('combat_order_done');
+        events.push(event('contract_resolved', { profile: player.activeContract.profile, success: true, beats: player.activeEncounter.beat,
+          order: data.order || null, ...player.activeContract.result.rewards, hullLoss: player.activeContract.result.hullLoss, injury: null }));
+        Object.assign(nextUi, { tab: 'ship', selectedRoom: 'cargo' });
+      }
+      effect = { kind: 'encounter-beat', events: result.events, result: player.activeEncounter.result };
+    }
   } else if (['contract-action', 'contract-order', 'contract-claim', 'contract-abandon', 'contract-abandon-confirm'].includes(act)) {
     const contract = player.activeContract;
     if (!validIdentity(contract, data)) return fail('stale_contract_action');
@@ -220,7 +261,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       } else if (action.id === 'launch') {
         tutorial('contract_launched');
         effect = { kind: 'launch' };
-        Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
+        Object.assign(nextUi, { tab: player.activeEncounter ? 'missions' : 'ship', missionView: 'contracts', selectedRoom: null });
       }
       if (player.activeContract.stage === 'return') {
         const result = player.activeContract.result;

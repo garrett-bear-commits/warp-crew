@@ -133,6 +133,39 @@ export function resolveContractCombatPayout(player, contract, orderId, { rng = M
   };
 }
 
+/** Construct a prize from a saved crew-run victory without rolling combat again. */
+export function resolveSimulatedCombatPayout(player, contract, encounter) {
+  const catalog = encounterById(contract.encounterId);
+  const rawRewards = contract.profile === 'distress'
+    ? { credits: 120, medals: 8, reputation: 4 }
+    : catalog.rewards;
+  const visits = player?.stats?.visits?.[contract.destinationId] || 0;
+  const rewards = contract.profile === 'distress'
+    ? normalizeCurrencyReward(rawRewards)
+    : normalizeCurrencyReward(scaleSitePayout(rawRewards, player, { kind: 'combat', visits }));
+  const hullLoss = Math.max(0, 30 - encounter.hull);
+  let nextPlayer = {
+    ...player,
+    ship: { ...player.ship, hull: Math.max(1, (player.ship?.hull ?? 100) - hullLoss) },
+  };
+  if (contract.profile !== 'distress') {
+    nextPlayer = grantCrewXp(nextPlayer, contract.participantIds || [], 10);
+    nextPlayer = { ...nextPlayer, stats: { ...nextPlayer.stats, combatsWon: (nextPlayer.stats?.combatsWon || 0) + 1 } };
+  }
+  return {
+    player: nextPlayer,
+    result: {
+      success: true,
+      rewards,
+      rewardPresence: currencyPresence(rawRewards),
+      hullLoss,
+      injuredCrewId: null,
+      storyFlag: null,
+      summary: catalog.win || 'The enemy ship breaks off. Cargo aboard.',
+    },
+  };
+}
+
 
 export function formatRewardBand(band) {
   if (!band?.available) return 'Reward unavailable';

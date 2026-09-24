@@ -43,17 +43,39 @@ export function renderContractReview(model = {}) {
 
 export function renderActiveContract(model = {}) {
   return `<section class="route-stage" data-stage="${e(model.stage)}" aria-label="Active contract">
-    <p>${e(model.title)}</p><h2>${e(model.stageLabel || model.stage)}</h2>${reason(model.description)}
+    <p>${e(model.title)}</p><h2>${e(model.encounter ? model.encounter.result === 'win' ? 'Victory' : model.encounter.result === 'loss' ? 'Ship damaged' : 'Pirate attack' : model.stageLabel || model.stage)}</h2>${reason(model.description)}
     ${model.crewLabel ? `<p>Crew: ${e(model.crewLabel)}</p>` : ''}${trait(model.favoredTrait)}
     ${model.result ? `<p class="contract-consequence">${e(model.result.summary)}</p><p>${e(model.result.rewardLabel)}</p>` : ''}
+    ${model.encounter ? renderEncounter(model.encounter) : ''}
     ${model.combat ? renderCombatOrders(model.combat) : ''}
     ${(model.actions || []).map((action) => `<div class="route-action">${reason(action.consequence)}${reason(action.reason)}<button type="button" class="${action.primary ? 'primary' : ''}" data-act="contract-action" data-action="${e(action.id)}" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}" ${action.enabled ? '' : 'disabled'}>${e(action.label)}</button></div>`).join('')}
     ${model.abandon ? `<button type="button" class="ghost" data-act="contract-abandon" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}" ${model.abandon.enabled ? '' : 'disabled'}>${e(model.abandon.label)}</button>${reason(model.abandon.consequence)}` : ''}
   </section>`;
 }
 
+const orderReason = { insufficient_resource: 'Needs more shield charge', cooldown: 'Cooling down', used: 'Already used', hull_full: 'Hull is full' };
+
+export function renderEncounter(model = {}) {
+  const identity = `data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}"`;
+  const target = { hull: 'hull', weapons: 'weapons', shields: 'shields', engineering: 'engineering' }[model.target] || 'ship';
+  const status = model.result === 'loss' ? `<p role="status">${e(model.lossReason || 'The ship needs repairs.')}</p><button type="button" class="primary" data-act="encounter-recover" ${identity}>Recover ship</button>`
+    : model.result === 'win' ? '<p role="status">The pirate breaks off. Bring the cargo aboard.</p>'
+      : `<p class="encounter-threat" role="status">${model.beatsToImpact ? `Incoming fire at ${e(target)} · ${e(model.beatsToImpact)} beats` : 'Pirate weapons charging'}</p>
+        <div class="encounter-actions">${(model.orders || []).map(order => `<button type="button" data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
+          ${e(order.id === 'brace' ? 'Brace' : 'Repair')} · ${e(order.cost)} shield${order.available ? '' : ` · ${e(orderReason[order.reason] || order.reason || 'Unavailable')}${order.cooldownBeats ? ` (${e(order.cooldownBeats)} beats)` : ''}`}
+        </button>`).join('')}<button type="button" class="primary" data-act="encounter-advance" ${identity}>${model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button></div>`;
+  return `<section class="encounter-panel" aria-label="Crew combat">
+    <div class="encounter-bars"><span>Hull ${e(model.hull)}/30</span><meter min="0" max="30" value="${e(model.hull)}" aria-label="Ship hull"></meter>
+      <span>Shield ${e(model.shield)}/12</span><meter min="0" max="12" value="${e(model.shield)}" aria-label="Shield charge"></meter>
+      <span>Pirate ${e(model.enemyHull)}</span><meter min="0" max="${model.kind === 'guided' ? 25 : 42}" value="${e(model.enemyHull)}" aria-label="Pirate hull"></meter></div>
+    <div class="encounter-stations">${Object.entries({ helm: 'Helm · evade', shields: 'Shields · block', weapons: 'Weapons · fire', engineering: 'Engineering · repair' }).map(([id, label]) => `<span>${e(label)} ${e(model.outputs?.[id])} · ${e(model.systems?.[id])}%</span>`).join('')}</div>
+    ${status}
+  </section>`;
+}
+
 export function renderCombatOrders(model = {}) {
   return `<section class="combat-orders" aria-label="Combat orders"><h2>${e(model.title || 'Choose an order')}</h2>
+    ${model.legacy ? '<p>Legacy encounter</p>' : ''}
     ${model.tell ? `<h3>${e(model.tell.label)}</h3><p class="contract-consequence">${e(model.tell.text || model.tell.sentence)}</p>${reason(model.tell.reason)}` : ''}
     ${(model.orders || []).map((order) => `<article class="order-card">
       <h3>${e(order.name)}${order.recommended ? ' · Recommended' : ''}</h3>

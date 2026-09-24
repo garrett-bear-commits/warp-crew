@@ -1,0 +1,147 @@
+// Saved bridge between a contract and the deterministic crew-run fight.
+import { startEncounter, advanceEncounter } from './autoCombat.js';
+import { normalizeAssignments, stationOutputs } from './stations.js';
+import { resolveSimulatedCombatPayout } from './contractRewards.js';
+
+const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
+const numberIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+
+function validOrderWindow(window, kind) {
+  if (window == null) return true;
+  const names = kind === 'guided' ? ['brace'] : ['brace', 'repair'];
+  return Boolean(
+    ['hull', 'shields', 'weapons', 'engineering'].includes(window.target)
+    && Number.isInteger(window.beatsToImpact) && numberIn(window.beatsToImpact, 1, 3)
+    && Array.isArray(window.availableOrders)
+    && names.every(name => {
+      const option = window.orderOptions?.[name];
+      return option && numberIn(option.cost?.shield, 0, 12)
+        && typeof option.available === 'boolean'
+        && (option.reason == null || typeof option.reason === 'string')
+        && Number.isInteger(option.cooldownBeats) && numberIn(option.cooldownBeats, 0, 4)
+        && window.availableOrders.includes(name) === option.available;
+    })
+  );
+}
+
+function eligibleContract(player, contract) {
+  return contract?.stage === 'confrontation' && (
+    (contract.profile === 'distress' && player.tutorial?.script === 4 && contract.encounterId === 'pirate_scout')
+    || (contract.profile === 'reliable' && contract.choiceId === 'push' && contract.encounterId === 'pirate_scout')
+  );
+}
+
+/** Called only by the action that freshly enters confrontation. */
+export function beginContractEncounter(player, now = Date.now()) {
+  const contract = player?.activeContract;
+  if (player?.activeEncounter || !eligibleContract(player, contract)) return player;
+  const kind = contract.profile === 'distress' ? 'guided' : 'normal';
+  const encounter = startEncounter({
+    acceptanceId: contract.acceptanceId,
+    encounterId: contract.encounterId,
+    kind,
+    seed: contract.routeSeed,
+    assignments: normalizeAssignments(player),
+    outputs: stationOutputs(player, now),
+  });
+  return {
+    ...player,
+    activeContract: {
+      ...contract,
+      encounterMode: 'crew',
+      participantIds: (player.crew || []).filter(member => member.status === 'ready' && (member.injuredUntil || 0) <= now).map(member => member.instanceId),
+    },
+    activeEncounter: encounter,
+  };
+}
+
+function validSnapshot(encounter, contract) {
+  if (!encounter || encounter.version !== 1 || encounter.acceptanceId !== contract.acceptanceId
+    || encounter.encounterId !== contract.encounterId || !['guided', 'normal'].includes(encounter.kind)
+    || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
+    || !Number.isInteger(encounter.seed) || encounter.seed !== contract.routeSeed
+    || !Number.isInteger(encounter.beat) || encounter.beat < 0
+    || !Number.isInteger(encounter.revision) || encounter.revision !== encounter.beat
+    || !Number.isInteger(encounter.eventIndex) || encounter.eventIndex < encounter.beat
+    || encounter.phase !== (encounter.result === null ? 'combat' : 'complete')
+    || !numberIn(encounter.hull, 1, 30) || !numberIn(encounter.shield, 0, 12)
+    || !numberIn(encounter.enemy?.hull, 0, 42)
+    || !STATIONS.every(station => numberIn(encounter.outputs?.[station], 0, 10000)
+      && numberIn(encounter.systems?.[station], 0, 100))
+    || !encounter.assignments || typeof encounter.assignments !== 'object'
+    || !encounter.cooldowns || !encounter.orders
+    || !['brace', 'repair'].every(name => Number.isInteger(encounter.cooldowns[name]) && numberIn(encounter.cooldowns[name], 0, 4))
+    || !validOrderWindow(encounter.orderWindow, encounter.kind)
+    || (encounter.result !== null && !['win', 'loss'].includes(encounter.result))) return false;
+  if (contract.stage === 'return') return encounter.result === 'win' && contract.result?.success === true;
+  return contract.stage === 'confrontation' && encounter.result !== 'win';
+}
+
+/** Invalid new fights cannot become legacy fights or produce a claim. */
+export function normalizeEncounterState(player) {
+  const contract = player?.activeContract;
+  const encounter = player?.activeEncounter;
+  if (contract?.encounterMode !== 'crew') {
+    return encounter ? { ...player, activeEncounter: null } : player;
+  }
+  if (validSnapshot(encounter, contract)) return player;
+  return {
+    ...player,
+    activeContract: null,
+    activeEncounter: null,
+    recoveryEvents: [...(player.recoveryEvents || []), { event: 'contract_recovered', reason: 'invalid_encounter_state' }],
+  };
+}
+
+export function applyEncounterAction(player, { acceptanceId, revision, order = null } = {}, now = Date.now()) {
+  const contract = player?.activeContract;
+  const encounter = player?.activeEncounter;
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract)) {
+    return { ok: false, reason: 'invalid_encounter_state', player };
+  }
+  if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
+    return { ok: false, reason: 'stale_encounter_action', player };
+  }
+  if (encounter.result) return { ok: false, reason: 'encounter_finished', player };
+
+  const outputs = stationOutputs(player, now);
+  const input = {
+    ...encounter,
+    assignments: normalizeAssignments(player),
+    outputs: Object.fromEntries(STATIONS.map(station => [station, outputs[station].total])),
+  };
+  const advanced = advanceEncounter(input, order);
+  if (advanced.ok === false) return { ok: false, reason: advanced.reason, player };
+  let nextContract = { ...contract, revision: contract.revision + 1 };
+  let nextPlayer = { ...player, activeEncounter: advanced.state, activeContract: nextContract };
+  if (advanced.state.result === 'win') {
+    const payout = resolveSimulatedCombatPayout(nextPlayer, nextContract, advanced.state);
+    nextPlayer = payout.player;
+    nextContract = { ...nextContract, stage: 'return', result: payout.result };
+    nextPlayer = { ...nextPlayer, activeContract: nextContract };
+  }
+  return { ok: true, player: nextPlayer, events: advanced.events,
+    analytics: { event: 'encounter_beat', acceptanceId, beat: advanced.state.beat, order, result: advanced.state.result } };
+}
+
+export function recoverEncounter(player, { acceptanceId, revision } = {}) {
+  const contract = player?.activeContract;
+  const encounter = player?.activeEncounter;
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract)) {
+    return { ok: false, reason: 'invalid_encounter_state', player };
+  }
+  if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
+    return { ok: false, reason: 'stale_encounter_action', player };
+  }
+  if (encounter.result !== 'loss') return { ok: false, reason: 'encounter_not_lost', player };
+  return {
+    ok: true,
+    player: {
+      ...player,
+      activeContract: null,
+      activeEncounter: null,
+      ship: { ...player.ship, hull: Math.max(1, Math.min(player.ship?.hull ?? 100, encounter.hull)) },
+    },
+    analytics: { event: 'encounter_recovered', acceptanceId, reason: encounter.lossReason },
+  };
+}

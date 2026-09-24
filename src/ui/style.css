@@ -958,6 +958,13 @@ button:focus-visible {
 .contract-card > button, .route-action > button, .order-card > button,
 .party-picker > .primary { width: 100%; }
 .route-action { margin: 16px 0; }
+.encounter-panel { display: grid; gap: 12px; margin: 14px 0; }
+.encounter-bars { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 12px; }
+.encounter-bars meter { width: 100%; height: 16px; }
+.encounter-stations { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; font-size: 16px; color: var(--muted); }
+.encounter-threat { padding: 10px; background: var(--panel2); border-left: 3px solid var(--cyan); }
+.encounter-actions { display: grid; gap: 8px; }
+.encounter-actions button { width: 100%; }
 .contract-backdrop {
   padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) calc(72px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
 }

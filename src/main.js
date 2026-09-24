@@ -46,7 +46,7 @@ import {
 import { prepareCrewArt, hasCrewArt } from './ui/crewArt.js';
 import { cancelCrewDeparture, holdCrewForDeparture, moveCrewToDeparture, holdCrewForArrival, moveCrewToArrival, stopCrewSim } from './ui/crewWalk.js';
 import { playLaunch } from './ui/spaceFlight.js';
-import { playCombat, isBattlePlaying } from './ui/combatView.js';
+import { playCombat, playEncounterBeat, isBattlePlaying } from './ui/combatView.js';
 import { sfx } from './ui/juice.js';
 import { startStageLoop } from './ui/stageLoop.js';
 
@@ -456,13 +456,14 @@ async function handleAction(act, data = {}) {
             playCombat({ preview: effect.preview, win: effect.win, onDone: () => render() });
           }
         }
+        if (effect.kind === 'encounter-beat') playEncounterBeat(effect.events);
       },
     });
     if (!committed.ok) {
       pushLog(committed.reason === 'save_failed' ? 'Could not save. Action was not applied; please retry.' : committed.reason);
       showToast({ title: committed.reason === 'save_failed' ? 'Could not save. Please retry.' : committed.reason.replaceAll('_', ' ') });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
-    } else if (['contract-action', 'contract-order', 'contract-claim', 'combat-order', 'exp-start', 'exp-launch'].includes(act)) {
+    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'exp-start', 'exp-launch'].includes(act)) {
       await refreshNotifs();
     }
     render();

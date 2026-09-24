@@ -10,6 +10,7 @@ import { fuelCostFor, combatBonuses } from './passives.js';
 import { applyStoryFlag } from './story.js';
 import { normalizeContractState as normalizeSavedContractState, validContractResult } from './contractState.js';
 import { CURRENCIES, readyContractCrew, normalizeCurrencyReward as normalizeRewards, resolveRoutePayout, resolveContractCombatPayout, formatRewardBand } from './contractRewards.js';
+import { beginContractEncounter, applyEncounterAction, normalizeEncounterState } from './encounterState.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -399,6 +400,7 @@ function actionPreview(player, contract, action, now = Date.now()) {
     };
   }
   if (contract.stage === 'confrontation' && action?.id === 'order') {
+    if (player.activeEncounter || contract.encounterMode === 'crew') return { ok: false, reason: 'encounter_in_progress' };
     const encounter = encounterById(contract.encounterId);
     if (!contract.encounterId || encounter.id !== contract.encounterId) {
       return { ok: false, reason: 'unknown_encounter' };
@@ -504,6 +506,9 @@ export function commitContractAction(player, preview, { rng = Math.random, now =
   }
 
   nextPlayer = { ...nextPlayer, activeContract: nextContract };
+  if (contract.stage !== 'confrontation' && nextContract.stage === 'confrontation') {
+    nextPlayer = beginContractEncounter(nextPlayer, now);
+  }
   return {
     ok: true,
     player: nextPlayer,
@@ -538,6 +543,19 @@ function enumerateRewardPaths(player, offer, now) {
     const contract = current.activeContract;
     if (contract.stage === 'return') {
       if (validContractResult(contract.result)) terminals.push(contract.result);
+      return;
+    }
+    if (current.activeEncounter) {
+      let branch = current;
+      for (let beat = 0; beat < 40 && !branch.activeEncounter.result; beat += 1) {
+        const { acceptanceId, revision } = branch.activeEncounter;
+        const advanced = applyEncounterAction(branch, { acceptanceId, revision, order: null }, now);
+        if (!advanced.ok) return;
+        branch = advanced.player;
+      }
+      if (branch.activeContract.stage === 'return' && validContractResult(branch.activeContract.result)) {
+        terminals.push(branch.activeContract.result);
+      }
       return;
     }
     const actions = contract.stage === 'briefing' ? [{ id: 'launch' }]
@@ -580,6 +598,11 @@ export function claimContractReward(player, now = Date.now()) {
   if (!validContractResult(contract.result)) {
     return { ok: false, reason: 'invalid_contract_state', player: normalizeContractState(player) };
   }
+  if (contract.encounterMode === 'crew' && (
+    player.activeEncounter?.result !== 'win'
+    || player.activeEncounter.acceptanceId !== contract.acceptanceId
+    || !normalizeEncounterState(player).activeContract
+  )) return { ok: false, reason: 'invalid_encounter_state', player };
   if ((player?.contractBoard?.completedOfferIds || []).includes(contract.offerId)) {
     return { ok: false, reason: 'already_claimed', player };
   }
@@ -611,6 +634,7 @@ export function claimContractReward(player, now = Date.now()) {
     dailyLoop,
     contractBoard: { ...player.contractBoard, completedOfferIds },
     activeContract: null,
+    activeEncounter: null,
   };
   return {
     ok: true,
@@ -636,7 +660,7 @@ export function abandonContract(player, expectedRevision, expectedAcceptanceId =
   }
   return {
     ok: true,
-    player: { ...player, activeContract: null },
+    player: { ...player, activeContract: null, activeEncounter: null },
     analytics: analyticsEvent('contract_abandoned', {
       profile: contract.profile,
       stage: contract.stage,

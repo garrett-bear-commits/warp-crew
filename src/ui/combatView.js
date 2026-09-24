@@ -13,6 +13,8 @@ let w = 0;
 let h = 0;
 let dpr = 1;
 let battle = null;
+let crewEncounter = null;
+let crewShots = [];
 let started = false;
 let pirateImg = null;
 let impactImg = null;
@@ -65,6 +67,39 @@ export function attachCombat(el, stage, cameraGetter, cameraSetter) {
 
 export function isBattlePlaying() {
   return Boolean(battle);
+}
+
+/** Derive visible ship condition from committed encounter state. */
+export function encounterVisualFrame(encounter, events = []) {
+  return {
+    playerHull: Math.max(0, Math.min(1, (encounter?.hull || 0) / 30)),
+    enemyHull: Math.max(0, Math.min(1, (encounter?.enemy?.hull || 0) / (encounter?.kind === 'guided' ? 25 : 42))),
+    shield: Math.max(0, Math.min(1, (encounter?.shield || 0) / 12)),
+    shots: events.filter(event => ['weapon_damage', 'enemy_impact'].includes(event.type)).map(event => ({ ally: event.type === 'weapon_damage' })),
+  };
+}
+
+export function setEncounterSnapshot(encounter) {
+  const entering = !crewEncounter && Boolean(encounter);
+  const leaving = Boolean(crewEncounter) && !encounter;
+  crewEncounter = encounter || null;
+  if (entering && !battle) {
+    const currentCamera = getCamera?.();
+    if (currentCamera && setCamera) setCamera(makeCamera(currentCamera.viewport, currentCamera.world));
+    setBattleStations(true);
+  }
+  if (leaving && !battle) {
+    crewShots = [];
+    setBattleStations(false);
+  }
+}
+
+export function playEncounterBeat(events = []) {
+  if (!crewEncounter) return;
+  const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  crewShots = reduced ? [] : encounterVisualFrame(crewEncounter, events).shots.map(shot => ({ ...shot, life: 0.45 }));
+  if (events.some(event => event.type === 'weapon_damage' || event.type === 'enemy_impact')) sfx('pew');
+  if (events.some(event => event.type === 'result' && event.result === 'win')) sfx('win');
 }
 
 export function playCombat({ preview, win = true, onDone } = {}) {
@@ -131,9 +166,10 @@ function spawnLaser(from, to, ally) {
 function tick(sim, dt) {
   if (stageEl) applyShake(stageEl);
   if (!battle || !ctx) {
-    if (canvas && !battle) {
-      ctx?.clearRect(0, 0, w, h);
-      canvas.classList.remove('is-live');
+    if (canvas && !battle && ctx) {
+      ctx.clearRect(0, 0, w, h);
+      if (crewEncounter) drawCrewEncounter(ctx, getCamera?.() || { x: 0, y: 0, scale: 1 }, dt);
+      canvas.classList.toggle('is-live', Boolean(crewEncounter));
     }
     return;
   }
@@ -294,6 +330,47 @@ function tick(sim, dt) {
       cb?.();
     }, 180);
   }
+}
+
+function drawCrewEncounter(g, camera, dt) {
+  const frame = encounterVisualFrame(crewEncounter);
+  const enemy = effectScreenPoint(camera, { worldX: 1030, worldY: 240 });
+  const ship = effectScreenPoint(camera, { worldX: 576, worldY: 121 });
+  const pw = 500 * camera.scale;
+  const ph = 300 * camera.scale;
+  g.save();
+  g.globalAlpha = crewEncounter.result === 'win' ? 0.25 : 0.95;
+  if (pirateImg?.complete && pirateImg.naturalWidth) g.drawImage(pirateImg, enemy.x - pw / 2, enemy.y - ph / 2, pw, ph);
+  else {
+    g.fillStyle = '#c45';
+    g.beginPath();
+    g.moveTo(enemy.x + pw * 0.34, enemy.y);
+    g.lineTo(enemy.x - pw * 0.3, enemy.y + ph * 0.26);
+    g.lineTo(enemy.x - pw * 0.3, enemy.y - ph * 0.26);
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
+  for (const shot of crewShots) {
+    shot.life -= dt;
+    const from = shot.ally ? ship : enemy;
+    const to = shot.ally ? enemy : ship;
+    g.save();
+    g.globalAlpha = Math.max(0, shot.life / 0.45);
+    g.strokeStyle = shot.ally ? '#5ce1ff' : '#ff6b6b';
+    g.shadowColor = g.strokeStyle;
+    g.shadowBlur = 15;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(from.x, from.y);
+    g.lineTo(to.x, to.y);
+    g.stroke();
+    g.restore();
+  }
+  crewShots = crewShots.filter(shot => shot.life > 0);
+  const barY = Math.max(50, h - 46);
+  drawBar(g, 16, barY, w * 0.4, 'SPARROW', frame.playerHull, '#3ddc97');
+  drawBar(g, w - 16 - w * 0.4, barY, w * 0.4, 'PIRATE', frame.enemyHull, '#ff6b6b');
 }
 
 function drawBar(g, x, y, width, label, pct, color) {

@@ -29,7 +29,7 @@ import { ROOMS, SPARROW_LAYOUT } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost } from '../data/crewRoster.js';
 import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
-import { attachCombat, isBattlePlaying } from './combatView.js';
+import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatView.js';
 import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
 import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence } from './shipView.js';
@@ -315,6 +315,7 @@ function patchShell(root, ctx) {
   attachCombat(root.querySelector('[data-slot="combat"]'), root.querySelector('.stage'),
     () => root._wcCamera, camera => root._wcSetCamera(camera));
   syncCrewLayer(root.querySelector('[data-slot="crew"]'), player);
+  setEncounterSnapshot(player.activeEncounter);
 
   if (!isHome) {
     const detail = `${emptyHints(player, fuel, tab)}

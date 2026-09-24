@@ -10,6 +10,7 @@ import { defaultGacha } from './gacha.js';
 import { berthsFor, fuelMaxFor, fuelRateFor, parkOverflowToReserve } from './hangar.js';
 import { clampFuel } from './economy.js';
 import { normalizeAssignments } from './stations.js';
+import { normalizeEncounterState } from './encounterState.js';
 
 const SAVE_VERSION = 7;
 
@@ -61,6 +62,7 @@ export function createNewPlayer({ captainName = 'Captain', now = Date.now(), rng
     activeExpedition: null,
     contractBoard: null,
     activeContract: null,
+    activeEncounter: null,
     dailyLoop: { dayKey: null, contract: false, improve: false, away: false },
     location: 'station_home',
     flags: {},
@@ -125,7 +127,7 @@ export function migratePlayer(player) {
   next.fuelMax = fuelMaxFor(next, def);
   next.fuelRatePerHour = fuelRateFor(next, def);
   next.wallet = clampFuel(next.wallet, next.fuelMax);
-  return normalizeContractState(next, { nodes: NODES, encounterById });
+  return normalizeEncounterState(normalizeContractState(next, { nodes: NODES, encounterById }));
 }
 
 export function assignedCrew(player) {

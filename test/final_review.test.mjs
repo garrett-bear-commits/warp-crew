@@ -233,10 +233,25 @@ test('offer beat ranges and resolution telemetry match committed route branches 
       beats++;
       player = result.player;
       if (player.activeContract.stage === 'confrontation') {
-        result = sessionAction(player, {}, 'contract-order', { order: 'brace', ...identity(player) }, { now, rng: () => 0 });
+        if (player.activeEncounter) {
+          let combatBeats = 0;
+          while (player.activeEncounter.result == null && combatBeats < 40) {
+            result = sessionAction(player, {}, 'encounter-advance', {
+              acceptanceId: player.activeEncounter.acceptanceId,
+              revision: player.activeEncounter.revision,
+            }, { now });
+            assert.equal(result.ok, true);
+            player = result.player;
+            combatBeats++;
+          }
+          assert.equal(result.events.find(e => e.event === 'contract_resolved')?.fields.beats, combatBeats,
+            `${profile} ${day} ${choice}: encounter telemetry counts committed combat beats`);
+        } else {
+          result = sessionAction(player, {}, 'contract-order', { order: 'brace', ...identity(player) }, { now, rng: () => 0 });
+        }
         beats++;
       }
-      assert.equal(result.events.find(e => e.event === 'contract_resolved').fields.beats, beats, `${profile} ${day} ${choice}: telemetry counts committed beats`);
+      if (!player.activeEncounter) assert.equal(result.events.find(e => e.event === 'contract_resolved').fields.beats, beats, `${profile} ${day} ${choice}: telemetry counts committed beats`);
       actual.push(beats);
     }
     assert.equal(offer.beats, Math.max(...actual), `${profile}: maximum expected beats`);
