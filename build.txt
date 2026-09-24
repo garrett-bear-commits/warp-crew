@@ -1,4 +1,6 @@
-Warp Crew Pages QA build 2026-09-23T03:07:20Z
-Source: codex/contract-route-overhaul@47fb6e5b57cf687b5e6130393b279de23072a903
-Scope: seven-step first-session tutorial, encounter intelligence, literal contract rewards, balance evidence
+Warp Crew Pages QA build 2026-09-23
+Source: codex/contract-route-overhaul@07ebcacaa7567450e8077014c55afb829607859d
+Scope: living-ship first-play tutorial, approved five-crew splash, first crew-run contract, one-shot fresh save
 Platform: GitHub Pages local/mock mode; not a Jest production build
+JavaScript SHA-256: 16a6a6b131dfa4887e991832320d405bfeefbe0cb39dd19a0a08cf761d1d4011
+Splash SHA-256: 353ff73314b2bd088d3e3d88df6933aa4e11be1d277a9c028887dfa85cb021fd
