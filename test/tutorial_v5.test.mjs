@@ -119,3 +119,19 @@ test('win, claim, name, pull, and registration each require prior saved evidence
   assert.equal(done.tutorial.phase, 'done');
   assert.equal(done.tutorial.completed, true);
 });
+
+test('direct v5 welcome grant rejects a second draw when the saved history records one', () => {
+  let p = advanceTutorialV5(fresh(), 'board_ship');
+  p = advanceTutorialV5(chooseCaptain(p, { templateId: 'captain_cyborg', name: 'Ada', rng: () => 0.1 }).player, 'captain_chosen');
+  p = hireFirstCrew(p, { rng: () => 0.2 }).player;
+  p = { ...p, tutorial: { ...p.tutorial, phase: 'pull', firstWin: true, firstClaim: true, named: true } };
+  const first = grantWelcomePullV5(p, { rng: () => 0.5 });
+  assert.equal(first.ok, true);
+  const corruptFlags = { ...first.player, tutorial: {
+    ...first.player.tutorial, phase: 'pull', welcomePulled: false, welcomeInstanceId: null,
+  } };
+  const second = grantWelcomePullV5(corruptFlags, { rng: () => 0.8 });
+  assert.equal(second.ok, false);
+  assert.equal(second.player.gacha.pulls, 1);
+  assert.equal(second.player.crew.length, first.player.crew.length);
+});

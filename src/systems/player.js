@@ -4,7 +4,7 @@ import { starterShip, getShipDef } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
 import { migrateTutorialV3 } from './tutorial.js';
 import { defaultTutorialV4, normalizeTutorialV4 } from './tutorialV4.js';
-import { defaultTutorialV5, normalizeTutorialV5 } from './tutorialV5.js';
+import { defaultTutorialV5, normalizeTutorialV5, reconcileFirstHireV5, reconcileWelcomeV5 } from './tutorialV5.js';
 import { normalizeContractState } from './contractState.js';
 import { NODES } from '../data/sectors.js';
 import { encounterById } from './combat.js';
@@ -136,7 +136,7 @@ export function migratePlayer(player) {
   next.fuelMax = fuelMaxFor(next, def);
   next.fuelRatePerHour = fuelRateFor(next, def);
   next.wallet = clampFuel(next.wallet, next.fuelMax);
-  return normalizeEncounterState(normalizeContractState(next, { nodes: NODES, encounterById }));
+  return reconcileWelcomeV5(reconcileFirstHireV5(normalizeEncounterState(normalizeContractState(next, { nodes: NODES, encounterById }))));
 }
 
 export function assignedCrew(player) {

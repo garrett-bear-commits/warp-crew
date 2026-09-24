@@ -377,6 +377,40 @@ function drawWayfinding(g) {
   g.restore();
 }
 
+export function drawCrewIdentityMarker(g, marker, image, foot) {
+  const size = 40;
+  const x = foot.x - size / 2;
+  const y = foot.y - size - 6;
+  g.save();
+  g.beginPath();
+  if (marker.shape === 'diamond') {
+    g.moveTo(foot.x, y);
+    g.lineTo(x + size, y + size / 2);
+    g.lineTo(foot.x, y + size);
+    g.lineTo(x, y + size / 2);
+    g.closePath();
+  } else g.rect(x, y, size, size);
+  g.fillStyle = '#07131e';
+  g.fill();
+  g.save();
+  g.clip();
+  if (image?.complete && image.naturalWidth && image.naturalHeight) {
+    g.imageSmoothingEnabled = false;
+    g.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, x, y, size, size);
+  } else {
+    g.fillStyle = marker.color;
+    g.font = 'bold 24px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(marker.label, foot.x, y + size / 2);
+  }
+  g.restore();
+  g.strokeStyle = marker.color;
+  g.lineWidth = 3;
+  g.stroke();
+  g.restore();
+}
+
 function drawAgent(g, a) {
   const asset = walkAssetFor(a.templateId, a.role, a.bodyFamily);
   const pose = crewPoseForActor(a, w, h, asset.profile);
@@ -409,6 +443,8 @@ function drawAgent(g, a) {
       destination.width,
       destination.height
     );
+  } else if (asset.marker) {
+    drawCrewIdentityMarker(g, asset.marker, asset.markerImage, foot);
   } else {
     g.fillStyle = '#5ce1ff';
     g.fillRect(

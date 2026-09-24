@@ -25,6 +25,58 @@ export function normalizeTutorialV5(saved) {
   return tutorial;
 }
 
+/** Repair only the pre-win hire handoff, using roster ownership as authority. */
+export function reconcileFirstHireV5(player) {
+  const t = player?.tutorial;
+  if (t?.script !== 5 || t.completed || !['assign', 'fight'].includes(t.phase) || t.firstWin) return player;
+  const captain = player.crew?.find(member => member.instanceId === player.captainInstanceId && member.isCaptain);
+  if (!captain) return player;
+  const expected = captain.role === 'gunner' ? 'merc_bolt' : 'merc_jen';
+  const identified = [...(player.crew || []), ...(player.reserve || [])]
+    .find(member => member.instanceId === t.firstHireInstanceId);
+  if (identified && (identified.isCaptain || identified.templateId !== expected)) return player;
+  const candidates = [...(player.crew || []), ...(player.reserve || [])]
+    .filter(member => !member.isCaptain && member.templateId === expected);
+  if (candidates.length === 1 && player.crew.includes(candidates[0])) {
+    const hired = candidates[0];
+    const station = expected === 'merc_bolt' ? 'shields' : 'weapons';
+    const phase = player.stationAssignments?.[hired.instanceId] === station ? 'fight' : 'assign';
+    if (t.firstHireInstanceId === hired.instanceId && t.firstHireUsed && t.phase === phase) return player;
+    return { ...player, tutorial: { ...t, phase, firstHireUsed: true, firstHireInstanceId: hired.instanceId } };
+  }
+  // No recruit survived the save, so the consumed flag cannot be authoritative.
+  // A roster with any other member is ambiguous and must not mint another hire.
+  if (candidates.length || player.crew.length !== 1 || player.reserve?.length) return player;
+  const paidFuel = Math.min(1, Number.isFinite(player.activeContract?.fuelSpent)
+    ? Math.max(0, player.activeContract.fuelSpent) : 0);
+  return { ...player,
+    activeContract: null, activeEncounter: null,
+    tutorial: { ...t, phase: 'hire', firstHireUsed: false, firstHireInstanceId: null,
+      contractRecoveryFuelSpent: Math.max(t.contractRecoveryFuelSpent || 0, paidFuel) },
+  };
+}
+
+function priorWelcomePull(player) {
+  const history = Array.isArray(player?.gacha?.history) ? player.gacha.history : [];
+  const recorded = [...history].reverse().find(entry => entry?.source === 'welcome');
+  return { recorded, consumed: Boolean(recorded) };
+}
+
+export function reconcileWelcomeV5(player) {
+  const t = player?.tutorial;
+  if (t?.script !== 5 || t.completed || !['pull', 'register'].includes(t.phase)) return player;
+  const { recorded, consumed } = priorWelcomePull(player);
+  if (!consumed) return player;
+  const station = recorded?.templateId === 'merc_kira' ? 'weapons'
+    : recorded?.templateId === 'merc_tink' ? 'shields' : null;
+  const role = recorded?.templateId === 'merc_nemi' ? 'away' : null;
+  return { ...player, tutorial: { ...t, phase: 'register', welcomePulled: true,
+    welcomeInstanceId: recorded?.instanceId || t.welcomeInstanceId || null,
+    suggestedStation: station ?? t.suggestedStation,
+    suggestedRole: role ?? t.suggestedRole,
+  } };
+}
+
 export function advanceTutorialV5(player, event) {
   const current = player?.tutorial;
   if (current?.script !== 5 || current.completed) return player;
@@ -80,7 +132,8 @@ export function nameShipV5(player, value) {
 
 export function grantWelcomePullV5(player, options = {}) {
   const t = player?.tutorial;
-  if (t?.script !== 5 || t.phase !== 'pull' || t.completed || !t.firstWin || !t.firstClaim || !t.named || t.welcomePulled) {
+  if (t?.script !== 5 || t.phase !== 'pull' || t.completed || !t.firstWin || !t.firstClaim || !t.named || t.welcomePulled
+    || priorWelcomePull(player).consumed) {
     return { ok: false, reason: 'welcome_unavailable', player, instance: null };
   }
   const temporary = { ...player, tutorial: { ...defaultTutorialV4(), phase: 'pull', firstWin: true, firstClaim: true, named: true } };

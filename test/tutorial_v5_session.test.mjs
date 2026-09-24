@@ -171,8 +171,8 @@ test('a reloaded fight with a missing saved first hire cannot launch or claim a 
     stationAssignments: { [captain.instanceId]: 'helm' },
     tutorial: { ...ready.tutorial, phase: 'fight', firstHireUsed: true, firstHireInstanceId: 'missing' },
   });
-  assert.equal(corrupted.tutorial.phase, 'fight');
-  assert.equal(corrupted.tutorial.firstHireInstanceId, 'missing');
+  assert.equal(corrupted.tutorial.phase, 'hire');
+  assert.equal(corrupted.tutorial.firstHireInstanceId, null);
   const wallet = { ...corrupted.wallet };
   const launch = act(corrupted, 'tutorial-fight-start');
   assert.equal(launch.ok, false);
@@ -182,6 +182,40 @@ test('a reloaded fight with a missing saved first hire cannot launch or claim a 
   const claim = act(reload(launch.player), 'contract-claim', { acceptanceId: 'forged', revision: 0 });
   assert.equal(claim.ok, false);
   assert.deepEqual(claim.player.wallet, wallet);
+});
+
+test('a missing saved first hire returns to one free hire after reload', () => {
+  const ready = staffed();
+  const captain = ready.crew.find(member => member.isCaptain);
+  const corrupted = reload({
+    ...ready,
+    crew: [captain],
+    stationAssignments: { [captain.instanceId]: 'helm' },
+  });
+  assert.equal(corrupted.tutorial.phase, 'hire');
+  assert.equal(corrupted.tutorial.firstHireUsed, false);
+  assert.equal(corrupted.tutorial.firstHireInstanceId, null);
+  const hired = act(corrupted, 'tutorial-first-hire');
+  assert.equal(hired.ok, true);
+  assert.equal(hired.player.crew.length, 2);
+  assert.equal(hired.player.crew.filter(member => member.isCaptain).length, 1);
+  assert.equal(act(hired.player, 'tutorial-first-hire').ok, false);
+  const assigned = act(hired.player, 'station-assign', {
+    id: hired.player.tutorial.firstHireInstanceId, station: 'weapons',
+  });
+  assert.equal(assigned.player.tutorial.phase, 'fight');
+  assert.equal(act(assigned.player, 'tutorial-fight-start').ok, true);
+});
+
+test('a stale first-hire ID finds the existing recruit instead of granting another', () => {
+  const ready = staffed();
+  const corrupted = reload({ ...ready, tutorial: {
+    ...ready.tutorial, phase: 'fight', firstHireInstanceId: 'missing', firstHireUsed: true,
+  } });
+  assert.equal(corrupted.tutorial.phase, 'fight');
+  assert.equal(corrupted.tutorial.firstHireInstanceId, ready.crew[1].instanceId);
+  assert.equal(corrupted.crew.length, 2);
+  assert.equal(act(corrupted, 'tutorial-first-hire').ok, false);
 });
 
 test('a corrupted saved v5 fight retries without charging launch fuel twice', () => {
@@ -197,6 +231,43 @@ test('a corrupted saved v5 fight retries without charging launch fuel twice', ()
   assert.equal(player.wallet.fuel, spentFuel);
   assert.equal(player.wallet.credits, credits);
   assert.equal(player.activeEncounter.version, 2);
+});
+
+test('malformed v5 contract revision keeps paid launch credit on retry', () => {
+  let player = act(staffed(), 'tutorial-fight-start').player;
+  const fuel = player.wallet.fuel;
+  const credits = player.wallet.credits;
+  const acceptance = player.activeContract.acceptanceId;
+  player = reload({ ...player, activeContract: { ...player.activeContract, revision: 'bad' } });
+  assert.equal(player.activeContract, null);
+  assert.equal(player.activeEncounter, null);
+  assert.equal(player.tutorial.phase, 'fight');
+  assert.equal(player.tutorial.contractRecoveryFuelSpent, 1);
+  const retried = act(player, 'tutorial-fight-start');
+  assert.equal(retried.ok, true);
+  assert.equal(retried.player.wallet.fuel, fuel);
+  assert.equal(retried.player.wallet.credits, credits);
+  assert.notEqual(retried.player.activeContract.acceptanceId, acceptance);
+  assert.deepEqual(retried.player.contractBoard.completedOfferIds, []);
+  assert.equal(retried.player.gacha.pulls, 0);
+});
+
+test('corrupted v5 welcome flags reconcile to recorded pull without another recruit', () => {
+  let player = guidedWin(staffed());
+  player = act(player, 'contract-claim', contractIdentity(player)).player;
+  player = act(player, 'tutorial-name', { name: 'Sparrow' }).player;
+  player = act(player, 'tutorial-welcome-pull').player;
+  const originalId = player.tutorial.welcomeInstanceId;
+  const corrupted = reload({ ...player, tutorial: {
+    ...player.tutorial, phase: 'pull', welcomePulled: false, welcomeInstanceId: null,
+  } });
+  assert.equal(corrupted.tutorial.phase, 'register');
+  assert.equal(corrupted.tutorial.welcomePulled, true);
+  assert.equal(corrupted.tutorial.welcomeInstanceId, originalId);
+  assert.equal(act(corrupted, 'tutorial-welcome-pull').ok, false);
+  assert.equal(corrupted.gacha.pulls, 1);
+  assert.equal(corrupted.crew.length, 3);
+  assert.equal(act(corrupted, 'tutorial-register-skip').player.tutorial.phase, 'done');
 });
 
 test('v5 launch requires the actual matched hire at its assigned station', () => {
