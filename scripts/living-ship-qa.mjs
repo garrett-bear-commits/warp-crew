@@ -26,10 +26,16 @@ async function verifyBuild() {
   assert.match(buildOutput, /built in /, 'Pages build did not complete');
   const localIndex = await readFile(new URL('../dist/index.html', import.meta.url));
   const indexText = localIndex.toString('utf8');
+  const localQaHub = await readFile(new URL('../dist/qa.html', import.meta.url));
+  const qaHubText = localQaHub.toString('utf8');
+  assert.match(qaHubText, /Board ship\. Pick and name your captain\./, 'QA hub must describe captain-first entry');
+  assert.match(qaHubText, /target the pirate's weapons/, 'QA hub must describe the v5 guided order');
+  assert.match(qaHubText, /free Uncommon crew pull/, 'QA hub must describe the welcome pull');
   const jsPath = indexText.match(/<script type="module"[^>]+src="([^"]+\.js)"/)?.[1];
   const cssPath = indexText.match(/<link rel="stylesheet"[^>]+href="([^"]+\.css)"/)?.[1];
   assert.ok(jsPath && cssPath, 'Pages index must identify its JS and CSS assets');
   const assets = [{ path: 'index.html', local: new URL('../dist/index.html', import.meta.url), served: new URL(pageUrl) },
+    { path: 'qa.html', local: new URL('../dist/qa.html', import.meta.url), served: new URL('qa.html', pageUrl) },
     ...[jsPath, cssPath].map(path => ({ path, local: new URL(path, new URL('../dist/', import.meta.url)), served: new URL(path, pageUrl) }))];
   const hashes = [];
   for (const asset of assets) {
