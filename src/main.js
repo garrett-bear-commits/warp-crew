@@ -237,6 +237,7 @@ function hydratePlayer() {
 }
 
 async function boot() {
+  sessionUi.guidedBeatSaveFailed = null;
   essentialProgress = 0;
   essentialReady = false;
   essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
@@ -405,6 +406,10 @@ const guidedBeatScheduler = createGuidedBeatScheduler({
   getPlayer: () => app ? player : null,
   advance: data => handleAction('encounter-advance', data),
   isBattlePlaying,
+  onSaveFailure: failedIdentity => {
+    sessionUi.guidedBeatSaveFailed = failedIdentity;
+    render();
+  },
 });
 
 function scheduleGuidedBeat() { guidedBeatScheduler.schedule(); }
@@ -480,6 +485,7 @@ async function handleAction(act, data = {}) {
     const publishSessionResult = (result) => {
       player = result.player;
       sessionUi = { ...sessionUi, ...result.ui };
+      if (result.effect?.kind === 'encounter-beat') sessionUi.guidedBeatSaveFailed = null;
       if ('pendingCombat' in result.ui) pendingCombat = result.ui.pendingCombat;
       if ('tab' in result.ui) tab = result.ui.tab;
       if ('selectedRoom' in result.ui) selectedRoom = result.ui.selectedRoom;

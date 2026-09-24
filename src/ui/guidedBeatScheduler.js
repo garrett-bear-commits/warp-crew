@@ -8,7 +8,7 @@ export function shouldAutoAdvanceGuided(player) {
   return false;
 }
 
-export function createGuidedBeatScheduler({ getPlayer, advance, isBattlePlaying, setTimer = setTimeout, clearTimer = clearTimeout, delay = 420 }) {
+export function createGuidedBeatScheduler({ getPlayer, advance, isBattlePlaying, onSaveFailure, setTimer = setTimeout, clearTimer = clearTimeout, delay = 420 }) {
   let timer = null;
   let inFlight = false;
   let generation = 0;
@@ -28,6 +28,13 @@ export function createGuidedBeatScheduler({ getPlayer, advance, isBattlePlaying,
         if (currentGeneration === generation) {
           inFlight = false;
           if (result?.ok) schedule();
+          else if (result?.reason === 'save_failed') {
+            const current = getPlayer();
+            if (current?.tutorial?.script === 5 && shouldAutoAdvanceGuided(current)
+              && current.activeEncounter.acceptanceId === acceptanceId && current.activeEncounter.revision === revision) {
+              onSaveFailure?.({ acceptanceId, revision });
+            }
+          }
         }
       }
     }, delay);

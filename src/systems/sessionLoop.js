@@ -122,6 +122,10 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         kind: encounter.kind,
         braceUsed: encounter.orders.brace.used,
         targetWeaponsUsed: encounter.orders.targetWeapons?.used === true,
+        retryBeat: encounter.kind === 'guided' && encounter.version === 2
+          && encounter.orders.targetWeapons?.used === true && !encounter.result
+          && ui.guidedBeatSaveFailed?.acceptanceId === encounter.acceptanceId
+          && ui.guidedBeatSaveFailed?.revision === encounter.revision,
         result: encounter.result,
         lossReason: encounter.lossReason,
         hull: encounter.hull,

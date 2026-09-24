@@ -49,10 +49,12 @@ test('a committed v5 target order lets crew finish every captain fight without m
     const timers = new Map();
     let nextTimerId = 0;
     let busy = false;
+    const ui = { guidedBeatSaveFailed: null };
     let scheduler;
     scheduler = createGuidedBeatScheduler({
       getPlayer: () => player,
       isBattlePlaying: () => busy,
+      onSaveFailure: failedIdentity => { ui.guidedBeatSaveFailed = failedIdentity; },
       advance: data => {
         const result = commit('encounter-advance', data);
         if (result.ok) assert.equal(scheduler.schedule(), false, 'committed render cannot queue while its beat is in flight');
@@ -91,9 +93,25 @@ test('a committed v5 target order lets crew finish every captain fight without m
     assert.equal(player.activeEncounter.revision, beforeFailedBeat, 'failed save cannot publish a beat');
     assert.equal(saveCount, beforeFailedSave);
     assert.equal(timers.size, 0, 'failed save does not spin duplicate timers');
+    const retry = renderShipEncounter(sessionModels(player, ui, now).activeContractView);
+    assert.match(retry, /Retry fight progress/);
+    assert.match(retry, /data-act="encounter-advance"/);
+    assert.match(retry, new RegExp(`data-revision="${beforeFailedBeat}"`));
+    assert.doesNotMatch(retry, /Crew engaging/);
 
-    player = reload(saved);
-    assert.equal(scheduler.schedule(), true, 'a reloaded committed order resumes crew combat');
+    if (captain === 'captain_cyborg') {
+      failNextSave = true;
+      assert.equal(commit('encounter-advance', identity(player)).reason, 'save_failed');
+      assert.match(renderShipEncounter(sessionModels(player, ui, now).activeContractView), /Retry fight progress/);
+      assert.equal(commit('encounter-advance', identity(player)).ok, true);
+      assert.doesNotMatch(renderShipEncounter(sessionModels(player, ui, now).activeContractView), /Retry fight progress/,
+        'an old retry identity cannot appear after a committed beat');
+      assert.equal(scheduler.schedule(), true, 'successful retry returns to automatic crew beats');
+    } else {
+      player = reload(saved);
+      ui.guidedBeatSaveFailed = null;
+      assert.equal(scheduler.schedule(), true, 'a reloaded committed order resumes crew combat');
+    }
     for (let beats = 0; player.tutorial.phase === 'fight' && beats < 12; beats++) await tick();
     assert.equal(player.tutorial.phase, 'claim', captain);
     assert.equal(player.activeEncounter.result, 'win', captain);
