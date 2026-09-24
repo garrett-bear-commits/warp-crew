@@ -4,7 +4,7 @@ Date: 2026-09-24. Scope: Task 7 Steps 1–3 of the [implementation plan](../supe
 
 ## Source and artifact provenance
 
-- Starting source HEAD: `c310be675b2709a8ca728825daee0dbe68f9f5df` on `codex/contract-route-overhaul`. Task 7 changes in this QA pass: `scripts/living-ship-qa.mjs`, `package.json`, `src/systems/encounterState.js`, `src/ui/style.css`, `test/tutorial_v5_session.test.mjs`, and this documentation. Final task commit: pending at document creation.
+- Source range: `c310be675b2709a8ca728825daee0dbe68f9f5df..55c7e17` on `codex/contract-route-overhaul`. The built code is in `55c7e17`; this provenance line is a later documentation-only follow-up. Task 7 changes in this QA pass: `scripts/living-ship-qa.mjs`, `package.json`, `src/systems/encounterState.js`, `src/ui/style.css`, `test/tutorial_v5_session.test.mjs`, and this documentation.
 - Built with `npm run build:pages` (Vite 6.4.3; 66 modules) and served by `npm run preview` at `http://127.0.0.1:4173/`. The production Pages build is local; no public QA site was updated.
 - Built SHA-256: `dist/index.html` `2fec2a8d59ec6ce124e1d3d947e853d83d96ea6449be41cd2590754f20e19447`; `dist/assets/index-CyO8RawR.js` `d4b17b3d7380ed42378fc9eea0f35fd46bb7338b36d75031f7f3ae75572681cf`; `dist/assets/index-ChUziMeb.css` `7e594d0a2408b78ea1f8f7fef52bd6a2431e411299238b0464f5fd0559e3f735`.
 - Isolated headless Chrome `153.0.8010.53`, mobile device emulation at 390×844, 360×800, and 390×844 with `prefers-reduced-motion: reduce`. A separate local Chrome profile and fresh DevTools targets held the synthetic saves. The machine's ordinary profile and the public Pages origin were not touched.
