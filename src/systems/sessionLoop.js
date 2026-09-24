@@ -4,6 +4,7 @@ import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
 import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
 import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
 import { readyCrew } from './player.js';
+import { assignStation, stationOutputs } from './stations.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
 import { nextUpgradeCost, upgradeSystem } from './hangar.js';
@@ -64,6 +65,7 @@ function combatModel(encounter, orders, guaranteed, extra = {}) {
 
 export function sessionModels(player, ui = {}, now = Date.now()) {
   const contract = player.activeContract;
+  const stations = stationOutputs(player, now);
   const models = { missionView: ui.missionView || 'contracts', dailyPlan: dailyPlan(player, now),
     contractBoard: player.contractBoard ? { ...player.contractBoard, offers: player.contractBoard.offers.map(offer => {
       const rewardBand = contractRewardBand(player, offer, { now });
@@ -108,7 +110,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
           : preview;
         return orderDisplay(id, facts, encounter, guaranteed);
       });
-      models.activeContractView.combat = combatModel(encounter, orders, guaranteed, { action: 'contract-order', revision: contract.revision, acceptanceId: contract.acceptanceId });
+      models.activeContractView.combat = combatModel(encounter, orders, guaranteed, { action: 'contract-order', revision: contract.revision, acceptanceId: contract.acceptanceId, stationOutputs: stations });
     }
   }
   if (ui.pendingCombat) {
@@ -117,7 +119,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
       playerPower: preview.playerPower, enemyPower: preview.encounter.power, orderId: id,
       fuel: player.wallet.fuel - preview.fuelCost, tutorial: preview.tutorialFight,
     }), preview.encounter, preview.tutorialFight));
-    models.combatOrders = combatModel(preview.encounter, orders, preview.tutorialFight);
+    models.combatOrders = combatModel(preview.encounter, orders, preview.tutorialFight, { stationOutputs: stations });
   }
   if (ui.selectedExpeditionId) {
     const id = ui.selectedExpeditionId;
@@ -268,6 +270,10 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     Object.assign(nextUi, { tab: 'ship', missionView: 'contracts', selectedRoom: null });
     effect = { kind: 'crew-arrival', crewInstanceId: res.instance.instanceId };
     player = prepareSession(player, now);
+  } else if (act === 'station-assign') {
+    const res = assignStation(player, data.id, data.station === '' ? null : data.station, now);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
   } else if (['ship-upgrade', 'level-crew', 'rank-up'].includes(act)) {
     if (isTutorialActive(player)) return fail('improvements_locked');
     const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);

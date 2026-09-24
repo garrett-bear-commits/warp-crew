@@ -9,6 +9,7 @@ import { encounterById } from './combat.js';
 import { defaultGacha } from './gacha.js';
 import { berthsFor, fuelMaxFor, fuelRateFor, parkOverflowToReserve } from './hangar.js';
 import { clampFuel } from './economy.js';
+import { normalizeAssignments } from './stations.js';
 
 const SAVE_VERSION = 7;
 
@@ -54,6 +55,7 @@ export function createNewPlayer({ captainName = 'Captain', now = Date.now(), rng
     ship: starterShip(),
     crewSlots: 2,
     crew,
+    stationAssignments: { [crew[0].instanceId]: 'helm', [crew[1].instanceId]: null },
     reserve: [],
     iapFulfilled: [],
     activeExpedition: null,
@@ -101,6 +103,7 @@ export function migratePlayer(player) {
     ship,
     crew,
     reserve,
+    stationAssignments: normalizeAssignments({ crew, reserve, stationAssignments: player.stationAssignments }),
     gacha: { ...defaultGacha(), ...(player.gacha || {}) },
     crewSlots,
     stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) }, contractsByProfile: { ...base.stats.contractsByProfile, ...(player.stats?.contractsByProfile || {}) } },

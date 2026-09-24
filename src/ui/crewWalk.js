@@ -2,6 +2,7 @@
 import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS } from '../data/starterShip.js';
 import { findPath, isWalkablePct, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
 import { routeToWorkAnchor } from '../data/shipRoutes.js';
+import { normalizeAssignments, STATIONS } from '../systems/stations.js';
 import { walkAssetFor, WALK_FRAMES } from './crewArt.js';
 import { crewPoseForActor, motionPolicy } from './crewAnimation.js';
 import { onTick } from './stageLoop.js';
@@ -43,10 +44,19 @@ export function crewTargetStates(player, {
       immediate,
     }));
   }
-  if (!['briefing', 'choice'].includes(player?.activeContract?.stage)) return [];
-  const routeRooms = ['bridge', 'engineering'];
-  return crew.filter(readyForShipTask).slice(0, routeRooms.length).map((member, index) => {
-    const room = ROOMS.find((candidate) => candidate.id === routeRooms[index]);
+  const assignments = normalizeAssignments(player);
+  const onDuty = crew.filter(readyForShipTask);
+  const contractStage = ['briefing', 'choice'].includes(player?.activeContract?.stage);
+  const legacyRooms = ['bridge', 'engineering'];
+  const occupied = new Set(onDuty.map(member => STATIONS[assignments[member.instanceId]]?.roomId).filter(Boolean));
+  return onDuty.flatMap((member) => {
+    let roomId = STATIONS[assignments[member.instanceId]]?.roomId;
+    if (!roomId && contractStage) {
+      roomId = legacyRooms.find(id => !occupied.has(id));
+      if (roomId) occupied.add(roomId);
+    }
+    if (!roomId) return [];
+    const room = ROOMS.find((candidate) => candidate.id === roomId);
     return {
       crewInstanceId: member.instanceId,
       mode: 'contract-station',

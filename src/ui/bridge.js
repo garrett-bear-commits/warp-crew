@@ -17,6 +17,7 @@ import {
   tutorialPhase,
 } from '../systems/tutorial.js';
 import { readyCrew, fightingCrew } from '../systems/player.js';
+import { normalizeAssignments, stationOutputs, STATIONS } from '../systems/stations.js';
 import { portraitFor, shipArtFor, SPACE_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
 import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP } from '../systems/gacha.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
@@ -296,7 +297,7 @@ function patchShell(root, ctx) {
   root.querySelector('.hud-bar')?.style.setProperty('--hud-cols', String(chips.length));
 
   setSlot(root, 'hud', renderHud(player, fuel, chips));
-  setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct));
+  setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now));
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep));
   setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon }));
@@ -353,16 +354,18 @@ function renderHud(player, fuel, chips) {
   return list.map((id) => map[id] || '').join('');
 }
 
-function renderStageHud(locName, hullPct, shieldPct) {
+function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now) {
   const filled = Math.max(0, Math.min(10, Math.round(hullPct / 10)));
   const pips = Array.from({ length: 10 }, (_, i) => `<i class="${i < filled ? 'on' : ''}"></i>`).join('');
+  const stationId = Object.keys(STATIONS).find(id => STATIONS[id].roomId === selectedRoom);
+  const station = stationId ? stationOutputs(player, now)[stationId] : null;
   return `
         <div class="meter-chip">
           <span class="lbl">HULL</span>
           <div class="hull-pips" aria-label="Hull ${hullPct}">${pips}</div>
           <span class="pct">${hullPct}</span>
         </div>
-        <div class="loc-chip">${escapeHtml(locName)}</div>
+        <div class="loc-chip" ${station ? `aria-label="${station.label} output ${station.total}"` : ''}>${station ? `${station.label} ${station.total}` : escapeHtml(locName)}</div>
         <div class="meter-chip ghost">
           <span class="lbl">SHLD</span>
           <div class="meter shield"><span style="width:${shieldPct}%"></span></div>
@@ -600,15 +603,29 @@ function renderRecruitModal(player, step) {
 }
 
 export function renderRoomSheet(player, room, fuel, now) {
-  const assigned = room.role
-    ? player.crew.find((x) => x.role === room.role && x.status !== 'expedition')
-    : null;
+  const stationId = Object.keys(STATIONS).find(id => STATIONS[id].roomId === room.id);
+  const assignments = normalizeAssignments(player);
+  const output = stationId ? stationOutputs(player, now)[stationId] : null;
+  const assignedId = stationId ? Object.keys(assignments).find(id => assignments[id] === stationId) : null;
+  const assigned = stationId
+    ? player.crew.find(c => c.instanceId === assignedId) || player.reserve?.find(c => c.instanceId === assignedId)
+    : room.role ? player.crew.find(c => c.role === room.role && c.status !== 'expedition') : null;
   const sheet = assigned ? sheetFor(assigned.templateId, assigned.role) : null;
   const sys = room.system ? player.ship.systems?.[room.system] || 1 : null;
   const actions = roomActions(room, player);
   const sysLine = sys != null
     ? `Lv ${sys}${room.system ? ` · ${escapeHtml(systemStat(room.system, sys))}` : ''}`
     : assigned ? escapeHtml(assigned.role) : 'Empty';
+  const crewChoices = stationId ? `
+    <div class="muted">${output.label} output: ${output.baseline} + ${output.bonus} = ${output.total} (provisional)</div>
+    <div class="muted">${output.staffedBy ? '● Working here' : assigned ? '● Assigned · unavailable' : '○ Work marker · open'}</div>
+    <div class="row crew-actions">
+      ${player.crew.map(c => {
+        const unavailable = c.status === 'expedition' || c.status === 'reserve' || (c.injuredUntil || 0) > now;
+        const delta = c.role === STATIONS[stationId].role ? '+10' : '+0';
+        return `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${stationId}" ${unavailable ? 'disabled' : ''}>${escapeHtml(c.name)} · ${delta}${assignments[c.instanceId] === stationId ? ' · assigned' : ''}</button>`;
+      }).join('')}
+    </div>` : '';
   return `
     <div class="room-sheet" data-room-position="${room.labelAnchor.y >= 55 ? 'lower' : 'upper'}">
       <div class="sheet-head">
@@ -622,9 +639,10 @@ export function renderRoomSheet(player, room, fuel, now) {
         ${sheet ? `<div class="portrait idle-portrait" style="background-image:url('${sheet.url}')"></div>` : '<div class="portrait"></div>'}
         <div>
           <b>${assigned ? escapeHtml(assigned.name) : 'Empty'}</b>
-          <div class="muted">${assigned ? `Lv ${assigned.level}` : 'Unassigned'}</div>
+          <div class="muted">${assigned ? `Lv ${assigned.level}${output && !output.staffedBy ? ' · unavailable' : ''}` : 'Unassigned'}</div>
         </div>
       </div>
+      ${crewChoices}
       <div class="sheet-actions">${actions}</div>
     </div>`;
 }
@@ -908,10 +926,13 @@ function renderCrew(player) {
   const pityRarePct = Math.min(100, ((g.pityRare || 0) / PITY.rareHard) * 100);
   const luckMaxed = (g.luck || 0) >= LUCK_CAP;
   const reserve = player.reserve || [];
+  const assignments = normalizeAssignments(player);
+  const outputs = stationOutputs(player, now);
   return `
     <div class="panel">
       <h2>Crew · ${player.crew.length}/${player.crewSlots}</h2>
       <div class="muted">Power ${crewPower(fightingCrew(player))}${open ? ` · ${open} open` : ''}</div>
+      <div class="muted">Stations · ${Object.entries(outputs).map(([id, output]) => `${escapeHtml(output.label)} ${output.total}`).join(' · ')} (provisional output)</div>
       ${canHire ? `
         <div class="luck-meter">
           <div class="muted">Luck ${g.luck || 0}/${LUCK_CAP} · pity ${g.pityRare || 0}/${PITY.rareHard}</div>
@@ -942,6 +963,11 @@ function renderCrew(player) {
               <span class="crew-power">${c.power}</span>
             </div>
             <div class="crew-meta">${escapeHtml(c.role)} · Lv ${c.level}${hurt}</div>
+            <div class="crew-meta">${assignments[c.instanceId] ? `● ${escapeHtml(STATIONS[assignments[c.instanceId]].label)} work marker` : '○ Reserve from station duty'}</div>
+            <div class="row crew-actions">
+              ${Object.entries(STATIONS).map(([id, station]) => `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${id}" ${c.status === 'expedition' || (c.injuredUntil || 0) > now ? 'disabled' : ''}>${escapeHtml(station.label)} ${c.role === station.role ? '+10' : '+0'}</button>`).join('')}
+              ${assignments[c.instanceId] ? `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="">Leave station</button>` : ''}
+            </div>
             <div>${starsHtml(c.stars)}</div>
             <div class="row crew-actions">
               <button class="ghost" data-act="select-crew" data-id="${c.instanceId}">Dossier</button>
