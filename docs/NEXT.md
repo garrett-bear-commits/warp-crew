@@ -3,6 +3,12 @@
 Last updated: 2026-09-24
 Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 
+## 2026-09-24 trader distress polish — Pages QA live
+
+- [x] On source `83aa1b2064f8cb8cd1c6d6782671a283942d54b4`, dismiss the camera hint after a real pan plus zoom (pinch or control), and keep it dismissed through a same-tab reload. Replace the floating trader glyph/pirate with one illustrated distress transmission and Intercept button. One trader sprite generation; no retries. Local browser checks passed at 390×844 and 360×800; the full test suites and Pages build passed.
+- [x] Publish mock-only QA `gh-pages@5fb440ca712cd031dd0be342dc4b472bdf095442`. [Pages run 36069338677](https://github.com/garrett-bear-commits/warp-crew/actions/runs/36069338677) succeeded. Live build marker names the source; served index, JS, CSS, and trader sprite hashes match the local build. [Test the QA build](https://garrett-bear-commits.github.io/warp-crew/?fresh=1) in a separate browser/profile if the current browser save matters; `?fresh=1` intentionally clears it once.
+- [ ] Upload a new inactive Jest QA version for sandbox-user testing. The existing `versionId=01a0babc-fbc1-7578-97fb-92d9c3a06980` preview has not changed. Do not activate Jest production or merge PR #1 without Garrett's explicit approval.
+
 ## Captain-first package — Pages QA live
 
 - [x] Run the final local source-bound `af50be5` script-5 first-play, saved script-4 Brace, next normal pirate job, in-progress and completed reload, five corrupt guided-claim retries, corrupt fight/contract, missing-hire recovery, and duplicate welcome-history guard in isolated Chrome at 390×844, 360×800, and 390×844 reduced motion. [Evidence and limits](qa/2026-09-24-captain-first-play-qa.md). The `?fresh=1` link clears once; refreshing after the first hire preserves progress. The served `/qa.html` matches the captain-first checklist. The superseding report has 84 captures and SHA-256 `87f0b3b3ee4005b26055a216059d710bfb15e141fd64d2ba3ab12c8fdc3b2ae0`.
