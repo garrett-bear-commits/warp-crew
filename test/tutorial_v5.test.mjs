@@ -71,13 +71,18 @@ test('normalization preserves committed fields and repairs invalid phase', () =>
   assert.equal(normalizeTutorialV5({ phase: 'done' }).completed, true);
 });
 
-test('session gate cannot bypass hire or pretend unavailable actions succeeded', () => {
+test('session gate allows captain and hire only in sequence', () => {
   let p = advanceTutorialV5(fresh(), 'board_ship');
   assert.equal(sessionAction(p, {}, 'station-assign', { id: 'other', station: 'weapons' }).ok, false);
   const choose = sessionAction(p, {}, 'captain-choose', { templateId: 'captain_cyborg', name: 'Ada' });
-  assert.equal(choose.ok, false);
-  p = advanceTutorialV5(chooseCaptain(p, { templateId: 'captain_cyborg', name: 'Ada', rng: () => 0.1 }).player, 'captain_chosen');
-  assert.equal(sessionAction(p, {}, 'tutorial-first-hire').ok, false);
+  assert.equal(choose.ok, true);
+  assert.equal(choose.player.tutorial.phase, 'hire');
+  p = choose.player;
+  assert.equal(sessionAction(p, {}, 'captain-choose', { templateId: 'captain_cyborg', name: 'Again' }).ok, false);
+  const hired = sessionAction(p, {}, 'tutorial-first-hire');
+  assert.equal(hired.ok, true);
+  assert.equal(hired.player.tutorial.phase, 'assign');
+  assert.equal(sessionAction(hired.player, {}, 'tutorial-first-hire').ok, false);
   assert.equal(sessionAction(p, {}, 'tutorial-fight-start').ok, false);
 });
 

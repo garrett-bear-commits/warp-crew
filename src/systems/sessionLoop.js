@@ -3,7 +3,8 @@ import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, revi
 import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
 import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
 import { advanceTutorialV4, nameShip, grantWelcomePull } from './tutorialV4.js';
-import { advanceTutorialV5 } from './tutorialV5.js';
+import { advanceTutorialV5, hireFirstCrew, nameShipV5, grantWelcomePullV5 } from './tutorialV5.js';
+import { chooseCaptain } from './captainFirstPlay.js';
 import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs } from './stations.js';
@@ -122,7 +123,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         outputs: encounter.outputs,
         orders: Object.entries(options).map(([id, option]) => ({ id, cost: option.cost.shield,
           available: option.available, reason: option.reason, cooldownBeats: option.cooldownBeats,
-          effectLabel: id === 'brace' ? 'Blocks the next hit' : 'Restore up to 8 hull',
+          effectLabel: id === 'brace' ? 'Blocks the next hit' : id === 'target_weapons' ? 'Disrupt the pirate weapons' : 'Restore up to 8 hull',
           cooldownLabel: id === 'brace' && encounter.kind === 'guided' ? 'Once this fight'
             : `${id === 'brace' ? 3 : 4}-beat cooldown` })),
       };
@@ -180,7 +181,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   const v4 = player.tutorial?.script === 4 && !player.tutorial.completed;
   const v5 = player.tutorial?.script === 5 && !player.tutorial.completed;
   const phase = player.tutorial?.phase;
-  if (v4 && phase === 'register' && act === 'tutorial-register-start') return null;
+  if ((v4 || v5) && phase === 'register' && act === 'tutorial-register-start') return null;
   const tutorial = (name, payload) => {
     if (v4 || v5) {
       const v4Event = { combat_order_done: 'guided_win', contract_claimed: 'reward_claimed' }[name];
@@ -211,16 +212,19 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       register: ['tutorial-register-skip', 'tutorial-register-complete'],
     };
     if (!permitted[phase]?.includes(act)) return fail('tutorial_action_locked');
-    // Task 4 wires these committed actions. Until then, never acknowledge an
-    // allowlisted action without applying its player transition.
-    if (act === 'captain-choose' || act === 'tutorial-first-hire') return fail('tutorial_action_unavailable');
-    if (phase === 'assign' && (data.id !== player.tutorial.firstHireInstanceId
-      || data.station !== (player.crew.find(c => c.instanceId === data.id)?.templateId === 'merc_bolt' ? 'shields' : 'weapons'))) {
-      return fail('tutorial_station_required');
+    if (phase === 'assign') {
+      const hired = player.crew.find(c => c.instanceId === player.tutorial.firstHireInstanceId);
+      const required = hired?.templateId === 'merc_bolt' ? 'shields' : hired?.templateId === 'merc_jen' ? 'weapons' : null;
+      if (!player.tutorial.firstHireUsed || !hired || hired.isCaptain || !required
+        || data.id !== hired.instanceId || data.station !== required) return fail('tutorial_station_required');
     }
     if (phase === 'fight' && player.activeEncounter?.kind === 'guided' && player.activeEncounter.orderWindow
-      && !player.activeEncounter.orders.brace.used && act !== 'encounter-order') return fail('brace_required');
-    if (phase === 'fight' && act === 'encounter-order' && data.order !== 'brace') return fail('brace_required');
+      && !player.activeEncounter.orders.targetWeapons?.used && act !== 'encounter-order') return fail('target_weapons_required');
+    if (phase === 'fight' && act === 'encounter-order' && data.order !== 'target_weapons') return fail('target_weapons_required');
+    if (phase === 'claim' && (!player.tutorial.firstWin || player.activeContract?.offerId !== 'offer_tutorial_distress'
+      || player.activeContract?.profile !== 'distress' || player.activeContract?.stage !== 'return'
+      || player.activeEncounter?.acceptanceId !== player.activeContract?.acceptanceId
+      || player.activeEncounter?.orders?.targetWeapons?.used !== true)) return fail('guided_claim_required');
   }
   const milestone = name => {
     const prior = ensureDailyLoop(before, now).dailyLoop[name] === true;
@@ -235,8 +239,24 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     player = { ...player, flags: { ...player.flags, splashSeen: true } };
     if (v4) player = advanceTutorialV4(player, 'board_ship');
     if (v5) player = advanceTutorialV5(player, 'board_ship');
+  } else if (act === 'captain-choose') {
+    if (!v5 || phase !== 'captain') return fail('captain_unavailable');
+    const selected = chooseCaptain(player, { templateId: data.templateId, name: data.name, rng });
+    if (!selected.ok) return fail(selected.reason);
+    player = advanceTutorialV5(selected.player, 'captain_chosen');
+    if (player.tutorial.phase !== 'hire') return fail('captain_unavailable');
+    Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
+  } else if (act === 'tutorial-first-hire') {
+    if (!v5 || phase !== 'hire') return fail('first_hire_unavailable');
+    const hired = hireFirstCrew(player, { rng });
+    if (!hired.ok) return fail(hired.reason);
+    player = hired.player;
+    events.push(event('crew_arrived', { crewInstanceId: hired.instance.instanceId, templateId: hired.instance.templateId, source: 'first_hire' }));
+    effect = { kind: 'crew-arrival', crewInstanceId: hired.instance.instanceId };
+    Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
   } else if (act === 'tutorial-fight-start') {
-    if (!v4 || phase !== 'fight' || player.activeContract || player.activeEncounter) return fail('guided_encounter_unavailable');
+    if (!(v4 || v5) || phase !== 'fight' || player.activeContract || player.activeEncounter
+      || (v5 && (!player.tutorial.firstHireUsed || !player.tutorial.firstHireInstanceId))) return fail('guided_encounter_unavailable');
     const ready = prepareSession(player, now);
     const accepted = acceptContract(ready, 'offer_tutorial_distress', now);
     if (!accepted.ok) return fail(accepted.reason);
@@ -254,21 +274,22 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     Object.assign(nextUi, { tab: 'ship', selectedRoom: null, reviewedOfferId: null });
     effect = { kind: 'encounter-beat', events: first.events, outcome: null };
   } else if (act === 'tutorial-name') {
-    if (!v4 || phase !== 'name') return fail('ship_name_unavailable');
-    try { player = nameShip(player, data.name ?? ''); }
+    if (!(v4 && phase === 'name') && !(v5 && phase === 'name_ship')) return fail('ship_name_unavailable');
+    try { player = v4 ? nameShip(player, data.name ?? '') : nameShipV5(player, data.name ?? ''); }
     catch (error) { return fail(error instanceof RangeError ? 'invalid_ship_name' : 'ship_name_unavailable'); }
     if (player === before) return fail('ship_name_unavailable');
   } else if (act === 'tutorial-welcome-pull') {
-    if (!v4 || phase !== 'pull') return fail('welcome_unavailable');
-    const result = grantWelcomePull(player, { rng });
+    if (!(v4 || v5) || phase !== 'pull') return fail('welcome_unavailable');
+    const result = v4 ? grantWelcomePull(player, { rng }) : grantWelcomePullV5(player, { rng });
     if (!result.ok) return fail(result.reason);
     player = result.player;
     effect = { kind: 'crew-arrival', crewInstanceId: result.instance.instanceId };
     events.push(event('gacha_pull', { rarity: 'uncommon', free: true, gems: false, kind: result.kind, source: 'welcome' }));
   } else if (act === 'tutorial-register-skip' || act === 'tutorial-register-complete') {
-    if (!v4 || phase !== 'register') return fail('registration_unavailable');
+    if (!(v4 || v5) || phase !== 'register') return fail('registration_unavailable');
     if (act === 'tutorial-register-complete' && data.registered !== true) return fail('registration_unconfirmed');
-    player = advanceTutorialV4(player, act === 'tutorial-register-skip' ? 'registration_skipped' : 'registration_completed');
+    player = v4 ? advanceTutorialV4(player, act === 'tutorial-register-skip' ? 'registration_skipped' : 'registration_completed')
+      : advanceTutorialV5(player, act === 'tutorial-register-skip' ? 'registration_skipped' : 'registration_completed');
     if (player === before) return fail('registration_unavailable');
     if (act === 'tutorial-register-complete') player = { ...player, _jestRegistered: true,
       captainName: data.username || player.captainName };
@@ -339,7 +360,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       milestone('contract');
       events.push(fromAnalytics(res.analytics));
       tutorial('contract_claimed');
-      if (v4 && player.tutorial.phase === 'name') {
+      if ((v4 && player.tutorial.phase === 'name') || (v5 && player.tutorial.phase === 'name_ship')) {
         player = { ...player, crewSlots: Math.max(3, player.crewSlots || 2),
           flags: { ...player.flags, berth3Opened: true } };
       }

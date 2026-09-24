@@ -83,10 +83,16 @@ export function restoreTutorialPlayer(savedPlayer) {
 }
 
 export function resolveEntryTab(currentPlayer, entry, currentTab = 'ship') {
-  if (currentPlayer?.tutorial?.script === 4 && isTutorialActive(currentPlayer)) return 'ship';
+  if ([4, 5].includes(currentPlayer?.tutorial?.script) && isTutorialActive(currentPlayer)) return 'ship';
   if (entry?.notification_type === 'daily_pull') return 'crew';
   if (entry?.notification_type === 'expedition_done' || entry?.notification_type === 'fuel_full') return 'missions';
   return currentTab;
+}
+
+export function freshBootCrewMessage(currentPlayer) {
+  const names = (currentPlayer?.crew || []).map(member => member.name);
+  if (!names.length) return 'No crew on deck yet. Choose your captain.';
+  return `Crew on deck — ${names.join(' and ')}.`;
 }
 
 function showToast(next) {
@@ -112,8 +118,9 @@ function pushLog(msg) {
 const SESSION_ERROR_COPY = {
   save_failed: 'Could not save. Try again.',
   tutorial_action_locked: 'Finish the current step first.',
-  tutorial_station_required: 'Send Bolt to Shields first.',
+  tutorial_station_required: 'Assign your crew member to the required station first.',
   brace_required: 'Brace before the pirate fires.',
+  target_weapons_required: 'Target the pirate weapons before advancing.',
   guided_encounter_unavailable: 'The distress call is no longer available.',
   ship_name_unavailable: 'Name the ship after the first job.',
   invalid_ship_name: 'Use a ship name up to 24 characters.',
@@ -186,7 +193,7 @@ function hydratePlayer() {
       captainName: jestPlayer?.username || 'Captain',
     });
     pushLog('Career start aboard Sparrow.');
-    pushLog('Two mercs on deck — Rex and Bolt.');
+    pushLog(freshBootCrewMessage(player));
   }
 
   player = {
@@ -196,7 +203,7 @@ function hydratePlayer() {
   };
 
   if (isTutorialActive(player)) {
-    tab = player.tutorial.script === 4 ? 'ship' : preferredTab(player, tab);
+    tab = [4, 5].includes(player.tutorial.script) ? 'ship' : preferredTab(player, tab);
   }
 
   const daily = applyDailyLogin(player);
@@ -760,7 +767,7 @@ async function handleAction(act, data = {}) {
     const result = await handleJoinJest({ reason: 'shop_prompt' });
     if (result.registered) player = { ...player, _jestRegistered: true, captainName: result.username || player.captainName };
   } else if (act === 'tutorial-register-start') {
-    if (player.tutorial?.script !== 4 || player.tutorial.phase !== 'register') return;
+    if (![4, 5].includes(player.tutorial?.script) || player.tutorial.phase !== 'register') return;
     const result = await handleJoinJest({ reason: 'first_session' });
     if (result.registered) return handleAction('tutorial-register-complete', { registered: true, username: result.username });
     render();

@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { defaultTutorialV4, grantWelcomePull } from '../src/systems/tutorialV4.js';
 import { tutorialDistressOffer, acceptContract } from '../src/systems/contracts.js';
+import { prepareSession, sessionAction, persistSessionTransition } from '../src/systems/sessionLoop.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
 const base = () => createNewPlayer({ tutorialScript: 4, now: 1, rng: () => 0.2 });
@@ -75,4 +76,41 @@ test('script-4 reward and name flags survive JSON migration', () => {
   assert.equal(loaded.gacha.pulls, 1);
   assert.deepEqual(loaded.gacha.history, source.gacha.history);
   assert.equal(grantWelcomePull(loaded).ok, false);
+});
+
+test('a saved script-4 Brace window resumes under script-5-capable code and claims once', () => {
+  const now = Date.UTC(2030, 8, 23, 12);
+  let player = prepareSession(createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 }), now);
+  const act = (action, data = {}) => {
+    const result = sessionAction(player, {}, action, data, { now, rng: () => 0.1 });
+    assert.equal(result?.ok, true, `${action}: ${result?.reason}`);
+    let published = player;
+    assert.equal(persistSessionTransition(result, { save: () => true,
+      publish: value => { published = value.player; } }).ok, true);
+    player = migratePlayer(clone(published));
+  };
+  act('splash-dismiss');
+  const bolt = player.crew.find(member => member.templateId === 'merc_bolt');
+  act('station-assign', { id: bolt.instanceId, station: 'shields' });
+  act('tutorial-fight-start');
+  assert.equal(player.tutorial.script, 4);
+  assert.equal(player.activeEncounter.version, 1);
+  assert.ok(player.activeEncounter.orderWindow);
+  assert.equal(player.activeEncounter.orders.brace.used, false);
+  const encounterIdentity = () => ({ acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision });
+  assert.equal(sessionAction(player, {}, 'encounter-advance', encounterIdentity(), { now }).ok, false);
+  act('encounter-order', { ...encounterIdentity(), order: 'brace' });
+  assert.equal(player.activeEncounter.orders.brace.used, true);
+  for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) act('encounter-advance', encounterIdentity());
+  assert.equal(player.tutorial.phase, 'claim');
+  const claimIdentity = { acceptanceId: player.activeContract.acceptanceId, revision: player.activeContract.revision };
+  const credits = player.wallet.credits;
+  const reward = player.activeContract.result.rewards.credits;
+  act('contract-claim', claimIdentity);
+  assert.equal(player.tutorial.script, 4);
+  assert.equal(player.tutorial.phase, 'name');
+  assert.equal(player.wallet.credits, credits + reward);
+  assert.equal(player.crewSlots, 3);
+  assert.equal(sessionAction(player, {}, 'contract-claim', claimIdentity, { now }).ok, false);
+  assert.equal(player.wallet.credits, credits + reward);
 });
