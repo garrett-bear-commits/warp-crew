@@ -8,7 +8,7 @@ import { portraitFor, applyResolvedSlicePortraits } from '../src/data/portraits.
 
 assert.deepEqual(Object.keys(ART_VERTICAL_SLICE).sort(), ['bolt', 'kira', 'nemi', 'rex', 'splash', 'tink']);
 for (const [name, art] of Object.entries(ART_VERTICAL_SLICE)) {
-  assert.equal(art.status, name === 'splash' ? 'approved' : 'provisional', `${name} art review status`);
+  assert.equal(art.status, name === 'splash' ? 'qa-candidate' : 'provisional', `${name} art review status`);
   assert.ok(art.path.startsWith('/art/'));
   assert.ok(art.fallback.startsWith('/art/'));
   assert.ok(art.width > 0 && art.height > 0);
