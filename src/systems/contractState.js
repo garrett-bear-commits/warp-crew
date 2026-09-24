@@ -36,7 +36,26 @@ export function isCanonicalGuidedContract(contract) {
 
 export function normalizeContractState(player, { nodes, encounterById }) {
   const contract = player?.activeContract;
-  if (!contract) return player;
+  if (!contract) {
+    const tutorial = player?.tutorial;
+    if (tutorial?.script !== 5 || tutorial.completed || tutorial.phase !== 'claim') return player;
+    const alreadyRewarded = (player.contractBoard?.completedOfferIds || []).includes('offer_tutorial_distress')
+      || player.flags?.sparrowFirstRepair;
+    return {
+      ...player,
+      activeEncounter: null,
+      tutorial: alreadyRewarded
+        ? { ...tutorial, phase: 'name_ship', firstWin: true, firstClaim: true }
+        : { ...tutorial, phase: 'fight', firstWin: false, firstClaim: false,
+          // Reaching claim requires a paid guided launch. Carry that payment
+          // forward even when the contract itself was lost from the save.
+          contractRecoveryFuelSpent: Math.max(tutorial.contractRecoveryFuelSpent || 0, 1) },
+      recoveryEvents: [
+        ...(player.recoveryEvents || []),
+        { event: 'contract_recovered', reason: 'missing_guided_claim_contract' },
+      ],
+    };
+  }
   // Profile is itself validated data, not tutorial identity. Keep recovery
   // available if it is lost, with a coherent acceptance fallback for a lost offer ID.
   const tutorialContractId = `contract_${contract.boardDay}_distress`;

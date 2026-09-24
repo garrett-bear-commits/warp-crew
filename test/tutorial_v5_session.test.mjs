@@ -265,6 +265,7 @@ test('encounter normalization rejects a guided claim with a changed offer ID', (
 });
 
 for (const [label, corrupt] of [
+  ['missing return contract', player => ({ ...player, activeContract: null })],
   ['missing return rewards', player => ({ ...player, activeContract: {
     ...player.activeContract, result: { ...player.activeContract.result, rewards: null },
   } })],
@@ -316,6 +317,21 @@ for (const [label, corrupt] of [
     assert.equal(player.gacha.pulls, 0);
   });
 }
+
+test('missing guided contract after a recorded claim advances without another reward', () => {
+  const won = guidedWin(staffed());
+  const claimed = act(won, 'contract-claim', contractIdentity(won)).player;
+  const credits = claimed.wallet.credits;
+  const recovered = reload({ ...claimed, tutorial: {
+    ...claimed.tutorial, phase: 'claim', firstClaim: false,
+  } });
+  assert.equal(recovered.tutorial.phase, 'name_ship');
+  assert.equal(recovered.tutorial.firstClaim, true);
+  assert.equal(recovered.wallet.credits, credits);
+  assert.deepEqual(recovered.contractBoard.completedOfferIds, ['offer_tutorial_distress']);
+  assert.equal(act(recovered, 'tutorial-fight-start').ok, false);
+  assert.equal(act(recovered, 'contract-claim', contractIdentity(won)).ok, false);
+});
 
 test('corrupted v5 welcome flags reconcile to recorded pull without another recruit', () => {
   let player = guidedWin(staffed());
