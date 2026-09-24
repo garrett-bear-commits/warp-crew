@@ -7,7 +7,8 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 
 - [x] On source `83aa1b2064f8cb8cd1c6d6782671a283942d54b4`, dismiss the camera hint after a real pan plus zoom (pinch or control), and keep it dismissed through a same-tab reload. Replace the floating trader glyph/pirate with one illustrated distress transmission and Intercept button. One trader sprite generation; no retries. Local browser checks passed at 390×844 and 360×800; the full test suites and Pages build passed.
 - [x] Publish mock-only QA `gh-pages@5fb440ca712cd031dd0be342dc4b472bdf095442`. [Pages run 36069338677](https://github.com/garrett-bear-commits/warp-crew/actions/runs/36069338677) succeeded. Live build marker names the source; served index, JS, CSS, and trader sprite hashes match the local build. [Test the QA build](https://garrett-bear-commits.github.io/warp-crew/?fresh=1) in a separate browser/profile if the current browser save matters; `?fresh=1` intentionally clears it once.
-- [ ] Upload a new inactive Jest QA version for sandbox-user testing. The existing `versionId=01a0babc-fbc1-7578-97fb-92d9c3a06980` preview has not changed. Do not activate Jest production or merge PR #1 without Garrett's explicit approval.
+- [x] Garrett clarified that the existing Jest staging version hosts the GitHub Pages QA URL; no new Jest upload is needed for Pages changes. The `versionId=01a0babc-fbc1-7578-97fb-92d9c3a06980` preview was checked after the Pages publish and its game iframe loaded `garrett-bear-commits.github.io/warp-crew/`. That verifies the staging source URL, not a fresh Jest sandbox-user playthrough of this polish.
+- [ ] Test the updated flow inside the Jest staging preview with a sandbox user, including camera gesture dismissal and the trader distress card. Do not activate Jest production or merge PR #1 without Garrett's explicit approval.
 
 ## Captain-first package — Pages QA live
 
