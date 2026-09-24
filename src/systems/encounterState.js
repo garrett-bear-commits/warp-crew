@@ -83,13 +83,16 @@ export function beginContractEncounter(player, now = Date.now()) {
   };
 }
 
-function validSnapshot(encounter, contract) {
+function validSnapshot(encounter, contract, tutorial) {
   // The only new-mode entry paths are distress Launch (one route action) and
   // reliable Push (Launch plus choice). Every later contract revision is a beat.
   const entryRevision = contract.profile === 'distress' ? 1
     : contract.profile === 'reliable' && contract.choiceId === 'push' ? 2 : null;
   if (!encounter || contract.encounterMode !== 'crew' || ![1, 2].includes(encounter.version) || encounter.acceptanceId !== contract.acceptanceId
     || entryRevision === null
+    || (contract.profile === 'distress'
+      && (tutorial?.script === 4 ? encounter.version !== 1
+        : tutorial?.script === 5 ? encounter.version !== 2 : true))
     || encounter.encounterId !== contract.encounterId || !['guided', 'normal'].includes(encounter.kind)
     || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
     || !Number.isInteger(encounter.seed) || encounter.seed !== contract.routeSeed
@@ -127,7 +130,7 @@ export function normalizeEncounterState(player) {
   const encounter = player?.activeEncounter;
   if (!contract) return encounter ? { ...player, activeEncounter: null } : player;
   if (!encounter && contract.encounterMode !== 'crew') return player;
-  if (validSnapshot(encounter, contract)) return player;
+  if (validSnapshot(encounter, contract, player.tutorial)) return player;
   const tutorial = player.tutorial;
   const recoveringV4Distress = contract.profile === 'distress'
     && tutorial?.script === 4 && tutorial.phase === 'fight' && !tutorial.completed;
@@ -150,7 +153,7 @@ export function normalizeEncounterState(player) {
 export function applyEncounterAction(player, { acceptanceId, revision, order = null } = {}, now = Date.now()) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
-  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract)) {
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
     return { ok: false, reason: 'invalid_encounter_state', player };
   }
   if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
@@ -181,7 +184,7 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
 export function recoverEncounter(player, { acceptanceId, revision } = {}) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
-  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract)) {
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
     return { ok: false, reason: 'invalid_encounter_state', player };
   }
   if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {

@@ -199,6 +199,30 @@ test('a saved script-4 fight retains its v1 Brace path and reward', () => {
   assert.deepEqual(player.activeContract.result.rewards, { credits: 120, medals: 8, reputation: 4, gems: 0, fuel: 0 });
 });
 
+test('a saved script-4 distress fight cannot adopt v2 target weapons on reload or action', () => {
+  const opened = beat(guided(4));
+  assert.equal(opened.activeEncounter.version, 1);
+  const original = clone(opened.activeEncounter);
+  const targetOption = { cost: { shield: 0 }, available: true, reason: null, cooldownBeats: 0 };
+  const forged = { ...clone(opened), activeEncounter: {
+    ...original, version: 2,
+    enemy: { ...original.enemy, weaponDisabledThroughBeat: 0 },
+    orders: { ...original.orders, targetWeapons: { used: false, uses: 0 } },
+    orderWindow: { ...original.orderWindow,
+      availableOrders: [...original.orderWindow.availableOrders, 'target_weapons'],
+      orderOptions: { ...original.orderWindow.orderOptions, target_weapons: targetOption } },
+  } };
+  assert.equal(normalizeEncounterState(forged).activeContract, null);
+  assert.equal(migratePlayer(clone(forged)).activeContract, null);
+  const attempt = applyEncounterAction(forged, {
+    acceptanceId: forged.activeEncounter.acceptanceId,
+    revision: forged.activeEncounter.revision,
+    order: 'target_weapons',
+  }, now);
+  assert.equal(attempt.ok, false);
+  assert.equal(attempt.reason, 'invalid_encounter_state');
+});
+
 test('a malformed v2 target option cannot fall through to a legacy claim', () => {
   const downgraded = normal();
   downgraded.activeEncounter = { ...downgraded.activeEncounter, version: 1 };
