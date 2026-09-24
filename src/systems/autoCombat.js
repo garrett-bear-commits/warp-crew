@@ -8,8 +8,8 @@ function outputValue(outputs, station) {
   return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 100;
 }
 
-function seededIndex(seed, beat, eventIndex, size) {
-  let hash = (Math.trunc(seed) ^ Math.imul(beat + 1, 0x45d9f3b) ^ Math.imul(eventIndex + 1, 0x119de1f3)) | 0;
+function seededIndex(seed, beat, size) {
+  let hash = (Math.trunc(seed) ^ Math.imul(beat + 1, 0x45d9f3b)) | 0;
   hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b);
   hash = Math.imul(hash ^ (hash >>> 16), 0x45d9f3b);
   hash = (hash ^ (hash >>> 16)) >>> 0;
@@ -48,12 +48,12 @@ function fireWeapons(next, events) {
 
 function resolveEnemyImpact(next, selectedWindow, events) {
   const target = selectedWindow?.target || next.enemy.target;
-  const rawDamage = next.kind === 'normal' ? 24 : 12;
+  const rawDamage = next.kind === 'normal' ? 22 : 12;
   const shieldOutput = Math.floor(next.outputs.shields * next.systems.shields / 100);
   const helmOutput = Math.floor(next.outputs.helm * next.systems.helm / 100);
   const mitigation = Math.max(0, Math.floor((shieldOutput - 50) / 10)) + Math.max(0, Math.floor((helmOutput - 100) / 10));
   let amount = Math.max(1, rawDamage - mitigation);
-  if (next.braceThroughBeat >= next.beat) amount = Math.max(1, Math.floor(amount / 2));
+  if (next.braceThroughBeat >= next.beat) amount = 0;
   const shieldLoss = Math.min(next.shield, amount);
   next.shield -= shieldLoss;
   const hullAmount = amount - shieldLoss;
@@ -170,7 +170,7 @@ export function advanceEncounter(state, order = null) {
   if (next.result === null) {
     if (next.beat % 3 === 1) {
       const targets = ['hull', 'weapons', 'engineering', 'shields'];
-      const target = next.beat === 1 ? 'hull' : targets[seededIndex(next.seed, next.beat, next.eventIndex, targets.length)];
+      const target = next.beat === 1 ? 'hull' : targets[seededIndex(next.seed, next.beat, targets.length)];
       next.enemy.target = target;
       next.enemy.pattern = 'charging_volley';
       const orderNames = next.kind === 'guided' ? ['brace'] : ['brace', 'repair'];

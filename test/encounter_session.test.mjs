@@ -193,7 +193,7 @@ test('the active UI exposes truthful costs and an always available advance actio
   assert.match(html, /2 shield/);
   assert.match(html, /data-act="encounter-order"/);
   assert.match(html, /data-act="encounter-advance"/);
-  assert.match(html, /Halves next hit/);
+  assert.match(html, /Blocks the next hit/);
   assert.match(html, /3-beat cooldown/);
   assert.match(html, /Restore up to 8 hull/);
   const afterOrder = beat(told, 'brace');

@@ -151,9 +151,13 @@ function reliablePushEncounter({ staffWeapons = false } = {}) {
   const window = advanceEncounter(encounter({ kind: 'normal' })).state;
   const braced = advanceEncounter(window, 'brace').state;
   const waited = advanceEncounter(window, null).state;
-  const bracedImpact = advanceEncounter(braced).state;
-  const waitedImpact = advanceEncounter(waited).state;
-  assert.ok(bracedImpact.hull + bracedImpact.shield > waitedImpact.hull + waitedImpact.shield);
+  const bracedImpact = advanceEncounter(braced);
+  const waitedImpact = advanceEncounter(waited);
+  assert.equal(bracedImpact.events.find(event => event.type === 'enemy_impact').amount, 0,
+    'Brace blocks the next hull and subsystem impact entirely');
+  assert.ok(waitedImpact.events.find(event => event.type === 'enemy_impact').amount > 0);
+  assert.equal(bracedImpact.state.shield, braced.shield);
+  assert.equal(bracedImpact.state.hull, braced.hull);
   assert.ok(window.shield - braced.shield === 2);
 }
 
@@ -212,14 +216,39 @@ function reliablePushEncounter({ staffWeapons = false } = {}) {
   assert.equal(state.result, 'win');
 }
 
+// Mutation caught: captain-order event count must not perturb the seeded enemy target sequence.
+{
+  let plain = reliablePushEncounter();
+  let braced = reliablePushEncounter();
+  while (plain.beat < 4) plain = advanceEncounter(plain).state;
+  while (braced.beat < 4) {
+    const order = braced.beat === 1 && braced.orderWindow?.availableOrders.includes('brace') ? 'brace' : null;
+    braced = advanceEncounter(braced, order).state;
+  }
+  assert.equal(plain.orderWindow.target, braced.orderWindow.target,
+    'an order changes combat effects, not the seed-derived next threat');
+  const restored = JSON.parse(JSON.stringify(braced));
+  assert.deepEqual(advanceEncounter(braced), advanceEncounter(restored), 'the order branch still replays after JSON reload');
+}
+
 // Mutation caught: the real reliable Ice Spur Push winning hands-free before station choice matters.
 {
   const push = reliablePushEncounter();
   assert.deepEqual(push.outputs, { helm: 110, shields: 100, weapons: 100, engineering: 100 });
   const noOrder = advanceUntil(push, current => current.result !== null, 40);
   assert.equal(noOrder.result, 'loss');
+  assert.equal(noOrder.beat, 9, 'the authored baseline survives eight committed beats before the fatal volley');
+  assert.equal(noOrder.enemy.hull, 2);
   assert.ok(noOrder.hull >= 1);
   assert.ok(noOrder.lossReason);
+
+  let bracedPush = reliablePushEncounter();
+  const bracedWin = advanceUntil(bracedPush, current => current.result !== null, 40,
+    current => current.beat === 1 && current.orderWindow?.availableOrders.includes('brace') ? 'brace' : null);
+  assert.equal(bracedWin.result, 'win', 'a legal Brace at the first threat window turns the real baseline Push into a win');
+  assert.equal(bracedWin.beat, 9);
+  assert.ok(bracedWin.hull > noOrder.hull, 'the same final volley is survivable when Brace is timed at the first tell');
+  assert.equal(bracedWin.orders.brace.uses, 1);
 
   const staffedPush = reliablePushEncounter({ staffWeapons: true });
   assert.deepEqual(staffedPush.outputs, { helm: 110, shields: 100, weapons: 110, engineering: 100 });
@@ -240,7 +269,7 @@ function reliablePushEncounter({ staffWeapons = false } = {}) {
 {
   let state = encounter({ kind: 'normal', seed: 1 });
   while (state.beat < 4) state = advanceEncounter(state).state;
-  assert.equal(state.orderWindow.target, 'weapons');
+  assert.equal(state.orderWindow.target, 'shields');
   const restored = JSON.parse(JSON.stringify(state));
   assert.deepEqual(advanceEncounter(state), advanceEncounter(restored));
 }
@@ -254,10 +283,10 @@ function impactAtSecondTell(seed, target) {
 
 // Mutation caught: weapons system damage not reducing later outgoing weapon damage.
 {
-  const damaged = impactAtSecondTell(1, 'weapons');
+  const damaged = impactAtSecondTell(3, 'weapons');
   assert.ok(damaged.systems.weapons < 100);
   const reducedShot = advanceEncounter(damaged).events.find(event => event.type === 'weapon_damage');
-  const healthy = encounter({ kind: 'normal', seed: 1 });
+  const healthy = encounter({ kind: 'normal', seed: 3 });
   const healthyShot = advanceEncounter(healthy).events.find(event => event.type === 'weapon_damage');
   assert.ok(reducedShot.amount < healthyShot.amount);
 }
@@ -279,7 +308,7 @@ function impactAtSecondTell(seed, target) {
 
 // Mutation caught: engineering system damage not reducing repairs or recovering its function.
 {
-  const damaged = impactAtSecondTell(2, 'engineering');
+  const damaged = impactAtSecondTell(4, 'engineering');
   assert.ok(damaged.systems.engineering < 100);
   const degraded = advanceEncounter(damaged);
   assert.equal(degraded.events.some(event => event.type === 'repair' && event.target === 'hull'), false);

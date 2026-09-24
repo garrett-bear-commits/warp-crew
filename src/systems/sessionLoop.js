@@ -118,7 +118,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         outputs: encounter.outputs,
         orders: Object.entries(options).map(([id, option]) => ({ id, cost: option.cost.shield,
           available: option.available, reason: option.reason, cooldownBeats: option.cooldownBeats,
-          effectLabel: id === 'brace' ? 'Halves next hit' : 'Restore up to 8 hull',
+          effectLabel: id === 'brace' ? 'Blocks the next hit' : 'Restore up to 8 hull',
           cooldownLabel: id === 'brace' && encounter.kind === 'guided' ? 'Once this fight'
             : `${id === 'brace' ? 3 : 4}-beat cooldown` })),
       };
