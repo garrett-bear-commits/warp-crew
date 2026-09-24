@@ -1,6 +1,6 @@
 # Captain-first onboarding and readable combat
 
-Status: proposed design for Garrett review; not an implementation or release approval
+Status: design approved by Garrett on 2026-09-24; not an implementation or release approval
 
 Date: 2026-09-24
 
