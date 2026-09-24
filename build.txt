@@ -1,12 +1,11 @@
 Warp Crew Pages QA build 2026-09-24
-Source: codex/contract-route-overhaul@af50be5ed14365fa66e5d2f6752434ff86ffdccb
-Runtime fixes: 867c142d90763c40ab9b3fe4e431186a67d56a31, 8ba8aa6367af9efe11b0b9a6dd4b0aa91782a145, b090f7dbbc6a901b7a4375145e1e9ff10acd49aa, af50be5ed14365fa66e5d2f6752434ff86ffdccb
-Local QA evidence: e7740ee7594fb3d8f053d995a653ce742f855f2b
-Scope: captain-first tutorial, crew-managed pirate rescue, guided claim recovery, portrait-backed alien/droid markers, next normal job
+Source: codex/contract-route-overhaul@83aa1b2064f8cb8cd1c6d6782671a283942d54b4
+Scope: camera hint dismisses after pan plus zoom; illustrated trader distress transmission
 Platform: GitHub Pages local/mock mode; not a Jest production build; no purchase or cloud-save claim
-Index SHA-256: b8a638ce94a6c8a915e1cd5456cdcee0d295b478b38fe1f0fc09ee6fcac65a56
+Index SHA-256: 6d19533dd8c80ee4c894d1439bc3e7756e4d729fb9c58d43eec6198b97156eb2
 QA hub SHA-256: 2f2e4f352d525d1be42e0069a2b9c6a18ea536e61d1d79098a77d9516923ead3
-JavaScript SHA-256: b51eec0d84f19d10006aca08857f726d4e7cbe4192e2931bf429f55b755b59ce
-CSS SHA-256: 7e594d0a2408b78ea1f8f7fef52bd6a2431e411299238b0464f5fd0559e3f735
+JavaScript SHA-256: c8a8c6e4a96ed0548b6b592739a8dab97b8166617b9d649554f8bcab15aa87a8
+CSS SHA-256: bc94e11ab7a1f8358a6d903fee19ed4b508ebde6818356f37024f9caa6473548
 Splash SHA-256: f716761790dd244c39471bd25e2eeebdd331e6820c89a9f1a47f403fd898982a
 Pirate SHA-256: f0fb9394355bf89b2570b64fb4bf282446e77a706f15fc00020e6730be8345e9
+Trader SHA-256: 2c59dbe39e377bd73cea59d4a089bd7a20361f7a6f8f9cd28d6992fd3746ad97
