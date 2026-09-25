@@ -64,6 +64,7 @@ let pendingCombat = null;
 let sessionUi = { missionView: 'contracts', reviewedOfferId: null, selectedExpeditionId: null, selectedExpeditionCrewIds: [] };
 let selectedRoom = null;
 let selectedCrewId = null;
+let confirmRestartSave = false;
 let cinematic = null;
 let platformStatus = 'booting';
 let shopProducts = null;
@@ -337,6 +338,7 @@ function render() {
     pendingCombat,
     selectedRoom,
     selectedCrewId,
+    confirmRestartSave,
     cinematic,
     platformStatus,
     jestLive: isReal(),
@@ -467,6 +469,32 @@ function doHire({ gems = false, ten = false } = {}) {
 
 async function handleAction(act, data = {}) {
   if (isBattlePlaying()) return;
+  if (act === 'restart-save') {
+    if (tab !== 'log' || isTutorialActive(player)) return;
+    confirmRestartSave = true;
+    render();
+    return;
+  }
+  if (act === 'restart-save-cancel') {
+    confirmRestartSave = false;
+    render();
+    return;
+  }
+  if (act === 'restart-save-confirm') {
+    if (!confirmRestartSave) return;
+    const jestPlayer = getJestPlayer();
+    const fresh = prepareSession(createNewPlayer({ captainName: jestPlayer?.username || 'Captain' }));
+    fresh._jestRegistered = Boolean(jestPlayer?.registered);
+    fresh._jestPlayerId = jestPlayer?.playerId || null;
+    if (!writeSave(fresh)) {
+      confirmRestartSave = false;
+      showToast({ title: 'Could not restart save. Try again.' });
+      render();
+      return;
+    }
+    window.location.reload();
+    return;
+  }
   // Tutorial CTAs navigate to or invoke the same production actions as the board.
   if (['tutorial-next', 'tutorial-go', 'tutorial-jump'].includes(act)) {
     const phase = player.tutorial?.phase;
@@ -791,16 +819,6 @@ async function handleAction(act, data = {}) {
   } else if (act === 'qa-gems') {
     player = { ...player, wallet: { ...player.wallet, gems: (player.wallet.gems || 0) + 100 } };
     pushLog('QA +100 gems.');
-  } else if (act === 'qa-reset') {
-    clearSave();
-    player = prepareSession(createNewPlayer());
-    pendingCombat = null;
-    sessionUi = { missionView: 'contracts', reviewedOfferId: null, selectedExpeditionId: null, selectedExpeditionCrewIds: [] };
-    selectedCrewId = null;
-    cinematic = null;
-    tab = 'ship';
-    showToast(null);
-    pushLog('Save reset.');
   }
 
   const saved = persist();

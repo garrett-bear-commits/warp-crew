@@ -398,7 +398,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, root._wcCameraOpen));
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
-  setSlot(root, 'modal', fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene }));
+  setSlot(root, 'modal', ctx.confirmRestartSave ? renderRestartSaveConfirm() : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene }));
   setSlot(root, 'hotspots', v5Session && phase === 'assign' ? renderV5AssignmentHotspot(player)
     : firstSession || v5Session ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'captain-marker', v5Session && phase === 'assign' ? renderCaptainMarker(player) : '');
@@ -1312,18 +1312,26 @@ function renderShop(player, shopProducts) {
       <div class="row" style="margin-top:8px">
         <button data-act="qa-gems">QA +100 gems</button>
         <button data-act="qa-fuel">QA +5 Fuel</button>
-      </div>
-      <button class="danger" data-act="qa-reset" style="margin-top:8px">Reset save</button>` : ''}
+      </div>` : ''}
     </div>
   `;
 }
 
-function renderLog(player, log, goals) {
+export function renderQaSettings() {
+  return `<div class="panel qa-settings"><h2>Settings</h2><p class="muted">QA tool · Start the game again on this device.</p><button class="danger" data-act="restart-save">Restart save</button></div>`;
+}
+
+export function renderRestartSaveConfirm() {
+  return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Restart save confirmation"><h2>Restart your save?</h2><p>This erases this browser's Warp Crew progress and starts the tutorial again. Your Jest account stays signed in. This cannot be undone.</p><button class="danger" data-act="restart-save-confirm">Erase progress and restart</button><button data-act="restart-save-cancel">Keep my save</button></section></div>`;
+}
+
+export function renderLog(player, log, goals) {
   const prog = storyProgress(player);
   const goalsDone = goals.goals.filter((g) => g.done).length;
   const collected = new Set((player.crew || []).map((c) => c.templateId)).size;
   const rank = reputationRank(player.wallet.reputation || 0);
   return `
+    ${renderQaSettings()}
     <div class="panel"><h2>Daily plan · ${dailyPlan(player).completed}/3</h2>${['contract', 'improve', 'away'].map(id => `<p>${ensureDailyLoop(player).dailyLoop[id] ? '✓' : '○'} ${escapeHtml(id)}</p>`).join('')}</div>
     <div class="panel">
       <h2>Career</h2>
