@@ -1,10 +1,10 @@
-Warp Crew Pages QA build 2026-09-24
-Source: codex/contract-route-overhaul@83aa1b2064f8cb8cd1c6d6782671a283942d54b4
-Scope: camera hint dismisses after pan plus zoom; illustrated trader distress transmission
+Warp Crew Pages QA build 2026-09-25
+Source: codex/contract-route-overhaul@93106b42ce58bb9a55e645829aa30641f618ca91
+Scope: confirmed QA save restart in Log Settings; camera hint and illustrated trader distress retained
 Platform: GitHub Pages local/mock mode; not a Jest production build; no purchase or cloud-save claim
-Index SHA-256: 6d19533dd8c80ee4c894d1439bc3e7756e4d729fb9c58d43eec6198b97156eb2
+Index SHA-256: 93f9b2a78cb54599f067248bab74a4b6686caf0c5d613db6997aa651862aa0bc
 QA hub SHA-256: 2f2e4f352d525d1be42e0069a2b9c6a18ea536e61d1d79098a77d9516923ead3
-JavaScript SHA-256: c8a8c6e4a96ed0548b6b592739a8dab97b8166617b9d649554f8bcab15aa87a8
+JavaScript SHA-256: c9c361171494288e2b9956fc1c17f9bfcec6d70d107800a1dc2b834fa4f2be4b
 CSS SHA-256: bc94e11ab7a1f8358a6d903fee19ed4b508ebde6818356f37024f9caa6473548
 Splash SHA-256: f716761790dd244c39471bd25e2eeebdd331e6820c89a9f1a47f403fd898982a
 Pirate SHA-256: f0fb9394355bf89b2570b64fb4bf282446e77a706f15fc00020e6730be8345e9
