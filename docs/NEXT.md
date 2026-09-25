@@ -1,7 +1,14 @@
 # Warp Crew next-work checklist
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
+
+## 2026-09-25 QA save restart — Pages QA live
+
+- [x] Add `Log → Settings → Restart save` after the first-play tutorial. Confirmation explains that browser progress is erased, the Jest account remains signed in, and the action cannot be undone. Remove the old one-tap Shop reset. Mid-tutorial QA can still use `?fresh=1` in an isolated browser/profile.
+- [x] Test the confirmation's cancel and erase paths in a local browser play-through; erase returned to the splash and fresh captain choice. `npm test`, `test:loop`, `test:ship`, `test:first-play`, camera-input test, and `build:pages` passed on source `93106b42ce58bb9a55e645829aa30641f618ca91`.
+- [x] Publish mock-only `gh-pages@aa00ddd83c15b62907c24e15b27dfaf4eed8714c`; [Pages run 36165035051](https://github.com/garrett-bear-commits/warp-crew/actions/runs/36165035051) succeeded. Live build marker, index, and JS hashes matched the tested build. The existing [Jest staging preview](https://jest.com/g/warp-crew?versionId=01a0babc-fbc1-7578-97fb-92d9c3a06980&rl=734c6e) loaded the Pages iframe and visibly showed the new Settings option.
+- [ ] Garrett: exercise the restart in a disposable Jest sandbox save, then do the next phone QA pass. We did not erase the existing Jest sandbox save or test on a physical device. Do not merge PR #1 or activate Jest production without explicit approval.
 
 ## 2026-09-24 trader distress polish — Pages QA live
 
