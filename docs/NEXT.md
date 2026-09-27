@@ -11,6 +11,8 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 - [x] Slow post-tutorial unlocks: Shop/Log/gems after 2 contracts, Explore after 3.
 - [x] Crew on the Ninefold Sunnyside rig, re-baked per frame into human/alien/droid sci-fi families with walk/idle/work loops. [QA record](qa/2026-09-26-hud-overhaul.md).
 - [ ] Garrett: review crew art and HUD on a phone; decide whether to fund a painted per-frame reskin pass (needs a spend cap).
+- [x] Fight pacing: tutorial fight ~15–20 s, contract fights 30–60 s; every contract fight is a real-time crew fight with threat-scaled damage and salvage on loss. [Record](qa/2026-09-26-hud-overhaul.md#2026-09-27-fight-pacing-and-crew-fight-conversion).
+- [ ] Garrett: decide on depleted-crew fights (sim win rate drops at threat cap), whether to restore Burn/Board as crew-fight orders, and converting Explore-map travel fights.
 - [ ] Publish to Pages QA only after Garrett's go-ahead. Branch \`claude/hud-overhaul\` is local and unpushed.
 
 ## 2026-09-25 QA save restart — Pages QA live

@@ -32,3 +32,18 @@ Trigger: Garrett's phone recording (UI plain, crew not walking, stray green/yell
 - Crew art needs Garrett's review: helmets can read as grey hair, long hair reads as a bun, work tools are small, alien fin/tendril shapes. The style is still Sunnyside-proportioned, not the painted gritty look of the splash; a hand-painted or AI-assisted per-frame pass would need a spend cap first.
 - First fight still resolves in about 1.5 s; pacing is a balance decision, not changed here.
 - `public/art/char/walk-4dir.png` is unused and can be removed.
+
+## 2026-09-27 fight pacing and crew-fight conversion
+
+| Change | Commit |
+| --- | --- |
+| Real-time beats: 4 s guided, 6 s normal; normal fights auto-advance, orders optional; pause when hidden or off the Ship tab; beat bar, volley ETA, ambient crew fire, pirate charge glow. | `040c0c4` |
+| Every contract confrontation is a crew fight. Damage = 28 × threat (0.6–1.6, legacy power model), seeded ±30% volley swing, 15% crew crits. Losses settle to the legacy failure salvage. Enemy name, threat label and authored tell shown. Economy simulator plays crew fights. | `3b22583` |
+
+Measured in the local browser (390×844): tutorial fight 15.7 s from Intercept to win (3.2 s reading, then ~4 s beats); Risky Pirate Wing (threat 0.94) 40.6 s hands-off, 7 beats, won at 6 hull.
+
+Calibration (200 seeds, disciplined orders; old dice chance in brackets): threat 1.0 unstaffed 74% (58%), 1.2 57% (50%), 1.6 38% (40%); a gunner on Weapons lifts these to 97%/91%/60%. Fights run 7–9 beats (42–54 s). `test/fight_pacing.test.mjs` pins the 11–17 s guided auto span and the 30–60 s normal band.
+
+Economy evidence regenerated (`npm run test:balance` passes, 15/15 runs conserve). Simulated balanced/ambitious players send crew away before fighting, fight at the 1.6 cap, and win 4/20 and 0/20; their 30-day medals and reputation fall ~10–15% versus the dice model. Needs Garrett's decision (lower cap, warn on depleted crew, or accept).
+
+Not converted: Explore-map travel fights (`combat-order` from a pending jump) still use the order menu and 3.5 s canned battle. Burn and Board orders no longer exist in contract fights.
