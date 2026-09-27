@@ -81,9 +81,12 @@ export const SPARROW_LAYOUT = {
     { id: 'engineering_machine', shape: 'rect', left: 59, top: 74, width: 13, height: 8 },
   ],
   effects: {
+    // Nozzle exits measured from sparrow-hull-v3.png alpha: two main bells and two trim nozzles.
     thrusters: [
-      { x: 32.5, y: 91.2 },
-      { x: 67.5, y: 91.2 },
+      { x: 28.8, y: 94.0, size: 1 },
+      { x: 70.4, y: 94.0, size: 1 },
+      { x: 41.4, y: 96.2, size: 0.55 },
+      { x: 56.8, y: 96.2, size: 0.55 },
     ],
   },
   anchors: {

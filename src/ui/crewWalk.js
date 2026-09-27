@@ -279,20 +279,21 @@ function resize() {
 }
 
 function spawnThrust(dt) {
-  const rate = battle ? 70 : 38;
+  const rate = battle ? 60 : 30;
   for (const t of THRUSTERS) {
-    const n = rate * dt;
-    const extra = n - (n | 0) > Math.random() ? 1 : 0;
-    const count = (n | 0) + extra;
+    const size = t.size || 1;
+    const n = rate * size * dt;
+    const count = (n | 0) + (n - (n | 0) > Math.random() ? 1 : 0);
     for (let i = 0; i < count; i++) {
       particles.push({
-        x: t.x + (Math.random() - 0.5) * 3.2,
-        y: t.y + Math.random() * 1.2,
-        vx: (Math.random() - 0.5) * 6,
-        vy: 18 + Math.random() * 28,
-        life: 0.28 + Math.random() * 0.35,
+        x: t.x + (Math.random() - 0.5) * 2.4 * size,
+        y: t.y + Math.random() * 0.6,
+        vx: (Math.random() - 0.5) * 2.5,
+        vy: (14 + Math.random() * 16) * (0.7 + size * 0.3),
+        life: 0.22 + Math.random() * 0.28,
         max: 0.5,
-        hue: Math.random() < 0.35 ? 190 : 28,
+        size,
+        hot: Math.random() < 0.55,
       });
     }
   }
@@ -301,28 +302,50 @@ function spawnThrust(dt) {
 function drawThrusters(g, dt, policy) {
   if (policy.thrusterParticles) spawnThrust(dt);
   else particles.length = 0;
-  const pulse = policy.thrusterParticles ? 0.55 + Math.sin(clock * 14) * 0.25 : 0.7;
+  const flicker = policy.thrusterParticles
+    ? 0.82 + Math.sin(clock * 31) * 0.08 + Math.sin(clock * 17.3) * 0.1
+    : 0.9;
+  const boost = battle ? 1.25 : 1;
+  g.save();
+  g.globalCompositeOperation = 'lighter';
   for (const t of THRUSTERS) {
+    const size = (t.size || 1) * (w / 390);
     const px = (t.x / 100) * w;
     const py = (t.y / 100) * h;
-    const rad = g.createRadialGradient(px, py, 1, px, py + 10, 28);
-    rad.addColorStop(0, `rgba(180,240,255,${0.55 * pulse})`);
-    rad.addColorStop(0.35, `rgba(80,200,255,${0.28 * pulse})`);
-    rad.addColorStop(1, 'rgba(255,140,40,0)');
-    g.fillStyle = rad;
+    const halfW = 13 * size;
+    const len = 46 * size * flicker * boost;
+    // Soft bloom that sits on the nozzle lip.
+    const bloom = g.createRadialGradient(px, py, 0, px, py, halfW * 2.4);
+    bloom.addColorStop(0, `rgba(150,225,255,${0.5 * flicker})`);
+    bloom.addColorStop(0.5, `rgba(60,150,255,${0.18 * flicker})`);
+    bloom.addColorStop(1, 'rgba(40,90,255,0)');
+    g.fillStyle = bloom;
     g.beginPath();
-    g.ellipse(px, py + 8, 11, 22, 0, 0, Math.PI * 2);
+    g.ellipse(px, py + halfW * 0.3, halfW * 2.4, halfW * 1.6, 0, 0, Math.PI * 2);
     g.fill();
-    const flame = g.createLinearGradient(px, py, px, py + 26);
-    flame.addColorStop(0, `rgba(255,255,220,${0.7 * pulse})`);
-    flame.addColorStop(0.4, `rgba(80,220,255,${0.45 * pulse})`);
-    flame.addColorStop(1, 'rgba(255,90,20,0)');
-    g.fillStyle = flame;
+    // Outer plume.
+    const outer = g.createLinearGradient(px, py, px, py + len);
+    outer.addColorStop(0, `rgba(110,200,255,${0.75 * flicker})`);
+    outer.addColorStop(0.45, `rgba(70,120,255,${0.35 * flicker})`);
+    outer.addColorStop(1, 'rgba(90,60,255,0)');
+    g.fillStyle = outer;
     g.beginPath();
-    g.moveTo(px - 4, py);
-    g.lineTo(px + 4, py);
-    g.lineTo(px + 1.5, py + 18 + pulse * 8);
-    g.lineTo(px - 1.5, py + 18 + pulse * 8);
+    g.moveTo(px - halfW, py);
+    g.quadraticCurveTo(px - halfW * 0.9, py + len * 0.45, px, py + len);
+    g.quadraticCurveTo(px + halfW * 0.9, py + len * 0.45, px + halfW, py);
+    g.closePath();
+    g.fill();
+    // White-hot core.
+    const coreLen = len * 0.55;
+    const core = g.createLinearGradient(px, py, px, py + coreLen);
+    core.addColorStop(0, `rgba(255,255,255,${0.95 * flicker})`);
+    core.addColorStop(0.5, `rgba(190,240,255,${0.6 * flicker})`);
+    core.addColorStop(1, 'rgba(120,200,255,0)');
+    g.fillStyle = core;
+    g.beginPath();
+    g.moveTo(px - halfW * 0.45, py);
+    g.quadraticCurveTo(px - halfW * 0.35, py + coreLen * 0.5, px, py + coreLen);
+    g.quadraticCurveTo(px + halfW * 0.35, py + coreLen * 0.5, px + halfW * 0.45, py);
     g.closePath();
     g.fill();
   }
@@ -336,43 +359,10 @@ function drawThrusters(g, dt, policy) {
       continue;
     }
     const a = p.life / p.max;
-    const px = (p.x / 100) * w;
-    const py = (p.y / 100) * h;
-    g.fillStyle =
-      p.hue > 100
-        ? `rgba(120,230,255,${a * 0.7})`
-        : `rgba(255,${160 + ((1 - a) * 60) | 0},60,${a})`;
-    const sz = 1.2 + a * 2.2;
-    g.fillRect(px, py, sz, sz);
-  }
-}
-
-function drawWayfinding(g) {
-  const px = (point) => ({ x: point.x / 100 * w, y: point.y / 100 * h });
-  g.save();
-  const hall = SPARROW_LAYOUT.halls[0];
-  if (hall) {
-    const centerX = (hall.left + hall.width / 2) / 100 * w;
-    g.fillStyle = 'rgba(92,225,255,0.42)';
-    const top = hall.top / 100 * h;
-    const bottom = (hall.top + hall.height) / 100 * h;
-    for (let y = top; y < bottom; y += 20) g.fillRect(centerX - 1.5, y, 3, 8);
-  }
-  for (const door of SPARROW_LAYOUT.doors) {
-    const inside = px(door.room);
-    const outside = px(door.spine);
-    g.fillStyle = 'rgba(255,225,107,0.76)';
-    g.fillRect(Math.min(inside.x, outside.x) - 2, Math.min(inside.y, outside.y) - 2,
-      Math.abs(outside.x - inside.x) + 4, Math.abs(outside.y - inside.y) + 4);
-    g.fillStyle = '#ffe16b';
-    g.fillRect(inside.x - 5, inside.y - 5, 10, 10);
-  }
-  for (const room of SPARROW_LAYOUT.rooms) {
-    const work = px(room.workAnchor);
-    g.fillStyle = 'rgba(120,255,190,0.85)';
-    g.fillRect(work.x - 7, work.y - 7, 14, 14);
-    g.fillStyle = 'rgba(7,16,26,0.8)';
-    g.fillRect(work.x - 4, work.y - 4, 8, 8);
+    const scale = w / 390;
+    g.fillStyle = p.hot ? `rgba(200,240,255,${a * 0.8})` : `rgba(90,140,255,${a * 0.6})`;
+    const sz = (1 + a * 2) * scale * (0.6 + p.size * 0.4);
+    g.fillRect((p.x / 100) * w - sz / 2, (p.y / 100) * h, sz, sz);
   }
   g.restore();
 }
@@ -485,7 +475,6 @@ function tick(sim, dt) {
   }
   const g = ctx;
   g.clearRect(0, 0, w, h);
-  drawWayfinding(g);
   list.sort((p, q) => p.y - q.y);
   for (const a of list) drawAgent(g, a);
   drawThrusters(g, dt, policy);
