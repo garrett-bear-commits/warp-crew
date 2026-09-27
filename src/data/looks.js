@@ -2,6 +2,10 @@
 /** Warp Crew merc looks — Sunnyside rig, space-reskinned. */
 
 export const CREW_LOOKS = {
+  captain_cyborg: { hair: 'shorthair', skin: 'tan', cloth: 'cyan', hairColor: 'black' },
+  captain_gunner: { hair: 'longhair', skin: 'brown', cloth: 'red', hairColor: 'black' },
+  captain_alien: { hair: 'curlyhair', skin: 'light', cloth: 'purple', hairColor: 'grey' },
+  captain_droid: { hair: 'mophair', skin: 'deep', cloth: 'slate', hairColor: 'grey' },
   merc_rex: { hair: 'shorthair', skin: 'tan', cloth: 'cyan', hairColor: 'brown' },
   merc_bolt: { hair: 'mophair', skin: 'deep', cloth: 'slate', hairColor: 'grey' },
   merc_jen: { hair: 'longhair', skin: 'light', cloth: 'red', hairColor: 'black' },

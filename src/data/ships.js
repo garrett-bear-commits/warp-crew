@@ -116,6 +116,7 @@ export const SHIPS = {
 export function starterShip() {
   return {
     shipId: 'sparrow',
+    name: 'Sparrow',
     systems: { engines: 1, shields: 1, cargo: 1, weapons: 1, quarters: 0, sensors: 0, medbay: 0 },
     cosmetics: {},
     ownedHulls: ['sparrow'],

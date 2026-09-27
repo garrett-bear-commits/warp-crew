@@ -1,7 +1,10 @@
 // @ts-nocheck
-import { ROOMS, roomById, homeRoomId, ROOM_GRAPH, THRUSTERS, roomAt, pathRooms, doorPoint } from '../data/starterShip.js';
-import { findPath, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
-import { sheetFor, walkSheetFor, WALK_CELL, WALK_FRAMES } from './crewArt.js';
+import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS } from '../data/starterShip.js';
+import { findPath, isWalkablePct, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
+import { routeToWorkAnchor } from '../data/shipRoutes.js';
+import { normalizeAssignments, STATIONS } from '../systems/stations.js';
+import { walkAssetFor, WALK_FRAMES } from './crewArt.js';
+import { crewPoseForActor, motionPolicy } from './crewAnimation.js';
 import { onTick } from './stageLoop.js';
 
 const agents = new Map();
@@ -9,16 +12,60 @@ let canvas = null;
 let ctx = null;
 let w = 0;
 let h = 0;
-let dpr = 1;
 let clock = 0;
 let started = false;
 let battle = false;
+let reducedMotion = false;
+let motionQuery = null;
+let activeDeparture = null;
+const arrivals = new Map();
 const particles = [];
 
 const WALK_SPEED = 9;
 const ARRIVE = 1.2;
-const SPRITE = 26;
-const DIR_ROW = { down: 0, left: 1, right: 2, up: 3 };
+
+const readyForShipTask = (crew) => !['expedition', 'injured', 'reserve'].includes(crew.status);
+
+export function crewTargetStates(player, {
+  departingCrewInstanceIds = [],
+  reducedMotion: immediate = false,
+} = {}) {
+  const crew = player?.crew || [];
+  if (departingCrewInstanceIds.length) {
+    const byId = new Map(crew.map((member) => [member.instanceId, member]));
+    return departingCrewInstanceIds.filter((id) => byId.has(id)).map((crewInstanceId) => ({
+      crewInstanceId,
+      mode: 'expedition-departure',
+      roomId: 'cargo',
+      anchors: [
+        { ...SPARROW_LAYOUT.anchors.cargoDeparture },
+        { ...SPARROW_LAYOUT.anchors.airlock },
+      ],
+      immediate,
+    }));
+  }
+  const assignments = normalizeAssignments(player);
+  const onDuty = crew.filter(readyForShipTask);
+  const contractStage = ['briefing', 'choice'].includes(player?.activeContract?.stage);
+  const legacyRooms = ['bridge', 'engineering'];
+  const occupied = new Set(onDuty.map(member => STATIONS[assignments[member.instanceId]]?.roomId).filter(Boolean));
+  return onDuty.flatMap((member) => {
+    let roomId = STATIONS[assignments[member.instanceId]]?.roomId;
+    if (!roomId && contractStage) {
+      roomId = legacyRooms.find(id => !occupied.has(id));
+      if (roomId) occupied.add(roomId);
+    }
+    if (!roomId) return [];
+    const room = ROOMS.find((candidate) => candidate.id === roomId);
+    return {
+      crewInstanceId: member.instanceId,
+      mode: 'contract-station',
+      roomId: room.id,
+      anchors: [{ ...room.workAnchor }],
+      immediate,
+    };
+  });
+}
 
 function hash01(s) {
   let h = 2166136261;
@@ -46,6 +93,7 @@ function spawn(crew) {
     id: crew.instanceId,
     templateId: crew.templateId,
     role: crew.role,
+    bodyFamily: crew.bodyFamily || 'standard_humanoid',
     home,
     room: home,
     x: pos.x,
@@ -57,54 +105,106 @@ function spawn(crew) {
     jitter,
     frame: 0,
     fps: 7,
+    assignment: null,
+    authoredTarget: null,
   };
   agents.set(a.id, a);
   return a;
 }
 
-function appendPath(pts, x0, y0, x1, y1, roomHint) {
-  const seg = findPath(x0, y0, x1, y1);
-  for (const p of seg) {
-    pts.push({ x: p.x, y: p.y, room: p.room || roomHint });
-  }
-}
-
 function beginWalk(a, destId) {
-  const dest = nearestWalkableInRoom(destId, a.jitter);
-  const pts = [];
-  let x = a.x;
-  let y = a.y;
-  let room = a.room;
-
-  if (destId !== room) {
-    const hops = pathRooms(room, destId);
-    for (const next of hops) {
-      const door = doorPoint(room, next);
-      if (door) {
-        appendPath(pts, x, y, door.x, door.y, room);
-        pts.push({ x: door.x, y: door.y, room: next, via: 'door' });
-        x = door.x;
-        y = door.y;
-        room = next;
-      } else {
-        const mid = nearestWalkableInRoom(next, a.jitter);
-        appendPath(pts, x, y, mid.x, mid.y, next);
-        x = mid.x;
-        y = mid.y;
-        room = next;
-      }
-    }
-  }
-  appendPath(pts, x, y, dest.x, dest.y, destId);
-
-  if (!pts.length) {
+  const route = routeToWorkAnchor({ x: a.x, y: a.y, room: a.room }, destId);
+  if (!route.ok) {
+    console.warn('[crew-route]', a.id, route.reason);
+    a.path = [];
     a.state = 'idle';
     a.timer = 1.1 + a.jitter;
     return;
   }
-  a.path = pts;
+  a.path = route.points;
   a.state = 'walk';
   a.timer = 0;
+}
+
+function assignmentKey(target) {
+  return `${target.mode}:${target.roomId}:${target.immediate ? 'immediate' : 'animated'}`;
+}
+
+function finishDepartureActor(a) {
+  if (!activeDeparture?.pending.has(a.id)) return;
+  a.assignment = 'departure-complete';
+  a.authoredTarget = null;
+  activeDeparture.pending.delete(a.id);
+  if (activeDeparture.pending.size) return;
+  const done = activeDeparture.onDone;
+  activeDeparture = null;
+  done?.();
+}
+
+function finishAuthoredActor(a) {
+  finishDepartureActor(a);
+  if (!arrivals.has(a.id)) return;
+  const done = arrivals.get(a.id);
+  arrivals.delete(a.id);
+  a.assignment = null;
+  a.authoredTarget = null;
+  a.state = 'doing';
+  a.timer = 3;
+  done?.();
+}
+
+function beginAuthoredTarget(a, target) {
+  a.assignment = assignmentKey(target);
+  a.authoredTarget = target;
+  const final = target.anchors.at(-1);
+  const route = routeToWorkAnchor({ x: a.x, y: a.y, room: a.room }, target.roomId);
+  if (!route.ok) {
+    console.warn('[crew-route]', a.id, route.reason);
+    a.path = [];
+    a.state = 'doing';
+    a.timer = Infinity;
+    finishAuthoredActor(a);
+    return;
+  }
+  const pts = [...route.points];
+  let previous = pts.at(-1) || a;
+  for (const anchor of target.anchors) {
+    const segment = findPath(previous.x, previous.y, anchor.x, anchor.y, { strict: true });
+    let before = previous;
+    const valid = segment?.length && segment.every((point) => {
+      const steps = Math.max(2, Math.ceil(Math.hypot(point.x - before.x, point.y - before.y) * 4));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        if (!isWalkablePct(before.x + (point.x - before.x) * t, before.y + (point.y - before.y) * t)) return false;
+      }
+      before = point;
+      return true;
+    });
+    if (!valid) {
+      console.warn('[crew-route]', a.id, 'disconnected');
+      a.path = [];
+      a.state = 'doing';
+      a.timer = Infinity;
+      finishAuthoredActor(a);
+      return;
+    }
+    pts.push(...segment.map((point) => ({ ...point, room: target.roomId })));
+    pts.push({ ...anchor, room: target.roomId, via: 'authored-anchor' });
+    previous = anchor;
+  }
+  if (target.immediate) {
+    a.x = final.x;
+    a.y = final.y;
+    a.room = target.roomId;
+    a.path = [];
+    a.state = 'doing';
+    a.timer = Infinity;
+    a.frame = 0;
+    return;
+  }
+  a.path = pts;
+  a.state = pts.length ? 'walk' : 'doing';
+  a.timer = pts.length ? 0 : Infinity;
 }
 
 function faceFrom(dx, dy) {
@@ -113,15 +213,15 @@ function faceFrom(dx, dy) {
   return dy < 0 ? 'up' : 'down';
 }
 
-function stepAgent(a, dt) {
+function stepAgent(a, dt, animateFrames = true) {
   if (a.state === 'idle') {
     a.timer -= dt;
     if (a.timer <= 0) beginWalk(a, pickTask(a));
     return;
   }
   if (a.state === 'doing') {
+    if (a.assignment) return;
     a.timer -= dt;
-    a.frame = (a.frame + dt * 3) % WALK_FRAMES;
     if (a.timer <= 0) {
       const goHome = a.room !== a.home && a.jitter + (clock % 3) * 0.1 > 0.55;
       beginWalk(a, goHome || battle ? a.home : pickTask(a));
@@ -132,19 +232,20 @@ function stepAgent(a, dt) {
   const tgt = a.path[0];
   if (!tgt) {
     a.state = 'doing';
-    a.timer = battle ? 3.2 : 1.8 + a.jitter * 2.0;
+    a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
+    finishAuthoredActor(a);
     return;
   }
   const d = dist(a, tgt);
   if (d <= ARRIVE) {
     a.x = tgt.x;
     a.y = tgt.y;
-    if (tgt.via === 'door') a.room = tgt.room;
-    else a.room = tgt.room || roomAt(a.x, a.y) || a.room;
+    if (tgt.via === 'door-enter') a.room = tgt.room;
     a.path.shift();
     if (!a.path.length) {
       a.state = 'doing';
-      a.timer = battle ? 3.2 : 1.8 + a.jitter * 2.0;
+      a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
+      finishAuthoredActor(a);
     }
     return;
   }
@@ -157,21 +258,22 @@ function stepAgent(a, dt) {
   a.x = clamped.x;
   a.y = clamped.y;
   a.dir = faceFrom(ux, uy);
-  a.frame = (a.frame + dt * a.fps) % WALK_FRAMES;
-  a.room = roomAt(a.x, a.y) || a.room;
+  a.frame = animateFrames ? (a.frame + dt * a.fps) % WALK_FRAMES : 0;
 }
 
 function resize() {
   if (!canvas) return;
-  const rect = canvas.getBoundingClientRect();
-  w = Math.max(1, rect.width);
-  h = Math.max(1, rect.height);
-  dpr = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = (w * dpr) | 0;
-  canvas.height = (h * dpr) | 0;
+  // The canvas lives inside the already transformed 1152×1728 world layer.
+  // Its bitmap must use world pixels; measuring the transformed rect applies
+  // the camera scale to crew and thrusters a second time.
+  w = 1152;
+  h = 1728;
+  if (canvas.width === w && canvas.height === h && ctx) return;
+  canvas.width = w;
+  canvas.height = h;
   ctx = canvas.getContext('2d');
   if (ctx) {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.imageSmoothingEnabled = false;
   }
 }
@@ -196,9 +298,10 @@ function spawnThrust(dt) {
   }
 }
 
-function drawThrusters(g, dt) {
-  spawnThrust(dt);
-  const pulse = 0.55 + Math.sin(clock * 14) * 0.25;
+function drawThrusters(g, dt, policy) {
+  if (policy.thrusterParticles) spawnThrust(dt);
+  else particles.length = 0;
+  const pulse = policy.thrusterParticles ? 0.55 + Math.sin(clock * 14) * 0.25 : 0.7;
   for (const t of THRUSTERS) {
     const px = (t.x / 100) * w;
     const py = (t.y / 100) * h;
@@ -244,67 +347,131 @@ function drawThrusters(g, dt) {
   }
 }
 
+function drawWayfinding(g) {
+  const px = (point) => ({ x: point.x / 100 * w, y: point.y / 100 * h });
+  g.save();
+  const hall = SPARROW_LAYOUT.halls[0];
+  if (hall) {
+    const centerX = (hall.left + hall.width / 2) / 100 * w;
+    g.fillStyle = 'rgba(92,225,255,0.42)';
+    const top = hall.top / 100 * h;
+    const bottom = (hall.top + hall.height) / 100 * h;
+    for (let y = top; y < bottom; y += 20) g.fillRect(centerX - 1.5, y, 3, 8);
+  }
+  for (const door of SPARROW_LAYOUT.doors) {
+    const inside = px(door.room);
+    const outside = px(door.spine);
+    g.fillStyle = 'rgba(255,225,107,0.76)';
+    g.fillRect(Math.min(inside.x, outside.x) - 2, Math.min(inside.y, outside.y) - 2,
+      Math.abs(outside.x - inside.x) + 4, Math.abs(outside.y - inside.y) + 4);
+    g.fillStyle = '#ffe16b';
+    g.fillRect(inside.x - 5, inside.y - 5, 10, 10);
+  }
+  for (const room of SPARROW_LAYOUT.rooms) {
+    const work = px(room.workAnchor);
+    g.fillStyle = 'rgba(120,255,190,0.85)';
+    g.fillRect(work.x - 7, work.y - 7, 14, 14);
+    g.fillStyle = 'rgba(7,16,26,0.8)';
+    g.fillRect(work.x - 4, work.y - 4, 8, 8);
+  }
+  g.restore();
+}
+
+export function drawCrewIdentityMarker(g, marker, image, foot) {
+  const size = 40;
+  const x = foot.x - size / 2;
+  const y = foot.y - size - 6;
+  g.save();
+  g.beginPath();
+  if (marker.shape === 'diamond') {
+    g.moveTo(foot.x, y);
+    g.lineTo(x + size, y + size / 2);
+    g.lineTo(foot.x, y + size);
+    g.lineTo(x, y + size / 2);
+    g.closePath();
+  } else g.rect(x, y, size, size);
+  g.fillStyle = '#07131e';
+  g.fill();
+  g.save();
+  g.clip();
+  if (image?.complete && image.naturalWidth && image.naturalHeight) {
+    g.imageSmoothingEnabled = false;
+    g.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, x, y, size, size);
+  } else {
+    g.fillStyle = marker.color;
+    g.font = 'bold 24px monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(marker.label, foot.x, y + size / 2);
+  }
+  g.restore();
+  g.strokeStyle = marker.color;
+  g.lineWidth = 3;
+  g.stroke();
+  g.restore();
+}
+
 function drawAgent(g, a) {
-  const img = walkSheetFor(a.templateId, a.role);
-  const x = (a.x / 100) * w;
-  const y = (a.y / 100) * h;
-  const sz = Math.max(20, Math.min(SPRITE, h * 0.042));
-  const bob = a.state === 'walk' ? Math.sin(clock * 16 + a.jitter * 8) * 1.1 : a.state === 'doing' ? Math.sin(clock * 8 + a.jitter) * 1.4 : 0;
+  const asset = walkAssetFor(a.templateId, a.role, a.bodyFamily);
+  const pose = crewPoseForActor(a, w, h, asset.profile);
+  const { foot, source, destination } = pose;
+  g.__wcActorInstanceId = a.id;
   g.save();
   g.fillStyle = 'rgba(0,0,0,0.35)';
   g.beginPath();
-  g.ellipse(x, y + 1, sz * 0.18, sz * 0.07, 0, 0, Math.PI * 2);
+  g.ellipse(
+    foot.x,
+    foot.y + asset.profile.shadow.offsetY,
+    asset.profile.shadow.width / 2,
+    asset.profile.shadow.height / 2,
+    0,
+    0,
+    Math.PI * 2
+  );
   g.fill();
 
-  const row = DIR_ROW[a.dir] || 0;
-  const col = a.state === 'walk' ? a.frame | 0 : a.state === 'doing' ? (a.frame | 0) % 2 : 0;
-  if (img && img.complete && img.naturalWidth) {
+  if (asset.image && asset.image.complete && asset.image.naturalWidth) {
     g.imageSmoothingEnabled = false;
     g.drawImage(
-      img,
-      col * WALK_CELL,
-      row * WALK_CELL,
-      WALK_CELL,
-      WALK_CELL,
-      x - sz / 2,
-      y - sz + 3 + bob,
-      sz,
-      sz
+      asset.image,
+      source.sx,
+      source.sy,
+      source.sw,
+      source.sh,
+      destination.x,
+      destination.y,
+      destination.width,
+      destination.height
     );
+  } else if (asset.marker) {
+    drawCrewIdentityMarker(g, asset.marker, asset.markerImage, foot);
   } else {
-    const sheet = sheetFor(a.templateId, a.role);
-    if (sheet) {
-      g.imageSmoothingEnabled = false;
-      const iw = 32;
-      g.drawImage(
-        Object.assign(new Image(), { src: sheet.url }),
-        0,
-        0,
-        iw,
-        iw,
-        x - sz / 2,
-        y - sz + 3 + bob,
-        sz,
-        sz
-      );
-    } else {
-      g.fillStyle = '#5ce1ff';
-      g.fillRect(x - sz * 0.22, y - sz * 0.7 + bob, sz * 0.44, sz * 0.7);
-    }
+    g.fillStyle = '#5ce1ff';
+    g.fillRect(
+      destination.x + destination.width * 0.28,
+      destination.y + destination.height * 0.3,
+      destination.width * 0.44,
+      destination.height * 0.7
+    );
   }
   g.restore();
+  g.__wcActorInstanceId = null;
 }
 
 function tick(sim, dt) {
   if (!canvas || !ctx || !w) return;
   if (!canvas.isConnected) return;
-  clock += sim;
-  for (const a of agents.values()) stepAgent(a, sim);
+  if (!reducedMotion) clock += sim;
+  const policy = motionPolicy(reducedMotion);
+  // Authored station/departure snaps are applied when their state changes.
+  // Ambient walking and separation nudges are purely decorative.
+  if (!reducedMotion) for (const a of agents.values()) stepAgent(a, sim, policy.animateFrames);
   const list = [...agents.values()];
-  for (let i = 0; i < list.length; i++) {
+  for (let i = 0; !reducedMotion && i < list.length; i++) {
     for (let j = i + 1; j < list.length; j++) {
       const a = list[i];
       const b = list[j];
+      if ([a, b].some(actor => actor.assignment?.startsWith('expedition-departure') || actor.assignment?.startsWith('crew-arrival') || actor.assignment === 'departure-complete')) continue;
       const d = dist(a, b);
       if (d < 4 && d > 0.01) {
         const push = ((4 - d) / 4) * 0.28;
@@ -318,20 +485,120 @@ function tick(sim, dt) {
   }
   const g = ctx;
   g.clearRect(0, 0, w, h);
+  drawWayfinding(g);
   list.sort((p, q) => p.y - q.y);
   for (const a of list) drawAgent(g, a);
-  drawThrusters(g, dt);
+  drawThrusters(g, dt, policy);
+}
+
+function setReducedMotion(event) {
+  const next = Boolean(event?.matches);
+  reducedMotion = next;
+  if (next) {
+    particles.length = 0;
+    const departureIds = activeDeparture ? [...activeDeparture.pending] : [];
+    for (const id of departureIds) {
+      const a = agents.get(id);
+      if (a?.authoredTarget) beginAuthoredTarget(a, { ...a.authoredTarget, immediate: true });
+    }
+    for (const a of agents.values()) {
+      if ((a.assignment?.startsWith('contract-station') || a.assignment?.startsWith('crew-arrival')) && a.authoredTarget) {
+        beginAuthoredTarget(a, { ...a.authoredTarget, immediate: true });
+        if (arrivals.has(a.id)) finishAuthoredActor(a);
+      }
+    }
+    for (const id of departureIds) {
+      const a = agents.get(id);
+      if (a) finishDepartureActor(a);
+    }
+    return;
+  }
+  for (const a of agents.values()) {
+    if (!a.assignment?.startsWith('contract-station') || !a.authoredTarget) continue;
+    a.authoredTarget = { ...a.authoredTarget, immediate: false };
+    a.assignment = assignmentKey(a.authoredTarget);
+  }
 }
 
 export function setBattleStations(on) {
   battle = Boolean(on);
   if (!battle) return;
-  for (const a of agents.values()) beginWalk(a, a.home);
+  for (const a of agents.values()) {
+    if (a.assignment?.startsWith('expedition-departure') || a.assignment === 'departure-complete' || a.assignment?.startsWith('crew-arrival')) continue;
+    beginWalk(a, a.home);
+  }
 }
 
 export function stopCrewSim() {
   canvas = null;
   ctx = null;
+}
+
+export function holdCrewForDeparture(crewInstanceIds) {
+  for (const id of crewInstanceIds || []) {
+    const a = agents.get(id);
+    if (a) a.assignment = 'expedition-departure:held';
+  }
+}
+
+/** Drop obsolete boarding animation without delivering its completion callback. */
+export function cancelCrewDeparture() {
+  activeDeparture = null;
+  for (const a of agents.values()) {
+    if (!a.assignment?.startsWith('expedition-departure') && a.assignment !== 'departure-complete') continue;
+    a.assignment = null;
+    a.authoredTarget = null;
+    a.path = [];
+    a.state = 'idle';
+    a.timer = 0;
+  }
+}
+
+export function holdCrewForArrival(player, crewInstanceId) {
+  const member = player.crew.find(crew => crew.instanceId === crewInstanceId);
+  if (!member) return;
+  const actor = agents.get(crewInstanceId) || spawn(member);
+  Object.assign(actor, SPARROW_LAYOUT.anchors.airlock, {
+    room: 'cargo', path: [], state: 'doing', timer: Infinity,
+    assignment: 'crew-arrival:held', authoredTarget: null,
+  });
+}
+
+export function moveCrewToArrival(player, crewInstanceId, { onDone, reducedMotion: immediate = reducedMotion } = {}) {
+  const actor = agents.get(crewInstanceId);
+  if (!actor) { onDone?.(); return; }
+  const room = ROOMS.find(candidate => candidate.id === 'workshop');
+  arrivals.set(crewInstanceId, onDone);
+  beginAuthoredTarget(actor, {
+    crewInstanceId, mode: 'crew-arrival', roomId: room.id,
+    anchors: [{ ...room.workAnchor }], immediate,
+  });
+  if (immediate) finishAuthoredActor(actor);
+}
+
+export function moveCrewToDeparture(player, crewInstanceIds, {
+  reducedMotion: immediate = reducedMotion,
+  onDone,
+} = {}) {
+  const targets = crewTargetStates(player, {
+    departingCrewInstanceIds: crewInstanceIds,
+    reducedMotion: immediate,
+  });
+  const visible = targets.filter((target) => agents.has(target.crewInstanceId));
+  if (immediate) particles.length = 0;
+  if (!visible.length) {
+    onDone?.();
+    return targets;
+  }
+  activeDeparture = {
+    pending: new Set(visible.map((target) => target.crewInstanceId)),
+    onDone,
+  };
+  for (const target of visible) beginAuthoredTarget(agents.get(target.crewInstanceId), target);
+  if (immediate) {
+    for (const target of visible) finishDepartureActor(agents.get(target.crewInstanceId));
+  }
+  return targets;
 }
 
 export function syncCrewLayer(el, player) {
@@ -346,17 +613,36 @@ export function syncCrewLayer(el, player) {
   }
   const live = new Set();
   for (const c of player.crew || []) {
-    if (c.status === 'expedition') continue;
+    const retainedDeparture = agents.get(c.instanceId)?.assignment?.startsWith('expedition-departure');
+    if (c.status === 'expedition' && !retainedDeparture) continue;
     live.add(c.instanceId);
     if (!agents.has(c.instanceId)) spawn(c);
     const a = agents.get(c.instanceId);
     a.templateId = c.templateId;
     a.role = c.role;
+    a.bodyFamily = c.bodyFamily || 'standard_humanoid';
     a.home = homeRoomId(c.role);
   }
   for (const [id] of agents) {
     if (live.has(id)) continue;
     agents.delete(id);
+  }
+  if (!started && typeof window.matchMedia === 'function') {
+    motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReducedMotion(motionQuery);
+    motionQuery.addEventListener?.('change', setReducedMotion);
+  }
+  const targets = new Map(crewTargetStates(player, { reducedMotion }).map((target) => [target.crewInstanceId, target]));
+  for (const [id, a] of agents) {
+    if (a.assignment?.startsWith('expedition-departure') || a.assignment?.startsWith('crew-arrival')) continue;
+    const target = targets.get(id);
+    if (target && a.assignment !== assignmentKey(target)) beginAuthoredTarget(a, target);
+    else if (!target && a.assignment?.startsWith('contract-station')) {
+      a.assignment = null;
+      a.authoredTarget = null;
+      a.state = 'idle';
+      a.timer = 0;
+    }
   }
   if (!started) {
     started = true;

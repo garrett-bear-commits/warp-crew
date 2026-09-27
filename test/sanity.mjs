@@ -16,10 +16,10 @@ import { INTEL_TRACKS, ECONOMY_BEATS } from '../src/data/intel.js';
 import { fuelCostFor } from '../src/systems/passives.js';
 import { applyGrant } from '../src/systems/iap.js';
 
-let player = completeTutorial(createNewPlayer({ captainName: 'QA' }), { registered: false });
+let player = completeTutorial(createNewPlayer({ captainName: 'QA', tutorialScript: 4 }), { registered: false });
 player = { ...player, wallet: { ...player.wallet, credits: 5000, fuel: 10, medals: 40, reputation: 0 } };
 
-if (player.version !== 6) throw new Error('save version ' + player.version);
+if (player.version !== 9) throw new Error('save version ' + player.version);
 if (!player.gacha) throw new Error('gacha missing');
 if (CREW_CATALOG.length < 40) throw new Error('crew catalog short ' + CREW_CATALOG.length);
 if (rankTitle(1) !== 'Green') throw new Error('rank 1 ' + rankTitle(1));

@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { makeTimedJob, wallClockProgress } from '../shared/timer.js';
 import { PLANET_DEFS, planetById } from '../data/planets.js';
-import { readyCrew } from './player.js';
+import { readyCrew, grantCrewXp, applyCrewInjury } from './player.js';
 import { crewPower } from './combat.js';
-import { sumPassives } from './passives.js';
-import { scaleSitePayout } from './economy.js';
+import { sumPassives, injuryMinutesFor } from './passives.js';
+import { scaleSitePayout, grant } from './economy.js';
+import { noteTutorialEvent } from './tutorial.js';
 import { galaxyUnlocked } from '../data/galaxies.js';
 
 /** Test cadence — set to 360 for launch (6h) */
@@ -24,25 +25,82 @@ export function expeditionPartySize(player) {
   return Math.min(4, 2 + Math.floor(Math.max(0, slots - 2) / 4));
 }
 
-export function pickExpeditionCrew(player, planet, max = null) {
-  const cap = max ?? expeditionPartySize(player);
-  const pref = planet?.prefRole;
-  const ready = readyCrew(player);
-  const scored = ready
-    .map((c) => ({
-      c,
-      score:
-        (c.power || 10) +
-        (pref && c.role === pref ? 14 : 0) +
-        (c.passive?.expeditionSuccess || 0) * 90,
-    }))
-    .sort((a, b) => b.score - a.score);
-  return scored.slice(0, cap).map((x) => x.c);
+function expeditionReadyCrew(player, now = Date.now()) {
+  return readyCrew(player, now);
 }
 
-export function previewExpedition(player, planetId) {
+function roleMatchReason(role) {
+  return `${String(role).slice(0, 1).toUpperCase()}${String(role).slice(1)} match`;
+}
+
+export function expeditionCrewOptions(player, planetId, now = Date.now()) {
   const planet = planetById(planetId);
-  const crew = pickExpeditionCrew(player, planet);
+  if (!planet) return [];
+
+  const pref = planet.prefRole;
+  const ready = expeditionReadyCrew(player, now);
+  const highestPower = Math.max(...ready.map((crew) => crew.power || 10), 0);
+  return ready
+    .map((crew) => {
+      const roleScore = pref && crew.role === pref ? 14 : 0;
+      const expeditionPassive = crew.passive?.expeditionSuccess || 0;
+      const reasons = [`power ${crew.power || 10}`];
+      if (roleScore) reasons.push(roleMatchReason(pref));
+      if ((crew.power || 10) === highestPower) reasons.push('highest ready power');
+      if (expeditionPassive) reasons.push(`expedition passive +${Math.round(expeditionPassive * 100)}%`);
+      return {
+        ...crew,
+        id: crew.instanceId,
+        reasons,
+        score: (crew.power || 10) + roleScore + expeditionPassive * 90,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+}
+
+export function recommendedExpeditionCrewIds(player, planetId, now = Date.now()) {
+  return expeditionCrewOptions(player, planetId, now)
+    .slice(0, expeditionPartySize(player))
+    .map((crew) => crew.instanceId);
+}
+
+export function validateExpeditionParty(player, planetId, crewInstanceIds, now = Date.now()) {
+  const planet = planetById(planetId);
+  if (!planet) return { ok: false, reason: 'unknown_planet' };
+  if (!Array.isArray(crewInstanceIds)) return { ok: false, reason: 'invalid_party' };
+  if (!crewInstanceIds.length) return { ok: false, reason: 'empty_party' };
+  const cap = expeditionPartySize(player);
+  if (crewInstanceIds.length > cap) return { ok: false, reason: 'party_cap', cap };
+  if (new Set(crewInstanceIds).size !== crewInstanceIds.length) return { ok: false, reason: 'duplicate_crew' };
+
+  const byId = new Map((player.crew || []).map((crew) => [crew.instanceId, crew]));
+  const crew = [];
+  for (const instanceId of crewInstanceIds) {
+    const member = byId.get(instanceId);
+    if (!member) return { ok: false, reason: 'unknown_crew', instanceId };
+    if (member.status === 'expedition') return { ok: false, reason: 'away_crew', instanceId };
+    if (!expeditionReadyCrew(player, now).some((candidate) => candidate.instanceId === instanceId)) {
+      return { ok: false, reason: 'unavailable_crew', instanceId };
+    }
+    crew.push(member);
+  }
+  return { ok: true, planet, crew, crewInstanceIds: [...crewInstanceIds], cap };
+}
+
+export function pickExpeditionCrew(player, planet, max = null, now = Date.now()) {
+  const cap = max ?? expeditionPartySize(player);
+  return expeditionCrewOptions(player, planet?.id, now)
+    .slice(0, cap)
+    .map((crew) => ({ ...crew }));
+}
+
+export function previewExpedition(player, planetId, crewInstanceIds = null, now = Date.now()) {
+  const planet = planetById(planetId);
+  const selectedIds = crewInstanceIds == null
+    ? recommendedExpeditionCrewIds(player, planetId, now)
+    : crewInstanceIds;
+  const validation = validateExpeditionParty(player, planetId, selectedIds, now);
+  const crew = validation.ok ? validation.crew : [];
   const roleHit = planet.prefRole && crew.some((c) => c.role === planet.prefRole);
   const sensors = Math.max(0, player?.ship?.systems?.sensors || 0) * 0.02;
   const chance = expeditionSuccessChance({
@@ -60,7 +118,7 @@ export function previewExpedition(player, planetId) {
     kind: 'expedition',
     visits,
   });
-  return { planet, crew, chance, roleHit, win, fail };
+  return { planet, crew, chance, roleHit, win, fail, selectedIds: [...selectedIds], validation };
 }
 
 export function startExpedition({
@@ -98,8 +156,8 @@ function lootFor(job, success, player) {
   });
 }
 
-export function resolveExpedition(job, { rng = Math.random, forceComplete = false, player = null, abortFrac = 1 } = {}) {
-  const { progress, complete } = wallClockProgress(job);
+export function resolveExpedition(job, { rng = Math.random, forceComplete = false, player = null, abortFrac = 1, now = Date.now() } = {}) {
+  const { progress, complete } = wallClockProgress(job, now);
   if (!forceComplete && !complete) return { ready: false, progress };
 
   const chance = job.payload.successChance ?? 0.5;
@@ -127,6 +185,24 @@ export function resolveExpedition(job, { rng = Math.random, forceComplete = fals
   };
 }
 
+export function applyExpeditionResult(player, result, { now = Date.now() } = {}) {
+  if (!result?.ready || !player.activeExpedition) return { ok: false, player, reason: 'expedition_not_ready' };
+  const planetId = result.planet?.id || player.activeExpedition.payload.planetId;
+  const planetRuns = { ...(player.stats?.planetRuns || {}) };
+  if (planetId) planetRuns[planetId] = (planetRuns[planetId] || 0) + 1;
+  let nextPlayer = {
+    ...player,
+    wallet: grant(player.wallet, result.rewards),
+    activeExpedition: null,
+    crew: player.crew.map(c => result.crewInstanceIds.includes(c.instanceId) ? { ...c, status: 'ready' } : c),
+    stats: { ...player.stats, expeditions: (player.stats.expeditions || 0) + 1, planetRuns },
+  };
+  if (result.success) nextPlayer = grantCrewXp(nextPlayer, result.crewInstanceIds, 18);
+  else if (!result.aborted) nextPlayer = applyCrewInjury(nextPlayer, result.crewInstanceIds, injuryMinutesFor(nextPlayer, 18), now);
+  nextPlayer = noteTutorialEvent(nextPlayer, 'expedition_done').player;
+  return { ok: true, player: nextPlayer, result };
+}
+
 export function skipExpeditionJob(job, now = Date.now()) {
   return {
     ...job,
@@ -136,7 +212,7 @@ export function skipExpeditionJob(job, now = Date.now()) {
 }
 
 export function abortPayoutFrac(job, now = Date.now()) {
-  const { progress } = wallClockProgress(job);
+  const { progress } = wallClockProgress(job, now);
   if (progress < 0.5) return 0;
   return 0.25;
 }

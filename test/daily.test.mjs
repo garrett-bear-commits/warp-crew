@@ -1,6 +1,9 @@
 import { dayKey, applyDailyLogin } from '../src/systems/daily.js';
 import { createNewPlayer } from '../src/systems/player.js';
 
+// Daily login/free-pull boundaries remain UTC, independent of Contract Board days.
+if (dayKey(Date.UTC(2026, 8, 22, 6, 30)) !== '2026-09-22') throw new Error('daily day must use UTC date');
+
 const p0 = createNewPlayer();
 const r1 = applyDailyLogin(p0, Date.parse('2026-09-18T12:00:00Z'));
 if (!r1.isNewDay || r1.player.loginStreak !== 1) throw new Error('day1 streak');

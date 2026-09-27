@@ -2,17 +2,20 @@
 /** Placeholder pixel portraits + hull art (Boglight / Warp Crew). */
 
 import { artUrl } from '../shared/artUrl.js';
+import { ART_VERTICAL_SLICE } from './artManifest.js';
+
+const sliceUrl = key => artUrl(ART_VERTICAL_SLICE[key].path);
 
 export const CREW_PORTRAITS = {
-  merc_rex: artUrl('art/pixel/crew/rex.png'),
-  merc_bolt: artUrl('art/pixel/crew/bolt.png'),
+  merc_rex: sliceUrl('rex'),
+  merc_bolt: sliceUrl('bolt'),
   merc_jen: artUrl('art/pixel/crew/jen.png'),
   merc_moss: artUrl('art/pixel/crew/moss.png'),
   merc_plip: artUrl('art/pixel/crew/plip.png'),
-  merc_kira: artUrl('art/pixel/crew/kira.png'),
+  merc_kira: sliceUrl('kira'),
   merc_syla: artUrl('art/pixel/crew/syla.png'),
   merc_rook: artUrl('art/pixel/crew/rook.png'),
-  merc_nemi: artUrl('art/pixel/crew/nemi.png'),
+  merc_nemi: sliceUrl('nemi'),
   merc_cog: artUrl('art/pixel/crew/cog.png'),
   merc_vorn: artUrl('art/pixel/crew/vorn.png'),
   merc_quill: artUrl('art/pixel/crew/quill.png'),
@@ -36,7 +39,7 @@ export const CREW_PORTRAITS = {
   merc_brink: artUrl('art/pixel/crew/brink.png'),
   merc_oso: artUrl('art/pixel/crew/oso.png'),
   merc_orla: artUrl('art/pixel/crew/orla.png'),
-  merc_tink: artUrl('art/pixel/crew/tink.png'),
+  merc_tink: sliceUrl('tink'),
   merc_kal: artUrl('art/pixel/crew/kal.png'),
   merc_vex: artUrl('art/pixel/crew/vex.png'),
   merc_moth: artUrl('art/pixel/crew/moth.png'),
@@ -50,7 +53,18 @@ export const CREW_PORTRAITS = {
   merc_eclipse: artUrl('art/pixel/crew/eclipse.png'),
   merc_archon: artUrl('art/pixel/crew/archon.png'),
   merc_voidwake: artUrl('art/pixel/crew/voidwake.png'),
+  captain_cyborg: sliceUrl('captain_cyborg'),
+  captain_gunner: sliceUrl('captain_gunner'),
+  captain_alien: sliceUrl('captain_alien'),
+  captain_droid: sliceUrl('captain_droid'),
 };
+
+/** Use a successfully loaded fallback for every later portrait render. */
+export function applyResolvedSlicePortraits(paths = {}) {
+  for (const key of ['rex', 'bolt', 'kira', 'tink', 'nemi']) {
+    if (typeof paths[key] === 'string' && paths[key]) CREW_PORTRAITS[`merc_${key}`] = paths[key];
+  }
+}
 
 const ROLE_FALLBACK = {
   pilot: artUrl('art/pixel/crew/rex.png'),
@@ -84,7 +98,8 @@ export const SPACE_ART = {
   planet: artUrl('art/space/planet.png'),
   planetIce: artUrl('art/space/planet-ice.png'),
   blackhole: artUrl('art/space/blackhole.png'),
-  pirate: artUrl('art/space/pirate-scout.png'),
+  pirate: sliceUrl('pirate_scout'),
+  trader: artUrl('art/pixel/vertical-slice/trader-freighter-topdown-v1.png'),
   impact: artUrl('art/fx/impact.png'),
   laser: artUrl('art/fx/laser.png'),
   asteroids: [
@@ -119,7 +134,7 @@ export const PLANET_ART = {
 };
 
 export const CINEMATIC_ART = {
-  splash: artUrl('art/pixel/cinematic/jump.png'),
+  splash: sliceUrl('splash'),
   jump: artUrl('art/pixel/cinematic/jump.png'),
   hire: artUrl('art/pixel/cinematic/hire.png'),
   veil: artUrl('art/pixel/cinematic/veil.png'),

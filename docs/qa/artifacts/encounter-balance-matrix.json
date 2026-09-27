@@ -1,0 +1,6815 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": 1790078400000,
+  "fixtureFuel": 1,
+  "ratios": [
+    0.75,
+    1,
+    1.25,
+    1.5
+  ],
+  "encounters": [
+    {
+      "id": "pirate_scout",
+      "name": "Pirate Scout",
+      "power": 12
+    },
+    {
+      "id": "pirate_wing",
+      "name": "Pirate Wing",
+      "power": 22
+    },
+    {
+      "id": "scrapper_gang",
+      "name": "Scrapper Gang",
+      "power": 18
+    },
+    {
+      "id": "swarm_probe",
+      "name": "Eclipse Probe",
+      "power": 20
+    },
+    {
+      "id": "swarm_skirmish",
+      "name": "Swarm Skirmish",
+      "power": 32
+    },
+    {
+      "id": "swarm_frigate",
+      "name": "Swarm Frigate Echo",
+      "power": 48
+    },
+    {
+      "id": "pirate_ace",
+      "name": "Corsair Ace",
+      "power": 28
+    },
+    {
+      "id": "ice_raiders",
+      "name": "Ice Raiders",
+      "power": 26
+    },
+    {
+      "id": "swarm_brood",
+      "name": "Swarm Brood",
+      "power": 40
+    },
+    {
+      "id": "veil_wraith",
+      "name": "Veil Wraith",
+      "power": 44
+    },
+    {
+      "id": "corsair_king",
+      "name": "Corsair King",
+      "power": 36
+    },
+    {
+      "id": "eclipse_echo",
+      "name": "Eclipse Echo",
+      "power": 56
+    },
+    {
+      "id": "ember_raider",
+      "name": "Ember Raider",
+      "power": 38
+    },
+    {
+      "id": "hollow_shade",
+      "name": "Hollow Shade",
+      "power": 52
+    },
+    {
+      "id": "crown_warden",
+      "name": "Crown Warden",
+      "power": 64
+    },
+    {
+      "id": "eclipse_throne",
+      "name": "Eclipse Throne",
+      "power": 84
+    }
+  ],
+  "rows": [
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 9,
+      "effectivePower": 9,
+      "rubberBandedEnemyPower": 12,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 22.72,
+        "medals": 1.46,
+        "reputation": 0.46,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 9,
+      "effectivePower": 21,
+      "rubberBandedEnemyPower": 12,
+      "winChance": 0.94,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 38.08,
+        "medals": 1.94,
+        "reputation": 0.94,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 9,
+      "effectivePower": 8,
+      "rubberBandedEnemyPower": 12,
+      "winChance": 0.41999999999999993,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 50,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 25.64,
+        "medals": 1.42,
+        "reputation": 0.42,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 12,
+      "effectivePower": 12,
+      "rubberBandedEnemyPower": 12,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 26.56,
+        "medals": 1.58,
+        "reputation": 0.58,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 12,
+      "effectivePower": 24,
+      "rubberBandedEnemyPower": 12,
+      "winChance": 0.94,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 38.08,
+        "medals": 1.94,
+        "reputation": 0.94,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 12,
+      "effectivePower": 10,
+      "rubberBandedEnemyPower": 12,
+      "winChance": 0.5,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 50,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 29,
+        "medals": 1.5,
+        "reputation": 0.5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 15,
+      "effectivePower": 15,
+      "rubberBandedEnemyPower": 14,
+      "winChance": 0.6142857142857142,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 27.6571,
+        "medals": 1.6143,
+        "reputation": 0.6143,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 15,
+      "effectivePower": 27,
+      "rubberBandedEnemyPower": 14,
+      "winChance": 0.94,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 38.08,
+        "medals": 1.94,
+        "reputation": 0.94,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 15,
+      "effectivePower": 13,
+      "rubberBandedEnemyPower": 14,
+      "winChance": 0.5457142857142857,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 50,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 30.92,
+        "medals": 1.5457,
+        "reputation": 0.5457,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 18,
+      "effectivePower": 18,
+      "rubberBandedEnemyPower": 17,
+      "winChance": 0.608235294117647,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 27.4635,
+        "medals": 1.6082,
+        "reputation": 0.6082,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 18,
+      "effectivePower": 30,
+      "rubberBandedEnemyPower": 17,
+      "winChance": 0.94,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 40,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 38.08,
+        "medals": 1.94,
+        "reputation": 0.94,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_scout",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 18,
+      "effectivePower": 16,
+      "rubberBandedEnemyPower": 17,
+      "winChance": 0.5517647058823529,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 50,
+        "medals": 2,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 8,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 31.1741,
+        "medals": 1.5518,
+        "reputation": 0.5518,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 16.5,
+      "effectivePower": 16,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.4490909090909091,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 45.2927,
+        "medals": 2.7964,
+        "reputation": 0.8982,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 16.5,
+      "effectivePower": 28,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.7109090909090908,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 61.7873,
+        "medals": 3.8436,
+        "reputation": 1.4218,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 16.5,
+      "effectivePower": 14,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.4054545454545454,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 6,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 50.6527,
+        "medals": 3.0273,
+        "reputation": 0.8109,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 22,
+      "effectivePower": 22,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 53.54,
+        "medals": 3.32,
+        "reputation": 1.16,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 22,
+      "effectivePower": 34,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.8418181818181818,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 70.0345,
+        "medals": 4.3673,
+        "reputation": 1.6836,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 22,
+      "effectivePower": 19,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.5145454545454545,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 6,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 59.7073,
+        "medals": 3.5727,
+        "reputation": 1.0291,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27.5,
+      "effectivePower": 27,
+      "rubberBandedEnemyPower": 27,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 53.54,
+        "medals": 3.32,
+        "reputation": 1.16,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27.5,
+      "effectivePower": 39,
+      "rubberBandedEnemyPower": 27,
+      "winChance": 0.7933333333333332,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 66.98,
+        "medals": 4.1733,
+        "reputation": 1.5867,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27.5,
+      "effectivePower": 24,
+      "rubberBandedEnemyPower": 27,
+      "winChance": 0.5266666666666666,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 6,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 60.7133,
+        "medals": 3.6333,
+        "reputation": 1.0533,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 33,
+      "effectivePower": 33,
+      "rubberBandedEnemyPower": 31,
+      "winChance": 0.6109677419354838,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 55.491,
+        "medals": 3.4439,
+        "reputation": 1.2219,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 33,
+      "effectivePower": 45,
+      "rubberBandedEnemyPower": 31,
+      "winChance": 0.7967741935483871,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 80,
+        "medals": 5,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 67.1968,
+        "medals": 4.1871,
+        "reputation": 1.5935,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_wing",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 33,
+      "effectivePower": 29,
+      "rubberBandedEnemyPower": 31,
+      "winChance": 0.549032258064516,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 6,
+        "reputation": 2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 17,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 62.5697,
+        "medals": 3.7452,
+        "reputation": 1.0981,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 13.5,
+      "effectivePower": 13,
+      "rubberBandedEnemyPower": 18,
+      "winChance": 0.44666666666666666,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 39.5667,
+        "medals": 3.2333,
+        "reputation": 0.4467,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 13.5,
+      "effectivePower": 25,
+      "rubberBandedEnemyPower": 18,
+      "winChance": 0.7666666666666666,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 57.1667,
+        "medals": 4.8333,
+        "reputation": 0.7667,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 13.5,
+      "effectivePower": 12,
+      "rubberBandedEnemyPower": 18,
+      "winChance": 0.41999999999999993,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 87,
+        "medals": 7,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 45.24,
+        "medals": 3.52,
+        "reputation": 0.42,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 18,
+      "effectivePower": 18,
+      "rubberBandedEnemyPower": 18,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 46.9,
+        "medals": 3.9,
+        "reputation": 0.58,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 18,
+      "effectivePower": 30,
+      "rubberBandedEnemyPower": 18,
+      "winChance": 0.8999999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 64.5,
+        "medals": 5.5,
+        "reputation": 0.9,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 18,
+      "effectivePower": 16,
+      "rubberBandedEnemyPower": 18,
+      "winChance": 0.5266666666666666,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 87,
+        "medals": 7,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 52.92,
+        "medals": 4.16,
+        "reputation": 0.5267,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 22.5,
+      "effectivePower": 22,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 46.9,
+        "medals": 3.9,
+        "reputation": 0.58,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 22.5,
+      "effectivePower": 34,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.8418181818181818,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 61.3,
+        "medals": 5.2091,
+        "reputation": 0.8418,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 22.5,
+      "effectivePower": 20,
+      "rubberBandedEnemyPower": 22,
+      "winChance": 0.5363636363636363,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 87,
+        "medals": 7,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 53.6182,
+        "medals": 4.2182,
+        "reputation": 0.5364,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27,
+      "effectivePower": 27,
+      "rubberBandedEnemyPower": 25,
+      "winChance": 0.6184,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 49.012,
+        "medals": 4.092,
+        "reputation": 0.6184,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27,
+      "effectivePower": 39,
+      "rubberBandedEnemyPower": 25,
+      "winChance": 0.8488,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 70,
+        "medals": 6,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 61.684,
+        "medals": 5.244,
+        "reputation": 0.8488,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "scrapper_gang",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27,
+      "effectivePower": 24,
+      "rubberBandedEnemyPower": 25,
+      "winChance": 0.5608,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 87,
+        "medals": 7,
+        "reputation": 1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 15,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 55.3776,
+        "medals": 4.3648,
+        "reputation": 0.5608,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 15,
+      "effectivePower": 15,
+      "rubberBandedEnemyPower": 20,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 34.62,
+        "medals": 3.3,
+        "reputation": 1.38,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 15,
+      "effectivePower": 27,
+      "rubberBandedEnemyPower": 20,
+      "winChance": 0.748,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 48.156,
+        "medals": 4.74,
+        "reputation": 2.244,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 15,
+      "effectivePower": 13,
+      "rubberBandedEnemyPower": 20,
+      "winChance": 0.412,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 75,
+        "medals": 7,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 38.544,
+        "medals": 3.472,
+        "reputation": 1.236,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 20,
+      "effectivePower": 20,
+      "rubberBandedEnemyPower": 20,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 40.26,
+        "medals": 3.9,
+        "reputation": 1.74,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 20,
+      "effectivePower": 32,
+      "rubberBandedEnemyPower": 20,
+      "winChance": 0.868,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 53.796,
+        "medals": 5.34,
+        "reputation": 2.604,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 20,
+      "effectivePower": 18,
+      "rubberBandedEnemyPower": 20,
+      "winChance": 0.532,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 75,
+        "medals": 7,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 45.984,
+        "medals": 4.192,
+        "reputation": 1.596,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 25,
+      "effectivePower": 25,
+      "rubberBandedEnemyPower": 24,
+      "winChance": 0.6,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 41.2,
+        "medals": 4,
+        "reputation": 1.8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 25,
+      "effectivePower": 37,
+      "rubberBandedEnemyPower": 24,
+      "winChance": 0.84,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 52.48,
+        "medals": 5.2,
+        "reputation": 2.52,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 25,
+      "effectivePower": 22,
+      "rubberBandedEnemyPower": 24,
+      "winChance": 0.5399999999999999,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 75,
+        "medals": 7,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 46.48,
+        "medals": 4.24,
+        "reputation": 1.62,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 30,
+      "effectivePower": 30,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.6142857142857142,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 41.8714,
+        "medals": 4.0714,
+        "reputation": 1.8429,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 30,
+      "effectivePower": 42,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.82,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 60,
+        "medals": 6,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 51.54,
+        "medals": 5.1,
+        "reputation": 2.46,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_probe",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 30,
+      "effectivePower": 27,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.5628571428571428,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 75,
+        "medals": 7,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 13,
+        "medals": 1,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 47.8971,
+        "medals": 4.3771,
+        "reputation": 1.6886,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 24,
+      "effectivePower": 24,
+      "rubberBandedEnemyPower": 32,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 69.24,
+        "medals": 5.68,
+        "reputation": 2.3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 24,
+      "effectivePower": 36,
+      "rubberBandedEnemyPower": 32,
+      "winChance": 0.6399999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 86.16,
+        "medals": 7.12,
+        "reputation": 3.2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 24,
+      "effectivePower": 21,
+      "rubberBandedEnemyPower": 32,
+      "winChance": 0.415,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 77.46,
+        "medals": 6.15,
+        "reputation": 2.075,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 32,
+      "effectivePower": 32,
+      "rubberBandedEnemyPower": 32,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 80.52,
+        "medals": 6.64,
+        "reputation": 2.9,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 32,
+      "effectivePower": 44,
+      "rubberBandedEnemyPower": 32,
+      "winChance": 0.76,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 97.44,
+        "medals": 8.08,
+        "reputation": 3.8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 32,
+      "effectivePower": 28,
+      "rubberBandedEnemyPower": 32,
+      "winChance": 0.52,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 90.48,
+        "medals": 7.2,
+        "reputation": 2.6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 40,
+      "effectivePower": 40,
+      "rubberBandedEnemyPower": 39,
+      "winChance": 0.5923076923076922,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 81.6769,
+        "medals": 6.7385,
+        "reputation": 2.9615,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 40,
+      "effectivePower": 52,
+      "rubberBandedEnemyPower": 39,
+      "winChance": 0.7399999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 95.56,
+        "medals": 7.92,
+        "reputation": 3.7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 40,
+      "effectivePower": 36,
+      "rubberBandedEnemyPower": 39,
+      "winChance": 0.543076923076923,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 93.3415,
+        "medals": 7.4308,
+        "reputation": 2.7154,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 48,
+      "rubberBandedEnemyPower": 45,
+      "winChance": 0.612,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 83.528,
+        "medals": 6.896,
+        "reputation": 3.06,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 60,
+      "rubberBandedEnemyPower": 45,
+      "winChance": 0.7399999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 120,
+        "medals": 10,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 95.56,
+        "medals": 7.92,
+        "reputation": 3.7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_skirmish",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 43,
+      "rubberBandedEnemyPower": 45,
+      "winChance": 0.5586666666666666,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 26,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 95.2747,
+        "medals": 7.5867,
+        "reputation": 2.7933,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 36,
+      "effectivePower": 36,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 115.76,
+        "medals": 10.44,
+        "reputation": 3.68,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 36,
+      "effectivePower": 48,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.58,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 134.48,
+        "medals": 12.12,
+        "reputation": 4.64,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 36,
+      "effectivePower": 32,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.41999999999999993,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 250,
+        "medals": 22,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 130.52,
+        "medals": 11.56,
+        "reputation": 3.36,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 48,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 134.48,
+        "medals": 12.12,
+        "reputation": 4.64,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 60,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.7,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 153.2,
+        "medals": 13.8,
+        "reputation": 5.6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 43,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.53,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 250,
+        "medals": 22,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 153.18,
+        "medals": 13.54,
+        "reputation": 4.24,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 60,
+      "effectivePower": 60,
+      "rubberBandedEnemyPower": 58,
+      "winChance": 0.596551724137931,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 137.0621,
+        "medals": 12.3517,
+        "reputation": 4.7724,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 60,
+      "effectivePower": 72,
+      "rubberBandedEnemyPower": 58,
+      "winChance": 0.6958620689655173,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 152.5545,
+        "medals": 13.7421,
+        "reputation": 5.5669,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 60,
+      "effectivePower": 54,
+      "rubberBandedEnemyPower": 58,
+      "winChance": 0.5468965517241379,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 250,
+        "medals": 22,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 156.6607,
+        "medals": 13.8441,
+        "reputation": 4.3752,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 72,
+      "effectivePower": 72,
+      "rubberBandedEnemyPower": 68,
+      "winChance": 0.608235294117647,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 138.8847,
+        "medals": 12.5153,
+        "reputation": 4.8659,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 72,
+      "effectivePower": 84,
+      "rubberBandedEnemyPower": 68,
+      "winChance": 0.6929411764705882,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 200,
+        "medals": 18,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 152.0988,
+        "medals": 13.7012,
+        "reputation": 5.5435,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_frigate",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 72,
+      "effectivePower": 64,
+      "rubberBandedEnemyPower": 68,
+      "winChance": 0.5517647058823529,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 250,
+        "medals": 22,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 44,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 157.6635,
+        "medals": 13.9318,
+        "reputation": 4.4141,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 21,
+      "effectivePower": 21,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 63.56,
+        "medals": 5.22,
+        "reputation": 1.38,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 21,
+      "effectivePower": 33,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.6657142857142857,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 81.2514,
+        "medals": 6.66,
+        "reputation": 1.9971,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 21,
+      "effectivePower": 18,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.4085714285714286,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 137,
+        "medals": 11,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 70.1686,
+        "medals": 5.6771,
+        "reputation": 1.2257,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 28,
+      "effectivePower": 28,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 73.88,
+        "medals": 6.06,
+        "reputation": 1.74,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 28,
+      "effectivePower": 40,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.7857142857142857,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 91.5714,
+        "medals": 7.5,
+        "reputation": 2.3571,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 28,
+      "effectivePower": 25,
+      "rubberBandedEnemyPower": 28,
+      "winChance": 0.5285714285714286,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 137,
+        "medals": 11,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 83.7286,
+        "medals": 6.7571,
+        "reputation": 1.5857,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 35,
+      "effectivePower": 35,
+      "rubberBandedEnemyPower": 34,
+      "winChance": 0.5941176470588234,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 75.0941,
+        "medals": 6.1588,
+        "reputation": 1.7824,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 35,
+      "effectivePower": 47,
+      "rubberBandedEnemyPower": 34,
+      "winChance": 0.7635294117647058,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 89.6635,
+        "medals": 7.3447,
+        "reputation": 2.2906,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 35,
+      "effectivePower": 31,
+      "rubberBandedEnemyPower": 34,
+      "winChance": 0.5376470588235294,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 137,
+        "medals": 11,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 84.7541,
+        "medals": 6.8388,
+        "reputation": 1.6129,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 42,
+      "effectivePower": 42,
+      "rubberBandedEnemyPower": 39,
+      "winChance": 0.6169230769230769,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 77.0554,
+        "medals": 6.3185,
+        "reputation": 1.8508,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 42,
+      "effectivePower": 54,
+      "rubberBandedEnemyPower": 39,
+      "winChance": 0.7646153846153846,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 110,
+        "medals": 9,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 89.7569,
+        "medals": 7.3523,
+        "reputation": 2.2938,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "pirate_ace",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 42,
+      "effectivePower": 37,
+      "rubberBandedEnemyPower": 39,
+      "winChance": 0.5553846153846154,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 137,
+        "medals": 11,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 24,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 86.7585,
+        "medals": 6.9985,
+        "reputation": 1.6662,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 19.5,
+      "effectivePower": 19,
+      "rubberBandedEnemyPower": 26,
+      "winChance": 0.4507692307692307,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 57.16,
+        "medals": 4.7046,
+        "reputation": 1.3523,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 19.5,
+      "effectivePower": 31,
+      "rubberBandedEnemyPower": 26,
+      "winChance": 0.6723076923076923,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 74.44,
+        "medals": 6.0338,
+        "reputation": 2.0169,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 19.5,
+      "effectivePower": 17,
+      "rubberBandedEnemyPower": 26,
+      "winChance": 0.4138461538461538,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 125,
+        "medals": 10,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 64.6262,
+        "medals": 5.3108,
+        "reputation": 1.2415,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 26,
+      "effectivePower": 26,
+      "rubberBandedEnemyPower": 26,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 67.24,
+        "medals": 5.48,
+        "reputation": 1.74,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 26,
+      "effectivePower": 38,
+      "rubberBandedEnemyPower": 26,
+      "winChance": 0.8015384615384614,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 84.52,
+        "medals": 6.8092,
+        "reputation": 2.4046,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 26,
+      "effectivePower": 23,
+      "rubberBandedEnemyPower": 26,
+      "winChance": 0.5246153846153846,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 125,
+        "medals": 10,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 76.0354,
+        "medals": 6.1969,
+        "reputation": 1.5738,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 32.5,
+      "effectivePower": 32,
+      "rubberBandedEnemyPower": 31,
+      "winChance": 0.5954838709677419,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 68.4477,
+        "medals": 5.5729,
+        "reputation": 1.7865,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 32.5,
+      "effectivePower": 44,
+      "rubberBandedEnemyPower": 31,
+      "winChance": 0.7812903225806451,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 82.9406,
+        "medals": 6.6877,
+        "reputation": 2.3439,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 32.5,
+      "effectivePower": 29,
+      "rubberBandedEnemyPower": 31,
+      "winChance": 0.549032258064516,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 125,
+        "medals": 10,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 78.5503,
+        "medals": 6.3923,
+        "reputation": 1.6471,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 39,
+      "effectivePower": 39,
+      "rubberBandedEnemyPower": 37,
+      "winChance": 0.6059459459459459,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 69.2638,
+        "medals": 5.6357,
+        "reputation": 1.8178,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 39,
+      "effectivePower": 51,
+      "rubberBandedEnemyPower": 37,
+      "winChance": 0.7616216216216215,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 100,
+        "medals": 8,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 81.4065,
+        "medals": 6.5697,
+        "reputation": 2.2849,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ice_raiders",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 39,
+      "effectivePower": 35,
+      "rubberBandedEnemyPower": 37,
+      "winChance": 0.5540540540540541,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 125,
+        "medals": 10,
+        "reputation": 3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 22,
+        "medals": 2,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 79.0676,
+        "medals": 6.4324,
+        "reputation": 1.6622,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 30,
+      "effectivePower": 30,
+      "rubberBandedEnemyPower": 40,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 92.5,
+        "medals": 8.06,
+        "reputation": 3.22,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 30,
+      "effectivePower": 42,
+      "rubberBandedEnemyPower": 40,
+      "winChance": 0.604,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 110.5,
+        "medals": 9.644,
+        "reputation": 4.228,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 30,
+      "effectivePower": 27,
+      "rubberBandedEnemyPower": 40,
+      "winChance": 0.424,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 17,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 104.96,
+        "medals": 8.936,
+        "reputation": 2.968,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 40,
+      "effectivePower": 40,
+      "rubberBandedEnemyPower": 40,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 107.5,
+        "medals": 9.38,
+        "reputation": 4.06,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 40,
+      "effectivePower": 52,
+      "rubberBandedEnemyPower": 40,
+      "winChance": 0.724,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 125.5,
+        "medals": 10.964,
+        "reputation": 5.068,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 40,
+      "effectivePower": 36,
+      "rubberBandedEnemyPower": 40,
+      "winChance": 0.532,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 17,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 122.78,
+        "medals": 10.448,
+        "reputation": 3.724,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 50,
+      "effectivePower": 50,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.6,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 110,
+        "medals": 9.6,
+        "reputation": 4.2,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 50,
+      "effectivePower": 62,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.72,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 125,
+        "medals": 10.92,
+        "reputation": 5.04,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 50,
+      "effectivePower": 45,
+      "rubberBandedEnemyPower": 48,
+      "winChance": 0.5499999999999999,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 17,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 125.75,
+        "medals": 10.7,
+        "reputation": 3.85,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 60,
+      "effectivePower": 60,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.6142857142857142,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 111.7857,
+        "medals": 9.7571,
+        "reputation": 4.3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 60,
+      "effectivePower": 72,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.7171428571428571,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 160,
+        "medals": 14,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 124.6429,
+        "medals": 10.8886,
+        "reputation": 5.02,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "swarm_brood",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 60,
+      "effectivePower": 54,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.5628571428571428,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 200,
+        "medals": 17,
+        "reputation": 7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 35,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 127.8714,
+        "medals": 10.88,
+        "reputation": 3.94,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 33,
+      "effectivePower": 33,
+      "rubberBandedEnemyPower": 44,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 103.86,
+        "medals": 9.52,
+        "reputation": 3.68,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 33,
+      "effectivePower": 45,
+      "rubberBandedEnemyPower": 44,
+      "winChance": 0.5909090909090908,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 122.3182,
+        "medals": 11.0909,
+        "reputation": 4.7273,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 33,
+      "effectivePower": 29,
+      "rubberBandedEnemyPower": 44,
+      "winChance": 0.4163636363636363,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 225,
+        "medals": 20,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 116.4436,
+        "medals": 10.6618,
+        "reputation": 3.3309,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 44,
+      "effectivePower": 44,
+      "rubberBandedEnemyPower": 44,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 120.78,
+        "medals": 10.96,
+        "reputation": 4.64,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 44,
+      "effectivePower": 56,
+      "rubberBandedEnemyPower": 44,
+      "winChance": 0.7109090909090908,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 139.2382,
+        "medals": 12.5309,
+        "reputation": 5.6873,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 44,
+      "effectivePower": 39,
+      "rubberBandedEnemyPower": 44,
+      "winChance": 0.5254545454545454,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 225,
+        "medals": 20,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 136.7345,
+        "medals": 12.4073,
+        "reputation": 4.2036,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 55,
+      "effectivePower": 55,
+      "rubberBandedEnemyPower": 53,
+      "winChance": 0.5981132075471698,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 123.334,
+        "medals": 11.1774,
+        "reputation": 4.7849,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 55,
+      "effectivePower": 67,
+      "rubberBandedEnemyPower": 53,
+      "winChance": 0.7067924528301885,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 138.6577,
+        "medals": 12.4815,
+        "reputation": 5.6543,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 55,
+      "effectivePower": 49,
+      "rubberBandedEnemyPower": 53,
+      "winChance": 0.5437735849056603,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 225,
+        "medals": 20,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 140.1419,
+        "medals": 12.7004,
+        "reputation": 4.3502,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 66,
+      "effectivePower": 66,
+      "rubberBandedEnemyPower": 62,
+      "winChance": 0.6109677419354838,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 125.1465,
+        "medals": 11.3316,
+        "reputation": 4.8877,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 66,
+      "effectivePower": 78,
+      "rubberBandedEnemyPower": 62,
+      "winChance": 0.7038709677419355,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 180,
+        "medals": 16,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 138.2458,
+        "medals": 12.4465,
+        "reputation": 5.631,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "veil_wraith",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 66,
+      "effectivePower": 59,
+      "rubberBandedEnemyPower": 62,
+      "winChance": 0.5567741935483871,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 225,
+        "medals": 20,
+        "reputation": 8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 39,
+        "medals": 4,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 142.56,
+        "medals": 12.9084,
+        "reputation": 4.4542,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27,
+      "effectivePower": 27,
+      "rubberBandedEnemyPower": 36,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 86.82,
+        "medals": 7.14,
+        "reputation": 2.3,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27,
+      "effectivePower": 39,
+      "rubberBandedEnemyPower": 36,
+      "winChance": 0.6199999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 105.54,
+        "medals": 8.58,
+        "reputation": 3.1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 27,
+      "effectivePower": 24,
+      "rubberBandedEnemyPower": 36,
+      "winChance": 0.41999999999999993,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 187,
+        "medals": 15,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 97.68,
+        "medals": 8.04,
+        "reputation": 2.1,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 36,
+      "effectivePower": 36,
+      "rubberBandedEnemyPower": 36,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 100.86,
+        "medals": 8.22,
+        "reputation": 2.9,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 36,
+      "effectivePower": 48,
+      "rubberBandedEnemyPower": 36,
+      "winChance": 0.7399999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 119.58,
+        "medals": 9.66,
+        "reputation": 3.7,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 36,
+      "effectivePower": 32,
+      "rubberBandedEnemyPower": 36,
+      "winChance": 0.5266666666666666,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 187,
+        "medals": 15,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 114.1067,
+        "medals": 9.32,
+        "reputation": 2.6333,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 45,
+      "effectivePower": 45,
+      "rubberBandedEnemyPower": 43,
+      "winChance": 0.6023255813953489,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 103.4721,
+        "medals": 8.4209,
+        "reputation": 3.0116,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 45,
+      "effectivePower": 57,
+      "rubberBandedEnemyPower": 43,
+      "winChance": 0.7362790697674417,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 119.1447,
+        "medals": 9.6265,
+        "reputation": 3.6814,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 45,
+      "effectivePower": 40,
+      "rubberBandedEnemyPower": 43,
+      "winChance": 0.5465116279069767,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 187,
+        "medals": 15,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 117.1628,
+        "medals": 9.5581,
+        "reputation": 2.7326,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 54,
+      "effectivePower": 54,
+      "rubberBandedEnemyPower": 51,
+      "winChance": 0.608235294117647,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 104.1635,
+        "medals": 8.4741,
+        "reputation": 3.0412,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 54,
+      "effectivePower": 66,
+      "rubberBandedEnemyPower": 51,
+      "winChance": 0.7211764705882353,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 150,
+        "medals": 12,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 117.3776,
+        "medals": 9.4906,
+        "reputation": 3.6059,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "corsair_king",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 54,
+      "effectivePower": 48,
+      "rubberBandedEnemyPower": 51,
+      "winChance": 0.5517647058823529,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 187,
+        "medals": 15,
+        "reputation": 5,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 33,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 117.9718,
+        "medals": 9.6212,
+        "reputation": 2.7588,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 42,
+      "effectivePower": 42,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 138.48,
+        "medals": 12.82,
+        "reputation": 4.6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 42,
+      "effectivePower": 54,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.5628571428571428,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 157.8171,
+        "medals": 14.5686,
+        "reputation": 5.6286,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 42,
+      "effectivePower": 37,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.4171428571428571,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 300,
+        "medals": 27,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 155.4514,
+        "medals": 14.1771,
+        "reputation": 4.1714,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 56,
+      "effectivePower": 56,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 161.04,
+        "medals": 14.86,
+        "reputation": 5.8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 56,
+      "effectivePower": 68,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.6828571428571428,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 180.3771,
+        "medals": 16.6086,
+        "reputation": 6.8286,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 56,
+      "effectivePower": 50,
+      "rubberBandedEnemyPower": 56,
+      "winChance": 0.5285714285714286,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 300,
+        "medals": 27,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 183.0857,
+        "medals": 16.6286,
+        "reputation": 5.2857,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 70,
+      "effectivePower": 70,
+      "rubberBandedEnemyPower": 67,
+      "winChance": 0.6014925373134328,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 165.0806,
+        "medals": 15.2254,
+        "reputation": 6.0149,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 70,
+      "effectivePower": 82,
+      "rubberBandedEnemyPower": 67,
+      "winChance": 0.6874626865671641,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 181.243,
+        "medals": 16.6869,
+        "reputation": 6.8746,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 70,
+      "effectivePower": 63,
+      "rubberBandedEnemyPower": 67,
+      "winChance": 0.5513432835820895,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 300,
+        "medals": 27,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 188.7331,
+        "medals": 17.1296,
+        "reputation": 5.5134,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 84,
+      "effectivePower": 84,
+      "rubberBandedEnemyPower": 79,
+      "winChance": 0.6103797468354429,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 166.7514,
+        "medals": 15.3765,
+        "reputation": 6.1038,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 84,
+      "effectivePower": 96,
+      "rubberBandedEnemyPower": 79,
+      "winChance": 0.6832911392405063,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 240,
+        "medals": 22,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 180.4587,
+        "medals": 16.6159,
+        "reputation": 6.8329,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_echo",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 84,
+      "effectivePower": 75,
+      "rubberBandedEnemyPower": 79,
+      "winChance": 0.5556962025316455,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 300,
+        "medals": 27,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 52,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 189.8127,
+        "medals": 17.2253,
+        "reputation": 5.557,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 28.5,
+      "effectivePower": 28,
+      "rubberBandedEnemyPower": 38,
+      "winChance": 0.45368421052631575,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 97.34,
+        "medals": 7.9905,
+        "reputation": 2.7221,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 28.5,
+      "effectivePower": 40,
+      "rubberBandedEnemyPower": 38,
+      "winChance": 0.6052631578947367,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 117.5,
+        "medals": 9.6579,
+        "reputation": 3.6316,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 28.5,
+      "effectivePower": 25,
+      "rubberBandedEnemyPower": 38,
+      "winChance": 0.4157894736842105,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 212,
+        "medals": 17,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 109.7632,
+        "medals": 8.8211,
+        "reputation": 2.4947,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 38,
+      "effectivePower": 38,
+      "rubberBandedEnemyPower": 38,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 114.14,
+        "medals": 9.38,
+        "reputation": 3.48,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 38,
+      "effectivePower": 50,
+      "rubberBandedEnemyPower": 38,
+      "winChance": 0.7315789473684211,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 134.3,
+        "medals": 11.0474,
+        "reputation": 4.3895,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 38,
+      "effectivePower": 34,
+      "rubberBandedEnemyPower": 38,
+      "winChance": 0.5294736842105263,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 212,
+        "medals": 17,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 129.6579,
+        "medals": 10.4126,
+        "reputation": 3.1768,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 47.5,
+      "effectivePower": 47,
+      "rubberBandedEnemyPower": 46,
+      "winChance": 0.5904347826086956,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 115.5278,
+        "medals": 9.4948,
+        "reputation": 3.5426,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 47.5,
+      "effectivePower": 59,
+      "rubberBandedEnemyPower": 46,
+      "winChance": 0.7156521739130434,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 132.1817,
+        "medals": 10.8722,
+        "reputation": 4.2939,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 47.5,
+      "effectivePower": 42,
+      "rubberBandedEnemyPower": 46,
+      "winChance": 0.5382608695652173,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 212,
+        "medals": 17,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 131.1957,
+        "medals": 10.5357,
+        "reputation": 3.2296,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 57,
+      "effectivePower": 57,
+      "rubberBandedEnemyPower": 54,
+      "winChance": 0.6066666666666667,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 117.6867,
+        "medals": 9.6733,
+        "reputation": 3.64,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 57,
+      "effectivePower": 69,
+      "rubberBandedEnemyPower": 54,
+      "winChance": 0.7133333333333333,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 170,
+        "medals": 14,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 131.8733,
+        "medals": 10.8467,
+        "reputation": 4.28,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "ember_raider",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 57,
+      "effectivePower": 51,
+      "rubberBandedEnemyPower": 54,
+      "winChance": 0.5533333333333332,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 212,
+        "medals": 17,
+        "reputation": 6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 37,
+        "medals": 3,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 133.8333,
+        "medals": 10.7467,
+        "reputation": 3.32,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 39,
+      "effectivePower": 39,
+      "rubberBandedEnemyPower": 52,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 127.12,
+        "medals": 11.9,
+        "reputation": 4.6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 39,
+      "effectivePower": 51,
+      "rubberBandedEnemyPower": 52,
+      "winChance": 0.5707692307692307,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 146.1723,
+        "medals": 13.5615,
+        "reputation": 5.7077,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 39,
+      "effectivePower": 35,
+      "rubberBandedEnemyPower": 52,
+      "winChance": 0.4230769230769231,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 275,
+        "medals": 25,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 144.0385,
+        "medals": 13.4615,
+        "reputation": 4.2308,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 52,
+      "effectivePower": 52,
+      "rubberBandedEnemyPower": 52,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 147.76,
+        "medals": 13.7,
+        "reputation": 5.8,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 52,
+      "effectivePower": 64,
+      "rubberBandedEnemyPower": 52,
+      "winChance": 0.6907692307692308,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 166.8123,
+        "medals": 15.3615,
+        "reputation": 6.9077,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 52,
+      "effectivePower": 46,
+      "rubberBandedEnemyPower": 52,
+      "winChance": 0.5246153846153846,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 275,
+        "medals": 25,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 167.0877,
+        "medals": 15.4923,
+        "reputation": 5.2462,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 65,
+      "effectivePower": 65,
+      "rubberBandedEnemyPower": 63,
+      "winChance": 0.5952380952380952,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 150.381,
+        "medals": 13.9286,
+        "reputation": 5.9524,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 65,
+      "effectivePower": 77,
+      "rubberBandedEnemyPower": 63,
+      "winChance": 0.6866666666666666,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 166.1067,
+        "medals": 15.3,
+        "reputation": 6.8667,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 65,
+      "effectivePower": 58,
+      "rubberBandedEnemyPower": 63,
+      "winChance": 0.5419047619047619,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 275,
+        "medals": 25,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 171.0124,
+        "medals": 15.8381,
+        "reputation": 5.419,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 78,
+      "effectivePower": 78,
+      "rubberBandedEnemyPower": 73,
+      "winChance": 0.6128767123287671,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 153.4148,
+        "medals": 14.1932,
+        "reputation": 6.1288,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 78,
+      "effectivePower": 90,
+      "rubberBandedEnemyPower": 73,
+      "winChance": 0.6917808219178082,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 220,
+        "medals": 20,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 166.9863,
+        "medals": 15.3767,
+        "reputation": 6.9178,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "hollow_shade",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 78,
+      "effectivePower": 70,
+      "rubberBandedEnemyPower": 73,
+      "winChance": 0.5602739726027397,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 275,
+        "medals": 25,
+        "reputation": 10,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 48,
+        "medals": 5,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 175.1822,
+        "medals": 16.2055,
+        "reputation": 5.6027,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 48,
+      "rubberBandedEnemyPower": 64,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 161.74,
+        "medals": 14.28,
+        "reputation": 5.52,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 60,
+      "rubberBandedEnemyPower": 64,
+      "winChance": 0.5499999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 181.45,
+        "medals": 15.9,
+        "reputation": 6.6,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 48,
+      "effectivePower": 43,
+      "rubberBandedEnemyPower": 64,
+      "winChance": 0.4225,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 350,
+        "medals": 30,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 183.1025,
+        "medals": 16.14,
+        "reputation": 5.07,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 64,
+      "effectivePower": 64,
+      "rubberBandedEnemyPower": 64,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 188.02,
+        "medals": 16.44,
+        "reputation": 6.96,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 64,
+      "effectivePower": 76,
+      "rubberBandedEnemyPower": 64,
+      "winChance": 0.6699999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 207.73,
+        "medals": 18.06,
+        "reputation": 8.04,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 64,
+      "effectivePower": 57,
+      "rubberBandedEnemyPower": 64,
+      "winChance": 0.5275,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 350,
+        "medals": 30,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 213.4475,
+        "medals": 18.66,
+        "reputation": 6.33,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 80,
+      "effectivePower": 80,
+      "rubberBandedEnemyPower": 77,
+      "winChance": 0.5987012987012986,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 192.1156,
+        "medals": 16.7766,
+        "reputation": 7.1844,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 80,
+      "effectivePower": 92,
+      "rubberBandedEnemyPower": 77,
+      "winChance": 0.6735064935064934,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 208.4979,
+        "medals": 18.1231,
+        "reputation": 8.0821,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 80,
+      "effectivePower": 72,
+      "rubberBandedEnemyPower": 77,
+      "winChance": 0.5488311688311688,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 350,
+        "medals": 30,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 219.6122,
+        "medals": 19.1719,
+        "reputation": 6.586,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 96,
+      "effectivePower": 96,
+      "rubberBandedEnemyPower": 90,
+      "winChance": 0.612,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 195.028,
+        "medals": 17.016,
+        "reputation": 7.344,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 96,
+      "effectivePower": 108,
+      "rubberBandedEnemyPower": 90,
+      "winChance": 0.6759999999999999,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 280,
+        "medals": 24,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 209.044,
+        "medals": 18.168,
+        "reputation": 8.112,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "crown_warden",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 96,
+      "effectivePower": 86,
+      "rubberBandedEnemyPower": 90,
+      "winChance": 0.5586666666666666,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 350,
+        "medals": 30,
+        "reputation": 12,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 61,
+        "medals": 6,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 222.4547,
+        "medals": 19.408,
+        "reputation": 6.704,
+        "gems": 0,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 0.75,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 63,
+      "effectivePower": 63,
+      "rubberBandedEnemyPower": 84,
+      "winChance": 0.45999999999999996,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 242.88,
+        "medals": 21.42,
+        "reputation": 8.28,
+        "gems": 3.68,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 0.75,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 63,
+      "effectivePower": 75,
+      "rubberBandedEnemyPower": 84,
+      "winChance": 0.5285714285714286,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 265.3714,
+        "medals": 23.2714,
+        "reputation": 9.5143,
+        "gems": 4.2286,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 0.75,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 63,
+      "effectivePower": 56,
+      "rubberBandedEnemyPower": 84,
+      "winChance": 0.41999999999999993,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 525,
+        "medals": 45,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 273.86,
+        "medals": 24.12,
+        "reputation": 7.56,
+        "gems": 3.36,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 84,
+      "effectivePower": 84,
+      "rubberBandedEnemyPower": 84,
+      "winChance": 0.58,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 282.24,
+        "medals": 24.66,
+        "reputation": 10.44,
+        "gems": 4.64,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 84,
+      "effectivePower": 96,
+      "rubberBandedEnemyPower": 84,
+      "winChance": 0.6485714285714285,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 304.7314,
+        "medals": 26.5114,
+        "reputation": 11.6743,
+        "gems": 5.1886,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 84,
+      "effectivePower": 75,
+      "rubberBandedEnemyPower": 84,
+      "winChance": 0.5285714285714286,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 525,
+        "medals": 45,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 320.8714,
+        "medals": 28.0286,
+        "reputation": 9.5143,
+        "gems": 4.2286,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1.25,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 105,
+      "effectivePower": 105,
+      "rubberBandedEnemyPower": 101,
+      "winChance": 0.599009900990099,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 288.4752,
+        "medals": 25.1733,
+        "reputation": 10.7822,
+        "gems": 4.7921,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1.25,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 105,
+      "effectivePower": 117,
+      "rubberBandedEnemyPower": 101,
+      "winChance": 0.656039603960396,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 307.181,
+        "medals": 26.7131,
+        "reputation": 11.8087,
+        "gems": 5.2483,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1.25,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 105,
+      "effectivePower": 94,
+      "rubberBandedEnemyPower": 101,
+      "winChance": 0.5467326732673268,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 525,
+        "medals": 45,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 328.7352,
+        "medals": 28.6824,
+        "reputation": 9.8412,
+        "gems": 4.3739,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1.5,
+      "orderId": "brace",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 126,
+      "effectivePower": 126,
+      "rubberBandedEnemyPower": 118,
+      "winChance": 0.6125423728813559,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 292.9139,
+        "medals": 25.5386,
+        "reputation": 11.0258,
+        "gems": 4.9003,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 0.5,
+      "failureInjuryPolicy": "prevented"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1.5,
+      "orderId": "burn",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 126,
+      "effectivePower": 138,
+      "rubberBandedEnemyPower": 118,
+      "winChance": 0.6613559322033897,
+      "fuel": 1,
+      "successRewards": {
+        "credits": 420,
+        "medals": 36,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 308.9247,
+        "medals": 26.8566,
+        "reputation": 11.9044,
+        "gems": 5.2908,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "normal"
+    },
+    {
+      "encounterId": "eclipse_throne",
+      "ratio": 1.5,
+      "orderId": "board",
+      "enabled": true,
+      "reason": null,
+      "crewPower": 126,
+      "effectivePower": 113,
+      "rubberBandedEnemyPower": 118,
+      "winChance": 0.5596610169491525,
+      "fuel": 0,
+      "successRewards": {
+        "credits": 525,
+        "medals": 45,
+        "reputation": 18,
+        "gems": 8,
+        "fuel": 0
+      },
+      "failureRewards": {
+        "credits": 92,
+        "medals": 9,
+        "reputation": 0,
+        "gems": 0,
+        "fuel": 0
+      },
+      "expectedRewards": {
+        "credits": 334.3332,
+        "medals": 29.1478,
+        "reputation": 10.0739,
+        "gems": 4.4773,
+        "fuel": 0
+      },
+      "failureHullMultiplier": 1,
+      "failureInjuryPolicy": "forced"
+    }
+  ]
+}

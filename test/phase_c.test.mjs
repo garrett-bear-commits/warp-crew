@@ -9,9 +9,15 @@ if (CREW_CATALOG.length < 20) throw new Error('expected expanded crew');
 if (Object.keys(NODES).length < 10) throw new Error('expected expanded nodes');
 
 let p = createNewPlayer();
-p = { ...p, wallet: { ...p.wallet, gems: 1000, credits: 20000 } };
+p = {
+  ...p,
+  story: { ...p.story, chapter: 2 },
+  wallet: { ...p.wallet, gems: 1080, credits: 20000, reputation: 40 },
+};
 
-const r = buyHull(p, 'corvette', 'gems');
+const kestrel = buyHull(p, 'kestrel', 'gems');
+if (!kestrel.ok) throw new Error('kestrel buy ' + kestrel.reason);
+const r = buyHull(kestrel.player, 'corvette', 'gems');
 if (!r.ok) throw new Error('corvette buy ' + r.reason);
 if (r.player.crewSlots < 6) throw new Error('corvette slots');
 if (!r.player.ship.ownedHulls.includes('corvette')) throw new Error('owned');

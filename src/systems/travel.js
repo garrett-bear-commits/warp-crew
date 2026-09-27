@@ -2,7 +2,7 @@
 import { NODES, pickOutcome, visibleNodes } from '../data/sectors.js';
 import { spendFuel } from './fuel.js';
 import { grant, scaleSitePayout } from './economy.js';
-import { resolveCombat, crewPower, encounterById, rubberBandPower } from './combat.js';
+import { resolveCombat, resolveCombatOrder, previewCombatOrder, crewPower, encounterById, rubberBandPower } from './combat.js';
 import { applyCrewInjury, grantCrewXp, fightingCrew } from './player.js';
 import { applyStoryFlag } from './story.js';
 import { isTutorialActive, tutorialPhase } from './tutorial.js';
@@ -81,10 +81,17 @@ function noteVisit(player, nodeId) {
   };
 }
 
-export function commitTravel(player, preview, { assistsUsed = [], rng = Math.random } = {}) {
+export function commitTravel(player, preview, { assistsUsed = [], orderId = null, rng = Math.random } = {}) {
   if (!preview?.ok) return { ok: false, reason: preview?.reason || 'bad_preview' };
 
-  const fuelCost = preview.fuelCost ?? 0;
+  const order = orderId == null ? null : previewCombatOrder({
+    playerPower: preview.playerPower, enemyPower: preview.encounter?.power,
+    orderId, fuel: (player.wallet?.fuel || 0) - (preview.fuelCost || 0), tutorial: Boolean(preview.tutorialFight),
+  });
+  if (order && (!order.enabled || preview.outcome?.kind !== 'combat')) {
+    return { ok: false, reason: order.reason || 'not_enough_fuel' };
+  }
+  const fuelCost = (preview.fuelCost ?? 0) + (order?.extraFuel || 0);
   if (fuelCost > 0) {
     const spent = spendFuel(player, fuelCost);
     if (!spent.ok) return { ok: false, reason: 'not_enough_fuel' };
@@ -134,7 +141,7 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
     const enc = preview.encounter;
     const power = preview.playerPower ?? crewPower(crew);
     const tutorialGuaranteed = Boolean(preview.tutorialFight);
-    const combat = resolveCombat({
+    const combat = (order ? resolveCombatOrder : resolveCombat)({
       playerPower: power,
       enemyPower: enc.power,
       assistsUsed,
@@ -142,16 +149,23 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
       tutorialGuaranteed,
       assistMult: preview.assistMult || 1,
       encounter: enc,
+      orderId,
+      fuel: order?.extraFuel || 0,
     });
     let rewards = combat.rewards;
     if (!tutorialGuaranteed) {
       rewards = scaleSitePayout(rewards, player, { kind: 'combat', visits });
     }
     player = { ...player, wallet: grant(player.wallet, rewards) };
+    const hullBefore = player.ship?.hull ?? 100;
     player = hullAfterCombat(player, {
       success: combat.success,
       tutorial: tutorialGuaranteed,
     });
+    if (!combat.success && combat.failureHullScale != null) {
+      const loss = Math.floor((hullBefore - player.ship.hull) * combat.failureHullScale);
+      player = { ...player, ship: { ...player.ship, hull: hullBefore - loss } };
+    }
     if (combat.success) {
       player = {
         ...player,
@@ -160,7 +174,7 @@ export function commitTravel(player, preview, { assistsUsed = [], rng = Math.ran
       if (!tutorialGuaranteed) {
         player = grantCrewXp(player, crew.map((c) => c.instanceId), 10);
       }
-    } else if (!tutorialGuaranteed && crew.length) {
+    } else if (!tutorialGuaranteed && crew.length && !combat.preventsInjury) {
       const pick = crew[Math.floor(rng() * crew.length)];
       player = applyCrewInjury(player, [pick.instanceId], injuryMinutesFor(player, 20));
       result.injured = pick.name;

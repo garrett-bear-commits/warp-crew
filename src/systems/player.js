@@ -2,16 +2,24 @@
 import { createCrewInstance, recomputeCrew } from '../data/crewRoster.js';
 import { starterShip, getShipDef } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
-import { defaultTutorial, TUTORIAL_SCRIPT } from './tutorial.js';
+import { migrateTutorialV3 } from './tutorial.js';
+import { defaultTutorialV4, normalizeTutorialV4 } from './tutorialV4.js';
+import { defaultTutorialV5, normalizeTutorialV5, reconcileFirstHireV5, reconcileWelcomeV5 } from './tutorialV5.js';
+import { normalizeContractState } from './contractState.js';
+import { NODES } from '../data/sectors.js';
+import { encounterById } from './combat.js';
 import { defaultGacha } from './gacha.js';
 import { berthsFor, fuelMaxFor, fuelRateFor, parkOverflowToReserve } from './hangar.js';
 import { clampFuel } from './economy.js';
+import { normalizeAssignments } from './stations.js';
+import { normalizeEncounterState } from './encounterState.js';
 
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 9;
 
 function ensureShip(ship) {
   const base = starterShip();
   const next = { ...base, ...(ship || {}) };
+  if (typeof next.name !== 'string' || !next.name.trim()) next.name = 'Sparrow';
   next.systems = {
     engines: 1,
     shields: 1,
@@ -29,15 +37,16 @@ function ensureShip(ship) {
   return next;
 }
 
-export function createNewPlayer({ captainName = 'Captain' } = {}) {
-  const now = Date.now();
-  const crew = [
-    createCrewInstance('merc_rex'),
-    createCrewInstance('merc_bolt'),
-  ];
+export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, now = Date.now(), rng = Math.random } = {}) {
+  const legacy = tutorialScript === 4;
+  const crew = legacy ? [
+    createCrewInstance('merc_rex', { rng }),
+    createCrewInstance('merc_bolt', { rng }),
+  ] : [];
   return {
     version: SAVE_VERSION,
     captainName,
+    captainInstanceId: null,
     createdAt: now,
     wallet: {
       credits: 80,
@@ -52,18 +61,23 @@ export function createNewPlayer({ captainName = 'Captain' } = {}) {
     ship: starterShip(),
     crewSlots: 2,
     crew,
+    stationAssignments: legacy ? { [crew[0].instanceId]: 'helm', [crew[1].instanceId]: null } : {},
     reserve: [],
     iapFulfilled: [],
     activeExpedition: null,
+    contractBoard: null,
+    activeContract: null,
+    activeEncounter: null,
+    dailyLoop: { dayKey: null, contract: false, improve: false, away: false },
     location: 'station_home',
     flags: {},
     gacha: defaultGacha(),
     loginStreak: 0,
     lastLoginDay: null,
     dailyPullAvailable: true,
-    stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {} },
+    stats: { jumps: 0, combatsWon: 0, expeditions: 0, visits: {}, planetRuns: {}, contractsCompleted: 0, contractsByProfile: { reliable: 0, risky: 0, strange: 0 } },
     story: { chapter: 0, eclipseIntro: false },
-    tutorial: defaultTutorial(),
+    tutorial: legacy ? defaultTutorialV4() : defaultTutorialV5(),
   };
 }
 
@@ -72,35 +86,15 @@ export function migratePlayer(player) {
   const captainName = player.captainName || 'Captain';
   const jumps = player.stats?.jumps || 0;
   const combats = player.stats?.combatsWon || 0;
-  const script = player.tutorial?.script;
-  const freshIntro =
-    (player.version || 0) < 5 || script !== TUTORIAL_SCRIPT;
-
-  // Zero-progress careers re-enter the v2 intro, but keep any wallet / IAP.
-  if (freshIntro && jumps === 0 && combats === 0) {
-    const fresh = createNewPlayer({ captainName });
-    return {
-      ...fresh,
-      createdAt: player.createdAt || fresh.createdAt,
-      wallet: {
-        ...fresh.wallet,
-        credits: Math.max(fresh.wallet.credits, player.wallet?.credits || 0),
-        fuel: Math.max(fresh.wallet.fuel, player.wallet?.fuel || 0),
-        gems: Math.max(fresh.wallet.gems, player.wallet?.gems || 0),
-        medals: Math.max(fresh.wallet.medals, player.wallet?.medals || 0),
-        reputation: Math.max(fresh.wallet.reputation, player.wallet?.reputation || 0),
-      },
-      iapFulfilled: [...(player.iapFulfilled || [])],
-    };
-  }
-
-  const base = createNewPlayer({ captainName });
+  const base = createNewPlayer({ captainName, tutorialScript: player.tutorial?.script === 5 ? 5 : 4 });
   let crew = Array.isArray(player.crew) ? player.crew.map((c) => recomputeCrew(c)) : base.crew;
   let reserve = Array.isArray(player.reserve) ? player.reserve.map((c) => recomputeCrew(c)) : [];
   let crewSlots = player.crewSlots ?? base.crewSlots;
-  const tutorial = freshIntro
-    ? { ...defaultTutorial(), completed: true, phase: 'done', dismissed: true }
-    : { ...defaultTutorial(), ...(player.tutorial || {}) };
+  const tutorial = player.tutorial?.script === 5
+    ? normalizeTutorialV5(player.tutorial)
+    : player.tutorial?.script === 4
+    ? normalizeTutorialV4(player.tutorial)
+    : migrateTutorialV3(player).tutorial;
 
   const veteran = (player.version || 0) < SAVE_VERSION && (jumps > 0 || combats > 0);
   const flags = { ...(player.flags || {}) };
@@ -120,9 +114,11 @@ export function migratePlayer(player) {
     ship,
     crew,
     reserve,
-    gacha: { ...defaultGacha(), ...(player.gacha || {}) },
+    stationAssignments: normalizeAssignments({ crew, reserve, stationAssignments: player.stationAssignments }),
+    gacha: { ...defaultGacha(), ...(player.gacha || {}), history: Array.isArray(player.gacha?.history) ? [...player.gacha.history] : [] },
     crewSlots,
-    stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) } },
+    stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) }, contractsByProfile: { ...base.stats.contractsByProfile, ...(player.stats?.contractsByProfile || {}) } },
+    dailyLoop: { ...base.dailyLoop, ...(player.dailyLoop || {}) },
     story,
     flags,
     tutorial,
@@ -140,7 +136,7 @@ export function migratePlayer(player) {
   next.fuelMax = fuelMaxFor(next, def);
   next.fuelRatePerHour = fuelRateFor(next, def);
   next.wallet = clampFuel(next.wallet, next.fuelMax);
-  return next;
+  return reconcileWelcomeV5(reconcileFirstHireV5(normalizeEncounterState(normalizeContractState(next, { nodes: NODES, encounterById }))));
 }
 
 export function assignedCrew(player) {

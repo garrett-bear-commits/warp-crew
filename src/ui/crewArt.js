@@ -1,7 +1,9 @@
 // @ts-nocheck
 import { recolor, recolorHair, bodyMaps, hairRamp, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS } from '../shared/recolor.js';
 import { CREW_LOOKS, lookIdFor } from '../data/looks.js';
+import { portraitFor } from '../data/portraits.js';
 import { artUrl } from '../shared/artUrl.js';
+import { animationProfileFor } from './crewAnimation.js';
 
 const SRC_W = 96;
 const SRC_H = 64;
@@ -17,6 +19,13 @@ const PAD = { x: 4, y: 8 };
 
 const sheets = Object.create(null);
 const walkImgs = Object.create(null);
+const identityMarkers = Object.create(null);
+
+export function staticCrewMarkerFor(templateId) {
+  if (templateId === 'captain_alien') return { src: portraitFor(templateId), shape: 'diamond', color: '#73e5d5', label: 'A' };
+  if (templateId === 'captain_droid') return { src: portraitFor(templateId), shape: 'square', color: '#ffae55', label: 'D' };
+  return null;
+}
 
 function loadImage(src) {
   return new Promise((res, rej) => {
@@ -171,8 +180,12 @@ async function flattenWalk(look) {
 
 export async function prepareCrewArt() {
   const entries = Object.entries(CREW_LOOKS);
-  await Promise.all(
-    entries.map(async ([id, look]) => {
+  await Promise.all([
+    ...['captain_alien', 'captain_droid'].map(async id => {
+      try { identityMarkers[id] = await loadImage(staticCrewMarkerFor(id).src); }
+      catch (error) { console.warn('crew marker', id, error); }
+    }),
+    ...entries.map(async ([id, look]) => {
       try {
         const [idle, doing, walk] = await Promise.all([
           flattenStrip(look, 'idle'),
@@ -193,20 +206,35 @@ export async function prepareCrewArt() {
       } catch (e) {
         console.warn('crew look', id, e);
       }
-    })
-  );
+    }),
+  ]);
 }
 
 export function hasCrewArt() {
   return Object.keys(sheets).length > 0;
 }
 
-export function sheetFor(templateId, role) {
+export function resolveCrewSheet(templateId, role, library) {
+  // Rejected alien and droid walk sheets must never become a human sprite.
+  if (templateId === 'captain_alien' || templateId === 'captain_droid') return null;
   const id = lookIdFor(templateId, role);
-  return sheets[id] || sheets.merc_rex || null;
+  if (library[id]) return library[id];
+  return library.merc_rex || null;
+}
+
+export function sheetFor(templateId, role) {
+  return resolveCrewSheet(templateId, role, sheets);
 }
 
 export function walkSheetFor(templateId, role) {
-  const id = lookIdFor(templateId, role);
-  return walkImgs[id] || walkImgs.merc_rex || null;
+  return resolveCrewSheet(templateId, role, walkImgs);
+}
+
+export function walkAssetFor(templateId, role, bodyFamily = 'standard_humanoid') {
+  return {
+    image: walkSheetFor(templateId, role),
+    marker: staticCrewMarkerFor(templateId),
+    markerImage: identityMarkers[templateId] || null,
+    profile: animationProfileFor(bodyFamily),
+  };
 }

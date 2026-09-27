@@ -1,36 +1,10 @@
-import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
-import {
-  noteTutorialEvent,
-  weekGoals,
-  currentTutorialStep,
-  defaultTutorial,
-} from '../src/systems/tutorial.js';
+import { migratePlayer } from '../src/systems/player.js';
+import { weekGoals } from '../src/systems/tutorial.js';
+import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 import { visibleNodes, STORY_BEATS, NODES } from '../src/data/sectors.js';
 import { visiblePlanets, PLANETS_V1 } from '../src/systems/expedition.js';
-import { storyProgress } from '../src/systems/story.js';
 
-let p = createNewPlayer();
-if (p.crewSlots !== 2) throw new Error('start slots');
-if (!currentTutorialStep(p)) throw new Error('tutorial should show');
-
-let r = noteTutorialEvent(p, 'travel_success');
-p = r.player;
-if (p.crewSlots < 3) throw new Error('slot3 after travel');
-if (!p.tutorial.firstTravel) throw new Error('firstTravel flag');
-
-r = noteTutorialEvent(p, 'combat_done');
-p = r.player;
-// hire third
-p = { ...p, crew: [...p.crew, { ...p.crew[0], instanceId: 'x3' }] };
-r = noteTutorialEvent(p, 'hired');
-p = r.player;
-if (!p.tutorial.hiredThird) throw new Error('hiredThird');
-
-r = noteTutorialEvent(p, 'expedition_start');
-p = r.player;
-r = noteTutorialEvent(p, 'expedition_done');
-p = r.player;
-if (p.crewSlots < 4) throw new Error('slot4 after exp');
+let p = completeFreshTutorial();
 
 const nodesDay1 = visibleNodes(p);
 if (nodesDay1.length < 7) throw new Error('day1 nodes ' + nodesDay1.length);
@@ -54,7 +28,7 @@ const beats = Object.keys(STORY_BEATS).length;
 if (beats < 10) throw new Error('story beats ' + beats);
 
 const g = weekGoals(p);
-if (g.goals.length !== 7) throw new Error('week goals');
+if (g.goals.length !== 4) throw new Error('week goals');
 
 const nodeCount = Object.keys(NODES).length;
 if (nodeCount < 18) throw new Error('nodes ' + nodeCount);
