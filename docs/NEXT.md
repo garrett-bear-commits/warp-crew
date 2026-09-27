@@ -13,7 +13,12 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 - [ ] Garrett: review crew art and HUD on a phone; decide whether to fund a painted per-frame reskin pass (needs a spend cap).
 - [x] Fight pacing: tutorial fight ~15–20 s, contract fights 30–60 s; every contract fight is a real-time crew fight with threat-scaled damage and salvage on loss. [Record](qa/2026-09-26-hud-overhaul.md#2026-09-27-fight-pacing-and-crew-fight-conversion).
 - [x] Burn and Board restored as crew-fight initiative orders (unlock after 3 and 5 contracts). Captain always stays aboard; Away picker shows combat power before/after launch and unstaffed stations; contract review shows fight threat with crew aboard.
-- [ ] Garrett: decide the proposals in [combat walls, retention and boarding](superpowers/specs/2026-09-27-combat-walls-retention-design.md) (daily rhythm, Siege walls, timed upgrades, enemy boarders next, purchase authority first). Explore-map travel fights are still on the old order menu.
+- [x] Garrett approved the [combat walls, retention and boarding](superpowers/specs/2026-09-27-combat-walls-retention-design.md) proposals (2026-09-27).
+- [x] Enemy boarders (Scrapper Gang, Ice Raiders, Corsair King; unlock after 8 contracts): warning, landing, sabotage, Repel boarders with a walking defender and red raider sprites. Repelled boarders are win-rate neutral; ignored ones cost ~25 points.
+- [x] One-time New Captain's Kit: first loss or third post-tutorial contract, 48 h real window, pop-up then Shop card, truthful live-price saving. Contents 250 gems / 10 fuel / 50 medals / 800 credits pending sign-off.
+- [ ] Garrett: configure `wc_starter`, `wc_gems_100`, `wc_gems_500`, `wc_fuel_5` in the Jest Developer Console. The connected SDK returns only `gems_100`, `gems_500`, `premium_pass` (prices look like cents), so no game SKU has a Jest price today.
+- [ ] Next: Siege walls (chapter-boss damage persists to daily reset) and timed upgrades above level 3 (approved). Purchase verification and cloud save before any live offer.
+- [ ] Previously: decide the remaining proposals in [combat walls, retention and boarding](superpowers/specs/2026-09-27-combat-walls-retention-design.md) (daily rhythm, Siege walls, timed upgrades, enemy boarders next, purchase authority first). Explore-map travel fights are still on the old order menu.
 - [ ] Publish to Pages QA only after Garrett's go-ahead. Branch \`claude/hud-overhaul\` is local and unpushed.
 
 ## 2026-09-25 QA save restart — Pages QA live
