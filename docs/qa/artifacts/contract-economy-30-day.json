@@ -2978,7 +2978,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -3039,10 +3039,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 290
+            "deferredAtCap": 291
           },
           "affordabilityGaps": [
             {
@@ -3088,7 +3088,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 123,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 154,
             "reputation": 106
@@ -3114,7 +3114,7 @@
           "now": 1791288000000,
           "startWallet": {
             "credits": 123,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 154,
             "reputation": 106
@@ -3169,6 +3169,13 @@
               "medals": 2,
               "reputation": 0
             },
+            "fuel-regen": {
+              "credits": 0,
+              "fuel": 1,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
             "expedition-claim": {
               "credits": 12,
               "fuel": 0,
@@ -3211,7 +3218,7 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 0,
             "wasted": 0,
             "deferredAtCap": 314
@@ -6550,7 +6557,7 @@
         "cargo": 6,
         "weapons": 3,
         "quarters": 0,
-        "sensors": 4,
+        "sensors": 3,
         "medbay": 3
       },
       "finalCrew": [
@@ -9644,7 +9651,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -9746,10 +9753,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 290
+            "deferredAtCap": 291
           },
           "affordabilityGaps": [
             {
@@ -9793,7 +9800,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 297,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 160,
             "reputation": 109
@@ -9810,7 +9817,7 @@
           "now": 1791288000000,
           "startWallet": {
             "credits": 297,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 160,
             "reputation": 109
@@ -9884,7 +9891,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 2,
+              "fuel": 3,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -9986,7 +9993,7 @@
             "level": 3
           },
           "fuel": {
-            "gained": 2,
+            "gained": 3,
             "spent": 2,
             "wasted": 0,
             "deferredAtCap": 312
@@ -16347,7 +16354,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -16449,10 +16456,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 316
+            "deferredAtCap": 317
           },
           "affordabilityGaps": [
             {
@@ -16496,7 +16503,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 204,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 158,
             "reputation": 108
@@ -16513,7 +16520,7 @@
           "now": 1791374400000,
           "startWallet": {
             "credits": 204,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 158,
             "reputation": 108
@@ -16587,7 +16594,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 2,
+              "fuel": 3,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -16689,7 +16696,7 @@
             "level": 3
           },
           "fuel": {
-            "gained": 2,
+            "gained": 3,
             "spent": 2,
             "wasted": 0,
             "deferredAtCap": 338
@@ -20046,7 +20053,7 @@
         "weapons": 3,
         "quarters": 1,
         "sensors": 4,
-        "medbay": 4
+        "medbay": 3
       },
       "finalCrew": [
         {
@@ -22852,7 +22859,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -22954,10 +22961,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 241
+            "deferredAtCap": 242
           },
           "affordabilityGaps": [
             {
@@ -23001,7 +23008,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 326,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 15,
             "medals": 147,
             "reputation": 117
@@ -23018,7 +23025,7 @@
           "now": 1791115200000,
           "startWallet": {
             "credits": 326,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 15,
             "medals": 147,
             "reputation": 117
@@ -23092,7 +23099,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 2,
+              "fuel": 3,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -23194,7 +23201,7 @@
             "level": 3
           },
           "fuel": {
-            "gained": 2,
+            "gained": 3,
             "spent": 2,
             "wasted": 0,
             "deferredAtCap": 263
@@ -26950,7 +26957,7 @@
         "weapons": 3,
         "quarters": 1,
         "sensors": 4,
-        "medbay": 4
+        "medbay": 3
       },
       "finalCrew": [
         {
@@ -29863,7 +29870,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -29965,10 +29972,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 267
+            "deferredAtCap": 268
           },
           "affordabilityGaps": [
             {
@@ -30012,7 +30019,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 190,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 15,
             "medals": 143,
             "reputation": 108
@@ -30029,7 +30036,7 @@
           "now": 1791201600000,
           "startWallet": {
             "credits": 190,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 15,
             "medals": 143,
             "reputation": 108
@@ -30103,7 +30110,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 2,
+              "fuel": 3,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -30205,7 +30212,7 @@
             "level": 3
           },
           "fuel": {
-            "gained": 2,
+            "gained": 3,
             "spent": 2,
             "wasted": 0,
             "deferredAtCap": 289
@@ -37573,7 +37580,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -37620,10 +37627,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 361
+            "deferredAtCap": 362
           },
           "affordabilityGaps": [
             {
@@ -37670,7 +37677,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 153,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 271,
             "reputation": 67
@@ -37696,7 +37703,7 @@
           "now": 1791547200000,
           "startWallet": {
             "credits": 153,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 271,
             "reputation": 67
@@ -37763,7 +37770,7 @@
           "rewardsBySource": {
             "daily-login": {
               "credits": 80,
-              "fuel": 0,
+              "fuel": 1,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -37865,10 +37872,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 2,
-            "wasted": 1,
-            "deferredAtCap": 385
+            "wasted": 0,
+            "deferredAtCap": 386
           },
           "affordabilityGaps": [
             {
@@ -38108,7 +38115,7 @@
             "gained": 2,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 407
+            "deferredAtCap": 408
           },
           "affordabilityGaps": [
             {
@@ -38276,7 +38283,7 @@
             "gained": 2,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 429
+            "deferredAtCap": 430
           },
           "affordabilityGaps": [
             {
@@ -38449,7 +38456,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 453
+            "deferredAtCap": 454
           },
           "affordabilityGaps": [
             {
@@ -38741,7 +38748,7 @@
             "gained": 0,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 477
+            "deferredAtCap": 478
           },
           "affordabilityGaps": [
             {
@@ -38909,7 +38916,7 @@
             "gained": 2,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 499
+            "deferredAtCap": 500
           },
           "affordabilityGaps": [
             {
@@ -39082,7 +39089,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 523
+            "deferredAtCap": 524
           },
           "affordabilityGaps": [
             {
@@ -39256,7 +39263,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 1,
-            "deferredAtCap": 547
+            "deferredAtCap": 548
           },
           "affordabilityGaps": [
             {
@@ -39419,7 +39426,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 571
+            "deferredAtCap": 572
           },
           "affordabilityGaps": [
             {
@@ -39583,7 +39590,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 595
+            "deferredAtCap": 596
           },
           "affordabilityGaps": [
             {
@@ -39766,7 +39773,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 619
+            "deferredAtCap": 620
           },
           "affordabilityGaps": [
             {
@@ -39934,7 +39941,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 643
+            "deferredAtCap": 644
           },
           "affordabilityGaps": [
             {
@@ -40098,7 +40105,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 667
+            "deferredAtCap": 668
           },
           "affordabilityGaps": [
             {
@@ -40183,14 +40190,14 @@
           },
           "daily-login": {
             "credits": 2155,
-            "fuel": 2,
+            "fuel": 3,
             "gems": 60,
             "medals": 148,
             "reputation": 28
           },
           "fuel-regen": {
             "credits": 0,
-            "fuel": 29,
+            "fuel": 28,
             "gems": 0,
             "medals": 0,
             "reputation": 0
@@ -43941,7 +43948,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -43988,10 +43995,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 334
+            "deferredAtCap": 335
           },
           "affordabilityGaps": [
             {
@@ -44038,7 +44045,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 193,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 272,
             "reputation": 82
@@ -44064,7 +44071,7 @@
           "now": 1791460800000,
           "startWallet": {
             "credits": 193,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 272,
             "reputation": 82
@@ -44185,6 +44192,13 @@
               "medals": 8,
               "reputation": 0
             },
+            "fuel-regen": {
+              "credits": 0,
+              "fuel": 1,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
             "expedition-claim": {
               "credits": 54,
               "fuel": 0,
@@ -44284,7 +44298,7 @@
             "level": 2
           },
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 2,
             "wasted": 0,
             "deferredAtCap": 358
@@ -50667,7 +50681,7 @@
           "rewardsBySource": {
             "daily-login": {
               "credits": 80,
-              "fuel": 1,
+              "fuel": 0,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -50756,9 +50770,9 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 1,
+            "gained": 0,
             "spent": 2,
-            "wasted": 0,
+            "wasted": 1,
             "deferredAtCap": 385
           },
           "affordabilityGaps": [
@@ -50805,7 +50819,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 232,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 263,
             "reputation": 84
@@ -50822,7 +50836,7 @@
           "now": 1791633600000,
           "startWallet": {
             "credits": 232,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 263,
             "reputation": 84
@@ -50896,7 +50910,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 2,
+              "fuel": 3,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -50998,10 +51012,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 2,
+            "gained": 3,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 407
+            "deferredAtCap": 406
           },
           "affordabilityGaps": [
             {
@@ -51292,7 +51306,7 @@
             "gained": 2,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 429
+            "deferredAtCap": 428
           },
           "affordabilityGaps": [
             {
@@ -51460,7 +51474,7 @@
             "gained": 2,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 451
+            "deferredAtCap": 450
           },
           "affordabilityGaps": [
             {
@@ -51634,7 +51648,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 475
+            "deferredAtCap": 474
           },
           "affordabilityGaps": [
             {
@@ -51797,7 +51811,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 499
+            "deferredAtCap": 498
           },
           "affordabilityGaps": [
             {
@@ -51970,7 +51984,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 523
+            "deferredAtCap": 522
           },
           "affordabilityGaps": [
             {
@@ -52144,7 +52158,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 1,
-            "deferredAtCap": 547
+            "deferredAtCap": 546
           },
           "affordabilityGaps": [
             {
@@ -52307,7 +52321,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 571
+            "deferredAtCap": 570
           },
           "affordabilityGaps": [
             {
@@ -52471,7 +52485,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 595
+            "deferredAtCap": 594
           },
           "affordabilityGaps": [
             {
@@ -52645,7 +52659,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 619
+            "deferredAtCap": 618
           },
           "affordabilityGaps": [
             {
@@ -52808,7 +52822,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 643
+            "deferredAtCap": 642
           },
           "affordabilityGaps": [
             {
@@ -52972,7 +52986,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 667
+            "deferredAtCap": 666
           },
           "affordabilityGaps": [
             {
@@ -53066,14 +53080,14 @@
           },
           "daily-login": {
             "credits": 2155,
-            "fuel": 2,
+            "fuel": 1,
             "gems": 60,
             "medals": 148,
             "reputation": 28
           },
           "fuel-regen": {
             "credits": 0,
-            "fuel": 29,
+            "fuel": 30,
             "gems": 0,
             "medals": 0,
             "reputation": 0
@@ -57013,7 +57027,7 @@
           "rewardsBySource": {
             "daily-login": {
               "credits": 80,
-              "fuel": 1,
+              "fuel": 0,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -57060,9 +57074,9 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 1,
+            "gained": 0,
             "spent": 0,
-            "wasted": 0,
+            "wasted": 1,
             "deferredAtCap": 389
           },
           "affordabilityGaps": [
@@ -57110,7 +57124,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 103,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 268,
             "reputation": 88
@@ -57136,7 +57150,7 @@
           "now": 1791633600000,
           "startWallet": {
             "credits": 103,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 30,
             "medals": 268,
             "reputation": 88
@@ -57191,6 +57205,13 @@
               "medals": 12,
               "reputation": 0
             },
+            "fuel-regen": {
+              "credits": 0,
+              "fuel": 1,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
             "expedition-claim": {
               "credits": 54,
               "fuel": 0,
@@ -57233,10 +57254,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 413
+            "deferredAtCap": 412
           },
           "affordabilityGaps": [
             {
@@ -57410,7 +57431,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 437
+            "deferredAtCap": 436
           },
           "affordabilityGaps": [
             {
@@ -57582,7 +57603,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 461
+            "deferredAtCap": 460
           },
           "affordabilityGaps": [
             {
@@ -57746,7 +57767,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 485
+            "deferredAtCap": 484
           },
           "affordabilityGaps": [
             {
@@ -57929,7 +57950,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 509
+            "deferredAtCap": 508
           },
           "affordabilityGaps": [
             {
@@ -58092,7 +58113,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 533
+            "deferredAtCap": 532
           },
           "affordabilityGaps": [
             {
@@ -58256,7 +58277,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 1,
-            "deferredAtCap": 557
+            "deferredAtCap": 556
           },
           "affordabilityGaps": [
             {
@@ -58439,7 +58460,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 581
+            "deferredAtCap": 580
           },
           "affordabilityGaps": [
             {
@@ -58607,7 +58628,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 605
+            "deferredAtCap": 604
           },
           "affordabilityGaps": [
             {
@@ -58781,7 +58802,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 629
+            "deferredAtCap": 628
           },
           "affordabilityGaps": [
             {
@@ -58953,7 +58974,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 653
+            "deferredAtCap": 652
           },
           "affordabilityGaps": [
             {
@@ -59117,7 +59138,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 677
+            "deferredAtCap": 676
           },
           "affordabilityGaps": [
             {
@@ -59202,14 +59223,14 @@
           },
           "daily-login": {
             "credits": 2155,
-            "fuel": 2,
+            "fuel": 1,
             "gems": 60,
             "medals": 148,
             "reputation": 28
           },
           "fuel-regen": {
             "credits": 0,
-            "fuel": 19,
+            "fuel": 20,
             "gems": 0,
             "medals": 0,
             "reputation": 0
@@ -62804,7 +62825,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 3,
+              "fuel": 2,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -62906,10 +62927,10 @@
             "level": 2
           },
           "fuel": {
-            "gained": 3,
+            "gained": 2,
             "spent": 2,
             "wasted": 0,
-            "deferredAtCap": 311
+            "deferredAtCap": 312
           },
           "affordabilityGaps": [
             {
@@ -62953,7 +62974,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 68,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 290,
             "reputation": 84
@@ -62970,7 +62991,7 @@
           "now": 1791374400000,
           "startWallet": {
             "credits": 68,
-            "fuel": 10,
+            "fuel": 9,
             "gems": 30,
             "medals": 290,
             "reputation": 84
@@ -63099,7 +63120,7 @@
             },
             "fuel-regen": {
               "credits": 0,
-              "fuel": 2,
+              "fuel": 3,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -63190,7 +63211,7 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 2,
+            "gained": 3,
             "spent": 2,
             "wasted": 0,
             "deferredAtCap": 333
@@ -65723,7 +65744,7 @@
         "reputation": 140
       },
       "systemLevels": {
-        "engines": 5,
+        "engines": 4,
         "shields": 3,
         "cargo": 5,
         "weapons": 2,
@@ -70382,13 +70403,6 @@
               "medals": 8,
               "reputation": 0
             },
-            "fuel-regen": {
-              "credits": 0,
-              "fuel": 1,
-              "gems": 0,
-              "medals": 0,
-              "reputation": 0
-            },
             "expedition-claim": {
               "credits": 54,
               "fuel": 0,
@@ -70431,10 +70445,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 1,
+            "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 540
+            "deferredAtCap": 541
           },
           "affordabilityGaps": [
             {
@@ -70481,7 +70495,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 112,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 256,
             "reputation": 87
@@ -70498,7 +70512,7 @@
           "now": 1792152000000,
           "startWallet": {
             "credits": 112,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 256,
             "reputation": 87
@@ -70548,7 +70562,7 @@
           "rewardsBySource": {
             "daily-login": {
               "credits": 80,
-              "fuel": 0,
+              "fuel": 1,
               "gems": 0,
               "medals": 0,
               "reputation": 0
@@ -70595,10 +70609,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 0,
-            "wasted": 1,
-            "deferredAtCap": 564
+            "wasted": 0,
+            "deferredAtCap": 565
           },
           "affordabilityGaps": [
             {
@@ -70772,7 +70786,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 588
+            "deferredAtCap": 589
           },
           "affordabilityGaps": [
             {
@@ -70935,7 +70949,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 612
+            "deferredAtCap": 613
           },
           "affordabilityGaps": [
             {
@@ -71118,7 +71132,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 636
+            "deferredAtCap": 637
           },
           "affordabilityGaps": [
             {
@@ -71286,7 +71300,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 660
+            "deferredAtCap": 661
           },
           "affordabilityGaps": [
             {
@@ -71450,7 +71464,7 @@
             "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 684
+            "deferredAtCap": 685
           },
           "affordabilityGaps": [
             {
@@ -71535,14 +71549,14 @@
           },
           "daily-login": {
             "credits": 2155,
-            "fuel": 1,
+            "fuel": 2,
             "gems": 60,
             "medals": 148,
             "reputation": 28
           },
           "fuel-regen": {
             "credits": 0,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 0,
             "medals": 0,
             "reputation": 0
@@ -76041,13 +76055,6 @@
               "medals": 0,
               "reputation": 0
             },
-            "fuel-regen": {
-              "credits": 0,
-              "fuel": 1,
-              "gems": 0,
-              "medals": 0,
-              "reputation": 0
-            },
             "expedition-claim": {
               "credits": 12,
               "fuel": 0,
@@ -76090,10 +76097,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 1,
+            "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 516
+            "deferredAtCap": 517
           },
           "affordabilityGaps": [
             {
@@ -76140,7 +76147,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 138,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 256,
             "reputation": 89
@@ -76166,7 +76173,7 @@
           "now": 1792065600000,
           "startWallet": {
             "credits": 138,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 256,
             "reputation": 89
@@ -76221,6 +76228,13 @@
               "medals": 8,
               "reputation": 0
             },
+            "fuel-regen": {
+              "credits": 0,
+              "fuel": 1,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
             "expedition-claim": {
               "credits": 12,
               "fuel": 0,
@@ -76263,7 +76277,7 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 0,
             "wasted": 0,
             "deferredAtCap": 540
@@ -81900,13 +81914,6 @@
               "medals": 0,
               "reputation": 0
             },
-            "fuel-regen": {
-              "credits": 0,
-              "fuel": 1,
-              "gems": 0,
-              "medals": 0,
-              "reputation": 0
-            },
             "expedition-claim": {
               "credits": 12,
               "fuel": 0,
@@ -81949,10 +81956,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 1,
+            "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 516
+            "deferredAtCap": 517
           },
           "affordabilityGaps": [
             {
@@ -81999,7 +82006,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 96,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 253,
             "reputation": 89
@@ -82025,7 +82032,7 @@
           "now": 1792065600000,
           "startWallet": {
             "credits": 96,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 253,
             "reputation": 89
@@ -82080,6 +82087,13 @@
               "medals": 8,
               "reputation": 0
             },
+            "fuel-regen": {
+              "credits": 0,
+              "fuel": 1,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
             "expedition-claim": {
               "credits": 54,
               "fuel": 0,
@@ -82122,7 +82136,7 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 0,
             "wasted": 0,
             "deferredAtCap": 540
@@ -83284,7 +83298,7 @@
       "systemLevels": {
         "engines": 4,
         "shields": 3,
-        "cargo": 5,
+        "cargo": 4,
         "weapons": 2,
         "quarters": 0,
         "sensors": 2,
@@ -87558,13 +87572,6 @@
               "medals": 2,
               "reputation": 0
             },
-            "fuel-regen": {
-              "credits": 0,
-              "fuel": 1,
-              "gems": 0,
-              "medals": 0,
-              "reputation": 0
-            },
             "expedition-claim": {
               "credits": 12,
               "fuel": 0,
@@ -87607,10 +87614,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 1,
+            "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 492
+            "deferredAtCap": 493
           },
           "affordabilityGaps": [
             {
@@ -87657,7 +87664,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 114,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 260,
             "reputation": 91
@@ -87683,7 +87690,7 @@
           "now": 1791979200000,
           "startWallet": {
             "credits": 114,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 260,
             "reputation": 91
@@ -87738,6 +87745,13 @@
               "medals": 0,
               "reputation": 0
             },
+            "fuel-regen": {
+              "credits": 0,
+              "fuel": 1,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
             "expedition-claim": {
               "credits": 54,
               "fuel": 0,
@@ -87780,7 +87794,7 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 0,
             "wasted": 0,
             "deferredAtCap": 516
@@ -89129,7 +89143,7 @@
       "systemLevels": {
         "engines": 4,
         "shields": 3,
-        "cargo": 5,
+        "cargo": 4,
         "weapons": 2,
         "quarters": 0,
         "sensors": 2,
@@ -93432,13 +93446,6 @@
               "medals": 2,
               "reputation": 0
             },
-            "fuel-regen": {
-              "credits": 0,
-              "fuel": 1,
-              "gems": 0,
-              "medals": 0,
-              "reputation": 0
-            },
             "expedition-claim": {
               "credits": 12,
               "fuel": 0,
@@ -93481,10 +93488,10 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 1,
+            "gained": 0,
             "spent": 0,
             "wasted": 0,
-            "deferredAtCap": 492
+            "deferredAtCap": 493
           },
           "affordabilityGaps": [
             {
@@ -93531,7 +93538,7 @@
           "fuelStarved": false,
           "endWallet": {
             "credits": 76,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 253,
             "reputation": 88
@@ -93553,7 +93560,7 @@
           "now": 1791979200000,
           "startWallet": {
             "credits": 76,
-            "fuel": 12,
+            "fuel": 11,
             "gems": 45,
             "medals": 253,
             "reputation": 88
@@ -93608,6 +93615,13 @@
               "medals": 0,
               "reputation": 0
             },
+            "fuel-regen": {
+              "credits": 0,
+              "fuel": 1,
+              "gems": 0,
+              "medals": 0,
+              "reputation": 0
+            },
             "expedition-claim": {
               "credits": 54,
               "fuel": 0,
@@ -93650,7 +93664,7 @@
           },
           "improvement": null,
           "fuel": {
-            "gained": 0,
+            "gained": 1,
             "spent": 0,
             "wasted": 0,
             "deferredAtCap": 516
@@ -94981,7 +94995,7 @@
       "systemLevels": {
         "engines": 4,
         "shields": 3,
-        "cargo": 5,
+        "cargo": 4,
         "weapons": 2,
         "quarters": 0,
         "sensors": 2,

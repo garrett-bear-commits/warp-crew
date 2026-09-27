@@ -24,6 +24,7 @@ export const NOTIF_IDS = {
   dailyPull: 'wc_daily_pull',
   comebackD1: 'wc_comeback_d1',
   comebackD3: 'wc_comeback_d3',
+  shipBuildDone: 'wc_ship_build_done',
 };
 
 async function safeSchedule(opts) {
@@ -89,6 +90,21 @@ export async function syncExpeditionNotification(player, now = Date.now()) {
   });
 }
 
+/** Drydock builds: tell the captain when the upgrade is online. */
+export async function syncShipBuildNotification(player, now = Date.now()) {
+  await safeUnschedule(NOTIF_IDS.shipBuildDone);
+  const build = player.shipBuild;
+  if (!build?.endAt) return;
+  await safeSchedule({
+    identifier: NOTIF_IDS.shipBuildDone,
+    scheduledAt: new Date(Math.max(now + 30_000, build.endAt)),
+    priority: 'medium',
+    body: 'Drydock reports the upgrade is online. Your Sparrow is stronger.',
+    ctaText: 'Inspect',
+    entryPayload: { notification_type: 'ship_build_done', system: build.system, notification_template: 'wc_ship_build_done_v1' },
+  });
+}
+
 /** Daily free merc pull reminder — fuzzy next day if used, else skip. */
 export async function syncDailyPullNotification(player) {
   await safeUnschedule(NOTIF_IDS.dailyPull);
@@ -146,6 +162,7 @@ export async function syncComebackSeries(player) {
 export async function syncAllNotifications(player, now = Date.now()) {
   await syncFuelFullNotification(player, now);
   await syncExpeditionNotification(player, now);
+  await syncShipBuildNotification(player, now);
   await syncDailyPullNotification(player);
   await syncComebackSeries(player);
   if (!isReal()) {

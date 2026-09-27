@@ -203,7 +203,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     day.affordabilityGaps = costs.map(({ system, cost }) => ({ system, credits: Math.max(0, cost.credits - player.wallet.credits) }));
     const cheapest = costs.find(x => x.cost.credits <= player.wallet.credits);
     if (cheapest) {
-      const result = upgradeSystem(player, cheapest.system);
+      const result = upgradeSystem(player, cheapest.system, now);
       if (!result.ok) blocked('ship-upgrade', result.reason);
       else {
         account('ship-upgrade', result.player);

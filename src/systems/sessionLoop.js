@@ -11,7 +11,7 @@ import { assignStation, stationOutputs, STATIONS } from './stations.js';
 import { applyEncounterAction, recoverEncounter } from './encounterState.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
-import { nextUpgradeCost, upgradeSystem } from './hangar.js';
+import { nextUpgradeCost, upgradeSystem, completeShipBuild, skipShipBuild } from './hangar.js';
 import { levelCrew, rankUpCrew } from './gacha.js';
 import { medalLevelCostFor } from '../data/crewRoster.js';
 import { ROOMS } from '../data/starterShip.js';
@@ -35,6 +35,7 @@ export function prepareSession(player, now = Date.now()) {
     next = { ...next, contractBoard: generateContractBoard(next, now) };
   } else if (!early) next = ensureContractBoard(next, now).player;
   if (!early) next = ensureWallOffer(next, now);
+  next = completeShipBuild(next, now).player;
   return evaluateStarterOffer(next, now);
 }
 
@@ -494,11 +495,16 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     if (v5) player = advanceTutorialV5(player, 'station_assigned');
   } else if (['ship-upgrade', 'level-crew', 'rank-up'].includes(act)) {
     if (isTutorialActive(player)) return fail('improvements_locked');
-    const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);
+    const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system, now) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);
     if (!res.ok) return res;
     player = res.player;
     milestone('improve');
-    if (act === 'ship-upgrade') events.push(event('ship_upgrade', { system: data.system }));
+    if (act === 'ship-upgrade') events.push(event(res.build ? 'ship_build_started' : 'ship_upgrade', { system: data.system, level: res.nextLevel, ...(res.build ? { minutes: Math.round((res.build.endAt - res.build.startedAt) / 60000) } : {}) }));
+  } else if (act === 'ship-build-skip') {
+    const res = skipShipBuild(player, now);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    events.push(event('ship_build_skipped', { system: res.completed?.system, gems: res.gems }));
   } else if (act === 'travel-to') {
     if (player.activeContract) return fail('active_contract');
     if (isTutorialActive(player)) return fail('tutorial_contract_required');

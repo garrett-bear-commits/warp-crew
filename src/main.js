@@ -118,6 +118,9 @@ function pushLog(msg) {
 }
 
 const SESSION_ERROR_COPY = {
+  drydock_busy: 'The drydock is already building an upgrade.',
+  not_enough_gems: 'Not enough gems to finish the build now.',
+  no_build: 'Nothing is building in the drydock.',
   save_failed: 'Could not save. Try again.',
   tutorial_action_locked: 'Finish the current step first.',
   tutorial_station_required: 'Assign your crew member to the required station first.',
@@ -572,7 +575,7 @@ async function handleAction(act, data = {}) {
       pushLog(message);
       showToast({ title: message });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
-    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'exp-start', 'exp-launch'].includes(act)) {
+    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip'].includes(act)) {
       await refreshNotifs();
     }
     render();

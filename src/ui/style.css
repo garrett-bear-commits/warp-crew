@@ -2878,3 +2878,5 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .siege-bar span { display: block; height: 100%; background: linear-gradient(90deg, #ff5a3c, #ffb347); }
 .siege-meter p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
 .siege-meter b { font-family: var(--font-display); color: #ffd2a0; letter-spacing: 0.04em; }
+.upgrade-btn.is-building { border-color: var(--accent); background: linear-gradient(90deg, rgba(88, 225, 255, 0.16), transparent), #0b111a; }
+.upgrade-btn.is-building b { color: var(--accent); }

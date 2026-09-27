@@ -168,10 +168,34 @@ export function nextUpgradeCost(player, system) {
   return { credits: upgradeCost(costs[system].credits || 0, from), level: Math.max(level, 0) };
 }
 
-export function upgradeSystem(player, system) {
+/** Levels 1-3 are instant; higher levels build in the drydock over real time. */
+export const UPGRADE_BUILD = Object.freeze({ instantThrough: 3, minutes: { 4: 30, 5: 60, 6: 120, 7: 240 }, maxMinutes: 480 });
+
+export function buildMinutesFor(targetLevel) {
+  if (targetLevel <= UPGRADE_BUILD.instantThrough) return 0;
+  return UPGRADE_BUILD.minutes[targetLevel] ?? UPGRADE_BUILD.maxMinutes;
+}
+
+/** About ten gems per remaining hour, never less than five. */
+export function buildSkipGems(remainingMs) {
+  return Math.max(5, Math.ceil(Math.max(0, remainingMs) / 360000));
+}
+
+function applyLevel(player, system) {
+  const def = getShipDef(player.ship.shipId);
+  const level = player.ship?.systems?.[system] || 0;
+  const systems = { ...(player.ship.systems || {}) };
+  systems[system] = Math.max(1, (level || 0) + 1);
+  let crewSlots = player.crewSlots;
+  if (system === 'quarters') crewSlots = Math.min(def.maxCrewSlots, crewSlots + 1);
+  return applyHullStats({ ...player, ship: { ...player.ship, systems }, crewSlots }, def);
+}
+
+export function upgradeSystem(player, system, now = Date.now()) {
   const def = getShipDef(player.ship.shipId);
   const costs = def.upgradeCosts || SHIPS.sparrow.upgradeCosts;
   if (!costs?.[system]) return { ok: false, reason: 'no_upgrade' };
+  if (player.shipBuild) return { ok: false, reason: 'drydock_busy', build: player.shipBuild };
   const level = player.ship?.systems?.[system] || 0;
   if (system === 'quarters' && (player.crewSlots || 0) >= def.maxCrewSlots) {
     return { ok: false, reason: 'max_berths' };
@@ -180,30 +204,31 @@ export function upgradeSystem(player, system) {
   const base = costs[system];
   const cost = { credits: upgradeCost(base.credits || 0, from) };
   if (!canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
-
-  const systems = { ...(player.ship.systems || {}) };
-  systems[system] = (level || 0) + 1;
-  if (systems[system] < 1) systems[system] = 1;
-
-  let crewSlots = player.crewSlots;
-  if (system === 'quarters') {
-    crewSlots = Math.min(def.maxCrewSlots, crewSlots + 1);
+  const targetLevel = Math.max(1, (level || 0) + 1);
+  const minutes = buildMinutesFor(targetLevel);
+  const paid = { ...player, wallet: pay(player.wallet, cost).wallet };
+  if (minutes > 0) {
+    const shipBuild = { system, targetLevel, startedAt: now, endAt: now + minutes * 60000 };
+    return { ok: true, player: { ...paid, shipBuild }, cost, nextLevel: targetLevel, build: shipBuild };
   }
+  return { ok: true, player: applyLevel(paid, system), cost, nextLevel: targetLevel };
+}
 
-  let next = {
-    ...player,
-    wallet: pay(player.wallet, cost).wallet,
-    ship: { ...player.ship, systems },
-    crewSlots,
-  };
-  next = applyHullStats(next, def);
+/** Finish a build whose timer has run out; idempotent otherwise. */
+export function completeShipBuild(player, now = Date.now()) {
+  const build = player?.shipBuild;
+  if (!build || build.endAt > now) return { player, completed: null };
+  const done = applyLevel({ ...player, shipBuild: null }, build.system);
+  return { player: done, completed: build };
+}
 
-  return {
-    ok: true,
-    player: next,
-    cost,
-    nextLevel: systems[system],
-  };
+export function skipShipBuild(player, now = Date.now()) {
+  const build = player?.shipBuild;
+  if (!build) return { ok: false, reason: 'no_build' };
+  const gems = buildSkipGems(build.endAt - now);
+  if ((player.wallet?.gems || 0) < gems) return { ok: false, reason: 'not_enough_gems', gems };
+  const paid = { ...player, wallet: { ...player.wallet, gems: player.wallet.gems - gems } };
+  return { ok: true, gems, ...completeShipBuild(paid, Math.max(now, build.endAt)) };
 }
 
 export { SHIP_SYSTEMS };

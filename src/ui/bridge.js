@@ -6,7 +6,7 @@ import { EXPEDITION_SKIP_GEMS, visiblePlanets, previewExpedition, planetById } f
 import { crewPower } from '../systems/combat.js';
 import { storyProgress } from '../systems/story.js';
 import { SHIPS, SHIP_SYSTEMS, SYSTEM_LABEL } from '../data/ships.js';
-import { listOwnedHulls, nextUpgradeCost, canBuyHull } from '../systems/hangar.js';
+import { listOwnedHulls, nextUpgradeCost, canBuyHull, buildMinutesFor, buildSkipGems } from '../systems/hangar.js';
 import {
   currentTutorialStep,
   weekGoals,
@@ -878,6 +878,17 @@ function fuelBuyButtons(player) {
     ${n5 > 1 ? `<button data-act="buy-fuel" data-n="${n5}">Buy ${n5} fuel ${price * n5}cr</button>` : ''}`;
 }
 
+function upgradeButton(player, system, label, next) {
+  const build = player.shipBuild;
+  if (build?.system === system) {
+    const left = Math.max(0, build.endAt - Date.now());
+    return `<button class="upgrade-btn is-building" data-act="ship-build-skip"><span>Building ${escapeHtml(label)} Lv ${build.targetLevel} · ${formatDuration(left)} left</span><b>Skip ${buildSkipGems(left)}g</b></button>`;
+  }
+  const minutes = buildMinutesFor(next.level + 1);
+  const timing = minutes ? ` · ${minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`} build` : '';
+  return `<button class="upgrade-btn" data-act="ship-upgrade" data-system="${system}" ${build ? 'disabled' : ''}><span>Upgrade ${escapeHtml(label)} → Lv ${next.level + 1}${timing}${build ? ' · drydock busy' : ''}</span><b>${next.credits}cr</b></button>`;
+}
+
 function roomActions(room, player) {
   const hangar = isFeatureUnlocked(player, 'hangar');
   const crewOpen = isFeatureUnlocked(player, 'nav_crew');
@@ -892,26 +903,26 @@ function roomActions(room, player) {
     const shields = nextUpgradeCost(player, 'shields');
     return `
       <button class="primary" data-act="goto-missions">Contracts</button>
-      ${hangar && sensors ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="sensors"><span>Upgrade Sensors → Lv ${sensors.level + 1}</span><b>${sensors.credits}cr</b></button>` : ''}
-      ${hangar && shields ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="shields"><span>Upgrade Shields → Lv ${shields.level + 1}</span><b>${shields.credits}cr</b></button>` : ''}`;
+      ${hangar && sensors ? `${upgradeButton(player, 'sensors', 'Sensors', sensors)}` : ''}
+      ${hangar && shields ? `${upgradeButton(player, 'shields', 'Shields', shields)}` : ''}`;
   }
   if (room.id === 'medbay') {
     const medbay = nextUpgradeCost(player, 'medbay');
     return `
       ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
-      ${hangar && medbay ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="medbay"><span>Upgrade Medbay → Lv ${medbay.level + 1}</span><b>${medbay.credits}cr</b></button>` : ''}`;
+      ${hangar && medbay ? `${upgradeButton(player, 'medbay', 'Medbay', medbay)}` : ''}`;
   }
   if (room.id === 'quarters') {
     const quarters = nextUpgradeCost(player, 'quarters');
     return `
       ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
-      ${hangar && quarters ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="quarters"><span>Upgrade Quarters → Lv ${quarters.level + 1}</span><b>${quarters.credits}cr</b></button>` : ''}`;
+      ${hangar && quarters ? `${upgradeButton(player, 'quarters', 'Quarters', quarters)}` : ''}`;
   }
   if (room.id === 'workshop') {
     const weapons = nextUpgradeCost(player, 'weapons');
     return `
       ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : ''}
-      ${hangar && weapons ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="weapons"><span>Upgrade Weapons → Lv ${weapons.level + 1}</span><b>${weapons.credits}cr</b></button>` : ''}`;
+      ${hangar && weapons ? `${upgradeButton(player, 'weapons', 'Weapons', weapons)}` : ''}`;
   }
   if (room.id === 'cargo') {
     const contract = player.activeContract;
@@ -920,7 +931,7 @@ function roomActions(room, player) {
     return `
       <button class="primary" data-act="goto-away">Away teams</button>
       ${fuelBuyButtons(player)}
-      ${hangar && cg ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="cargo"><span>Upgrade Cargo → Lv ${cg.level + 1}</span><b>${cg.credits}cr</b></button>` : ''}`;
+      ${hangar && cg ? `${upgradeButton(player, 'cargo', 'Cargo', cg)}` : ''}`;
   }
   if (room.id === 'mess') {
     return crewOpen
@@ -936,12 +947,12 @@ function roomActions(room, player) {
       <button class="primary" data-act="claim">Claim fuel</button>
       ${fuelBuyButtons(player)}
       ${offer ? `<button data-act="repair-hull">Repair ${offer.cost}cr (+${offer.amount}%)</button>` : ''}
-      ${hangar && en ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="engines"><span>Upgrade Engines → Lv ${en.level + 1}</span><b>${en.credits}cr</b></button>` : ''}`;
+      ${hangar && en ? `${upgradeButton(player, 'engines', 'Engines', en)}` : ''}`;
   }
   if (room.system && hangar) {
     const up = nextUpgradeCost(player, room.system);
     return `
-      <button class="primary" data-act="ship-upgrade" data-system="${room.system}">Upgrade${up ? ` ${up.credits}cr` : ''}</button>`;
+      ${up ? upgradeButton(player, room.system, SYSTEM_LABEL[room.system] || room.system, up) : ''}`;
   }
   if (room.role) {
     return crewOpen
@@ -974,7 +985,7 @@ function renderHangarSheet(player) {
               <b>${escapeHtml(label)} ${lv}</b>
               <div class="muted">${escapeHtml(systemStat(id, lv))}</div>
             </div>
-            ${up ? `<button data-act="ship-upgrade" data-system="${id}">${up.credits}cr</button>` : '<span class="muted">MAX</span>'}
+            ${up ? upgradeButton(player, id, label, up) : '<span class="muted">MAX</span>'}
           </div>`;
       }).join('')}
       <button class="primary" data-act="goto-shop">Hangar shop</button>
