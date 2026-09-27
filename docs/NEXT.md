@@ -1,7 +1,17 @@
 # Warp Crew next-work checklist
 
-Last updated: 2026-09-25
+Last updated: 2026-09-26
 Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
+
+## 2026-09-26 HUD overhaul + crew rig — local branch, not published
+
+- [x] Remove stray wayfinding squares; align thrusters to the four hull nozzles; rebuild the space backdrop as screen-space parallax with a keyed hero planet.
+- [x] Ops-console HUD (status plate, objective plate, crew rail, command bar), whole-ship home camera, always-on room nameplates.
+- [x] Dispatch-style contract cards, roster/room-sheet redesign, first-session dialog skin, recruit reveal, combat bolts/sparks, readable Log, folded hull list.
+- [x] Slow post-tutorial unlocks: Shop/Log/gems after 2 contracts, Explore after 3.
+- [x] Crew on the Ninefold Sunnyside rig, re-baked per frame into human/alien/droid sci-fi families with walk/idle/work loops. [QA record](qa/2026-09-26-hud-overhaul.md).
+- [ ] Garrett: review crew art and HUD on a phone; decide whether to fund a painted per-frame reskin pass (needs a spend cap).
+- [ ] Publish to Pages QA only after Garrett's go-ahead. Branch \`claude/hud-overhaul\` is local and unpushed.
 
 ## 2026-09-25 QA save restart — Pages QA live
 
