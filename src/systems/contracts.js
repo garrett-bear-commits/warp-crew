@@ -585,7 +585,8 @@ function enumerateRewardPaths(player, offer, now) {
         let branch = current;
         for (let beat = 0; beat < 40 && !branch.activeEncounter.result; beat += 1) {
           const { acceptanceId, revision } = branch.activeEncounter;
-          const order = policy(branch.activeEncounter);
+          // Bands never assume a paid Rally: a downed crew takes the salvage.
+          const order = branch.activeEncounter.phase === 'downed' ? 'concede' : policy(branch.activeEncounter);
           let advanced = applyEncounterAction(branch, { acceptanceId, revision, order }, now);
           if (!advanced.ok && order) advanced = applyEncounterAction(branch, { acceptanceId, revision, order: null }, now);
           if (!advanced.ok) break;

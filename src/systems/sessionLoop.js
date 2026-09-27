@@ -21,7 +21,7 @@ import { canAfford, formatReward } from './economy.js';
 import { beatDelayMs } from './fightPacing.js';
 import { evaluateStarterOffer, evaluateWallPackOffer } from './offers.js';
 import { ensureWallOffer, currentWall } from './walls.js';
-import { refuelWithGems } from './gemSinks.js';
+import { refuelWithGems, RALLY } from './gemSinks.js';
 import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
 import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
@@ -146,6 +146,8 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
           && ui.guidedBeatSaveFailed?.revision === encounter.revision,
         result: encounter.result,
         settled: contract.stage === 'return',
+        downed: encounter.phase === 'downed' ? { enemyHull: encounter.enemy.hull, free: player.flags?.rallyFreeUsed !== true,
+          rallyCost: player.flags?.rallyFreeUsed ? RALLY.gems : 0, canAfford: (player.wallet?.gems || 0) >= (player.flags?.rallyFreeUsed ? RALLY.gems : 0) } : null,
         lossReason: encounter.lossReason,
         hull: encounter.hull,
         shield: encounter.shield,

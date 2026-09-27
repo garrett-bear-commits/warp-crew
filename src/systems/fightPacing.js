@@ -14,7 +14,7 @@ export function beatDelayMs(encounter) {
 /** Guided fights wait for the captain's one order; normal fights always run on their own. */
 export function shouldAutoAdvanceFight(player) {
   const encounter = player?.activeEncounter;
-  if (!encounter || encounter.result) return false;
+  if (!encounter || encounter.result || encounter.phase === 'downed') return false;
   if (encounter.kind === 'normal') return true;
   const tutorial = player.tutorial;
   if (tutorial?.phase !== 'fight' || encounter.kind !== 'guided') return false;

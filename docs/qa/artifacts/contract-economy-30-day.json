@@ -66311,10 +66311,19 @@
               "ok": true
             },
             {
+              "action": "encounter-order",
+              "fields": {
+                "acceptanceId": "contract_2026-09-23_risky:3",
+                "revision": 9,
+                "order": "concede"
+              },
+              "ok": true
+            },
+            {
               "action": "contract-claim",
               "fields": {
                 "action": "claim",
-                "revision": 11,
+                "revision": 12,
                 "acceptanceId": "contract_2026-09-23_risky:3"
               },
               "ok": true
@@ -66411,7 +66420,7 @@
               "storyFlag": null,
               "summary": "They punch a hole in cargo and run."
             },
-            "beats": 9,
+            "beats": 10,
             "threat": 1.6
           },
           "expedition": {
@@ -89708,10 +89717,19 @@
               "ok": true
             },
             {
+              "action": "encounter-order",
+              "fields": {
+                "acceptanceId": "contract_2026-09-23_risky:3",
+                "revision": 9,
+                "order": "concede"
+              },
+              "ok": true
+            },
+            {
               "action": "contract-claim",
               "fields": {
                 "action": "claim",
-                "revision": 11,
+                "revision": 12,
                 "acceptanceId": "contract_2026-09-23_risky:3"
               },
               "ok": true
@@ -89808,7 +89826,7 @@
               "storyFlag": null,
               "summary": "They punch a hole in cargo and run."
             },
-            "beats": 9,
+            "beats": 10,
             "threat": 1.6
           },
           "expedition": {

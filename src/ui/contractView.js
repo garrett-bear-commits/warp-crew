@@ -125,7 +125,11 @@ export function renderEncounter(model = {}, { compact = false } = {}) {
     ? `<div class="beat-timer" aria-hidden="true"><span data-rev="${e(model.revision)}" style="animation-duration:${e(model.beatMs)}ms"></span></div>` : '';
   const eta = model.beatsToImpact && model.beatMs ? ` · ~${Math.round((model.beatsToImpact * model.beatMs) / 1000)}s` : '';
   const orders = (model.orders || []).filter(order => !(order.id === 'target_weapons' && !order.available) && !(v2 && model.kind === 'guided' && order.id !== 'target_weapons'));
-  const status = model.result === 'loss' && model.settled ? `<p role="status">${e(model.lossReason || 'The ship needs repairs.')} The crew pulls salvage from the wreckage.</p>`
+  const downed = model.downed;
+  const status = downed ? `<div class="downed-alert" role="alert"><p><b>Hull failing.</b> ${e(model.enemyName || 'The enemy')} has only ${e(downed.enemyHull)} hull left.</p>
+      <button type="button" class="primary rally-btn" data-act="encounter-order" data-order="rally" ${identity} ${downed.canAfford ? '' : 'disabled'}>Rally<span>${downed.free ? 'Free this time · ' : `${e(downed.rallyCost)} gems · `}restore 12 hull and fight on</span></button>
+      <button type="button" class="ghost" data-act="encounter-order" data-order="concede" ${identity}>Take the salvage</button></div>`
+    : model.result === 'loss' && model.settled ? `<p role="status">${e(model.lossReason || 'The ship needs repairs.')} The crew pulls salvage from the wreckage.</p>`
     : model.result === 'loss' ? `<p role="status">${e(model.lossReason || 'The ship needs repairs.')}</p><button type="button" class="primary" data-act="encounter-recover" ${identity}>Recover ship</button>`
     : model.result === 'win' ? '<p role="status">The pirate breaks off. Bring the cargo aboard.</p>'
       : `<p class="encounter-threat" role="status">${model.weaponDisabled ? 'Next pirate volley canceled. Crew firing.' : model.beatsToImpact ? `Incoming fire at ${e(target)} · ${e(model.beatsToImpact)} ${model.beatsToImpact === 1 ? 'beat' : 'beats'}${eta}` : 'Pirate weapons charging'}</p>${beatTimer}

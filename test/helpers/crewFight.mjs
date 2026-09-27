@@ -7,7 +7,8 @@ export function finishCrewFight(player, now = Date.now()) {
   for (let i = 0; i < 40 && current.activeEncounter && !current.activeEncounter.result; i++) {
     const encounter = current.activeEncounter;
     const open = encounter.orderWindow?.availableOrders || [];
-    const order = repelStatus(encounter).available ? 'repel'
+    const order = encounter.phase === 'downed' ? 'concede'
+      : repelStatus(encounter).available ? 'repel'
       : open.includes('target_weapons') ? 'target_weapons'
       : open.includes('brace') ? 'brace'
         : open.includes('repair') && encounter.hull <= 18 ? 'repair' : null;

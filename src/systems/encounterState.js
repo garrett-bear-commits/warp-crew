@@ -5,6 +5,7 @@ import { resolveSimulatedCombatPayout, readyContractCrew } from './contractRewar
 import { crewPower, encounterById, rubberBandPower } from './combat.js';
 import { combatBonuses } from './passives.js';
 import { wallEncounterSetup } from './walls.js';
+import { RALLY } from './gemSinks.js';
 import { isCanonicalGuidedContract } from './contractState.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
@@ -182,7 +183,9 @@ function validSnapshot(encounter, contract, tutorial) {
     || !Number.isInteger(encounter.revision) || encounter.revision !== encounter.beat
     || contract.revision !== entryRevision + encounter.beat
     || !Number.isInteger(encounter.eventIndex) || encounter.eventIndex < encounter.beat
-    || encounter.phase !== (encounter.result === null ? 'combat' : 'complete')
+    || !(encounter.result === null ? ['combat', 'downed'].includes(encounter.phase) : encounter.phase === 'complete')
+    || (encounter.phase === 'downed' && (encounter.hull !== 1 || encounter.kind !== 'normal'))
+    || (Object.hasOwn(encounter, 'rally') && (encounter.kind !== 'normal' || !record(encounter.rally) || encounter.rally.used !== true))
     || !numberIn(encounter.hull, 1, 30) || !numberIn(encounter.shield, 0, 12)
     || !record(encounter.enemy) || !numberIn(encounter.enemy.hull, 0, 42)
     || (Object.hasOwn(encounter.enemy, 'damage') && (encounter.kind !== 'normal' || !Number.isInteger(encounter.enemy.damage)
@@ -255,6 +258,8 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
   }
   if (encounter.result) return { ok: false, reason: 'encounter_finished', player };
   if (order === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel) return { ok: false, reason: 'not_enough_fuel', player };
+  const rallyCost = order === 'rally' ? (player.flags?.rallyFreeUsed ? RALLY.gems : 0) : 0;
+  if ((player.wallet?.gems ?? 0) < rallyCost) return { ok: false, reason: 'not_enough_gems', player };
 
   const outputs = stationOutputs(player, now);
   const input = {
@@ -268,6 +273,11 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
   let nextContract = { ...contract, revision: contract.revision + 1 };
   let nextPlayer = { ...player, activeEncounter: advanced.state, activeContract: nextContract };
   if (order === 'burn') nextPlayer = { ...nextPlayer, wallet: { ...nextPlayer.wallet, fuel: nextPlayer.wallet.fuel - BURN.fuel } };
+  if (order === 'rally') {
+    // The first Rally is free, to teach it; later ones cost gems.
+    nextPlayer = { ...nextPlayer, wallet: { ...nextPlayer.wallet, gems: nextPlayer.wallet.gems - rallyCost },
+      flags: { ...(nextPlayer.flags || {}), rallyFreeUsed: true } };
+  }
   if (advanced.state.result === 'win' || (advanced.state.result === 'loss' && contract.profile !== 'distress')) {
     const payout = resolveSimulatedCombatPayout(nextPlayer, nextContract, advanced.state, now);
     nextPlayer = payout.player;

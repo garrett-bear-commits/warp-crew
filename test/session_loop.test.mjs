@@ -171,7 +171,7 @@ assert.ok(player.activeEncounter.enemy.threat >= 0.6 && player.activeEncounter.e
 assert.equal(sessionModels(player, ui).activeContractView.combat, undefined, 'no pre-rolled order menu');
 for (let i = 0; i < 40 && !player.activeEncounter.result; i++) {
   const open = player.activeEncounter.orderWindow?.availableOrders || [];
-  const order = open.includes('brace') ? 'brace' : null;
+  const order = player.activeEncounter.phase === 'downed' ? 'concede' : open.includes('brace') ? 'brace' : null;
   const ident = { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision };
   const step = order ? act('encounter-order', { ...ident, order }) : act('encounter-advance', ident);
   assert.ok(step.ok, step.reason);

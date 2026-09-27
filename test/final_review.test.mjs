@@ -252,9 +252,11 @@ test('offer beat ranges and resolution telemetry match committed route branches 
         if (player.activeEncounter) {
           let combatBeats = 0;
           while (player.activeEncounter.result == null && combatBeats < 40) {
-            result = sessionAction(player, {}, 'encounter-advance', {
+            const downed = player.activeEncounter.phase === 'downed';
+            result = sessionAction(player, {}, downed ? 'encounter-order' : 'encounter-advance', {
               acceptanceId: player.activeEncounter.acceptanceId,
               revision: player.activeEncounter.revision,
+              ...(downed ? { order: 'concede' } : {}),
             }, { now });
             assert.equal(result.ok, true);
             player = result.player;

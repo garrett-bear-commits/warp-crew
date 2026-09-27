@@ -41,6 +41,26 @@ function finish(next, result, events, lossReason = null) {
 const hasSwing = state => Number.isFinite(state.enemy?.threat);
 export const CREW_CRIT = Object.freeze({ chance: 15, bonus: 3 });
 
+/** Rally: a near-miss contract loss pauses as 'downed' so the captain can choose to fight on. */
+export const RALLY_RULE = Object.freeze({ hull: 12, nearMissPct: 0.2 });
+
+export function rallyEligible(state) {
+  if (state.kind !== 'normal' || !Number.isFinite(state.enemy?.threat) || state.rally?.used) return false;
+  const start = Number.isInteger(state.enemy.startHull) ? state.enemy.startHull : 42;
+  return state.enemy.hull > 0 && state.enemy.hull <= start * RALLY_RULE.nearMissPct;
+}
+
+function finishLoss(next, events, reason) {
+  if (rallyEligible(next)) {
+    next.phase = 'downed';
+    next.lossReason = reason;
+    next.orderWindow = null;
+    events.push({ type: 'downed', enemyHull: next.enemy.hull, reason });
+    return;
+  }
+  finish(next, 'loss', events, reason);
+}
+
 function fireWeapons(next, events) {
   const weaponOutput = Math.floor(next.outputs.weapons * next.systems.weapons / 100);
   const crit = hasSwing(next) && seededIndex(next.seed, next.beat + 202, 100) < CREW_CRIT.chance;
@@ -70,7 +90,7 @@ function resolveEnemyImpact(next, selectedWindow, events) {
   if (systemAmount > 0) next.systems[target] -= systemAmount;
   events.push({ type: 'enemy_impact', target, system: target === 'hull' ? 'shields' : target, amount, systemAmount, shieldLoss, hullAmount });
   next.enemy.pattern = 'reloading';
-  if (next.hull <= 1) finish(next, 'loss', events, 'Hull breached; retreat with the ship barely holding together.');
+  if (next.hull <= 1) finishLoss(next, events, 'Hull breached; retreat with the ship barely holding together.');
 }
 
 function resolvePirateVolley(next, selectedWindow, events) {
@@ -208,6 +228,30 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
 /** Resolve one deterministic beat. Rejections preserve the exact input state. */
 export function advanceEncounter(state, order = null, { defender = null } = {}) {
   if (state.result !== null) return { state, events: [] };
+  if (state.phase === 'downed') {
+    if (!['rally', 'concede'].includes(order)) return { ok: false, reason: 'downed', state };
+    const next = structuredClone(state);
+    const events = [];
+    next.revision += 1;
+    next.beat += 1;
+    next.eventIndex += 1;
+    for (const name of Object.keys(next.cooldowns)) next.cooldowns[name] = Math.max(0, next.cooldowns[name] - 1);
+    if (order === 'concede') {
+      next.phase = 'combat';
+      finish(next, 'loss', events, next.lossReason || 'The crew breaks off.');
+      next.eventIndex += events.length;
+      return { state: next, events };
+    }
+    next.phase = 'combat';
+    next.lossReason = null;
+    next.hull = RALLY_RULE.hull;
+    next.rally = { used: true };
+    events.push({ type: 'order', order: 'rally', cost: {}, target: 'hull', amount: RALLY_RULE.hull - 1 });
+    fireWeapons(next, events);
+    if (next.enemy.hull <= 0) finish(next, 'win', events);
+    next.eventIndex += events.length;
+    return { state: next, events };
+  }
 
   if (order === 'repel') {
     const status = repelStatus(state);
@@ -285,7 +329,7 @@ export function advanceEncounter(state, order = null, { defender = null } = {}) 
     next.hull = Math.max(1, next.hull - amount);
     events.push({ type: 'boarding', success: false, target: 'hull', amount });
     if (next.hull <= 1) {
-      finish(next, 'loss', events, 'The boarding party was thrown back and the hull is failing.');
+      finishLoss(next, events, 'The boarding party was thrown back and the hull is failing.');
       next.eventIndex += events.length;
       return { state: next, events };
     }
@@ -321,10 +365,15 @@ export function advanceEncounter(state, order = null, { defender = null } = {}) 
     }
   }
 
-  if (next.result === null && normalImpactFirst) resolvePirateVolley(next, selectedWindow, events);
-  if (next.result === null && normalImpactFirst) fireWeapons(next, events);
-  if (next.result === null && next.enemy.hull <= 0) finish(next, 'win', events);
-  else if (next.result === null && impactThisBeat && !normalImpactFirst) resolvePirateVolley(next, selectedWindow, events);
+  const live = () => next.result === null && next.phase !== 'downed';
+  if (live() && normalImpactFirst) resolvePirateVolley(next, selectedWindow, events);
+  if (live() && normalImpactFirst) fireWeapons(next, events);
+  if (live() && next.enemy.hull <= 0) finish(next, 'win', events);
+  else if (live() && impactThisBeat && !normalImpactFirst) resolvePirateVolley(next, selectedWindow, events);
+  if (next.phase === 'downed') {
+    next.eventIndex += events.length;
+    return { state: next, events };
+  }
 
   if (next.result === null) {
     if (next.beat % 3 === 1) {
