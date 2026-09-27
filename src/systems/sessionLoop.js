@@ -5,9 +5,9 @@ import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRe
 import { advanceTutorialV4, nameShip, grantWelcomePull } from './tutorialV4.js';
 import { advanceTutorialV5, hireFirstCrew, nameShipV5, grantWelcomePullV5 } from './tutorialV5.js';
 import { chooseCaptain } from './captainFirstPlay.js';
-import { listCombatOrders, previewCombatOrder, encounterById } from './combat.js';
+import { listCombatOrders, previewCombatOrder, encounterById, crewPower } from './combat.js';
 import { readyCrew } from './player.js';
-import { assignStation, stationOutputs } from './stations.js';
+import { assignStation, stationOutputs, STATIONS } from './stations.js';
 import { applyEncounterAction, recoverEncounter } from './encounterState.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
@@ -20,6 +20,8 @@ import { NODES } from '../data/sectors.js';
 import { canAfford, formatReward } from './economy.js';
 import { beatDelayMs } from './fightPacing.js';
 import { tacticStatus, BURN } from './autoCombat.js';
+import { readyContractCrew } from './contractRewards.js';
+import { contractThreat, threatLabel } from './encounterState.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -91,7 +93,14 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
     const review = reviewContractOffer(player, ui.reviewedOfferId);
     if (review.ok) {
       const rewardBand = contractRewardBand(player, review.offer, { now });
-      models.contractReview = { ...review, rewardBand, destinationName: NODES[review.offer.destinationId]?.name,
+      // Fight threat with the crew actually aboard now, for each path that can fight.
+      const content = review.offer.routeContent || {};
+      const fightIds = [...new Set([content.secureOutcome?.kind === 'combat' ? content.secureOutcome.encounter : null,
+        content.routeOutcome?.kind === 'combat' ? content.routeOutcome.encounter : null, content.encounterId].filter(Boolean))];
+      const threats = fightIds.map(encounterId => contractThreat(player, { encounterId }, now));
+      const awayCount = (player.crew || []).filter(member => member.status === 'expedition').length;
+      const fightThreat = threats.length ? { label: threatLabel(Math.max(...threats)), awayCount } : null;
+      models.contractReview = { ...review, rewardBand, fightThreat, destinationName: NODES[review.offer.destinationId]?.name,
         enabled: rewardBand.available && !contract && !player.contractBoard.completedOfferIds.includes(review.offer.id) };
     }
   }
@@ -138,7 +147,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         enemyHull: encounter.enemy.hull,
         ...(encounter.kind === 'normal' ? (() => {
           const catalog = encounterById(encounter.encounterId);
-          return { enemyName: catalog.name, tell: catalog.tell ? { label: catalog.tell.label, text: catalog.tell.text } : null, threat: encounter.enemy.threat ?? null };
+          return { enemyName: catalog.name, tell: catalog.tell ? { label: catalog.tell.label, text: catalog.tell.text } : null, threat: encounter.enemy.threat ?? null, threatLabel: threatLabel(encounter.enemy.threat ?? null) };
         })() : {}),
         target: encounter.orderWindow?.target || encounter.enemy.target,
         weaponDisabled: encounter.version === 2 && encounter.enemy.weaponDisabledThroughBeat > 0
@@ -199,6 +208,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         failureReward: preview ? formatReward(preview.fail) : 'Select crew to preview',
         injuryRisk: 'Failure injures the away team.', returnLabel: new Date(now + planet.minutes * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         opportunityCost: `${preview?.crew.map(c => c.name).join(', ') || 'Selected crew'} unavailable for contracts until return.`,
+        readiness: shipReadiness(player, selectedIds, now),
         enabled: validation.ok && !player.activeExpedition && isFeatureUnlocked(player, 'expeditions'), reason: validation.reason };
     }
   }
@@ -524,4 +534,15 @@ export function persistSessionTransition(result, { save, publish, capture, anima
   for (const item of result.events) capture?.(item.event, item.fields);
   if (result.effect) animate?.(result.effect);
   return result;
+}
+
+/** What the ship can still fight with after an away team leaves. */
+export function shipReadiness(player, awayIds = [], now = Date.now()) {
+  const ready = readyContractCrew(player, now);
+  const staying = ready.filter(member => !awayIds.includes(member.instanceId));
+  const assignments = player.stationAssignments || {};
+  const unstaffed = Object.entries(STATIONS)
+    .filter(([id]) => ready.some(member => assignments[member.instanceId] === id) && !staying.some(member => assignments[member.instanceId] === id))
+    .map(([, station]) => station.label);
+  return { before: crewPower(ready), after: crewPower(staying), aboard: staying.length, unstaffed };
 }

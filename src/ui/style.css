@@ -2836,3 +2836,9 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .tactic-burn { color: #ffcf8a; border-color: rgba(255, 150, 60, 0.6); background: linear-gradient(180deg, rgba(255, 130, 40, 0.18), transparent), #120d08; }
 .tactic-burn.is-live { box-shadow: inset 0 0 18px rgba(255, 140, 40, 0.5); }
 .tactic-board { color: #ffb3a6; border-color: rgba(255, 100, 100, 0.6); background: linear-gradient(180deg, rgba(255, 90, 80, 0.16), transparent), #120909; }
+.fight-threat, .ship-readiness { margin: 8px 0; padding: 6px 10px; font-size: 14px; background: #060a11; border-left: 3px solid var(--accent); }
+.fight-threat b, .ship-readiness b { font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
+.fight-threat[data-threat="outmatched"] { border-color: var(--good); }
+.fight-threat[data-threat="dangerous"] { border-color: var(--warn); }
+.fight-threat[data-threat="deadly"] { border-color: var(--bad); }
+.party-row[disabled] { opacity: 0.55; }

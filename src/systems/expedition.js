@@ -48,18 +48,21 @@ export function expeditionCrewOptions(player, planetId, now = Date.now()) {
       if (roleScore) reasons.push(roleMatchReason(pref));
       if ((crew.power || 10) === highestPower) reasons.push('highest ready power');
       if (expeditionPassive) reasons.push(`expedition passive +${Math.round(expeditionPassive * 100)}%`);
+      const captain = crew.instanceId === player.captainInstanceId;
       return {
         ...crew,
         id: crew.instanceId,
         reasons,
         score: (crew.power || 10) + roleScore + expeditionPassive * 90,
+        ...(captain ? { enabled: false, reason: 'Captain stays aboard to command the ship' } : {}),
       };
     })
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => (a.enabled === false) - (b.enabled === false) || b.score - a.score);
 }
 
 export function recommendedExpeditionCrewIds(player, planetId, now = Date.now()) {
   return expeditionCrewOptions(player, planetId, now)
+    .filter((crew) => crew.enabled !== false)
     .slice(0, expeditionPartySize(player))
     .map((crew) => crew.instanceId);
 }
@@ -79,6 +82,8 @@ export function validateExpeditionParty(player, planetId, crewInstanceIds, now =
     const member = byId.get(instanceId);
     if (!member) return { ok: false, reason: 'unknown_crew', instanceId };
     if (member.status === 'expedition') return { ok: false, reason: 'away_crew', instanceId };
+    // The captain always stays aboard so the ship can answer a fight.
+    if (instanceId === player.captainInstanceId) return { ok: false, reason: 'captain_stays', instanceId };
     if (!expeditionReadyCrew(player, now).some((candidate) => candidate.instanceId === instanceId)) {
       return { ok: false, reason: 'unavailable_crew', instanceId };
     }
@@ -90,6 +95,7 @@ export function validateExpeditionParty(player, planetId, crewInstanceIds, now =
 export function pickExpeditionCrew(player, planet, max = null, now = Date.now()) {
   const cap = max ?? expeditionPartySize(player);
   return expeditionCrewOptions(player, planet?.id, now)
+    .filter((crew) => crew.enabled !== false)
     .slice(0, cap)
     .map((crew) => ({ ...crew }));
 }

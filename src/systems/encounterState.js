@@ -84,10 +84,15 @@ export function unlockedTactics(player) {
   return TACTICS.filter(name => !guidedFlow || done >= TACTIC_UNLOCKS[name]);
 }
 
+export function threatLabel(threat) {
+  if (threat == null) return null;
+  return threat >= 1.3 ? 'Deadly' : threat >= 1.05 ? 'Dangerous' : threat >= 0.9 ? 'Even' : 'Outmatched';
+}
+
 /** Same power model the order-based fights used, expressed as enemy/crew threat. */
-export function contractThreat(player, contract, now = Date.now()) {
+export function contractThreat(player, contract, now = Date.now(), { excludeIds = [] } = {}) {
   const encounter = encounterById(contract.encounterId);
-  const crew = readyContractCrew(player, now);
+  const crew = readyContractCrew(player, now).filter(member => !excludeIds.includes(member.instanceId));
   const bonus = combatBonuses(player, encounter);
   const playerPower = Math.max(1, crewPower(crew) + bonus.extraPower);
   const enemyPower = Math.max(6, Math.round(rubberBandPower(encounter.power, playerPower) * bonus.enemyScale));
