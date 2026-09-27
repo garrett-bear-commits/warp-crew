@@ -74,6 +74,19 @@ export function renderShipEncounter(model = {}) {
 }
 
 const orderReason = { insufficient_resource: 'Needs more shield charge', cooldown: 'Cooling down', used: 'Already used', hull_full: 'Hull is full' };
+const tacticReason = { not_enough_fuel: 'Needs 1 fuel', used: 'Used this fight', enemy_too_strong: 'Enemy above half hull', finished: 'Fight over' };
+
+function renderTactics(model, identity) {
+  if (!model.tactics?.length || model.result) return '';
+  return `<div class="tactic-row" role="group" aria-label="Initiative orders">${model.tactics.map(tactic => {
+    const burn = tactic.id === 'burn';
+    const title = burn ? 'Burn · 1F' : `Board · ${tactic.chance != null ? Math.round(tactic.chance * 100) + '%' : '—'}`;
+    const detail = burn ? (tactic.burning ? 'Guns overcharged' : '+3 damage for 3 beats')
+      : tactic.used ? (tactic.success ? 'Boarded' : 'Repelled') : '+25% payout · failure injures crew';
+    const why = tactic.available ? '' : ` · ${tacticReason[tactic.reason] || 'Unavailable'}`;
+    return `<button type="button" class="tactic tactic-${e(tactic.id)}${tactic.burning ? ' is-live' : ''}" data-act="encounter-order" data-order="${e(tactic.id)}" ${identity} ${tactic.available ? '' : 'disabled'}>${e(title)}<span>${e(detail)}${e(why)}</span></button>`;
+  }).join('')}</div>`;
+}
 
 export function renderEncounter(model = {}, { compact = false } = {}) {
   const identity = `data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}"`;
@@ -98,7 +111,7 @@ export function renderEncounter(model = {}, { compact = false } = {}) {
           ? `<p role="alert">Fight progress was not saved. Try the next beat again.</p><button type="button" class="primary" data-primary-pulse data-act="encounter-advance" ${identity}>Retry fight progress</button>`
           : guidedAfterBrace || guidedCrew ? '<span>Crew engaging…</span>' : `${autoPaced ? '<span class="crew-engaging">Crew engaging · orders are optional</span>' : ''}${orders.map(order => `<button type="button" class="${(guidedBrace || guidedTarget) && order.available ? 'primary' : ''}" ${(guidedTarget && order.id === 'target_weapons') ? 'data-primary-pulse data-spotlight-target' : ''} data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
           ${order.id === 'target_weapons' ? `Target their weapons<span>Stop the next volley · free · once this fight</span>` : guidedBrace && order.id === 'brace' ? `Brace<span>Spend ${e(order.cost)} shield to block the hit.</span>` : `${e(order.id === 'brace' ? 'Brace' : 'Repair')} · ${e(order.cost)} shield <span>${e(order.effectLabel)} · ${e(order.cooldownLabel || '')}</span>`}${order.available ? '' : ` · ${e(orderReason[order.reason] || order.reason || 'Unavailable')}${order.cooldownBeats ? ` (${e(order.cooldownBeats)} beats)` : ''}`}
-        </button>`).join('')}`}${guidedBrace || guidedV2 || autoPaced ? '' : `<button type="button" class="${guidedAfterBrace ? '' : 'primary'}" data-act="encounter-advance" ${identity}>${guidedAfterBrace ? 'Continue fight' : model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button>`}</div>`;
+        </button>`).join('')}${renderTactics(model, identity)}`}${guidedBrace || guidedV2 || autoPaced ? '' : `<button type="button" class="${guidedAfterBrace ? '' : 'primary'}" data-act="encounter-advance" ${identity}>${guidedAfterBrace ? 'Continue fight' : model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button>`}</div>`;
   const threatLabel = model.threat == null ? '' : model.threat >= 1.3 ? 'Deadly' : model.threat >= 1.05 ? 'Dangerous' : model.threat >= 0.9 ? 'Even' : 'Outmatched';
   const enemyHead = model.enemyName ? `<header class="enemy-head"><b>${e(model.enemyName)}</b>${threatLabel ? `<span data-threat="${e(threatLabel.toLowerCase())}">${e(threatLabel)}</span>` : ''}${model.tell && !model.result ? `<p>${e(model.tell.label)} ${e(model.tell.text)}</p>` : ''}</header>` : '';
   return `<section class="encounter-panel${compact ? ' compact' : ''}${guidedTarget ? ' target-window' : ''}" aria-label="Crew combat">

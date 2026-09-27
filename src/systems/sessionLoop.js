@@ -19,6 +19,7 @@ import { portraitFor } from '../data/portraits.js';
 import { NODES } from '../data/sectors.js';
 import { canAfford, formatReward } from './economy.js';
 import { beatDelayMs } from './fightPacing.js';
+import { tacticStatus, BURN } from './autoCombat.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -150,6 +151,14 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
           effectLabel: id === 'brace' ? 'Blocks the next hit' : id === 'target_weapons' ? 'Disrupt the pirate weapons' : 'Restore up to 8 hull',
           cooldownLabel: id === 'brace' && encounter.kind === 'guided' ? 'Once this fight'
             : `${id === 'brace' ? 3 : 4}-beat cooldown` })),
+        tactics: Object.keys(encounter.tactics || {}).map(id => {
+          const status = tacticStatus(encounter, id);
+          const noFuel = id === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel;
+          return { id, available: status.available && !noFuel, reason: noFuel && status.available ? 'not_enough_fuel' : status.reason,
+            chance: status.chance ?? null, used: encounter.tactics[id].uses > 0,
+            success: id === 'board' ? encounter.tactics.board.success : null,
+            burning: id === 'burn' && encounter.tactics.burn.throughBeat >= encounter.beat && encounter.tactics.burn.uses > 0 };
+        }),
       };
     } else if (contract.stage === 'confrontation') {
       const encounter = encounterById(contract.encounterId);

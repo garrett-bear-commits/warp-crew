@@ -147,7 +147,10 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
         medals: Math.max(1, Math.floor((winRewards.medals || 0) * 0.25)),
         reputation: 0,
       }
-    : winRewards;
+    : encounter.tactics?.board?.success === true
+      // A successful boarding strips the prize ship, as Board did before.
+      ? { ...winRewards, credits: Math.floor((winRewards.credits || 0) * 1.25), medals: Math.floor((winRewards.medals || 0) * 1.25) }
+      : winRewards;
   const visits = player?.stats?.visits?.[contract.destinationId] || 0;
   const rewards = contract.profile === 'distress'
     ? normalizeCurrencyReward(rawRewards)
@@ -158,7 +161,8 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
     ship: { ...player.ship, hull: Math.max(1, (player.ship?.hull ?? 100) - hullLoss) },
   };
   let injuredCrewId = null;
-  if (lost && !encounter.orders?.brace?.uses) {
+  // A failed boarding party always comes home hurt; otherwise only unbraced losses injure.
+  if (encounter.tactics?.board?.success === false || (lost && !encounter.orders?.brace?.uses)) {
     // Bracing during the fight keeps the crew safe, as Brace did before.
     const participants = (contract.participantIds || []).filter(id => nextPlayer.crew?.some(member => member.instanceId === id));
     injuredCrewId = participants.length ? participants[Math.abs(encounter.seed) % participants.length] : null;

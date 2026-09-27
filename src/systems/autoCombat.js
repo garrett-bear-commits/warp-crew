@@ -44,11 +44,12 @@ export const CREW_CRIT = Object.freeze({ chance: 15, bonus: 3 });
 function fireWeapons(next, events) {
   const weaponOutput = Math.floor(next.outputs.weapons * next.systems.weapons / 100);
   const crit = hasSwing(next) && seededIndex(next.seed, next.beat + 202, 100) < CREW_CRIT.chance;
-  const weaponDamage = Math.max(0, Math.floor((weaponOutput - 50) / 10)) + (crit ? CREW_CRIT.bonus : 0);
+  const burning = next.tactics?.burn?.throughBeat >= next.beat;
+  const weaponDamage = Math.max(0, Math.floor((weaponOutput - 50) / 10)) + (crit ? CREW_CRIT.bonus : 0) + (burning ? BURN.bonus : 0);
   if (weaponDamage > 0 && next.enemy.hull > 0) {
     const amount = Math.min(weaponDamage, next.enemy.hull);
     next.enemy.hull -= amount;
-    events.push({ type: 'weapon_damage', target: 'enemy', system: 'weapons', amount, output: weaponOutput, ...(crit ? { crit: true } : {}) });
+    events.push({ type: 'weapon_damage', target: 'enemy', system: 'weapons', amount, output: weaponOutput, ...(crit ? { crit: true } : {}), ...(burning ? { burn: true } : {}) });
   }
 }
 
@@ -83,6 +84,27 @@ function resolvePirateVolley(next, selectedWindow, events) {
 }
 
 /** Create the JSON-safe, replayable snapshot for one crew-run encounter. */
+/** Initiative orders usable on any beat of a contract crew fight, once each. */
+export const TACTICS = Object.freeze(['burn', 'board']);
+export const BURN = Object.freeze({ fuel: 1, bonus: 3, beats: 3 });
+export const BOARD = Object.freeze({ maxEnemyHull: 21, rewardScale: 1.25 });
+
+export function boardChance(state) {
+  const threat = Number.isFinite(state?.enemy?.threat) ? state.enemy.threat : 1;
+  const finishing = (state?.enemy?.hull ?? 42) <= 10 ? 0.15 : 0;
+  return Math.max(0.2, Math.min(0.92, Math.round((0.8 - (threat - 1) * 0.7 + finishing) * 100) / 100));
+}
+
+/** Fuel is the caller's concern; this reports only what the fight itself allows. */
+export function tacticStatus(state, name) {
+  const tactic = state?.tactics?.[name];
+  if (!tactic) return { available: false, reason: 'order_unavailable' };
+  if (state.result !== null) return { available: false, reason: 'finished' };
+  if (tactic.uses > 0) return { available: false, reason: 'used' };
+  if (name === 'board' && state.enemy.hull > BOARD.maxEnemyHull) return { available: false, reason: 'enemy_too_strong' };
+  return { available: true, reason: null, ...(name === 'board' ? { chance: boardChance(state) } : {}) };
+}
+
 /** Normal-fight volley damage scales with the enemy's threat against this crew (1 = even). */
 export function enemyVolleyDamage(threat = 1) {
   const t = Number.isFinite(Number(threat)) ? Number(threat) : 1;
@@ -90,7 +112,7 @@ export function enemyVolleyDamage(threat = 1) {
 }
 
 export function startEncounter({ acceptanceId, encounterId, kind, seed, assignments = {}, outputs = {},
-  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1', threat = null }) {
+  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1', threat = null, tactics = [] }) {
   if (kind !== 'guided' && kind !== 'normal') throw new TypeError("kind must be 'guided' or 'normal'");
   if (ruleset !== 'v1' && ruleset !== 'v2') throw new TypeError("ruleset must be 'v1' or 'v2'");
   const stationOutputs = Object.fromEntries(STATIONS.map(station => [station, outputValue(outputs, station)]));
@@ -120,6 +142,8 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
     orders: { brace: { used: false, uses: 0 }, repair: { uses: 0 },
       ...(ruleset === 'v2' ? { targetWeapons: { used: false, uses: 0 } } : {}) },
     braceThroughBeat: 0,
+    ...(kind === 'normal' && tactics.length ? { tactics: Object.fromEntries(TACTICS.filter(name => tactics.includes(name))
+      .map(name => [name, name === 'burn' ? { uses: 0, throughBeat: 0 } : { uses: 0, success: null }])) } : {}),
     orderWindow: null,
     result: null,
     lossReason: null,
@@ -130,7 +154,10 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
 export function advanceEncounter(state, order = null) {
   if (state.result !== null) return { state, events: [] };
 
-  if (order !== null) {
+  if (order !== null && TACTICS.includes(order)) {
+    const status = tacticStatus(state, order);
+    if (!status.available) return { ok: false, reason: status.reason, state };
+  } else if (order !== null) {
     if (!['brace', 'repair', ...(state.version === 2 ? ['target_weapons'] : [])].includes(order)) {
       return { ok: false, reason: 'order_unavailable', state };
     }
@@ -175,6 +202,29 @@ export function advanceEncounter(state, order = null) {
     next.enemy.weaponDisabledThroughBeat = next.beat + 2;
     events.push({ type: 'order', order: 'target_weapons', cost: { shield: 0 }, target: 'weapons' });
     events.push({ type: 'enemy_weapon_disabled', target: 'weapons', throughBeat: next.enemy.weaponDisabledThroughBeat });
+  } else if (order === 'burn') {
+    next.tactics.burn = { uses: 1, throughBeat: next.beat + BURN.beats - 1 };
+    events.push({ type: 'order', order: 'burn', cost: { fuel: BURN.fuel }, target: 'weapons', throughBeat: next.tactics.burn.throughBeat });
+  } else if (order === 'board') {
+    const chance = boardChance(state);
+    const success = seededIndex(next.seed, next.beat + 303, 100) < Math.round(chance * 100);
+    next.tactics.board = { uses: 1, success };
+    events.push({ type: 'order', order: 'board', cost: {}, target: 'enemy', chance });
+    if (success) {
+      events.push({ type: 'boarding', success: true, target: 'enemy', amount: next.enemy.hull });
+      next.enemy.hull = 0;
+      finish(next, 'win', events);
+      next.eventIndex += events.length;
+      return { state: next, events };
+    }
+    const amount = Math.max(1, Math.round((Number.isInteger(next.enemy.damage) ? next.enemy.damage : 22) * 0.5));
+    next.hull = Math.max(1, next.hull - amount);
+    events.push({ type: 'boarding', success: false, target: 'hull', amount });
+    if (next.hull <= 1) {
+      finish(next, 'loss', events, 'The boarding party was thrown back and the hull is failing.');
+      next.eventIndex += events.length;
+      return { state: next, events };
+    }
   }
 
   const impactThisBeat = next.beat % 3 === 0;

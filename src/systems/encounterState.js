@@ -1,5 +1,5 @@
 // Saved bridge between a contract and the deterministic crew-run fight.
-import { startEncounter, advanceEncounter, enemyVolleyDamage } from './autoCombat.js';
+import { startEncounter, advanceEncounter, enemyVolleyDamage, TACTICS, BURN } from './autoCombat.js';
 import { normalizeAssignments, stationOutputs } from './stations.js';
 import { resolveSimulatedCombatPayout, readyContractCrew } from './contractRewards.js';
 import { crewPower, encounterById, rubberBandPower } from './combat.js';
@@ -26,6 +26,19 @@ function validOrders(encounter) {
     && Number.isInteger(encounter.braceThroughBeat) && numberIn(encounter.braceThroughBeat, 0, encounter.beat + 2)
     && record(cooldowns) && Object.keys(cooldowns).every(name => ['brace', 'repair'].includes(name))
     && ['brace', 'repair'].every(name => Number.isInteger(cooldowns[name]) && numberIn(cooldowns[name], 0, 4));
+}
+
+function validTactics(encounter) {
+  if (!Object.hasOwn(encounter, 'tactics')) return true;
+  const tactics = encounter.tactics;
+  if (encounter.kind !== 'normal' || !record(tactics) || !Object.keys(tactics).every(name => TACTICS.includes(name))) return false;
+  const burn = tactics.burn;
+  const board = tactics.board;
+  return (!burn || (record(burn) && [0, 1].includes(burn.uses) && Number.isInteger(burn.throughBeat)
+      && (burn.uses === 0 ? burn.throughBeat === 0 : numberIn(burn.throughBeat, BURN.beats - 1, encounter.beat + BURN.beats - 1))))
+    && (!board || (record(board) && [0, 1].includes(board.uses)
+      && (board.uses === 0 ? board.success === null : typeof board.success === 'boolean')
+      && (!board.success || (encounter.result === 'win' && encounter.enemy.hull === 0))));
 }
 
 function validOrderWindow(window, encounter) {
@@ -62,6 +75,15 @@ function eligibleContract(player, contract) {
 
 const THREAT_RANGE = [0.6, 1.6];
 
+/** New captains meet Burn after three finished contracts and Board after five. */
+export const TACTIC_UNLOCKS = Object.freeze({ burn: 3, board: 5 });
+
+export function unlockedTactics(player) {
+  const guidedFlow = [4, 5].includes(player?.tutorial?.script) && player.tutorial.completed;
+  const done = player?.stats?.contractsCompleted || 0;
+  return TACTICS.filter(name => !guidedFlow || done >= TACTIC_UNLOCKS[name]);
+}
+
 /** Same power model the order-based fights used, expressed as enemy/crew threat. */
 export function contractThreat(player, contract, now = Date.now()) {
   const encounter = encounterById(contract.encounterId);
@@ -87,6 +109,7 @@ export function beginContractEncounter(player, now = Date.now()) {
     assignments: normalizeAssignments(player),
     outputs: stationOutputs(player, now),
     threat: kind === 'normal' ? contractThreat(player, contract, now) : null,
+    tactics: kind === 'normal' ? unlockedTactics(player) : [],
   });
   return {
     ...player,
@@ -134,6 +157,7 @@ function validSnapshot(encounter, contract, tutorial) {
     || !['charging_volley', 'reloading', 'broken_contact'].includes(encounter.enemy.pattern)
     || !STATIONS.every(station => numberIn(encounter.outputs?.[station], 0, 10000)
       && numberIn(encounter.systems?.[station], 0, 100))
+    || !validTactics(encounter)
     || !record(encounter.assignments)
     || !validOrders(encounter)
     || !validOrderWindow(encounter.orderWindow, encounter)
@@ -188,6 +212,7 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
     return { ok: false, reason: 'stale_encounter_action', player };
   }
   if (encounter.result) return { ok: false, reason: 'encounter_finished', player };
+  if (order === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel) return { ok: false, reason: 'not_enough_fuel', player };
 
   const outputs = stationOutputs(player, now);
   const input = {
@@ -199,6 +224,7 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
   if (advanced.ok === false) return { ok: false, reason: advanced.reason, player };
   let nextContract = { ...contract, revision: contract.revision + 1 };
   let nextPlayer = { ...player, activeEncounter: advanced.state, activeContract: nextContract };
+  if (order === 'burn') nextPlayer = { ...nextPlayer, wallet: { ...nextPlayer.wallet, fuel: nextPlayer.wallet.fuel - BURN.fuel } };
   if (advanced.state.result === 'win' || (advanced.state.result === 'loss' && contract.profile !== 'distress')) {
     const payout = resolveSimulatedCombatPayout(nextPlayer, nextContract, advanced.state, now);
     nextPlayer = payout.player;

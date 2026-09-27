@@ -2823,3 +2823,16 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .enemy-head [data-threat="dangerous"] { color: var(--warn); }
 .enemy-head [data-threat="deadly"] { color: var(--bad); }
 .enemy-head p { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--muted); line-height: 1.35; }
+
+/* Initiative orders. */
+.tactic-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; }
+.tactic {
+  min-height: 52px;
+  font: 700 15px var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tactic span { display: block; font: 500 12px var(--font-sans); letter-spacing: 0; text-transform: none; opacity: 0.85; }
+.tactic-burn { color: #ffcf8a; border-color: rgba(255, 150, 60, 0.6); background: linear-gradient(180deg, rgba(255, 130, 40, 0.18), transparent), #120d08; }
+.tactic-burn.is-live { box-shadow: inset 0 0 18px rgba(255, 140, 40, 0.5); }
+.tactic-board { color: #ffb3a6; border-color: rgba(255, 100, 100, 0.6); background: linear-gradient(180deg, rgba(255, 90, 80, 0.16), transparent), #120909; }

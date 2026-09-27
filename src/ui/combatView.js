@@ -80,7 +80,7 @@ export function encounterVisualFrame(encounter, events = []) {
     playerHull: Math.max(0, Math.min(1, (encounter?.hull || 0) / 30)),
     enemyHull: Math.max(0, Math.min(1, (encounter?.enemy?.hull || 0) / (encounter?.kind === 'guided' ? 25 : 42))),
     shield: Math.max(0, Math.min(1, (encounter?.shield || 0) / 12)),
-    shots: events.filter(event => ['weapon_damage', 'enemy_impact'].includes(event.type)).map(event => ({ ally: event.type === 'weapon_damage' })),
+    shots: events.filter(event => ['weapon_damage', 'enemy_impact'].includes(event.type)).map(event => ({ ally: event.type === 'weapon_damage', ...(event.burn ? { burn: true } : {}) })),
     weaponDisabled: events.some(event => event.type === 'enemy_weapon_disabled' || event.type === 'enemy_volley_canceled'),
     impact: events.some(event => event.type === 'enemy_impact'),
   };
@@ -121,6 +121,8 @@ export function playEncounterBeat(events = []) {
     ...(frame.weaponDisabled ? [{ kind: 'disabled', life: 0.7 }] : []),
     ...(frame.impact ? [{ kind: 'impact', life: 0.5 }] : []),
   ];
+  const boarding = events.find(event => event.type === 'boarding');
+  if (boarding && !reduced) crewEffects.push({ kind: boarding.success ? 'flash-enemy' : 'shield-ripple', life: 0.7 });
   if (events.some(event => event.type === 'weapon_damage' || event.type === 'enemy_impact')) sfx('pew');
   if (events.some(event => event.type === 'result' && event.result === 'win')) sfx('win');
 }
@@ -470,8 +472,8 @@ function drawCrewEncounter(g, camera, dt) {
     const uy = (to.y - from.y) / len;
     g.save();
     g.globalCompositeOperation = 'lighter';
-    g.strokeStyle = shot.ally ? 'rgba(120,230,255,0.95)' : 'rgba(255,120,100,0.95)';
-    g.shadowColor = shot.ally ? '#5ce1ff' : '#ff6b6b';
+    g.strokeStyle = shot.burn ? 'rgba(255,190,90,0.95)' : shot.ally ? 'rgba(120,230,255,0.95)' : 'rgba(255,120,100,0.95)';
+    g.shadowColor = shot.burn ? '#ff9f3a' : shot.ally ? '#5ce1ff' : '#ff6b6b';
     g.shadowBlur = 14;
     g.lineWidth = 3;
     g.lineCap = 'round';
