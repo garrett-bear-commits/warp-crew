@@ -20,7 +20,9 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 - [x] Siege walls: five sector flagships gate the next sector for guided-flow captains; per-attempt 42-hull segments of a 100–240 pool at threat ≥1.2; damage holds until local daily reset; takedown pays double + 20 gems and opens the gate.
 - [x] Timed drydock upgrades above level 3 (30m → 8h cap), gem skip (~10/h, min 5), completion notification.
 - [x] Product prices handled as Jest cents.
-- [ ] Garrett: approve the [monetization plan](superpowers/specs/2026-09-27-monetization-plan.md) (SKU ladder ≥$1.99, Rally, gem fuel, wall packs, subscription starter). Then build step 2, then purchase authority + cloud save, then add SKUs in the Jest console.
+- [x] [Monetization plan](superpowers/specs/2026-09-27-monetization-plan.md) approved; step 2 built: gem ladder SKUs, one-time starter kit + wall packs, Rally (first free, then 60 gems), gem fuel refill (50 → 5), drydock tokens.
+- [ ] Next: verified purchase authority (idempotent server grants) and cloud save — required before any live sale. Then create all SKUs in the Jest Developer Console (Chrome).
+- [ ] Later: subscription (7-day trial → $9.99/mo, win-back $5.99/mo × 2), `wc_drydock_2`, welcome-back bundle, sale SKUs. Economy simulator should model wall attempts and gem sinks.
 - [ ] Previously: decide the remaining proposals in [combat walls, retention and boarding](superpowers/specs/2026-09-27-combat-walls-retention-design.md) (daily rhythm, Siege walls, timed upgrades, enemy boarders next, purchase authority first). Explore-map travel fights are still on the old order menu.
 - [ ] Publish to Pages QA only after Garrett's go-ahead. Branch \`claude/hud-overhaul\` is local and unpushed.
 
