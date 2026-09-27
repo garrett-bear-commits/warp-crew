@@ -55,7 +55,7 @@ import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreloa
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
 import { STARTER_OFFER, starterOfferState, markStarterOffer, markWallPackSeen, wallPackState } from './systems/offers.js';
-import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt } from './shared/cloud.js';
+import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt, trustedNow } from './shared/cloud.js';
 import { chooseSave, applyLedger } from './systems/cloudSync.js';
 import { currentWall } from './systems/walls.js';
 import { applyResolvedSlicePortraits } from './data/portraits.js';
@@ -181,7 +181,10 @@ async function pushCloudNow({ keepalive = false } = {}) {
   const startedAt = Date.now();
   try {
     const result = await pushCloudSave(player, { keepalive });
-    if (result.ok && result.data.accepted && player) {
+    if (result.ok && result.data.conflict && player) {
+      // Another device saved first. Reconcile before this device's changes can count as synced.
+      await reconcileCloud(result.data.current, result.data.purchases);
+    } else if (result.ok && result.data.accepted && player) {
       // Record the server sequence locally without scheduling another upload.
       // Anything saved while the upload was in flight stays dirty for the next one.
       const changedSince = (player.lastSavedAt || 0) > startedAt;
@@ -207,21 +210,29 @@ async function syncCloudOnBoot() {
     console.warn('[cloud] load failed', cloud.reason);
     return;
   }
-  const chosen = chooseSave(player, cloud.data.save);
+  await reconcileCloud(cloud.data.save, cloud.data.purchases);
+  const retried = await retryPendingReceipts(player, purchaseOptions());
+  player = retried.player;
+  writeSave(player);
+}
+
+/** Merge a server save and undelivered purchases into the live player. */
+async function reconcileCloud(save, purchases) {
+  const chosen = chooseSave(player, save);
   if (chosen.archived) {
     // Keep the losing side of a two-device conflict recoverable on the server.
     await pushCloudSave(chosen.archived, { archive: true });
     pushLog('Two devices had different progress; the furthest-along save was kept.');
   }
   if (chosen.source === 'cloud') {
-    player = prepareSession(restoreTutorialPlayer(chosen.player));
+    player = prepareSession(restoreTutorialPlayer(chosen.player), trustedNow());
     pushLog('Cloud save restored from another device.');
   } else player = chosen.player;
-  const ledger = applyLedger(player, cloud.data.purchases);
+  const ledger = applyLedger(player, purchases);
   player = ledger.player;
   if (ledger.applied.length) pushLog(`Purchases restored: ${ledger.applied.join(', ')}`);
-  const retried = await retryPendingReceipts(player, purchaseOptions());
-  player = retried.player;
+  // The winner is uploaded next, based on the newest server seq, so the devices converge.
+  player = { ...player, cloudDirty: true };
   writeSave(player);
   scheduleCloudPush(500);
 }
@@ -318,7 +329,7 @@ function hydratePlayer() {
   player = tickCrewStatus(claimed.player);
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
-  player = prepareSession(player);
+  player = prepareSession(player, trustedNow());
   if (player.activeContract?.stage === 'return') { tab = 'ship'; selectedRoom = 'cargo'; }
   else if (player.tutorial?.phase === 'away') sessionUi.missionView = 'away';
 }
@@ -417,7 +428,7 @@ function render() {
     player = ticked;
     persist();
   }
-  const prepared = prepareSession(player);
+  const prepared = prepareSession(player, trustedNow());
   if (prepared !== player && saveLocal(prepared)) player = prepared;
   const models = sessionModels(player, { ...sessionUi, pendingCombat });
   sessionUi.contractPreviews = models.contractPreviews;
@@ -607,7 +618,7 @@ async function handleAction(act, data = {}) {
     if (phase === 'return') { tab = 'ship'; selectedRoom = 'cargo'; render(); return; }
     return handleAction('goto-contracts');
   }
-  const transition = sessionAction(player, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId }, act, data);
+  const transition = sessionAction(player, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId }, act, data, { now: trustedNow() });
   if (transition) {
     const departure = transition.effect?.kind === 'expedition';
     let startedDepartureId = null;

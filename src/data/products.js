@@ -34,4 +34,3 @@ export const PRODUCT_DEFS = {
 
 /** Gem ladder rungs, used for honest value comparisons. */
 export const GEM_LADDER = ['wc_gems_s', 'wc_gems_m', 'wc_gems_l', 'wc_gems_xl', 'wc_gems_xxl'];
-

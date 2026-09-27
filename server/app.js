@@ -49,7 +49,7 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
     const player = auth(req, reply);
     if (!player) return reply;
     const [save, purchases] = await Promise.all([store.currentSave(player.playerId), store.purchasesFor(player.playerId)]);
-    return { save, purchases };
+    return { save, purchases, serverNow: now() };
   });
 
   app.put('/v1/saves', async (req, reply) => {
@@ -60,6 +60,10 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
     const bytes = Buffer.byteLength(blob, 'utf8');
     // `archive` keeps the losing side of a two-device conflict recoverable without making it current.
     const rejectReason = bytes > MAX_SAVE_BYTES ? 'too_large' : saveRejectReason(blob) || (archive === true ? 'archived_conflict' : null);
+    let delivered = [];
+    if (!rejectReason) {
+      try { delivered = (JSON.parse(blob).player.iapFulfilled || []).filter(token => typeof token === 'string').slice(0, 5000); } catch { delivered = []; }
+    }
     const written = await store.appendSave(player.playerId, {
       blob: bytes > MAX_SAVE_BYTES ? null : blob,
       bytes,
@@ -68,10 +72,12 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
       savedAt: Math.trunc(savedAt),
       accepted: !rejectReason,
       rejectReason,
+      deliveredTokens: delivered,
     });
-    // Another device wrote since this client last synced: tell it, never drop the write.
-    const conflict = Number.isSafeInteger(baseSeq) && written.previousAcceptedSeq > baseSeq;
-    return { seq: written.seq, accepted: !rejectReason, rejectReason, conflict };
+    // A stale device never overwrites: it gets the current save back to reconcile.
+    const current = written.stale ? await store.currentSave(player.playerId) : null;
+    return { seq: written.seq, accepted: written.accepted, rejectReason: written.rejectReason, conflict: written.stale,
+      ...(current ? { current, purchases: await store.purchasesFor(player.playerId) } : {}), serverNow: now() };
   });
 
   app.post('/v1/purchases/verify', async (req, reply) => {

@@ -25,17 +25,30 @@ export function createStore(sql) {
       return row ? { seq: Number(row.seq), savedAt: Number(row.saved_at), blob: row.blob } : null;
     },
 
-    /** Insert-only. Refused writes are stored too, so a wrong refusal is recoverable. */
-    async appendSave(playerKey, { blob, bytes, clientSeq, baseSeq, savedAt, accepted, rejectReason }) {
+    /**
+     * Insert-only. Refused writes are stored too, so a wrong refusal is recoverable.
+     * A write based on an older save than the current one is stored as
+     * `stale_base` and never becomes current: the device must reconcile first.
+     */
+    async appendSave(playerKey, { blob, bytes, clientSeq, baseSeq, savedAt, accepted, rejectReason, deliveredTokens = [] }) {
       return sql.begin(async tx => {
         await lock(tx, playerKey);
         const [last] = await tx`SELECT COALESCE(MAX(seq), 0) AS seq FROM save_events WHERE player_key = ${playerKey}`;
         const [lastAccepted] = await tx`SELECT COALESCE(MAX(seq), 0) AS seq FROM save_events WHERE player_key = ${playerKey} AND accepted`;
+        const currentSeq = Number(lastAccepted.seq);
+        const stale = accepted && currentSeq > 0 && (baseSeq == null || baseSeq < currentSeq);
+        const finalAccepted = accepted && !stale;
+        const finalReason = stale ? 'stale_base' : rejectReason;
         const seq = Number(last.seq) + 1;
         await tx`
           INSERT INTO save_events (player_key, seq, client_seq, base_seq, saved_at, bytes, accepted, reject_reason, blob)
-          VALUES (${playerKey}, ${seq}, ${clientSeq}, ${baseSeq}, ${savedAt}, ${bytes}, ${accepted}, ${rejectReason}, ${blob})`;
-        return { seq, previousAcceptedSeq: Number(lastAccepted.seq) };
+          VALUES (${playerKey}, ${seq}, ${clientSeq}, ${baseSeq}, ${savedAt}, ${bytes}, ${finalAccepted}, ${finalReason}, ${blob})`;
+        if (finalAccepted && deliveredTokens.length) {
+          await tx`
+            UPDATE purchase_transactions SET delivered_seq = ${seq}
+            WHERE player_key = ${playerKey} AND delivered_seq IS NULL AND provider_token IN ${tx(deliveredTokens)}`;
+        }
+        return { seq, accepted: finalAccepted, rejectReason: finalReason, stale, previousAcceptedSeq: currentSeq };
       });
     },
 
@@ -73,11 +86,11 @@ export function createStore(sql) {
       });
     },
 
-    /** Every granting purchase, so a device can reconcile grants it never saw. */
+    /** Granting purchases no accepted save has delivered yet, so a device can catch up. */
     async purchasesFor(playerKey) {
       const rows = await sql`
         SELECT provider_token, sku, granted FROM purchase_transactions
-        WHERE player_key = ${playerKey} AND classification IN ('paid', 'sandbox', 'unclassified')
+        WHERE player_key = ${playerKey} AND classification IN ('paid', 'sandbox', 'unclassified') AND delivered_seq IS NULL
         ORDER BY created_at, id`;
       return rows.map(row => ({ purchaseToken: row.provider_token, sku: row.sku, grant: row.granted }));
     },

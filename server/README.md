@@ -9,7 +9,9 @@ Every request carries `x-player-id` and `authorization: Bearer <JestSDK.getPlaye
 
 ## Client flow
 
-The game talks to the server only when one is configured (`?server=<url>` on the QA link, remembered, or `VITE_WARPCREW_SERVER` at build time). Then: a purchase's signed receipt is saved locally first, verified by the server, granted, saved again, and only then completed with Jest. If the server is unreachable the receipt waits in the save and Jest keeps the purchase incomplete; both retry on the next boot. Without a server the Pages QA build keeps its local mock purchases.
+The game talks only to the server compiled in with `VITE_WARPCREW_SERVER` (HTTPS, or `http://localhost` for development). A `?server=<url>` override works only in development builds (or with `VITE_ALLOW_SERVER_OVERRIDE=1`), so a crafted link cannot redirect a player's Jest token. Then: a purchase's signed receipt is saved locally first, verified by the server, granted, saved again, and only then completed with Jest. If the server is unreachable the receipt waits in the save and Jest keeps the purchase incomplete; both retry on the next boot. In a real Jest environment with no server configured, purchasing is disabled and incomplete purchases wait: nothing is ever granted without verification. Only the local mock (no Jest) grants locally, for QA.
+
+Saves: a local save is dirty until uploaded. The server refuses (stores, never makes current) any write based on an older save than the current one and returns the current save; the device then keeps whichever side has more progress and archives the other. A purchase is *delivered* once an accepted save contains its token; delivered purchases are never handed back, so editing the save cannot re-grant them.
 
 ## Run locally
 
@@ -26,7 +28,7 @@ TEST_DATABASE_URL=postgres://postgres@localhost:5434/warpcrew_test PGSSL=off npm
 1. New Project → Deploy from GitHub repo → `warp-crew` (root directory empty: the server imports `src/data/products.js`). `railway.json` sets start command and health check.
 2. New → Database → Add PostgreSQL. On the service, set `DATABASE_URL` as a reference to it.
 3. Variables: `JEST_PLAYER_SECRET` (the base64 shared secret from the Jest Developer Console), `JEST_GAME_ID`, and `ALLOW_ORIGINS` (comma-separated game origins, e.g. the Jest and Pages hosts).
-4. `WARPCREW_DEV_AUTH=1` trusts `x-player-id` with no token. Use it only for a first QA without Jest; **never** where real players can reach it.
+4. `WARPCREW_DEV_AUTH=1` trusts `x-player-id` with no token. Use it only for a first QA without Jest; **never** where real players can reach it. The server refuses to start with it when `NODE_ENV` or `RAILWAY_ENVIRONMENT_NAME` is `production`, and refuses to start at all without a valid `JEST_PLAYER_SECRET` (base64, >= 16 bytes) and `JEST_GAME_ID`.
 5. Settings → Networking → Generate Domain; build the game with `VITE_WARPCREW_SERVER=<that URL>`.
 
 Migrations run on boot.
@@ -34,3 +36,8 @@ Migrations run on boot.
 ## Facts about Jest tokens (from Ninefold/Barrowdeep)
 
 HS256 with a symmetric, base64-encoded secret; no JWKS; no `exp` on player tokens (freshness from `iat`, 24 h); check `aud` and the player. The Simulator's `mock-signed-player-jwt` never verifies.
+
+## Known limits (security model)
+
+- **Premium balances live in the player's save.** The server is the authority for *purchases* (what was bought, one-time ownership, no double grants), not for spending. A player who edits their own local save can change their own gem count; that affects only their single-player game. Server-owned gem spending is the next step if gems ever feed leaderboards, trading or anything shared.
+- **Timers use the server clock while online** (drydock builds, offer windows, siege resets via the `serverNow` offset). Offline, only the device clock exists, so a player who changes their clock offline can finish their own builds early.

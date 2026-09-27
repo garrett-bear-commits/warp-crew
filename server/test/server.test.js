@@ -46,29 +46,38 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
   });
 
   await t.test('saves are insert-only with server-assigned sequence', async () => {
-    assert.deepEqual((await call('GET', '/v1/saves/current', 'saver')).json(), { save: null, purchases: [] });
+    assert.deepEqual((await call('GET', '/v1/saves/current', 'saver')).json(), { save: null, purchases: [], serverNow: NOW });
     const first = (await call('PUT', '/v1/saves', 'saver', saveBody(10, { clientSeq: 1 }))).json();
-    assert.deepEqual(first, { seq: 1, accepted: true, rejectReason: null, conflict: false });
+    assert.deepEqual(first, { seq: 1, accepted: true, rejectReason: null, conflict: false, serverNow: NOW });
     const second = (await call('PUT', '/v1/saves', 'saver', saveBody(20, { clientSeq: 1, baseSeq: 1 }))).json();
     assert.equal(second.seq, 2, 'server assigns seq even when the client repeats its claim');
     const current = (await call('GET', '/v1/saves/current', 'saver')).json().save;
     assert.equal(current.seq, 2);
     assert.equal(JSON.parse(current.blob).player.wallet.credits, 20);
-    // A stale device still writes (nothing is dropped) but is told about the conflict.
+    // A stale device is stored (nothing is dropped) but never becomes current;
+    // it gets the current save back to reconcile.
     const stale = (await call('PUT', '/v1/saves', 'saver', saveBody(15, { baseSeq: 1 }))).json();
     assert.equal(stale.conflict, true);
-    assert.equal(stale.accepted, true);
+    assert.equal(stale.accepted, false);
+    assert.equal(stale.rejectReason, 'stale_base');
+    assert.equal(JSON.parse(stale.current.blob).player.wallet.credits, 20);
+    assert.equal((await call('PUT', '/v1/saves', 'saver', saveBody(99))).json().rejectReason, 'stale_base', 'a device that never synced cannot overwrite');
+    const [kept] = await sql`SELECT blob FROM save_events WHERE player_key = 'saver' AND reject_reason = 'stale_base' ORDER BY seq LIMIT 1`;
+    assert.equal(JSON.parse(kept.blob).player.wallet.credits, 15);
+    const synced = (await call('PUT', '/v1/saves', 'saver', saveBody(30, { baseSeq: 2 }))).json();
+    assert.equal(synced.accepted, true);
     // Refused writes are kept for recovery and never become current.
     const bad = (await call('PUT', '/v1/saves', 'saver', { blob: '{"player":{}}', savedAt: NOW })).json();
     assert.equal(bad.accepted, false);
     assert.equal(bad.rejectReason, 'bad_shape');
-    assert.equal((await call('GET', '/v1/saves/current', 'saver')).json().save.seq, 3);
-    const [stored] = await sql`SELECT blob FROM save_events WHERE player_key = 'saver' AND NOT accepted`;
+    const currentSeq = (await call('GET', '/v1/saves/current', 'saver')).json().save.seq;
+    assert.equal(currentSeq, synced.seq);
+    const [stored] = await sql`SELECT blob FROM save_events WHERE player_key = 'saver' AND reject_reason = 'bad_shape'`;
     assert.equal(stored.blob, '{"player":{}}');
     // The losing side of a two-device conflict is archived, never current.
     const archived = (await call('PUT', '/v1/saves', 'saver', saveBody(5, { archive: true }))).json();
     assert.equal(archived.rejectReason, 'archived_conflict');
-    assert.equal((await call('GET', '/v1/saves/current', 'saver')).json().save.seq, 3);
+    assert.equal((await call('GET', '/v1/saves/current', 'saver')).json().save.seq, currentSeq);
     const huge = (await call('PUT', '/v1/saves', 'saver', { blob: 'x'.repeat(MAX_SAVE_BYTES + 1), savedAt: NOW })).json();
     assert.equal(huge.rejectReason, 'too_large');
     assert.equal((await call('PUT', '/v1/saves', 'saver', { blob: 42 })).statusCode, 400);
@@ -108,6 +117,13 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     const ledger = (await call('GET', '/v1/saves/current', 'buyer')).json().purchases;
     assert.deepEqual(ledger.map(p => p.purchaseToken).sort(), ['b-1', 'b-2', 'kit-1', 'tok-1', 'tok-s'].sort());
     assert.ok(!ledger.some(p => p.purchaseToken === 'kit-2' || p.purchaseToken === 'tok-u'));
+    // Once an accepted save carries a token it is delivered and never handed back,
+    // so deleting it from the save cannot re-grant it.
+    const deliveredSave = { blob: JSON.stringify({ player: { version: 9, wallet: {}, iapFulfilled: ['tok-1', 'kit-1'] } }), savedAt: NOW };
+    assert.equal((await call('PUT', '/v1/saves', 'buyer', deliveredSave)).json().accepted, true);
+    const remaining = (await call('GET', '/v1/saves/current', 'buyer')).json().purchases.map(p => p.purchaseToken);
+    assert.ok(!remaining.includes('tok-1') && !remaining.includes('kit-1'));
+    assert.ok(remaining.includes('b-1'));
     // Concurrent duplicate one-time purchases still grant exactly once.
     const racers = await Promise.all(['r-1', 'r-2', 'r-3'].map(token => buy('racer', token, 'wc_wall_veil')));
     assert.equal(racers.map(r => r.json().purchases[0].status).filter(s => s === 'granted').length, 1);

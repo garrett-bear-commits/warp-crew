@@ -43,3 +43,8 @@ CREATE INDEX IF NOT EXISTS purchase_transactions_player ON purchase_transactions
 -- One-time packs: the database refuses a second granting row per player and SKU.
 CREATE UNIQUE INDEX IF NOT EXISTS purchase_one_time_once
   ON purchase_transactions (player_key, sku) WHERE one_time AND classification IN ('paid', 'sandbox', 'unclassified');
+
+-- A purchase is delivered once an accepted save contains its token. Delivered
+-- purchases are never handed back for reconciliation, so a client that edits
+-- its own list of applied tokens cannot make the ledger grant twice.
+ALTER TABLE purchase_transactions ADD COLUMN IF NOT EXISTS delivered_seq BIGINT;

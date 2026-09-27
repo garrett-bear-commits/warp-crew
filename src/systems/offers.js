@@ -48,7 +48,8 @@ export function packValue(sku, products = []) {
   if (!rung) return null;
   const rungGems = PRODUCT_DEFS[rung.sku].grant.gems;
   const gemValue = (grant.gems || 0) + (grant.fuel || 0) * (FUEL_REFILL.gems / FUEL_REFILL.fuel);
-  const morePct = Math.round((gemValue / rungGems - 1) * 100 * (rung.price / pack.price));
+  // Gems per dollar against the regular pack, so a pricier pack cannot inflate its claim.
+  const morePct = Math.round(((gemValue / pack.price) / (rungGems / rung.price) - 1) * 100);
   return { sku, price: pack.price, currency: pack.currency || 'USD', grant, rung: { sku: rung.sku, name: PRODUCT_DEFS[rung.sku].name, price: rung.price, gems: rungGems },
     gemValue, morePct: morePct > 0 ? morePct : 0 };
 }

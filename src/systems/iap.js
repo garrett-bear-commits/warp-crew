@@ -11,6 +11,7 @@ import {
   completePurchase,
   getIncompletePurchases,
   captureEvent,
+  isReal,
 } from '../shared/platform.js';
 
 /** Local + console product definitions */
@@ -87,10 +88,10 @@ export async function buyProduct(player, sku, { verifyReceipt = null, persist = 
     persist?.(staged);
     return settleReceipt(staged, begin.purchaseSigned, { verifyReceipt, persist, sku });
   }
-  if (verifyReceipt && !begin.mock) {
-    // A real purchase with no signed receipt cannot be verified; leave it
-    // incomplete so Jest's recovery hands it back with a signature later.
-    return { ok: false, reason: 'unsigned_receipt', player };
+  if (!begin.mock) {
+    // A real purchase is granted only by the server. Without a verifier, or
+    // without a signed receipt, leave it incomplete: Jest hands it back later.
+    return { ok: false, reason: verifyReceipt ? 'unsigned_receipt' : 'store_unavailable', player };
   }
 
   // Grant BEFORE completePurchase (Jest docs: grant then confirm)
@@ -170,6 +171,8 @@ export async function fulfillIncompletePurchases(player, { verifyReceipt = null,
         granted.push(...settled.granted);
         continue;
       }
+      // Real incomplete purchases wait for the server; only mock ones grant locally.
+      if (isReal()) break;
       for (const purchase of page.purchases || []) {
         const def = PRODUCT_DEFS[purchase.productSku];
         if (!def) continue;

@@ -20,8 +20,9 @@ function sign(payload) {
 
 function fakeBrowser(server, devId) {
   const store = new Map([['wc.devPlayerId', devId]]);
+  process.env.WARPCREW_TEST_SERVER = server;
   globalThis.window = {
-    location: { href: `http://localhost/?server=${encodeURIComponent(server)}` },
+    location: { href: 'http://localhost/?server=https://attacker.example' },
     localStorage: { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k) },
   };
 }
@@ -45,6 +46,7 @@ test('cloud save and verified purchases, end to end', { skip: !url && 'TEST_DATA
   // Device A: plays, saves, buys.
   fakeBrowser(server, 'dev_deviceowner');
   assert.equal(cloud.cloudEnabled(), true);
+  assert.equal(cloud.serverUrl(), server, 'a ?server= link cannot redirect a non-dev build');
   let deviceA = { ...createNewPlayer({ tutorialScript: 4 }), tutorial: { script: 5, completed: true, phase: 'done' }, stats: { contractsCompleted: 5 } };
   const pushed = await cloud.pushCloudSave(deviceA);
   assert.equal(pushed.ok, true, pushed.reason);

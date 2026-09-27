@@ -40,6 +40,10 @@ assert.equal(wallPackState({ ...offered, flags: { wall_spur: true } }, spur).act
 const value = packValue('wc_wall_spur', [{ sku: 'wc_gems_m', price: 4.99 }, { sku: 'wc_wall_spur', price: 4.99 }]);
 assert.equal(value.gemValue, 400);
 assert.equal(value.morePct, 43);
+// A pricier pack is compared per dollar (Codex audit): $7.99 Veil vs $4.99 Gem Pack.
+const veil = packValue('wc_wall_veil', [{ sku: 'wc_gems_m', price: 4.99 }, { sku: 'wc_wall_veil', price: 7.99 }]);
+assert.equal(veil.gemValue, 550);
+assert.equal(veil.morePct, 23);
 const html = renderWallPack(state, value, { modal: true });
 assert.match(html, /Corsair Breaker Pack/);
 assert.match(html, /43% more than the \$4\.99 Gem Pack/);

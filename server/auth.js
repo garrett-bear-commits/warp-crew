@@ -20,6 +20,13 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 export const TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const PLAYER_ID = /^[A-Za-z0-9_-]{3,128}$/;
 
+/** A usable Jest shared secret: canonical base64 of at least 16 bytes (128 bits). */
+export function validSecret(secretB64) {
+  if (typeof secretB64 !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(secretB64)) return false;
+  const key = Buffer.from(secretB64, 'base64');
+  return key.length >= 16 && key.toString('base64').replace(/=+$/, '') === secretB64.replace(/=+$/, '');
+}
+
 const b64urlToBuf = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
 
 /**
@@ -29,7 +36,7 @@ const b64urlToBuf = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 
 export function verifyPlayerToken(token, claimedPlayerId, secretB64, gameId, now) {
   // No secret means nothing can be verified. Fail CLOSED: an endpoint that
   // accepts everything when misconfigured looks like it is working.
-  if (!secretB64) return { ok: false, reason: 'no_secret' };
+  if (!secretB64 || !validSecret(secretB64)) return { ok: false, reason: 'no_secret' };
   const parts = String(token ?? '').split('.');
   if (parts.length !== 3) return { ok: false, reason: 'malformed' };
   const [h, p, sig] = parts;
@@ -50,7 +57,8 @@ export function verifyPlayerToken(token, claimedPlayerId, secretB64, gameId, now
     return { ok: false, reason: 'bad_signature' };
   }
 
-  if (gameId && payload.aud !== gameId) return { ok: false, reason: 'wrong_audience' };
+  // Always required: a token for another game must never authenticate here.
+  if (!gameId || payload.aud !== gameId) return { ok: false, reason: 'wrong_audience' };
 
   const iatMs = typeof payload.iat === 'number' ? (payload.iat > 1e11 ? payload.iat : payload.iat * 1000) : NaN;
   if (!Number.isFinite(iatMs)) return { ok: false, reason: 'malformed' };

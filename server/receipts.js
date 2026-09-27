@@ -9,11 +9,12 @@
 //   - A signed price of 0 is a Jest sandbox purchase.
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { validSecret } from './auth.js';
 
 const b64urlToBuf = (s) => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64');
 
 export function verifyPurchaseReceipts(token, secretB64, gameId) {
-  if (!secretB64) return { ok: false, reason: 'no_secret' };
+  if (!secretB64 || !validSecret(secretB64)) return { ok: false, reason: 'no_secret' };
   const parts = String(token ?? '').split('.');
   if (parts.length !== 3) return { ok: false, reason: 'malformed' };
   const [h, p, sig] = parts;
