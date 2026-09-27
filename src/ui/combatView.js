@@ -16,6 +16,9 @@ let battle = null;
 let crewEncounter = null;
 let crewShots = [];
 let crewEffects = [];
+let crewSparks = [];
+let crewClock = 0;
+let enemyHit = 0;
 let started = false;
 let pirateImg = null;
 let impactImg = null;
@@ -100,6 +103,7 @@ export function setEncounterSnapshot(encounter) {
   if (leaving && !battle) {
     crewShots = [];
     crewEffects = [];
+    crewSparks = [];
     setBattleStations(false);
   }
 }
@@ -108,7 +112,10 @@ export function playEncounterBeat(events = []) {
   if (!crewEncounter) return;
   const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const frame = encounterVisualFrame(crewEncounter, events);
-  crewShots = reduced ? [] : frame.shots.map(shot => ({ ...shot, life: 0.45 }));
+  // Each shot event becomes a short staggered burst of travelling bolts.
+  crewShots = reduced ? [] : frame.shots.flatMap((shot, index) => [0, 1, 2].map(bolt => ({
+    ...shot, delay: index * 0.18 + bolt * 0.09, travel: 0.32, t: 0, landed: false,
+  })));
   crewEffects = reduced ? [] : [
     ...(frame.weaponDisabled ? [{ kind: 'disabled', life: 0.7 }] : []),
     ...(frame.impact ? [{ kind: 'impact', life: 0.5 }] : []),
@@ -347,7 +354,14 @@ function tick(sim, dt) {
 
 function drawCrewEncounter(g, camera, dt) {
   const frame = encounterVisualFrame(crewEncounter);
-  const enemy = effectScreenPoint(camera, { worldX: 1030, worldY: 240 });
+  if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) crewClock += dt;
+  enemyHit = Math.max(0, enemyHit - dt);
+  const enemyBase = effectScreenPoint(camera, { worldX: 1030, worldY: 240 });
+  const shake = enemyHit > 0 ? enemyHit * 18 : 0;
+  const enemy = {
+    x: enemyBase.x + (Math.random() - 0.5) * shake,
+    y: enemyBase.y + Math.sin(crewClock * 1.8) * 4 + (Math.random() - 0.5) * shake,
+  };
   const ship = effectScreenPoint(camera, { worldX: 576, worldY: 121 });
   const { width: pw, height: ph } = pirateDrawSize(pirateImg?.naturalWidth || 5, pirateImg?.naturalHeight || 3, camera.scale);
   g.save();
@@ -375,6 +389,23 @@ function drawCrewEncounter(g, camera, dt) {
   }
   for (const effect of crewEffects) {
     effect.life -= dt;
+    if (effect.kind === 'flash-enemy' || effect.kind === 'shield-ripple') {
+      const enemyFlash = effect.kind === 'flash-enemy';
+      const at = enemyFlash ? enemy : ship;
+      const radius = enemyFlash ? Math.max(24, pw * 0.3) : Math.max(60, 140 * camera.scale);
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      const glow = g.createRadialGradient(at.x, at.y, 0, at.x, at.y, radius);
+      const tint = enemyFlash ? '255,200,140' : '110,190,255';
+      glow.addColorStop(0, `rgba(${tint},${0.55 * Math.max(0, effect.life / 0.35)})`);
+      glow.addColorStop(1, `rgba(${tint},0)`);
+      g.fillStyle = glow;
+      g.beginPath();
+      g.arc(at.x, at.y, radius, 0, Math.PI * 2);
+      g.fill();
+      g.restore();
+      continue;
+    }
     const point = effect.kind === 'disabled' ? enemy : ship;
     g.save();
     g.globalAlpha = Math.max(0, effect.life / 0.7);
@@ -387,22 +418,59 @@ function drawCrewEncounter(g, camera, dt) {
   }
   crewEffects = crewEffects.filter(effect => effect.life > 0);
   for (const shot of crewShots) {
-    shot.life -= dt;
+    shot.t += dt;
+    const progress = (shot.t - shot.delay) / shot.travel;
+    if (progress < 0) continue;
     const from = shot.ally ? ship : enemy;
     const to = shot.ally ? enemy : ship;
+    if (progress >= 1) {
+      if (!shot.landed) {
+        shot.landed = true;
+        if (shot.ally) enemyHit = 0.25;
+        const color = shot.ally ? '120,230,255' : '255,120,100';
+        for (let i = 0; i < 10; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 60 + Math.random() * 140;
+          crewSparks.push({ x: to.x, y: to.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.25, color });
+        }
+        crewEffects.push({ kind: shot.ally ? 'flash-enemy' : 'shield-ripple', life: 0.35 });
+      }
+      continue;
+    }
+    const x = from.x + (to.x - from.x) * progress;
+    const y = from.y + (to.y - from.y) * progress;
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const ux = (to.x - from.x) / len;
+    const uy = (to.y - from.y) / len;
     g.save();
-    g.globalAlpha = Math.max(0, shot.life / 0.45);
-    g.strokeStyle = shot.ally ? '#5ce1ff' : '#ff6b6b';
-    g.shadowColor = g.strokeStyle;
-    g.shadowBlur = 15;
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = shot.ally ? 'rgba(120,230,255,0.95)' : 'rgba(255,120,100,0.95)';
+    g.shadowColor = shot.ally ? '#5ce1ff' : '#ff6b6b';
+    g.shadowBlur = 14;
     g.lineWidth = 3;
+    g.lineCap = 'round';
     g.beginPath();
-    g.moveTo(from.x, from.y);
-    g.lineTo(to.x, to.y);
+    g.moveTo(x - ux * 26, y - uy * 26);
+    g.lineTo(x, y);
     g.stroke();
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.arc(x, y, 2.2, 0, Math.PI * 2);
+    g.fill();
     g.restore();
   }
-  crewShots = crewShots.filter(shot => shot.life > 0);
+  crewShots = crewShots.filter(shot => !shot.landed);
+  for (const spark of crewSparks) {
+    spark.life -= dt;
+    spark.x += spark.vx * dt;
+    spark.y += spark.vy * dt;
+    spark.vx *= 0.9;
+    spark.vy *= 0.9;
+    g.fillStyle = `rgba(${spark.color},${Math.max(0, spark.life / 0.6)})`;
+    g.fillRect(spark.x - 1.5, spark.y - 1.5, 3, 3);
+  }
+  crewSparks = crewSparks.filter(spark => spark.life > 0);
+
   const barY = Math.max(50, h - 46);
   drawBar(g, 16, barY, w * 0.4, 'SPARROW', frame.playerHull, '#3ddc97');
   drawBar(g, w - 16 - w * 0.4, barY, w * 0.4, 'PIRATE', frame.enemyHull, '#ff6b6b');
