@@ -65,6 +65,10 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     assert.equal((await call('GET', '/v1/saves/current', 'saver')).json().save.seq, 3);
     const [stored] = await sql`SELECT blob FROM save_events WHERE player_key = 'saver' AND NOT accepted`;
     assert.equal(stored.blob, '{"player":{}}');
+    // The losing side of a two-device conflict is archived, never current.
+    const archived = (await call('PUT', '/v1/saves', 'saver', saveBody(5, { archive: true }))).json();
+    assert.equal(archived.rejectReason, 'archived_conflict');
+    assert.equal((await call('GET', '/v1/saves/current', 'saver')).json().save.seq, 3);
     const huge = (await call('PUT', '/v1/saves', 'saver', { blob: 'x'.repeat(MAX_SAVE_BYTES + 1), savedAt: NOW })).json();
     assert.equal(huge.rejectReason, 'too_large');
     assert.equal((await call('PUT', '/v1/saves', 'saver', { blob: 42 })).statusCode, 400);

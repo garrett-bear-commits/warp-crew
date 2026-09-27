@@ -55,10 +55,11 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
   app.put('/v1/saves', async (req, reply) => {
     const player = auth(req, reply);
     if (!player) return reply;
-    const { blob, clientSeq = null, baseSeq = null, savedAt } = req.body || {};
+    const { blob, clientSeq = null, baseSeq = null, savedAt, archive = false } = req.body || {};
     if (typeof blob !== 'string' || !Number.isFinite(savedAt)) return reply.code(400).send({ error: 'bad_request' });
     const bytes = Buffer.byteLength(blob, 'utf8');
-    const rejectReason = bytes > MAX_SAVE_BYTES ? 'too_large' : saveRejectReason(blob);
+    // `archive` keeps the losing side of a two-device conflict recoverable without making it current.
+    const rejectReason = bytes > MAX_SAVE_BYTES ? 'too_large' : saveRejectReason(blob) || (archive === true ? 'archived_conflict' : null);
     const written = await store.appendSave(player.playerId, {
       blob: bytes > MAX_SAVE_BYTES ? null : blob,
       bytes,

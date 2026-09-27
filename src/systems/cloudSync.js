@@ -2,19 +2,44 @@
 /** Pure reconciliation between the local save, the cloud save and the purchase ledger. */
 import { applyGrant } from './iap.js';
 
+/** Rough, monotonic progress measure used only to settle two-device conflicts. */
+export function progressScore(player) {
+  if (!player) return 0;
+  const systems = Object.values(player.ship?.systems || {}).reduce((sum, level) => sum + (Number(level) || 0), 0);
+  const walls = Object.keys(player.flags || {}).filter(key => key.startsWith('wall_') && player.flags[key] === true).length;
+  return (player.story?.chapter || 0) * 10000 + walls * 5000 + (player.stats?.contractsCompleted || 0) * 100
+    + systems * 20 + (player.crew?.length || 0) * 10 + (player.tutorial?.completed ? 50 : 0);
+}
+
 /**
- * Adopt the cloud copy when another device wrote after this one last synced,
- * or when this device has no progress of its own yet.
+ * Pick which save to play. The cloud wins when another device wrote after this
+ * one last synced and this device has nothing unsynced. When both changed, the
+ * save with more progress wins (newer save on a tie) and the loser is returned
+ * so it can be archived on the server instead of vanishing.
  */
 export function chooseSave(local, cloud) {
   if (!cloud?.blob) return { player: local, source: 'local' };
   let remote;
-  try { remote = JSON.parse(cloud.blob)?.player; } catch { return { player: local, source: 'local' }; }
+  let remoteSavedAt = 0;
+  try {
+    const parsed = JSON.parse(cloud.blob);
+    remote = parsed?.player;
+    remoteSavedAt = Number(parsed?.savedAt) || cloud.savedAt || 0;
+  } catch { return { player: local, source: 'local' }; }
   if (!remote?.wallet) return { player: local, source: 'local' };
   const localSeq = Number.isSafeInteger(local?.cloudSeq) ? local.cloudSeq : 0;
   const localIsFresh = !local || (!local.tutorial?.completed && !(local.stats?.contractsCompleted > 0) && !local.cloudSeq);
-  if (cloud.seq > localSeq || localIsFresh) return { player: { ...remote, cloudSeq: cloud.seq }, source: 'cloud' };
-  return { player: { ...local, cloudSeq: Math.max(localSeq, cloud.seq) }, source: 'local' };
+  const adoptCloud = { player: { ...remote, cloudSeq: cloud.seq, cloudDirty: false }, source: 'cloud' };
+  if (localIsFresh) return adoptCloud;
+  if (cloud.seq <= localSeq) return { player: { ...local, cloudSeq: Math.max(localSeq, cloud.seq) }, source: 'local' };
+  if (!local.cloudDirty) return adoptCloud;
+  // Both devices changed since the last sync.
+  const localScore = progressScore(local);
+  const remoteScore = progressScore(remote);
+  const localWins = localScore > remoteScore || (localScore === remoteScore && (local.lastSavedAt || 0) > remoteSavedAt);
+  return localWins
+    ? { player: { ...local, cloudSeq: cloud.seq }, source: 'local', conflict: true, archived: remote }
+    : { ...adoptCloud, conflict: true, archived: local };
 }
 
 /** Grant every ledger purchase this save has never applied (idempotent by token). */

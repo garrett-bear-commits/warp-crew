@@ -161,7 +161,10 @@ let cloudPushInFlight = false;
 
 /** Every local save also schedules a debounced upload of the latest state. */
 function saveLocal(candidate) {
-  const ok = writeSave(candidate);
+  // Mark unsynced progress so a newer cloud save cannot silently replace it.
+  const marked = cloudEnabled() ? { ...candidate, cloudDirty: true, lastSavedAt: Date.now() } : candidate;
+  if (marked !== candidate && candidate === player) player = marked;
+  const ok = writeSave(marked);
   if (ok) scheduleCloudPush();
   return ok;
 }
@@ -175,12 +178,16 @@ function scheduleCloudPush(delay = 3000) {
 async function pushCloudNow({ keepalive = false } = {}) {
   if (!cloudEnabled() || !player || cloudPushInFlight) return;
   cloudPushInFlight = true;
+  const startedAt = Date.now();
   try {
     const result = await pushCloudSave(player, { keepalive });
     if (result.ok && result.data.accepted && player) {
       // Record the server sequence locally without scheduling another upload.
-      player = { ...player, cloudSeq: result.data.seq };
+      // Anything saved while the upload was in flight stays dirty for the next one.
+      const changedSince = (player.lastSavedAt || 0) > startedAt;
+      player = { ...player, cloudSeq: result.data.seq, cloudDirty: changedSince };
       writeSave(player);
+      if (changedSince) scheduleCloudPush();
     } else if (!result.ok) {
       console.warn('[cloud] save upload failed', result.reason);
     }
@@ -201,6 +208,11 @@ async function syncCloudOnBoot() {
     return;
   }
   const chosen = chooseSave(player, cloud.data.save);
+  if (chosen.archived) {
+    // Keep the losing side of a two-device conflict recoverable on the server.
+    await pushCloudSave(chosen.archived, { archive: true });
+    pushLog('Two devices had different progress; the furthest-along save was kept.');
+  }
   if (chosen.source === 'cloud') {
     player = prepareSession(restoreTutorialPlayer(chosen.player));
     pushLog('Cloud save restored from another device.');

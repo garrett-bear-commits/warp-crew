@@ -65,12 +65,14 @@ async function request(method, path, body, { keepalive = false } = {}) {
 
 export const fetchCloudSave = () => request('GET', '/v1/saves/current');
 
-export function pushCloudSave(player, { savedAt = Date.now(), clientSeq = null, keepalive = false } = {}) {
+export function pushCloudSave(player, { savedAt = Date.now(), clientSeq = null, keepalive = false, archive = false } = {}) {
+  const { cloudDirty, ...clean } = player;
   return request('PUT', '/v1/saves', {
-    blob: JSON.stringify({ player, savedAt }),
+    blob: JSON.stringify({ player: clean, savedAt }),
     savedAt,
     clientSeq,
     baseSeq: Number.isSafeInteger(player.cloudSeq) ? player.cloudSeq : null,
+    ...(archive ? { archive: true } : {}),
   }, { keepalive });
 }
 
