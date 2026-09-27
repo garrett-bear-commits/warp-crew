@@ -2749,3 +2749,53 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 }
 @keyframes beacon { 50% { box-shadow: 0 0 26px rgba(111, 224, 140, 0.55); } }
 @keyframes reveal-in { from { transform: scale(0.6); opacity: 0; filter: brightness(3); } }
+.objective-panel { min-height: 76px; }
+.wc-shell.tab-home .daily-plan-chip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hull-more summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font: 700 13px var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.week-row .prog { font-family: var(--font-display); letter-spacing: 0.06em; }
+.week-row.done span:nth-child(2) { color: var(--muted); }
+
+/* Away team cards. */
+.away-view.panel { background: none; border: 0; clip-path: none; box-shadow: none; padding: 0; }
+.away-view > h2 { font-size: 20px; letter-spacing: 0.08em; text-transform: uppercase; margin: 4px 2px 10px; }
+.away-view .mission-card {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: var(--ops-grad);
+  border: 1px solid var(--ops-edge);
+  clip-path: var(--ops-chamfer);
+  border-radius: 0;
+}
+.away-view .planet-art {
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+  background: radial-gradient(circle, rgba(88, 225, 255, 0.18), transparent 70%), #060a11;
+  border: 1px solid var(--ops-edge-hi);
+  image-rendering: pixelated;
+}
+.away-view .mission-card b { font: 700 18px var(--font-display); letter-spacing: 0.03em; }
+.away-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 6px 0; }
+.away-stats span { display: grid; padding: 4px 6px; background: #060a11; border: 1px solid #1c2939; font: 700 15px var(--font-display); text-transform: capitalize; }
+.away-stats small { font: 700 9px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.away-view .away-reward { font-size: 13px; color: var(--muted); margin: 4px 0; }
+.away-view .away-reward b { font: 700 12px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ops-amber-hi); }
+.away-view .away-risk { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+.away-choose {
+  font: 700 15px var(--font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(88, 225, 255, 0.14), transparent), #0b111a;
+}
+.wc-shell.tab-home .daily-plan-chip { top: 44px; }

@@ -1,6 +1,6 @@
 import { contractDayKey } from './contracts.js';
 
-const MILESTONES = [
+export const MILESTONES = [
   { id: 'contract', label: 'Claim a contract', act: 'goto-contracts' },
   { id: 'improve', label: 'Improve your ship or crew', act: 'daily-improve' },
   { id: 'away', label: 'Launch an away team', act: 'goto-away' },

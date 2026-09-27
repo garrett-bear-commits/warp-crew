@@ -36,7 +36,7 @@ import { startStageLoop } from './stageLoop.js';
 import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence, roomStyle } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
-import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
+import { dailyPlan, ensureDailyLoop, MILESTONES as DAILY_MILESTONES } from '../systems/dailyLoop.js';
 import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
@@ -1107,12 +1107,11 @@ function renderPlanetCard(player, p, teachDust) {
       <img class="planet-art" src="${planetArtFor(kind.art)}" alt="" />
       <div>
         <b>${escapeHtml(p.name)}</b>
-        <p>Preferred role: ${escapeHtml(p.prefRole || 'Any')}</p>
-        <p>Recommended crew: ${(prev.chance * 100) | 0}% success · ${mins}m</p>
-        <p>Success: ${escapeHtml(win)} · Failure: ${escapeHtml(fail)}</p>
-        <p>Injury risk: crew may return injured on failure.</p>
+        <div class="away-stats"><span><small>Success</small>${(prev.chance * 100) | 0}%</span><span><small>Time</small>${mins}m</span><span><small>Best role</small>${escapeHtml(p.prefRole || 'Any')}</span></div>
+        <p class="away-reward"><b>Success:</b> ${escapeHtml(win)}<br><b>Failure:</b> ${escapeHtml(fail)}</p>
+        <p class="away-risk">Injury risk: crew may return injured on failure.</p>
       </div>
-      <button class="primary" data-act="exp-choose" data-planet="${p.id}" data-spot-target="exp-${p.id}" ${prev.crew.length ? '' : 'disabled'}>Choose crew</button>
+      <button class="away-choose" data-act="exp-choose" data-planet="${p.id}" data-spot-target="exp-${p.id}" ${prev.crew.length ? '' : 'disabled'}>Choose crew</button>
     </div>
   `;
 }
@@ -1265,11 +1264,15 @@ function renderShop(player, shopProducts) {
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
   const qa = typeof window !== 'undefined' && /(?:^|[?&])qa=1(?:&|$)/.test(window.location.search);
+  // Show owned hulls plus the next one to chase; the rest stay folded.
+  const hullRows = Object.values(SHIPS);
+  const lastOwned = Math.max(0, ...hullRows.map((h, i) => (owned.includes(h.id) || h.id === shipId ? i : 0)));
+  const visibleHulls = Math.min(hullRows.length, lastOwned + 2);
   return `
     <div class="panel">
       <h2>Hangar</h2>
       <div class="muted">Credits grind. Gems skip.</div>
-      ${Object.values(SHIPS).map((s) => {
+      ${hullRows.slice(0, visibleHulls).map((s) => {
         const isOwned = owned.includes(s.id);
         const isActive = shipId === s.id;
         const check = isOwned || s.id === 'sparrow' ? { ok: true } : canBuyHull(player, s.id);
@@ -1295,6 +1298,34 @@ function renderShop(player, shopProducts) {
           </div>
         </div>`;
       }).join('')}
+      ${hullRows.length > visibleHulls ? `<details class="hull-more"><summary>All hulls · ${hullRows.length - visibleHulls} more</summary>
+        ${hullRows.slice(visibleHulls).map((s) => {
+        const isOwned = owned.includes(s.id);
+        const isActive = shipId === s.id;
+        const check = isOwned || s.id === 'sparrow' ? { ok: true } : canBuyHull(player, s.id);
+        const lock = hullLockLabel(check, s);
+        const price = [
+          s.gemPrice ? `${s.gemPrice}g` : '',
+          s.creditPrice ? `${s.creditPrice}cr` : '',
+        ].filter(Boolean).join(' · ');
+        return `
+        <div class="hull-row">
+          <img class="ship-thumb-sm" src="${shipArtFor(s.id)}" alt="" />
+          <div>
+            <b>${escapeHtml(s.name)}${isActive ? ' · live' : ''}</b>
+            <div class="muted">${s.crewSlots}–${s.maxCrewSlots}${price ? ` · ${price}` : ''}${lock ? ` · ${escapeHtml(lock)}` : ''}</div>
+          </div>
+          <div class="hull-buy">
+            ${isActive ? '<span class="lock-pill">Active</span>' : isOwned
+              ? `<button data-act="hull-switch" data-ship="${s.id}">Switch</button>`
+              : s.id === 'sparrow' ? '<span class="lock-pill">Starter</span>' : check.ok ? `
+                <button class="primary" data-act="hull-buy" data-ship="${s.id}" data-currency="gems">${s.gemPrice}g</button>
+                <button data-act="hull-buy" data-ship="${s.id}" data-currency="credits">${s.creditPrice}cr</button>
+              ` : `<span class="lock-pill">${escapeHtml(lock || 'Locked')}</span>`}
+          </div>
+        </div>`;
+      }).join('')}
+      </details>` : ''}
     </div>
     <div class="panel">
       <h2>Fuel</h2>
@@ -1336,8 +1367,10 @@ export function renderLog(player, log, goals) {
   const collected = new Set((player.crew || []).map((c) => c.templateId)).size;
   const rank = reputationRank(player.wallet.reputation || 0);
   return `
-    ${renderQaSettings()}
-    <div class="panel"><h2>Daily plan · ${dailyPlan(player).completed}/3</h2>${['contract', 'improve', 'away'].map(id => `<p>${ensureDailyLoop(player).dailyLoop[id] ? '✓' : '○'} ${escapeHtml(id)}</p>`).join('')}</div>
+    <div class="panel"><h2>Daily plan · ${dailyPlan(player).completed}/3</h2>${DAILY_MILESTONES.map(m => {
+      const done = ensureDailyLoop(player).dailyLoop[m.id];
+      return `<div class="week-row ${done ? 'done' : ''}"><span class="mark">${done ? '●' : '○'}</span><span>${escapeHtml(m.label)}</span><span class="prog">${done ? 'Done' : ''}</span></div>`;
+    }).join('')}</div>
     <div class="panel">
       <h2>Career</h2>
       <div class="muted">${escapeHtml(rank.label)} · Ch.${prog.chapter} · ${collected} mercs · ${goalsDone}/${goals.goals.length} week</div>
@@ -1376,6 +1409,7 @@ export function renderLog(player, log, goals) {
       <h2>Log</h2>
       <div class="log">${(log || []).slice(-16).map(escapeHtml).join('\n') || '—'}</div>
     </div>
+    ${renderQaSettings()}
   `;
 }
 
