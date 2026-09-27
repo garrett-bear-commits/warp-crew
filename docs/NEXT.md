@@ -17,7 +17,10 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 - [x] Enemy boarders (Scrapper Gang, Ice Raiders, Corsair King; unlock after 8 contracts): warning, landing, sabotage, Repel boarders with a walking defender and red raider sprites. Repelled boarders are win-rate neutral; ignored ones cost ~25 points.
 - [x] One-time New Captain's Kit: first loss or third post-tutorial contract, 48 h real window, pop-up then Shop card, truthful live-price saving. Contents 250 gems / 10 fuel / 50 medals / 800 credits pending sign-off.
 - [ ] Garrett: configure `wc_starter`, `wc_gems_100`, `wc_gems_500`, `wc_fuel_5` in the Jest Developer Console. The connected SDK returns only `gems_100`, `gems_500`, `premium_pass` (prices look like cents), so no game SKU has a Jest price today.
-- [ ] Next: Siege walls (chapter-boss damage persists to daily reset) and timed upgrades above level 3 (approved). Purchase verification and cloud save before any live offer.
+- [x] Siege walls: five sector flagships gate the next sector for guided-flow captains; per-attempt 42-hull segments of a 100–240 pool at threat ≥1.2; damage holds until local daily reset; takedown pays double + 20 gems and opens the gate.
+- [x] Timed drydock upgrades above level 3 (30m → 8h cap), gem skip (~10/h, min 5), completion notification.
+- [x] Product prices handled as Jest cents.
+- [ ] Garrett: approve the [monetization plan](superpowers/specs/2026-09-27-monetization-plan.md) (SKU ladder ≥$1.99, Rally, gem fuel, wall packs, subscription starter). Then build step 2, then purchase authority + cloud save, then add SKUs in the Jest console.
 - [ ] Previously: decide the remaining proposals in [combat walls, retention and boarding](superpowers/specs/2026-09-27-combat-walls-retention-design.md) (daily rhythm, Siege walls, timed upgrades, enemy boarders next, purchase authority first). Explore-map travel fights are still on the old order menu.
 - [ ] Publish to Pages QA only after Garrett's go-ahead. Branch \`claude/hud-overhaul\` is local and unpushed.
 
