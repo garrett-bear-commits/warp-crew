@@ -151,6 +151,21 @@ export function getPlayer() {
   return mockPlayer;
 }
 
+/** Jest's signed player token for server calls; null outside Jest (mock has none). */
+export async function getPlayerSigned() {
+  const sdk = globalJest();
+  if (ready && typeof sdk?.getPlayerSigned === 'function') {
+    try {
+      const result = await sdk.getPlayerSigned();
+      const playerId = result?.player?.playerId;
+      if (playerId && typeof result.playerSigned === 'string') return { playerId, token: result.playerSigned };
+    } catch (e) {
+      console.warn('[platform] getPlayerSigned', e);
+    }
+  }
+  return null;
+}
+
 export function getEntryPayload() {
   const sdk = globalJest();
   if (ready && sdk?.getEntryPayload) {

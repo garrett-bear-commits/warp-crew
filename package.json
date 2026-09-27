@@ -15,7 +15,9 @@
     "build:pages": "GITHUB_PAGES=1 vite build",
     "report:contract-balance": "node scripts/contract-balance-report.mjs",
     "report:contract-economy": "node scripts/contract-economy-report.mjs",
-    "test:balance": "node test/deterministic_seams.test.mjs && node test/encounter_intelligence.test.mjs && node test/contract_rewards.test.mjs && node test/contract_balance.test.mjs && node test/contract_economy.test.mjs && node test/encounter_artifact_names.test.mjs && npm run report:contract-balance && npm run report:contract-economy"
+    "test:balance": "node test/deterministic_seams.test.mjs && node test/encounter_intelligence.test.mjs && node test/contract_rewards.test.mjs && node test/contract_balance.test.mjs && node test/contract_economy.test.mjs && node test/encounter_artifact_names.test.mjs && npm run report:contract-balance && npm run report:contract-economy",
+    "server": "node server/index.js",
+    "test:server": "node --test --test-concurrency=1 server/test/server.test.js server/test/client-sync.test.js"
   },
   "devDependencies": {
     "vite": "^6.0.0"
@@ -26,5 +28,12 @@
     "jest",
     "crew",
     "ship"
-  ]
+  ],
+  "dependencies": {
+    "fastify": "^5.12.5",
+    "postgres": "^3.4.9"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

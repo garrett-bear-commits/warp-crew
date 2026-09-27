@@ -19,6 +19,7 @@ import {
   listShopProducts,
   buyProduct,
   fulfillIncompletePurchases,
+  retryPendingReceipts,
 } from './systems/iap.js';
 import { repairHull } from './systems/passives.js';
 import {
@@ -54,6 +55,8 @@ import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreloa
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
 import { STARTER_OFFER, starterOfferState, markStarterOffer, markWallPackSeen, wallPackState } from './systems/offers.js';
+import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt } from './shared/cloud.js';
+import { chooseSave, applyLedger } from './systems/cloudSync.js';
 import { currentWall } from './systems/walls.js';
 import { applyResolvedSlicePortraits } from './data/portraits.js';
 
@@ -149,7 +152,72 @@ export function sessionFailureMessage(reason, currentPlayer = null) {
 }
 
 function persist() {
-  return writeSave(player);
+  return saveLocal(player);
+}
+
+// ─── Cloud save and purchase verification (only when a server is configured) ───
+let cloudPushTimer = null;
+let cloudPushInFlight = false;
+
+/** Every local save also schedules a debounced upload of the latest state. */
+function saveLocal(candidate) {
+  const ok = writeSave(candidate);
+  if (ok) scheduleCloudPush();
+  return ok;
+}
+
+function scheduleCloudPush(delay = 3000) {
+  if (!cloudEnabled()) return;
+  clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(pushCloudNow, delay);
+}
+
+async function pushCloudNow({ keepalive = false } = {}) {
+  if (!cloudEnabled() || !player || cloudPushInFlight) return;
+  cloudPushInFlight = true;
+  try {
+    const result = await pushCloudSave(player, { keepalive });
+    if (result.ok && result.data.accepted && player) {
+      // Record the server sequence locally without scheduling another upload.
+      player = { ...player, cloudSeq: result.data.seq };
+      writeSave(player);
+    } else if (!result.ok) {
+      console.warn('[cloud] save upload failed', result.reason);
+    }
+  } finally {
+    cloudPushInFlight = false;
+  }
+}
+
+const purchaseOptions = () => (cloudEnabled()
+  ? { verifyReceipt, persist: next => { player = next; writeSave(next); } }
+  : {});
+
+async function syncCloudOnBoot() {
+  if (!cloudEnabled()) return;
+  const cloud = await fetchCloudSave();
+  if (!cloud.ok) {
+    console.warn('[cloud] load failed', cloud.reason);
+    return;
+  }
+  const chosen = chooseSave(player, cloud.data.save);
+  if (chosen.source === 'cloud') {
+    player = prepareSession(restoreTutorialPlayer(chosen.player));
+    pushLog('Cloud save restored from another device.');
+  } else player = chosen.player;
+  const ledger = applyLedger(player, cloud.data.purchases);
+  player = ledger.player;
+  if (ledger.applied.length) pushLog(`Purchases restored: ${ledger.applied.join(', ')}`);
+  const retried = await retryPendingReceipts(player, purchaseOptions());
+  player = retried.player;
+  writeSave(player);
+  scheduleCloudPush(500);
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') pushCloudNow({ keepalive: true });
+  });
 }
 
 async function refreshNotifs() {
@@ -297,7 +365,13 @@ async function boot() {
     .catch((e) => console.warn('crew art', e));
 
   try {
-    const incomplete = await fulfillIncompletePurchases(player);
+    await syncCloudOnBoot();
+  } catch (e) {
+    console.warn('cloud sync', e);
+  }
+
+  try {
+    const incomplete = await fulfillIncompletePurchases(player, purchaseOptions());
     player = incomplete.player;
     if (incomplete.granted?.length) {
       pushLog(`Restored incomplete purchases: ${incomplete.granted.join(', ')}`);
@@ -332,7 +406,7 @@ function render() {
     persist();
   }
   const prepared = prepareSession(player);
-  if (prepared !== player && writeSave(prepared)) player = prepared;
+  if (prepared !== player && saveLocal(prepared)) player = prepared;
   const models = sessionModels(player, { ...sessionUi, pendingCombat });
   sessionUi.contractPreviews = models.contractPreviews;
   renderApp(app, {
@@ -501,7 +575,7 @@ async function handleAction(act, data = {}) {
     const fresh = prepareSession(createNewPlayer({ captainName: jestPlayer?.username || 'Captain' }));
     fresh._jestRegistered = Boolean(jestPlayer?.registered);
     fresh._jestPlayerId = jestPlayer?.playerId || null;
-    if (!writeSave(fresh)) {
+    if (!saveLocal(fresh)) {
       confirmRestartSave = false;
       showToast({ title: 'Could not restart save. Try again.' });
       render();
@@ -536,7 +610,7 @@ async function handleAction(act, data = {}) {
       render();
     };
     const committed = persistSessionTransition(transition, {
-      save: writeSave,
+      save: saveLocal,
       publish: (result) => {
         if (departure) {
           startedDepartureId = ++departureRunId;
@@ -808,8 +882,12 @@ async function handleAction(act, data = {}) {
       return;
     }
     pushLog(`Purchasing ${sku}…`);
-    const res = await buyProduct(player, sku);
-    if (!res.ok) pushLog(`Purchase failed: ${res.reason}`);
+    const res = await buyProduct(player, sku, purchaseOptions());
+    if (!res.ok && res.reason === 'pending_verification') {
+      player = res.player;
+      pushLog('Purchase received. Confirming with the server; it will apply automatically.');
+      showToast({ title: 'Purchase received — confirming' });
+    } else if (!res.ok) pushLog(`Purchase failed: ${res.reason}`);
     else {
       player = res.player;
       if (sku === STARTER_OFFER.sku) player = markStarterOffer(player, { purchased: true, seen: true });

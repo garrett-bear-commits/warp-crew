@@ -14,37 +14,10 @@ import {
 } from '../shared/platform.js';
 
 /** Local + console product definitions */
-const gems = (sku, amount, name) => ({ sku, name, blurb: `+${amount} gems`, grant: { gems: amount } });
-const wallPack = (sector, name, grant) => ({
-  sku: `wc_wall_${sector}`, name, blurb: 'One time only · helps break this sector\'s flagship', oneTime: true, wall: sector, grant,
-});
+import { PRODUCT_DEFS, GEM_LADDER } from '../data/products.js';
+import { stageReceipt, clearReceipt, applyVerifiedPurchases } from './cloudSync.js';
 
-/**
- * Every product and every discount is its own SKU; nothing sells below $1.99.
- * Prices live in the Jest console (cents); these are the grants.
- */
-export const PRODUCT_DEFS = {
-  wc_gems_s: gems('wc_gems_s', 100, 'Gem Pouch'),
-  wc_gems_m: gems('wc_gems_m', 280, 'Gem Pack'),
-  wc_gems_l: gems('wc_gems_l', 600, 'Gem Crate'),
-  wc_gems_xl: gems('wc_gems_xl', 1300, 'Gem Vault'),
-  wc_gems_xxl: gems('wc_gems_xxl', 3500, 'Gem Hoard'),
-  wc_starter_kit: {
-    sku: 'wc_starter_kit',
-    name: "New Captain's Kit",
-    blurb: 'One time only: gems, fuel, medals and credits',
-    oneTime: true,
-    grant: { fuel: 10, gems: 250, medals: 50, credits: 800 },
-  },
-  wc_wall_spur: wallPack('spur', 'Corsair Breaker Pack', { gems: 300, medals: 80, credits: 1500, fuel: 10, drydockFinishes: 1 }),
-  wc_wall_veil: wallPack('veil', 'Frigate Breaker Pack', { gems: 450, medals: 120, credits: 3000, fuel: 10, drydockFinishes: 1 }),
-  wc_wall_ember: wallPack('ember', 'Raider Breaker Pack', { gems: 600, medals: 160, credits: 5000, fuel: 10, drydockFinishes: 2 }),
-  wc_wall_hollow: wallPack('hollow', 'Shade Breaker Pack', { gems: 800, medals: 220, credits: 8000, fuel: 10, drydockFinishes: 2 }),
-  wc_wall_crown: wallPack('crown', 'Throne Breaker Pack', { gems: 950, medals: 280, credits: 12000, fuel: 10, drydockFinishes: 3 }),
-};
-
-/** Gem ladder rungs, used for honest value comparisons. */
-export const GEM_LADDER = ['wc_gems_s', 'wc_gems_m', 'wc_gems_l', 'wc_gems_xl', 'wc_gems_xxl'];
+export { PRODUCT_DEFS, GEM_LADDER };
 
 export function ownsOneTime(player, sku) {
   return (player?.oneTimePurchases || []).includes(sku);
@@ -87,9 +60,15 @@ export async function listShopProducts() {
 }
 
 /**
- * Purchase SKU: begin → grant → complete (Jest-safe order).
+ * Purchase SKU: begin -> (server verify) -> grant -> complete.
+ *
+ * With `verifyReceipt` (a save server is configured) nothing is granted until
+ * the server has verified the signed receipt and chosen the grant. The receipt
+ * is staged and persisted first, and the Jest purchase is completed only after
+ * the grant is saved, so a crash or network failure at any step recovers.
+ * Without a server (Pages QA, local mock) the old local grant path runs.
  */
-export async function buyProduct(player, sku) {
+export async function buyProduct(player, sku, { verifyReceipt = null, persist = null } = {}) {
   const def = PRODUCT_DEFS[sku];
   if (!def) return { ok: false, reason: 'unknown_sku', player };
   if (def.oneTime && ownsOneTime(player, sku)) return { ok: false, reason: 'already_owned', player };
@@ -101,6 +80,17 @@ export async function buyProduct(player, sku) {
       reason: begin.cancelled ? 'cancelled' : begin.error || 'purchase_failed',
       player,
     };
+  }
+
+  if (verifyReceipt && begin.purchaseSigned) {
+    const staged = stageReceipt(player, begin.purchaseSigned);
+    persist?.(staged);
+    return settleReceipt(staged, begin.purchaseSigned, { verifyReceipt, persist, sku });
+  }
+  if (verifyReceipt && !begin.mock) {
+    // A real purchase with no signed receipt cannot be verified; leave it
+    // incomplete so Jest's recovery hands it back with a signature later.
+    return { ok: false, reason: 'unsigned_receipt', player };
   }
 
   // Grant BEFORE completePurchase (Jest docs: grant then confirm)
@@ -125,14 +115,61 @@ export async function buyProduct(player, sku) {
   return { ok: true, player: next, sku, purchase: begin.purchase };
 }
 
+/** Verify one staged receipt, apply the server's grants, persist, then complete. */
+export async function settleReceipt(player, receipt, { verifyReceipt, persist = null, sku = null }) {
+  const verified = await verifyReceipt(receipt);
+  if (!verified.ok) {
+    // Network or server trouble: keep the receipt staged; nothing is granted yet.
+    const permanent = ['bad_signature', 'wrong_audience', 'malformed', 'malformed_purchase', 'bad_alg'].includes(verified.reason);
+    const next = permanent ? clearReceipt(player, receipt) : player;
+    if (permanent) persist?.(next);
+    return { ok: false, reason: permanent ? `receipt_${verified.reason}` : 'pending_verification', player: next };
+  }
+  const results = verified.data?.purchases || [];
+  const applied = applyVerifiedPurchases(clearReceipt(player, receipt), results);
+  persist?.(applied.player);
+  for (const token of applied.settled) {
+    try {
+      await completePurchase(token);
+    } catch (e) {
+      console.warn('[iap] completePurchase failed after verified grant; Jest will re-offer it', e);
+    }
+  }
+  for (const result of results) captureEvent('iap_verified', { sku: result.sku, status: result.status });
+  return { ok: true, player: applied.player, sku: sku || results[0]?.sku, granted: applied.granted, results };
+}
+
+/** Retry receipts that were staged but never verified. */
+export async function retryPendingReceipts(player, { verifyReceipt, persist = null }) {
+  let current = player;
+  const granted = [];
+  for (const receipt of [...(player.pendingReceipts || [])]) {
+    const settled = await settleReceipt(current, receipt, { verifyReceipt, persist });
+    current = settled.player;
+    if (settled.ok) granted.push(...settled.granted);
+  }
+  return { player: current, granted };
+}
+
 /** Drain incomplete purchases on boot (crash safety). */
-export async function fulfillIncompletePurchases(player) {
+export async function fulfillIncompletePurchases(player, { verifyReceipt = null, persist = null } = {}) {
   let current = player;
   const granted = [];
   try {
     let page;
+    let pages = 0;
     do {
       page = await getIncompletePurchases();
+      pages += 1;
+      if (verifyReceipt && page?.purchasesSigned && (page.purchases || []).length) {
+        current = stageReceipt(current, page.purchasesSigned);
+        persist?.(current);
+        const settled = await settleReceipt(current, page.purchasesSigned, { verifyReceipt, persist });
+        current = settled.player;
+        if (!settled.ok) break; // still staged; retried on the next boot
+        granted.push(...settled.granted);
+        continue;
+      }
       for (const purchase of page.purchases || []) {
         const def = PRODUCT_DEFS[purchase.productSku];
         if (!def) continue;
@@ -153,7 +190,7 @@ export async function fulfillIncompletePurchases(player) {
           console.warn('[iap] incomplete complete failed', e);
         }
       }
-    } while (page?.hasMore);
+    } while (page?.hasMore && pages < 20);
   } catch (e) {
     console.warn('[iap] getIncompletePurchases', e);
   }
