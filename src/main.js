@@ -408,6 +408,8 @@ const guidedBeatScheduler = createGuidedBeatScheduler({
   getPlayer: () => app ? player : null,
   advance: data => handleAction('encounter-advance', data),
   isBattlePlaying,
+  // Fights hold while the app is hidden or the player is off the ship.
+  isPaused: () => document.hidden || tab !== 'ship',
   onSaveFailure: failedIdentity => {
     sessionUi.guidedBeatSaveFailed = failedIdentity;
     render();

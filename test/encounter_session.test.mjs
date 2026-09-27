@@ -296,18 +296,21 @@ test('mismatched or corrupt encounter snapshots cannot pay rewards', () => {
   assert.equal(claimContractReward(directModeLoss, now).ok, false);
 });
 
-test('the active UI exposes truthful costs and an always available advance action', () => {
+test('the active UI exposes truthful costs and runs normal fights on a real-time beat', () => {
   const player = normal();
   const beforeTell = sessionModels(player, {}, now).activeContractView;
   let html = renderActiveContract(beforeTell);
-  assert.match(html, /data-act="encounter-advance"/);
+  assert.doesNotMatch(html, /data-act="encounter-advance"/, 'normal fights advance on their own');
+  assert.match(html, /class="beat-timer"/);
+  assert.match(html, /Crew engaging · orders are optional/);
   assert.doesNotMatch(html, /Choose Burn/);
   const told = beat(player);
   html = renderActiveContract(sessionModels(told, {}, now).activeContractView);
   assert.match(html, /Brace/);
   assert.match(html, /2 shield/);
   assert.match(html, /data-act="encounter-order"/);
-  assert.match(html, /data-act="encounter-advance"/);
+  assert.doesNotMatch(html, /data-act="encounter-advance"/);
+  assert.match(html, /Incoming fire at [a-z]+ · 2 beats · ~12s/);
   assert.match(html, /Blocks the next hit/);
   assert.match(html, /3-beat cooldown/);
   assert.match(html, /Restore up to 8 hull/);
@@ -317,10 +320,12 @@ test('the active UI exposes truthful costs and an always available advance actio
   assert.match(renderActiveContract(sessionModels(afterOrder, {}, now).activeContractView), /Incoming fire at hull · 1 beat/);
   assert.doesNotMatch(renderActiveContract(sessionModels(afterOrder, {}, now).activeContractView), /1 beats/);
   assert.match(renderShipEncounter(sessionModels(told, {}, now).activeContractView), /data-act="encounter-order"/);
-  assert.match(renderShipEncounter(sessionModels(told, {}, now).activeContractView), /data-act="encounter-advance"/);
+  assert.doesNotMatch(renderShipEncounter(sessionModels(told, {}, now).activeContractView), /data-act="encounter-advance"/);
+  const failed = { guidedBeatSaveFailed: { acceptanceId: told.activeEncounter.acceptanceId, revision: told.activeEncounter.revision } };
+  assert.match(renderShipEncounter(sessionModels(told, failed, now).activeContractView), /data-act="encounter-advance"[^>]*>Retry fight progress/, 'a failed save offers a retry');
   const shipOverlay = renderOverlays(told, { isHome: true, selectedRoom: null, activeContractView: sessionModels(told, {}, now).activeContractView });
   assert.match(shipOverlay, /class="ship-encounter"/);
-  assert.match(shipOverlay, /data-act="encounter-advance"/);
+  assert.match(shipOverlay, /class="beat-timer"/);
 });
 
 test('entering a new fight keeps controls with the visible ship', () => {

@@ -84,15 +84,19 @@ export function renderEncounter(model = {}, { compact = false } = {}) {
   const guidedTarget = v2 && model.kind === 'guided' && targetOrder;
   const guidedV2 = v2 && model.kind === 'guided';
   const guidedCrew = guidedV2 && model.targetWeaponsUsed === true;
+  const autoPaced = model.kind === 'normal';
+  const beatTimer = !model.result && (autoPaced || guidedCrew) && model.beatMs
+    ? `<div class="beat-timer" aria-hidden="true"><span data-rev="${e(model.revision)}" style="animation-duration:${e(model.beatMs)}ms"></span></div>` : '';
+  const eta = model.beatsToImpact && model.beatMs ? ` · ~${Math.round((model.beatsToImpact * model.beatMs) / 1000)}s` : '';
   const orders = (model.orders || []).filter(order => !(order.id === 'target_weapons' && !order.available) && !(v2 && model.kind === 'guided' && order.id !== 'target_weapons'));
   const status = model.result === 'loss' ? `<p role="status">${e(model.lossReason || 'The ship needs repairs.')}</p><button type="button" class="primary" data-act="encounter-recover" ${identity}>Recover ship</button>`
     : model.result === 'win' ? '<p role="status">The pirate breaks off. Bring the cargo aboard.</p>'
-      : `<p class="encounter-threat" role="status">${model.weaponDisabled ? 'Next pirate volley canceled. Crew firing.' : model.beatsToImpact ? `Incoming fire at ${e(target)} · ${e(model.beatsToImpact)} ${model.beatsToImpact === 1 ? 'beat' : 'beats'}` : 'Pirate weapons charging'}</p>
-        <div class="encounter-actions">${guidedCrew && model.retryBeat
+      : `<p class="encounter-threat" role="status">${model.weaponDisabled ? 'Next pirate volley canceled. Crew firing.' : model.beatsToImpact ? `Incoming fire at ${e(target)} · ${e(model.beatsToImpact)} ${model.beatsToImpact === 1 ? 'beat' : 'beats'}${eta}` : 'Pirate weapons charging'}</p>${beatTimer}
+        <div class="encounter-actions">${(guidedCrew || autoPaced) && model.retryBeat
           ? `<p role="alert">Fight progress was not saved. Try the next beat again.</p><button type="button" class="primary" data-primary-pulse data-act="encounter-advance" ${identity}>Retry fight progress</button>`
-          : guidedAfterBrace || guidedCrew ? '<span>Crew engaging…</span>' : orders.map(order => `<button type="button" class="${(guidedBrace || guidedTarget) && order.available ? 'primary' : ''}" ${(guidedTarget && order.id === 'target_weapons') ? 'data-primary-pulse data-spotlight-target' : ''} data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
+          : guidedAfterBrace || guidedCrew ? '<span>Crew engaging…</span>' : `${autoPaced ? '<span class="crew-engaging">Crew engaging · orders are optional</span>' : ''}${orders.map(order => `<button type="button" class="${(guidedBrace || guidedTarget) && order.available ? 'primary' : ''}" ${(guidedTarget && order.id === 'target_weapons') ? 'data-primary-pulse data-spotlight-target' : ''} data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
           ${order.id === 'target_weapons' ? `Target their weapons<span>Stop the next volley · free · once this fight</span>` : guidedBrace && order.id === 'brace' ? `Brace<span>Spend ${e(order.cost)} shield to block the hit.</span>` : `${e(order.id === 'brace' ? 'Brace' : 'Repair')} · ${e(order.cost)} shield <span>${e(order.effectLabel)} · ${e(order.cooldownLabel || '')}</span>`}${order.available ? '' : ` · ${e(orderReason[order.reason] || order.reason || 'Unavailable')}${order.cooldownBeats ? ` (${e(order.cooldownBeats)} beats)` : ''}`}
-        </button>`).join('')}${guidedBrace || guidedV2 ? '' : `<button type="button" class="${guidedAfterBrace ? '' : 'primary'}" data-act="encounter-advance" ${identity}>${guidedAfterBrace ? 'Continue fight' : model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button>`}</div>`;
+        </button>`).join('')}`}${guidedBrace || guidedV2 || autoPaced ? '' : `<button type="button" class="${guidedAfterBrace ? '' : 'primary'}" data-act="encounter-advance" ${identity}>${guidedAfterBrace ? 'Continue fight' : model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button>`}</div>`;
   return `<section class="encounter-panel${compact ? ' compact' : ''}${guidedTarget ? ' target-window' : ''}" aria-label="Crew combat">
     <div class="encounter-bars"><span>Hull ${e(model.hull)}/30</span><meter min="0" max="30" value="${e(model.hull)}" aria-label="Ship hull"></meter>
       <span>Shield ${e(model.shield)}/12</span><meter min="0" max="12" value="${e(model.shield)}" aria-label="Shield charge"></meter>

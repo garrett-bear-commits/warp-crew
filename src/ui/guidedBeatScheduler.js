@@ -1,25 +1,25 @@
-/** Drives only the post-order guided crew beats; each beat still commits through sessionAction. */
+import { beatDelayMs, shouldAutoAdvanceFight } from '../systems/fightPacing.js';
+
+/** Drives crew fight beats on a real-time tempo; each beat still commits through sessionAction. */
 export function shouldAutoAdvanceGuided(player) {
-  const tutorial = player?.tutorial;
-  const encounter = player?.activeEncounter;
-  if (tutorial?.phase !== 'fight' || encounter?.kind !== 'guided' || encounter.result) return false;
-  if (tutorial.script === 4) return encounter.orders?.brace?.used === true;
-  if (tutorial.script === 5) return encounter.version === 2 && encounter.orders?.targetWeapons?.used === true;
-  return false;
+  return player?.activeEncounter?.kind === 'guided' && shouldAutoAdvanceFight(player);
 }
 
-export function createGuidedBeatScheduler({ getPlayer, advance, isBattlePlaying, onSaveFailure, setTimer = setTimeout, clearTimer = clearTimeout, delay = 420 }) {
+export function createGuidedBeatScheduler({ getPlayer, advance, isBattlePlaying, onSaveFailure, isPaused = () => false,
+  setTimer = setTimeout, clearTimer = clearTimeout, delay = player => beatDelayMs(player?.activeEncounter), pausePollMs = 500 }) {
   let timer = null;
   let inFlight = false;
   let generation = 0;
 
   function schedule() {
-    if (timer !== null || inFlight || !shouldAutoAdvanceGuided(getPlayer())) return false;
+    if (timer !== null || inFlight || !shouldAutoAdvanceFight(getPlayer())) return false;
     const currentGeneration = generation;
+    const wait = typeof delay === 'function' ? delay(getPlayer()) : delay;
     timer = setTimer(async () => {
       timer = null;
-      if (currentGeneration !== generation || !shouldAutoAdvanceGuided(getPlayer())) return;
+      if (currentGeneration !== generation || !shouldAutoAdvanceFight(getPlayer())) return;
       if (isBattlePlaying()) { schedule(); return; }
+      if (isPaused()) { holdUntilResumed(currentGeneration); return; }
       const { acceptanceId, revision } = getPlayer().activeEncounter;
       inFlight = true;
       let result;
@@ -30,15 +30,25 @@ export function createGuidedBeatScheduler({ getPlayer, advance, isBattlePlaying,
           if (result?.ok) schedule();
           else if (result?.reason === 'save_failed') {
             const current = getPlayer();
-            if (current?.tutorial?.script === 5 && shouldAutoAdvanceGuided(current)
+            if ((current?.tutorial?.script === 5 || current?.activeEncounter?.kind === 'normal') && shouldAutoAdvanceFight(current)
               && current.activeEncounter.acceptanceId === acceptanceId && current.activeEncounter.revision === revision) {
               onSaveFailure?.({ acceptanceId, revision });
             }
           }
         }
       }
-    }, delay);
+    }, wait);
     return true;
+  }
+
+  // While paused, poll cheaply; on resume the beat gets its full on-screen time again.
+  function holdUntilResumed(currentGeneration) {
+    timer = setTimer(() => {
+      timer = null;
+      if (currentGeneration !== generation) return;
+      if (isPaused()) holdUntilResumed(currentGeneration);
+      else schedule();
+    }, pausePollMs);
   }
 
   function cancel() {

@@ -2799,3 +2799,19 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
   background: linear-gradient(180deg, rgba(88, 225, 255, 0.14), transparent), #0b111a;
 }
 .wc-shell.tab-home .daily-plan-chip { top: 44px; }
+
+/* Beat countdown for real-time fights. */
+.beat-timer { height: 4px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.beat-timer span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--accent), #b6f3ff);
+  animation-name: beat-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+@keyframes beat-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (prefers-reduced-motion: reduce) { .beat-timer span { animation: none; transform: scaleX(0.5); } }
+.crew-engaging { font: 700 13px var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }

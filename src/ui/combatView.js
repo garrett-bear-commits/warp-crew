@@ -19,6 +19,7 @@ let crewEffects = [];
 let crewSparks = [];
 let crewClock = 0;
 let enemyHit = 0;
+let ambientIn = 0.6;
 let started = false;
 let pirateImg = null;
 let impactImg = null;
@@ -113,9 +114,9 @@ export function playEncounterBeat(events = []) {
   const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const frame = encounterVisualFrame(crewEncounter, events);
   // Each shot event becomes a short staggered burst of travelling bolts.
-  crewShots = reduced ? [] : frame.shots.flatMap((shot, index) => [0, 1, 2].map(bolt => ({
+  crewShots = reduced ? [] : [...crewShots.filter(shot => shot.ambient), ...frame.shots.flatMap((shot, index) => [0, 1, 2].map(bolt => ({
     ...shot, delay: index * 0.18 + bolt * 0.09, travel: 0.32, t: 0, landed: false,
-  })));
+  })))];
   crewEffects = reduced ? [] : [
     ...(frame.weaponDisabled ? [{ kind: 'disabled', life: 0.7 }] : []),
     ...(frame.impact ? [{ kind: 'impact', life: 0.5 }] : []),
@@ -377,6 +378,31 @@ function drawCrewEncounter(g, camera, dt) {
     g.fill();
   }
   g.restore();
+  const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const running = !crewEncounter.result && (crewEncounter.kind === 'normal' || crewEncounter.orders?.targetWeapons?.used || crewEncounter.orders?.brace?.used);
+  // Between committed beats the crew keeps firing so the fight never goes quiet.
+  if (running && !reducedMotion) {
+    ambientIn -= dt;
+    if (ambientIn <= 0) {
+      ambientIn = 0.9 + Math.random() * 0.7;
+      crewShots.push(...[0, 1].map(bolt => ({ ally: true, ambient: true, delay: bolt * 0.1, travel: 0.34, t: 0, landed: false })));
+    }
+  }
+  const disabled = crewEncounter.enemy?.weaponDisabledThroughBeat >= crewEncounter.beat;
+  if (!crewEncounter.result && crewEncounter.enemy?.pattern === 'charging_volley' && !disabled) {
+    const pulse = reducedMotion ? 0.6 : 0.45 + Math.sin(crewClock * 6) * 0.25;
+    const radius = Math.max(16, pw * 0.22);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    const charge = g.createRadialGradient(enemy.x - pw * 0.2, enemy.y, 0, enemy.x - pw * 0.2, enemy.y, radius);
+    charge.addColorStop(0, `rgba(255,150,120,${pulse})`);
+    charge.addColorStop(1, 'rgba(255,60,40,0)');
+    g.fillStyle = charge;
+    g.beginPath();
+    g.arc(enemy.x - pw * 0.2, enemy.y, radius, 0, Math.PI * 2);
+    g.fill();
+    g.restore();
+  }
   if (crewEncounter.orderWindow?.orderOptions?.target_weapons?.available) {
     g.save();
     g.strokeStyle = '#ffb65f';
@@ -426,14 +452,14 @@ function drawCrewEncounter(g, camera, dt) {
     if (progress >= 1) {
       if (!shot.landed) {
         shot.landed = true;
-        if (shot.ally) enemyHit = 0.25;
+        if (shot.ally && !shot.ambient) enemyHit = 0.25;
         const color = shot.ally ? '120,230,255' : '255,120,100';
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < (shot.ambient ? 4 : 10); i++) {
           const angle = Math.random() * Math.PI * 2;
           const speed = 60 + Math.random() * 140;
           crewSparks.push({ x: to.x, y: to.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.35 + Math.random() * 0.25, color });
         }
-        crewEffects.push({ kind: shot.ally ? 'flash-enemy' : 'shield-ripple', life: 0.35 });
+        if (!shot.ambient) crewEffects.push({ kind: shot.ally ? 'flash-enemy' : 'shield-ripple', life: 0.35 });
       }
       continue;
     }

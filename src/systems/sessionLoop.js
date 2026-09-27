@@ -18,6 +18,7 @@ import { ROOMS } from '../data/starterShip.js';
 import { portraitFor } from '../data/portraits.js';
 import { NODES } from '../data/sectors.js';
 import { canAfford, formatReward } from './economy.js';
+import { beatDelayMs } from './fightPacing.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -121,9 +122,10 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         beat: encounter.beat,
         kind: encounter.kind,
         braceUsed: encounter.orders.brace.used,
+        beatMs: beatDelayMs(encounter),
         targetWeaponsUsed: encounter.orders.targetWeapons?.used === true,
-        retryBeat: encounter.kind === 'guided' && encounter.version === 2
-          && encounter.orders.targetWeapons?.used === true && !encounter.result
+        retryBeat: (encounter.kind === 'normal' || (encounter.kind === 'guided' && encounter.version === 2
+          && encounter.orders.targetWeapons?.used === true)) && !encounter.result
           && ui.guidedBeatSaveFailed?.acceptanceId === encounter.acceptanceId
           && ui.guidedBeatSaveFailed?.revision === encounter.revision,
         result: encounter.result,
