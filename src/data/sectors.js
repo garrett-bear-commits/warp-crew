@@ -444,6 +444,15 @@ export function careerDay(player, now = Date.now()) {
   return 1 + Math.floor((now - (player.createdAt || now)) / 86400000);
 }
 
+// Siege walls (src/systems/walls.js): a guided-flow captain must break each
+// sector's flagship before the next sector's gate appears.
+const GATE_WALLS = { veil_gate: 'spur', ember_gate: 'veil', hollow_mouth: 'ember', halo_approach: 'hollow' };
+function gateBlockedByWall(player, nodeId) {
+  const wall = GATE_WALLS[nodeId];
+  return Boolean(wall) && [4, 5].includes(player?.tutorial?.script) && player.tutorial.completed === true
+    && player.flags?.[`wall_${wall}`] !== true;
+}
+
 /** Nodes visible on map for this player */
 export function visibleNodes(player, now = Date.now()) {
   const day = careerDay(player, now);
@@ -468,6 +477,7 @@ export function visibleNodes(player, now = Date.now()) {
     if (n.sector === 'crown' && n.id !== 'halo_approach' && !galaxyUnlocked(player, 'crown')) return false;
     if (n.id === 'halo_approach' && !player.flags?.crown_opened && !player.flags?.hollow_opened && (player.story?.chapter || 0) < 6) return false;
     if (n.minDay && day < n.minDay) return false;
+    if (gateBlockedByWall(player, n.id)) return false;
     return true;
   });
 }

@@ -2868,3 +2868,13 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .starter-offer .ghost { min-height: 40px; }
 .starter-card { border-color: var(--ops-amber); display: grid; gap: 8px; }
 .starter-card h2 { margin: 0; }
+
+/* Siege walls. */
+[data-profile="wall"] { --profile: #ff9b3d; --profile-glow: rgba(255, 140, 50, 0.28); }
+.contract-card.is-wall { border-color: rgba(255, 155, 61, 0.7); box-shadow: 0 0 22px rgba(255, 120, 40, 0.18); }
+.contract-card.is-wall h3 { color: #ffd2a0; }
+.siege-meter { margin: 0 0 10px; }
+.siege-bar { height: 10px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 155, 61, 0.5); }
+.siege-bar span { display: block; height: 100%; background: linear-gradient(90deg, #ff5a3c, #ffb347); }
+.siege-meter p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.siege-meter b { font-family: var(--font-display); color: #ffd2a0; letter-spacing: 0.04em; }

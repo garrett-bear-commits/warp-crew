@@ -66,7 +66,8 @@ if (!visibleNodes(player).find((n) => n.id === 'eclipse_crown')) throw new Error
 
 const skipEmber = {
   ...createNewPlayer(),
-  flags: { forge_gift: true, splashSeen: true },
+  // Fast-forwarded guided-flow captain: walls up to Hollow have fallen.
+  flags: { forge_gift: true, splashSeen: true, wall_spur: true, wall_veil: true, wall_ember: true },
   story: { chapter: 4 },
   tutorial: player.tutorial,
 };

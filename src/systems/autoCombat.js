@@ -164,7 +164,7 @@ export function enemyVolleyDamage(threat = 1) {
 }
 
 export function startEncounter({ acceptanceId, encounterId, kind, seed, assignments = {}, outputs = {},
-  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1', threat = null, tactics = [], boarders = false }) {
+  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1', threat = null, tactics = [], boarders = false, enemyHull = null, remainingBefore = null }) {
   if (kind !== 'guided' && kind !== 'normal') throw new TypeError("kind must be 'guided' or 'normal'");
   if (ruleset !== 'v1' && ruleset !== 'v2') throw new TypeError("ruleset must be 'v1' or 'v2'");
   const stationOutputs = Object.fromEntries(STATIONS.map(station => [station, outputValue(outputs, station)]));
@@ -184,7 +184,8 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
     shield: MAX_SHIELD,
     systems: { helm: 100, shields: 100, weapons: 100, engineering: 100 },
     enemy: {
-      hull: kind === 'guided' ? 25 : 42,
+      hull: kind === 'guided' ? 25 : Number.isInteger(enemyHull) ? Math.max(1, Math.min(42, enemyHull)) : 42,
+      ...(Number.isInteger(enemyHull) && kind === 'normal' ? { startHull: Math.max(1, Math.min(42, enemyHull)), remainingBefore } : {}),
       ...(kind === 'normal' && threat !== null ? { threat: Math.round(Number(threat) * 100) / 100, damage: enemyVolleyDamage(threat) } : {}),
       target: 'hull',
       pattern: 'charging_volley',

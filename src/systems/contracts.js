@@ -12,6 +12,7 @@ import { normalizeContractState as normalizeSavedContractState, validContractRes
 import { CURRENCIES, readyContractCrew, normalizeCurrencyReward as normalizeRewards, resolveRoutePayout, resolveContractCombatPayout, formatRewardBand } from './contractRewards.js';
 import { beginContractEncounter, applyEncounterAction, normalizeEncounterState } from './encounterState.js';
 import { tacticStatus, repelStatus } from './autoCombat.js';
+import { recordSiege } from './walls.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -358,6 +359,7 @@ export function acceptContract(player, offerId, now = Date.now()) {
     secureOutcome: content.secureOutcome,
     storyFlag: content.storyFlag,
     beats: offer.beats,
+    ...(offer.wall ? { wall: { id: offer.wall.id } } : {}),
     fuelSpent: offer.profile === 'distress' ? player.tutorial?.contractRecoveryFuelSpent || 0 : 0,
     acceptedAt: now,
   };
@@ -646,7 +648,7 @@ export function claimContractReward(player, now = Date.now()) {
     || !normalizeEncounterState(player).activeContract
   )) return { ok: false, reason: 'invalid_encounter_state', player };
 
-  let nextPlayer = player;
+  let nextPlayer = recordSiege(player, contract, now);
   if (contract.result.storyFlag) nextPlayer = applyStoryFlag(nextPlayer, contract.result.storyFlag).player;
   const wallet = grant(player.wallet, contract.result.rewards);
   const visits = { ...(player?.stats?.visits || {}) };

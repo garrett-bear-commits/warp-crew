@@ -137,9 +137,19 @@ export function resolveContractCombatPayout(player, contract, orderId, { rng = M
 export function resolveSimulatedCombatPayout(player, contract, encounter, now = Date.now()) {
   const catalog = encounterById(contract.encounterId);
   const lost = encounter.result === 'loss' && contract.profile !== 'distress';
+  // Wall attempts: the flagship falls only when this attempt spends its last hull.
+  const wallSegment = contract.wall && Number.isInteger(encounter.enemy?.startHull) ? encounter.enemy.startHull : null;
+  const wallOutcome = wallSegment != null ? {
+    id: contract.wall.id,
+    dealt: wallSegment - Math.max(0, encounter.enemy.hull),
+    defeated: !lost && encounter.enemy.remainingBefore != null && encounter.enemy.remainingBefore <= wallSegment,
+  } : null;
+  const flagshipDown = wallOutcome?.defeated === true;
   const winRewards = contract.profile === 'distress'
     ? { credits: 120, medals: 8, reputation: 4 }
-    : catalog.rewards;
+    : flagshipDown
+      ? { ...catalog.rewards, credits: (catalog.rewards.credits || 0) * 2, medals: (catalog.rewards.medals || 0) * 2, reputation: (catalog.rewards.reputation || 0) * 2, gems: 20 }
+      : catalog.rewards;
   // A lost crew fight pays the same salvage share the order-based fights paid on failure.
   const rawRewards = lost
     ? {
@@ -187,7 +197,10 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
       hullLoss,
       injuredCrewId,
       storyFlag: null,
-      summary: lost ? (catalog.fail || 'The crew breaks off. Salvage recovered.') : (catalog.win || 'The enemy ship breaks off. Cargo aboard.'),
+      summary: flagshipDown ? `${catalog.name} is broken. The way ahead is open.`
+        : wallOutcome && !lost ? `${catalog.name} limps away. Its damage holds until the daily reset.`
+          : lost ? (catalog.fail || 'The crew breaks off. Salvage recovered.') : (catalog.win || 'The enemy ship breaks off. Cargo aboard.'),
+      ...(wallOutcome ? { wall: wallOutcome } : {}),
     },
   };
 }

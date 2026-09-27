@@ -21,16 +21,27 @@ export function renderMissionSwitcher(view = 'contracts', views = ['contracts', 
   return `<nav class="mission-switcher" style="--views:${views.length}" aria-label="Mission views">${[['contracts', 'Contracts'], ['away', 'Away'], ['explore', 'Explore']].filter(([id]) => views.includes(id)).map(([id, label]) => `<button type="button" data-act="mission-view" data-view="${id}" aria-pressed="${id === view}">${label}</button>`).join('')}</nav>`;
 }
 
+function renderSiegeMeter(wall) {
+  const pct = Math.max(0, Math.min(100, Math.round((wall.remaining / wall.pool) * 100)));
+  const hours = Math.floor((wall.resetsInMs || 0) / 3600000);
+  const minutes = Math.floor(((wall.resetsInMs || 0) % 3600000) / 60000);
+  return `<div class="siege-meter" role="meter" aria-label="Flagship hull" aria-valuemin="0" aria-valuemax="${e(wall.pool)}" aria-valuenow="${e(wall.remaining)}">
+    <div class="siege-bar"><span style="width:${pct}%"></span></div>
+    <p>Flagship hull <b>${e(wall.remaining)}/${e(wall.pool)}</b>${wall.remaining < wall.pool ? ` · damage holds ${hours}h ${minutes}m more` : ' · each attempt fights up to 42'}</p>
+  </div>`;
+}
+
 export function renderContractBoard(model = {}) {
   return `<section class="contract-board" aria-label="Contract Board"><header class="board-head"><h2>Contracts</h2><span>Pick one job for the crew</span></header>${(model.offers || []).map((offer) => {
     const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, Possible payout now: ${rewardLabel(offer)}`;
     const art = PROFILE_ART[offer.profile];
-    return `<article class="contract-card${offer.completed ? ' is-completed' : ''}" data-profile="${e(offer.profile)}">
+    const siege = offer.wall ? renderSiegeMeter(offer.wall) : '';
+    return `<article class="contract-card${offer.completed ? ' is-completed' : ''}${offer.wall ? ' is-wall' : ''}" data-profile="${e(offer.wall ? 'wall' : offer.profile)}">
       <div class="contract-banner">
         <p class="contract-profile"><span aria-hidden="true">${profileIcon(offer)}</span> ${e(profileLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
         ${art ? `<img class="contract-art" src="${e(art)}" alt="" />` : ''}
       </div>
-      <h3>${e(offer.title)}</h3><p class="contract-brief">${e(offer.brief)}</p>
+      <h3>${e(offer.title)}</h3><p class="contract-brief">${e(offer.brief)}</p>${siege}
       <dl class="contract-facts"><div class="fact-fuel"><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div class="fact-length"><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(offer))}</dd></div></dl>
       ${trait(offer.favoredTrait)}<button type="button" class="contract-review-btn" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
     </article>`;

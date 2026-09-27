@@ -4,6 +4,7 @@ import { normalizeAssignments, stationOutputs } from './stations.js';
 import { resolveSimulatedCombatPayout, readyContractCrew } from './contractRewards.js';
 import { crewPower, encounterById, rubberBandPower } from './combat.js';
 import { combatBonuses } from './passives.js';
+import { wallEncounterSetup } from './walls.js';
 import { isCanonicalGuidedContract } from './contractState.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
@@ -135,6 +136,7 @@ export function beginContractEncounter(player, now = Date.now()) {
   const contract = player?.activeContract;
   if (player?.activeEncounter || !eligibleContract(player, contract)) return player;
   const kind = contract.profile === 'distress' ? 'guided' : 'normal';
+  const wall = contract.wall ? wallEncounterSetup(player, contract, contractThreat(player, contract, now), now) : null;
   const encounter = startEncounter({
     acceptanceId: contract.acceptanceId,
     encounterId: contract.encounterId,
@@ -144,7 +146,9 @@ export function beginContractEncounter(player, now = Date.now()) {
     seed: contract.routeSeed,
     assignments: normalizeAssignments(player),
     outputs: stationOutputs(player, now),
-    threat: kind === 'normal' ? contractThreat(player, contract, now) : null,
+    threat: kind === 'normal' ? (wall ? wall.threat : contractThreat(player, contract, now)) : null,
+    enemyHull: wall ? wall.enemyHull : null,
+    remainingBefore: wall ? wall.remainingBefore : null,
     tactics: kind === 'normal' ? unlockedTactics(player) : [],
     boarders: kind === 'normal' && boardersUnlocked(player),
   });
