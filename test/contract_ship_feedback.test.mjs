@@ -20,6 +20,9 @@ import { stopStageLoop } from '../src/ui/stageLoop.js';
 import { attachSpace, stopSpace } from '../src/ui/spaceFlight.js';
 import * as crewPresentation from '../src/ui/crewWalk.js';
 import * as flightPresentation from '../src/ui/spaceFlight.js';
+import { animationProfileFor } from '../src/ui/crewAnimation.js';
+
+const crewShadow = animationProfileFor().shadow;
 
 // Catches losing the ship-space indication for an active/returned route or
 // failing to render the durable first Sparrow repair after the route clears.
@@ -167,7 +170,7 @@ const context = {
   createRadialGradient: () => gradient,
   createLinearGradient: () => gradient,
   ellipse(x, y, rx, ry) {
-    if (rx === 9 && ry === 2.5) {
+    if (rx === crewShadow.width / 2 && ry === crewShadow.height / 2) {
       // Recover authored percent-space feet from the world-pixel bitmap.
       // The shadow's 1 world-pixel vertical offset is presentation only.
       shadowFeet.push({

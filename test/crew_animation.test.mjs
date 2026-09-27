@@ -1,74 +1,105 @@
+import assert from 'node:assert/strict';
 import {
   ANIMATION_PROFILES,
+  CREW_CLIPS,
+  advanceCrewAnimation,
+  crewClipForActor,
+  crewFrameDestination,
+  crewFrameSource,
   crewPoseForActor,
+  facingForMove,
   motionPolicy,
-  walkFrameDestination,
-  walkFrameSource,
 } from '../src/ui/crewAnimation.js';
 
-const profile = ANIMATION_PROFILES.standard_humanoid;
-const expectedRows = { down: 0, left: 1, right: 2, up: 3 };
+const profile = ANIMATION_PROFILES.crew_rig;
 
-for (const [direction, row] of Object.entries(expectedRows)) {
-  for (let frame = 0; frame < 8; frame++) {
-    const source = walkFrameSource(direction, frame, profile);
-    if (source.sy !== row * 96 + 12) {
-      throw new Error(`${direction} row ${source.sy}`);
-    }
-    if (source.sx !== (frame % 4) * 96 + 24) {
-      throw new Error(`${direction} frame ${frame}`);
-    }
-    if (source.sx + source.sw > 384 || source.sy + source.sh > 384) {
-      throw new Error(`${direction}/${frame} crop outside sheet`);
-    }
+// Sunnyside clip lengths: 8-frame walk, 9-frame idle, 8-frame doing loop.
+assert.equal(CREW_CLIPS.walk.frames, 8);
+assert.equal(CREW_CLIPS.idle.frames, 9);
+assert.equal(CREW_CLIPS.work.frames, 8);
+assert.ok(CREW_CLIPS.walk.fps >= 8, 'walk cycle must read as walking');
+
+// Clip selection: moving walks, stationed works, everything else idles.
+assert.equal(crewClipForActor({ state: 'walk', atWork: true }), 'walk');
+assert.equal(crewClipForActor({ state: 'doing', atWork: true }), 'work');
+assert.equal(crewClipForActor({ state: 'doing', atWork: false }), 'idle');
+assert.equal(crewClipForActor({ state: 'idle' }), 'idle');
+
+// Frames: every frame of every clip is a distinct full cell of its strip.
+for (const [clip, spec] of Object.entries(CREW_CLIPS)) {
+  const seen = new Set();
+  for (let frame = 0; frame < spec.frames * 2; frame++) {
+    const source = crewFrameSource(clip, frame + 0.4, profile);
+    assert.equal(source.frame, frame % spec.frames);
+    assert.equal(source.sx, (frame % spec.frames) * profile.sourceCell.width);
+    assert.equal(source.sy, 0);
+    assert.equal(source.sw, profile.sourceCell.width);
+    assert.equal(source.sh, profile.sourceCell.height);
+    seen.add(source.sx);
   }
+  assert.equal(seen.size, spec.frames, `${clip} uses every frame`);
 }
 
-const destination = walkFrameDestination(100, 200, profile, 52);
-if (destination.height !== 52 || destination.width !== 52 * 48 / 72) {
-  throw new Error('display dimensions');
-}
-if (Math.abs(destination.x + profile.footAnchor.x * destination.scale - 100) > 0.001) {
-  throw new Error('foot x moved');
-}
-if (Math.abs(destination.y + profile.footAnchor.y * destination.scale - 200) > 0.001) {
-  throw new Error('foot y moved');
-}
-if (profile.displayHeight < 44) throw new Error('phone sprite too small');
+// Advancing: walk steps through frames; a clip change restarts at frame 0.
+const walker = { state: 'walk', frame: 0 };
+const frames = new Set();
+for (let i = 0; i < 20; i++) frames.add(Math.floor(advanceCrewAnimation(walker, 0.05, true, profile)));
+assert.ok(frames.size >= 6, 'one second of walking shows most of the cycle');
+walker.state = 'doing';
+walker.atWork = true;
+advanceCrewAnimation(walker, 0, true, profile);
+assert.equal(walker.clip, 'work');
+assert.equal(walker.frame, 0);
+const still = { state: 'walk', frame: 3 };
+advanceCrewAnimation(still, 0.5, false, profile);
+assert.equal(still.frame, 0, 'reduced motion holds frame 0');
 
-const actor = { x: 50, y: 40, dir: 'down', frame: 0, state: 'walk' };
-const expectedFoot = { x: 195, y: 240 };
-for (const direction of ['down', 'left', 'right', 'up']) {
-  for (const state of ['walk', 'idle', 'doing']) {
-    for (let frame = 0; frame < 4; frame++) {
-      const pose = crewPoseForActor(
-        { ...actor, dir: direction, frame, state },
-        390,
-        600,
-        profile
-      );
-      if (pose.foot.x !== expectedFoot.x || pose.foot.y !== expectedFoot.y) {
-        throw new Error(`${direction}/${state}/${frame} moved feet to ${pose.foot.x},${pose.foot.y}`);
-      }
-      const anchoredX = pose.destination.x + profile.footAnchor.x * pose.destination.scale;
-      const anchoredY = pose.destination.y + profile.footAnchor.y * pose.destination.scale;
-      if (
-        Math.abs(anchoredX - expectedFoot.x) > 0.001
-        || Math.abs(anchoredY - expectedFoot.y) > 0.001
-      ) {
-        throw new Error(`${direction}/${state}/${frame} destination is not grounded`);
-      }
+// Facing: left mirrors, vertical travel keeps the last horizontal side.
+assert.equal(facingForMove('right', -1, 0), 'left');
+assert.equal(facingForMove('left', 1, 0.3), 'right');
+assert.equal(facingForMove('left', 0, 1), 'left');
+assert.equal(facingForMove('right', 0.01, -1), 'right');
+assert.equal(facingForMove(undefined, 0, 1), 'right');
+
+// Grounding: the foot anchor lands on the actor's foot, flipped or not.
+for (const flip of [false, true]) {
+  const d = crewFrameDestination(100, 200, flip, profile);
+  const ax = flip ? profile.sourceCell.width - profile.footAnchor.x : profile.footAnchor.x;
+  assert.ok(Math.abs(d.x + ax * d.scale - 100) < 1e-9, 'foot x');
+  assert.ok(Math.abs(d.y + profile.footAnchor.y * d.scale - 200) < 1e-9, 'foot y');
+  assert.equal(d.flip, flip);
+}
+const mid = profile.sourceCell.width / 2;
+assert.ok(Math.abs(profile.footAnchor.x - mid) <= 1, 'body centred so a flip does not jump');
+
+// Size: the figure (~34 of 56 cell px) must read on a phone; ~119 world px.
+const figureWorld = 34 * profile.scale;
+assert.ok(figureWorld >= 100 && figureWorld <= 140, `figure ${figureWorld}px`);
+const wholeShipScale = Math.min(390 / (1152 * 1.55), 730 / (1728 * 1.55));
+assert.ok(figureWorld * wholeShipScale >= 24, 'readable at the whole-ship camera');
+assert.ok(figureWorld * (390 / 1152) >= 30, '30+ CSS px when the hull fills a 390px phone');
+
+const actor = { x: 50, y: 40, face: 'right', frame: 0, state: 'walk' };
+for (const face of ['left', 'right']) {
+  for (const [state, atWork, clip] of [['walk', false, 'walk'], ['idle', false, 'idle'], ['doing', true, 'work'], ['doing', false, 'idle']]) {
+    for (let frame = 0; frame < 9; frame++) {
+      const pose = crewPoseForActor({ ...actor, face, frame, state, atWork }, 390, 600, profile);
+      assert.equal(pose.clip, clip);
+      assert.equal(pose.flip, face === 'left');
+      assert.deepEqual(pose.foot, { x: 195, y: 240 });
+      const ax = pose.flip ? profile.sourceCell.width - profile.footAnchor.x : profile.footAnchor.x;
+      assert.ok(Math.abs(pose.destination.x + ax * pose.destination.scale - 195) < 1e-9);
+      assert.ok(Math.abs(pose.destination.y + profile.footAnchor.y * pose.destination.scale - 240) < 1e-9);
+      assert.equal(pose.frame, frame % CREW_CLIPS[clip].frames);
+      const frozen = crewPoseForActor({ ...actor, face, frame, state, atWork }, 390, 600, profile, { animate: false });
+      assert.equal(frozen.frame, 0, 'reduced motion draws frame 0');
     }
   }
 }
 
 const normalMotion = motionPolicy(false);
-if (!normalMotion.animateFrames || !normalMotion.thrusterParticles) {
-  throw new Error('normal motion disabled');
-}
+assert.ok(normalMotion.animateFrames && normalMotion.thrusterParticles, 'normal motion disabled');
 const reducedMotion = motionPolicy(true);
-if (reducedMotion.animateFrames || reducedMotion.thrusterParticles) {
-  throw new Error('reduced motion still decorative');
-}
+assert.ok(!reducedMotion.animateFrames && !reducedMotion.thrusterParticles, 'reduced motion still decorative');
 
 console.log('crew_animation.test.mjs OK');

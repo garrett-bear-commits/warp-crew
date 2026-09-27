@@ -3,8 +3,8 @@ import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS } from '../dat
 import { findPath, isWalkablePct, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
 import { routeToWorkAnchor } from '../data/shipRoutes.js';
 import { normalizeAssignments, STATIONS } from '../systems/stations.js';
-import { walkAssetFor, WALK_FRAMES } from './crewArt.js';
-import { crewPoseForActor, motionPolicy } from './crewAnimation.js';
+import { walkAssetFor, preloadCrewRig } from './crewArt.js';
+import { advanceCrewAnimation, crewPoseForActor, facingForMove, motionPolicy } from './crewAnimation.js';
 import { onTick } from './stageLoop.js';
 
 const agents = new Map();
@@ -99,12 +99,14 @@ function spawn(crew) {
     x: pos.x,
     y: pos.y,
     dir: jitter > 0.5 ? 'right' : 'left',
+    face: jitter > 0.5 ? 'right' : 'left',
     state: 'idle',
+    atWork: false,
+    clip: 'idle',
     path: [],
     timer: 0.4 + jitter * 1.8,
     jitter,
     frame: 0,
-    fps: 7,
     assignment: null,
     authoredTarget: null,
   };
@@ -124,6 +126,20 @@ function beginWalk(a, destId) {
   a.path = route.points;
   a.state = 'walk';
   a.timer = 0;
+}
+
+// Stationed crew run the work loop; crew visiting another room stand idle.
+function atWorkFor(a) {
+  const job = a.assignment || '';
+  if (job.startsWith('expedition-departure') || job.startsWith('crew-arrival') || job === 'departure-complete') return false;
+  if (job.startsWith('contract-station')) return true;
+  return a.room === a.home;
+}
+
+function settle(a, timer) {
+  a.state = 'doing';
+  a.timer = timer;
+  a.atWork = atWorkFor(a);
 }
 
 function assignmentKey(target) {
@@ -148,8 +164,7 @@ function finishAuthoredActor(a) {
   arrivals.delete(a.id);
   a.assignment = null;
   a.authoredTarget = null;
-  a.state = 'doing';
-  a.timer = 3;
+  settle(a, 3);
   done?.();
 }
 
@@ -161,8 +176,7 @@ function beginAuthoredTarget(a, target) {
   if (!route.ok) {
     console.warn('[crew-route]', a.id, route.reason);
     a.path = [];
-    a.state = 'doing';
-    a.timer = Infinity;
+    settle(a, Infinity);
     finishAuthoredActor(a);
     return;
   }
@@ -183,8 +197,7 @@ function beginAuthoredTarget(a, target) {
     if (!valid) {
       console.warn('[crew-route]', a.id, 'disconnected');
       a.path = [];
-      a.state = 'doing';
-      a.timer = Infinity;
+      settle(a, Infinity);
       finishAuthoredActor(a);
       return;
     }
@@ -197,14 +210,15 @@ function beginAuthoredTarget(a, target) {
     a.y = final.y;
     a.room = target.roomId;
     a.path = [];
-    a.state = 'doing';
-    a.timer = Infinity;
+    settle(a, Infinity);
     a.frame = 0;
     return;
   }
   a.path = pts;
-  a.state = pts.length ? 'walk' : 'doing';
-  a.timer = pts.length ? 0 : Infinity;
+  if (pts.length) {
+    a.state = 'walk';
+    a.timer = 0;
+  } else settle(a, Infinity);
 }
 
 function faceFrom(dx, dy) {
@@ -214,6 +228,11 @@ function faceFrom(dx, dy) {
 }
 
 function stepAgent(a, dt, animateFrames = true) {
+  stepMotion(a, dt);
+  advanceCrewAnimation(a, dt, animateFrames);
+}
+
+function stepMotion(a, dt) {
   if (a.state === 'idle') {
     a.timer -= dt;
     if (a.timer <= 0) beginWalk(a, pickTask(a));
@@ -231,8 +250,7 @@ function stepAgent(a, dt, animateFrames = true) {
 
   const tgt = a.path[0];
   if (!tgt) {
-    a.state = 'doing';
-    a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
+    settle(a, a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0);
     finishAuthoredActor(a);
     return;
   }
@@ -243,8 +261,7 @@ function stepAgent(a, dt, animateFrames = true) {
     if (tgt.via === 'door-enter') a.room = tgt.room;
     a.path.shift();
     if (!a.path.length) {
-      a.state = 'doing';
-      a.timer = a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0;
+      settle(a, a.assignment ? Infinity : battle ? 3.2 : 1.8 + a.jitter * 2.0);
       finishAuthoredActor(a);
     }
     return;
@@ -258,7 +275,7 @@ function stepAgent(a, dt, animateFrames = true) {
   a.x = clamped.x;
   a.y = clamped.y;
   a.dir = faceFrom(ux, uy);
-  a.frame = animateFrames ? (a.frame + dt * a.fps) % WALK_FRAMES : 0;
+  a.face = facingForMove(a.face, ux, uy);
 }
 
 function resize() {
@@ -367,82 +384,35 @@ function drawThrusters(g, dt, policy) {
   g.restore();
 }
 
-export function drawCrewIdentityMarker(g, marker, image, foot) {
-  const size = 40;
-  const x = foot.x - size / 2;
-  const y = foot.y - size - 6;
-  g.save();
-  g.beginPath();
-  if (marker.shape === 'diamond') {
-    g.moveTo(foot.x, y);
-    g.lineTo(x + size, y + size / 2);
-    g.lineTo(foot.x, y + size);
-    g.lineTo(x, y + size / 2);
-    g.closePath();
-  } else g.rect(x, y, size, size);
-  g.fillStyle = '#07131e';
-  g.fill();
-  g.save();
-  g.clip();
-  if (image?.complete && image.naturalWidth && image.naturalHeight) {
-    g.imageSmoothingEnabled = false;
-    g.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, x, y, size, size);
-  } else {
-    g.fillStyle = marker.color;
-    g.font = 'bold 24px monospace';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(marker.label, foot.x, y + size / 2);
-  }
-  g.restore();
-  g.strokeStyle = marker.color;
-  g.lineWidth = 3;
-  g.stroke();
-  g.restore();
-}
-
-function drawAgent(g, a) {
-  const asset = walkAssetFor(a.templateId, a.role, a.bodyFamily);
-  const pose = crewPoseForActor(a, w, h, asset.profile);
+function drawAgent(g, a, animate = true) {
+  const asset = walkAssetFor(a.templateId, a.role);
+  const profile = asset.profile;
+  const pose = crewPoseForActor(a, w, h, profile, { animate });
   const { foot, source, destination } = pose;
+  const image = asset.images[pose.clip] || asset.images.idle || asset.images.walk;
   g.__wcActorInstanceId = a.id;
   g.save();
-  g.fillStyle = 'rgba(0,0,0,0.35)';
+  g.fillStyle = 'rgba(0,0,0,0.38)';
   g.beginPath();
   g.ellipse(
     foot.x,
-    foot.y + asset.profile.shadow.offsetY,
-    asset.profile.shadow.width / 2,
-    asset.profile.shadow.height / 2,
+    foot.y + profile.shadow.offsetY,
+    profile.shadow.width / 2,
+    profile.shadow.height / 2,
     0,
     0,
     Math.PI * 2
   );
   g.fill();
-
-  if (asset.image && asset.image.complete && asset.image.naturalWidth) {
+  if (image) {
     g.imageSmoothingEnabled = false;
-    g.drawImage(
-      asset.image,
-      source.sx,
-      source.sy,
-      source.sw,
-      source.sh,
-      destination.x,
-      destination.y,
-      destination.width,
-      destination.height
-    );
-  } else if (asset.marker) {
-    drawCrewIdentityMarker(g, asset.marker, asset.markerImage, foot);
-  } else {
-    g.fillStyle = '#5ce1ff';
-    g.fillRect(
-      destination.x + destination.width * 0.28,
-      destination.y + destination.height * 0.3,
-      destination.width * 0.44,
-      destination.height * 0.7
-    );
+    if (pose.flip) {
+      g.translate(destination.x + destination.width, destination.y);
+      g.scale(-1, 1);
+      g.drawImage(image, source.sx, source.sy, source.sw, source.sh, 0, 0, destination.width, destination.height);
+    } else {
+      g.drawImage(image, source.sx, source.sy, source.sw, source.sh, destination.x, destination.y, destination.width, destination.height);
+    }
   }
   g.restore();
   g.__wcActorInstanceId = null;
@@ -476,7 +446,7 @@ function tick(sim, dt) {
   const g = ctx;
   g.clearRect(0, 0, w, h);
   list.sort((p, q) => p.y - q.y);
-  for (const a of list) drawAgent(g, a);
+  for (const a of list) drawAgent(g, a, policy.animateFrames);
   drawThrusters(g, dt, policy);
 }
 
@@ -549,7 +519,7 @@ export function holdCrewForArrival(player, crewInstanceId) {
   const actor = agents.get(crewInstanceId) || spawn(member);
   Object.assign(actor, SPARROW_LAYOUT.anchors.airlock, {
     room: 'cargo', path: [], state: 'doing', timer: Infinity,
-    assignment: 'crew-arrival:held', authoredTarget: null,
+    assignment: 'crew-arrival:held', authoredTarget: null, atWork: false,
   });
 }
 
@@ -616,6 +586,7 @@ export function syncCrewLayer(el, player) {
     if (live.has(id)) continue;
     agents.delete(id);
   }
+  preloadCrewRig([...agents.values()].map(a => a.templateId));
   if (!started && typeof window.matchMedia === 'function') {
     motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReducedMotion(motionQuery);
