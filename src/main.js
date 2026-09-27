@@ -575,7 +575,10 @@ function doHire({ gems = false, ten = false } = {}) {
 // One-time offers can only be bought while their offer is live.
 function res0Blocked(sku) {
   if (sku === STARTER_OFFER.sku) return !starterOfferState(player).active;
-  if (sku.startsWith('wc_wall_')) return !wallPackState(player, currentWall(player)).active;
+  if (sku.startsWith('wc_wall_')) {
+    const pack = wallPackState(player, currentWall(player));
+    return !pack.active || pack.sku !== sku;
+  }
   return false;
 }
 

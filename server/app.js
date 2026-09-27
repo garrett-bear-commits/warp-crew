@@ -19,7 +19,7 @@ export function saveRejectReason(blob) {
   return null;
 }
 
-export function buildApp({ store, secret, gameId, devAuth = false, now = () => Date.now(), allowOrigins = ['*'], logger = false }) {
+export function buildApp({ store, secret, gameId, devAuth = false, now = () => Date.now(), allowOrigins = [], logger = false }) {
   const app = Fastify({ logger, bodyLimit: MAX_SAVE_BYTES + 64_000 });
 
   app.addHook('onRequest', async (req, reply) => {
@@ -43,7 +43,7 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
     return result.player;
   };
 
-  app.get('/health', async () => ({ ok: true, devAuth }));
+  app.get('/health', async () => ({ ok: true }));
 
   app.get('/v1/saves/current', async (req, reply) => {
     const player = auth(req, reply);

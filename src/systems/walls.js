@@ -133,7 +133,8 @@ export function recordSiege(player, contract, now = Date.now()) {
     ...player,
     siege: { ...(player.siege || {}), [wall.id]: { ...(player.siege?.[wall.id] || {}), dayKey: dayKey(now), damage, attempts: siege.attempts + 1,
       // A lost attempt that left the flagship's segment at 20% or less.
-      nearMiss: contract.result.success === false && outcome.segment > 0 && (outcome.segment - outcome.dealt) <= outcome.segment * 0.2 } },
+      nearMiss: player.siege?.[wall.id]?.nearMiss === true
+        || (contract.result.success === false && outcome.segment > 0 && (outcome.segment - outcome.dealt) <= outcome.segment * 0.2) } },
     flags: beaten ? { ...(player.flags || {}), [`wall_${wall.id}`]: true } : player.flags,
   };
 }

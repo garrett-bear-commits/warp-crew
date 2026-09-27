@@ -107,16 +107,22 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     assert.equal((await buy('buyer2', 'kit-3', 'wc_starter_kit')).json().purchases[0].status, 'granted', 'one-time is per player');
     // Unknown SKUs are recorded but grant nothing; sandbox (price 0) is classified.
     assert.equal((await buy('buyer', 'tok-u', 'not_a_product')).json().purchases[0].status, 'unsupported');
-    await buy('buyer', 'tok-s', 'wc_gems_s', 0);
+    // Price-0 sandbox receipts are recorded but grant nothing unless sandbox granting is on (QA only).
+    assert.equal((await buy('buyer', 'tok-s', 'wc_gems_s', 0)).json().purchases[0].status, 'sandbox_refused');
     const [sandbox] = await sql`SELECT classification FROM purchase_transactions WHERE provider_token = 'tok-s'`;
     assert.equal(sandbox.classification, 'sandbox');
+    const qa = buildApp({ store: createStore(sql, { grantSandbox: true }), secret: SECRET, gameId: GAME, now: () => NOW });
+    const qaBuy = await qa.inject({ method: 'POST', url: '/v1/purchases/verify', headers: headers('qa-tester'),
+      payload: { receipt: receipt('qa-tester', [purchase('tok-qa', 'wc_gems_s', 0)]) } });
+    assert.equal(qaBuy.json().purchases[0].status, 'granted');
+    await qa.close();
     // Incomplete-purchase batches record every receipt.
     const batch = (await call('POST', '/v1/purchases/verify', 'buyer', { receipt: receipt('buyer', [purchase('b-1', 'wc_gems_s'), purchase('b-2', 'wc_wall_spur')], { batch: true }) })).json();
     assert.deepEqual(batch.purchases.map(p => p.status), ['granted', 'granted']);
     // The ledger lets any device reconcile grants it never saw.
     const ledger = (await call('GET', '/v1/saves/current', 'buyer')).json().purchases;
-    assert.deepEqual(ledger.map(p => p.purchaseToken).sort(), ['b-1', 'b-2', 'kit-1', 'tok-1', 'tok-s'].sort());
-    assert.ok(!ledger.some(p => p.purchaseToken === 'kit-2' || p.purchaseToken === 'tok-u'));
+    assert.deepEqual(ledger.map(p => p.purchaseToken).sort(), ['b-1', 'b-2', 'kit-1', 'tok-1'].sort());
+    assert.ok(!ledger.some(p => ['kit-2', 'tok-u', 'tok-s'].includes(p.purchaseToken)));
     // Once an accepted save carries a token it is delivered and never handed back,
     // so deleting it from the save cannot re-grant it.
     const deliveredSave = { blob: JSON.stringify({ player: { version: 9, wallet: {}, iapFulfilled: ['tok-1', 'kit-1'] } }), savedAt: NOW };

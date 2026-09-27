@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { chooseSave, progressScore, applyLedger, applyVerifiedPurchases, stageReceipt, clearReceipt } from '../src/systems/cloudSync.js';
+import { chooseSave, progressScore, applyLedger, applyVerifiedPurchases, stageReceipt, clearReceipt, carryPurchases } from '../src/systems/cloudSync.js';
+import { applyGrant } from '../src/systems/iap.js';
 
 const base = { wallet: { gems: 0, credits: 0 }, tutorial: { completed: true }, stats: { contractsCompleted: 5 }, ship: { systems: { weapons: 3 } }, crew: [1, 2, 3] };
 const cloudOf = (player, seq, savedAt = 1000) => ({ seq, savedAt, blob: JSON.stringify({ player, savedAt }) });
@@ -48,5 +49,25 @@ let outbox = stageReceipt(base, 'r1');
 outbox = stageReceipt(outbox, 'r1');
 assert.deepEqual(outbox.pendingReceipts, ['r1']);
 assert.deepEqual(clearReceipt(outbox, 'r1').pendingReceipts, []);
+
+// Grok audit: a brand-new captain with unsynced progress is not "fresh".
+const newbieDirty = { tutorial: { completed: false }, stats: {}, wallet: { gems: 0 }, crew: [1, 2], cloudDirty: true, lastSavedAt: 9 };
+const firstSync = chooseSave(newbieDirty, cloudOf({ tutorial: { completed: false }, stats: {}, wallet: { gems: 0 }, crew: [1] }, 1));
+assert.equal(firstSync.source, 'local');
+assert.ok(firstSync.archived, 'the older snapshot is archived, not the local progress');
+
+// Grok audit: paid gems survive losing a merge.
+const buyer = applyGrant({ ...base, wallet: { gems: 0 }, cloudDirty: true, cloudSeq: 1 }, { gems: 280 }, 'paid-tok', 'wc_gems_m');
+assert.equal(buyer.purchaseSkus['paid-tok'], 'wc_gems_m');
+const winner = { ...base, stats: { contractsCompleted: 40 }, wallet: { gems: 0 } };
+const merged = chooseSave(buyer, cloudOf(winner, 5));
+assert.equal(merged.source, 'cloud');
+assert.equal(merged.player.wallet.gems, 280, 'the losing side\'s purchase is re-granted to the winner');
+assert.equal(carryPurchases(merged.player, buyer).player?.wallet?.gems ?? carryPurchases(merged.player, buyer).wallet.gems, 280, 'carrying twice grants once');
+assert.deepEqual(carryPurchases({ ...base, oneTimePurchases: ['a'] }, { oneTimePurchases: ['wc_starter_kit'] }).oneTimePurchases.sort(), ['a', 'wc_starter_kit']);
+
+// Grok audit: a duplicate one-time purchase hides the pack so it cannot be charged again.
+const dupe = applyVerifiedPurchases(base, [{ purchaseToken: 'd', sku: 'wc_wall_spur', status: 'duplicate_one_time', grant: {} }]);
+assert.ok(dupe.player.oneTimePurchases.includes('wc_wall_spur'));
 
 console.log('cloud_sync.test.mjs OK');

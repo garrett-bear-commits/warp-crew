@@ -44,6 +44,7 @@ import { starterOfferState, starterValue, wallPackState, packValue } from '../sy
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
+import { trustedNow } from '../shared/cloud.js';
 import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
 
 const NODE_KIND_ART = {
@@ -872,8 +873,8 @@ export function renderRoomSheet(player, room, fuel, now) {
 
 function gemRefuelButton(player) {
   if (isTutorialActive(player) || !hudChips(player).includes('gems')) return '';
-  const full = (player.wallet?.fuel || 0) >= (player.fuelMax ?? 10);
-  return `<button data-act="refuel-gems" ${full ? 'disabled' : ''}>Refuel +${FUEL_REFILL.fuel} · ${FUEL_REFILL.gems}g</button>`;
+  const room = (player.fuelMax ?? 10) - (player.wallet?.fuel || 0);
+  return `<button data-act="refuel-gems" ${room >= FUEL_REFILL.fuel ? '' : 'disabled'}>Refuel +${FUEL_REFILL.fuel} · ${FUEL_REFILL.gems}g${room < FUEL_REFILL.fuel ? ' · needs room for 5' : ''}</button>`;
 }
 
 function fuelBuyButtons(player) {
@@ -892,7 +893,7 @@ function fuelBuyButtons(player) {
 function upgradeButton(player, system, label, next) {
   const build = player.shipBuild;
   if (build?.system === system) {
-    const left = Math.max(0, build.endAt - Date.now());
+    const left = Math.max(0, build.endAt - trustedNow());
     const skip = (player.drydockFinishes || 0) > 0 ? `Finish · ${player.drydockFinishes} token${player.drydockFinishes === 1 ? '' : 's'}` : `Skip ${buildSkipGems(left)}g`;
     return `<button class="upgrade-btn is-building" data-act="ship-build-skip"><span>Building ${escapeHtml(label)} Lv ${build.targetLevel} · ${formatDuration(left)} left</span><b>${skip}</b></button>`;
   }

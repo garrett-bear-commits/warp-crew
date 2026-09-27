@@ -15,7 +15,7 @@ export async function migrate(sql) {
 
 const lock = (tx, playerKey) => tx`SELECT pg_advisory_xact_lock(hashtextextended(${playerKey}, 0))`;
 
-export function createStore(sql) {
+export function createStore(sql, { grantSandbox = false } = {}) {
   return {
     async currentSave(playerKey) {
       const [row] = await sql`
@@ -64,7 +64,8 @@ export function createStore(sql) {
           return { status: 'already_recorded', sku: existing.sku, grant: existing.granted, classification: existing.classification };
         }
         let classification = product ? classifyReceipt(receipt) : 'unsupported';
-        let grant = product ? product.grant : {};
+        // Price-0 sandbox receipts grant only where sandbox granting is switched on (QA).
+        let grant = product && (classification !== 'sandbox' || grantSandbox) ? product.grant : {};
         if (product?.oneTime) {
           const [owned] = await tx`
             SELECT 1 FROM purchase_transactions
@@ -81,7 +82,8 @@ export function createStore(sql) {
           VALUES (${receipt.purchaseToken}, ${playerKey}, ${receipt.productSku}, ${classification}, ${tx.json(grant)},
             ${Boolean(product?.oneTime)}, ${Number.isInteger(receipt.price) ? receipt.price : null}, ${receipt.currency ?? null},
             ${new Date(receipt.createdAt)}, ${receipt.completedAt ? new Date(receipt.completedAt) : null})`;
-        const status = classification === 'unsupported' ? 'unsupported' : classification === 'duplicate_one_time' ? 'duplicate_one_time' : 'granted';
+        const status = classification === 'unsupported' ? 'unsupported' : classification === 'duplicate_one_time' ? 'duplicate_one_time'
+          : classification === 'sandbox' && !grantSandbox ? 'sandbox_refused' : 'granted';
         return { status, sku: receipt.productSku, grant, classification };
       });
     },
@@ -91,6 +93,7 @@ export function createStore(sql) {
       const rows = await sql`
         SELECT provider_token, sku, granted FROM purchase_transactions
         WHERE player_key = ${playerKey} AND classification IN ('paid', 'sandbox', 'unclassified') AND delivered_seq IS NULL
+          AND granted <> '{}'::jsonb
         ORDER BY created_at, id`;
       return rows.map(row => ({ purchaseToken: row.provider_token, sku: row.sku, grant: row.granted }));
     },

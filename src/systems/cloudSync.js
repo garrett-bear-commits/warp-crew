@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** Pure reconciliation between the local save, the cloud save and the purchase ledger. */
 import { applyGrant } from './iap.js';
+import { PRODUCT_DEFS } from '../data/products.js';
 
 /** Rough, monotonic progress measure used only to settle two-device conflicts. */
 export function progressScore(player) {
@@ -28,7 +29,8 @@ export function chooseSave(local, cloud) {
   } catch { return { player: local, source: 'local' }; }
   if (!remote?.wallet) return { player: local, source: 'local' };
   const localSeq = Number.isSafeInteger(local?.cloudSeq) ? local.cloudSeq : 0;
-  const localIsFresh = !local || (!local.tutorial?.completed && !(local.stats?.contractsCompleted > 0) && !local.cloudSeq);
+  // Unsynced local progress is never "fresh", even for a brand-new captain.
+  const localIsFresh = !local || (!local.cloudDirty && !local.tutorial?.completed && !(local.stats?.contractsCompleted > 0) && !local.cloudSeq);
   const adoptCloud = { player: { ...remote, cloudSeq: cloud.seq, cloudDirty: false }, source: 'cloud' };
   if (localIsFresh) return adoptCloud;
   if (cloud.seq <= localSeq) return { player: { ...local, cloudSeq: Math.max(localSeq, cloud.seq) }, source: 'local' };
@@ -38,8 +40,26 @@ export function chooseSave(local, cloud) {
   const remoteScore = progressScore(remote);
   const localWins = localScore > remoteScore || (localScore === remoteScore && (local.lastSavedAt || 0) > remoteSavedAt);
   return localWins
-    ? { player: { ...local, cloudSeq: cloud.seq }, source: 'local', conflict: true, archived: remote }
-    : { ...adoptCloud, conflict: true, archived: local };
+    ? { player: carryPurchases({ ...local, cloudSeq: cloud.seq }, remote), source: 'local', conflict: true, archived: remote }
+    : { ...adoptCloud, player: carryPurchases(adoptCloud.player, local), conflict: true, archived: local };
+}
+
+/**
+ * Purchases are never lost in a merge: anything the losing save had applied
+ * that the winner has not is re-granted from the catalog, and one-time
+ * ownership is merged.
+ */
+export function carryPurchases(winner, loser) {
+  let next = winner;
+  const skus = loser?.purchaseSkus || {};
+  for (const token of loser?.iapFulfilled || []) {
+    if ((next.iapFulfilled || []).includes(token)) continue;
+    const sku = skus[token];
+    const grant = sku ? PRODUCT_DEFS[sku]?.grant : null;
+    next = grant ? applyGrant(next, grant, token, sku) : { ...next, iapFulfilled: [...(next.iapFulfilled || []), token] };
+  }
+  const owned = new Set([...(next.oneTimePurchases || []), ...(loser?.oneTimePurchases || [])]);
+  return owned.size ? { ...next, oneTimePurchases: [...owned] } : next;
 }
 
 /** Grant every ledger purchase this save has never applied (idempotent by token). */
@@ -67,6 +87,10 @@ export function applyVerifiedPurchases(player, results = []) {
     } else if (!(next.iapFulfilled || []).includes(result.purchaseToken)) {
       // Unsupported or duplicate one-time: settle the token without a grant.
       next = { ...next, iapFulfilled: [...(next.iapFulfilled || []), result.purchaseToken] };
+    }
+    // The server says this player already owns the pack: hide it so it cannot be bought again.
+    if (result.status === 'duplicate_one_time' && result.sku && !(next.oneTimePurchases || []).includes(result.sku)) {
+      next = { ...next, oneTimePurchases: [...(next.oneTimePurchases || []), result.sku] };
     }
     settled.push(result.purchaseToken);
   }

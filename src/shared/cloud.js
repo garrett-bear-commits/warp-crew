@@ -94,15 +94,19 @@ async function request(method, path, body, { keepalive = false } = {}) {
 // builds, offer windows, siege resets) use it while online so a device clock
 // that is simply wrong cannot finish builds. Offline, the device clock is all
 // there is; that limit is documented in server/README.md.
-let clockOffsetMs = 0;
+// Trusted time = the last server time plus MONOTONIC elapsed time since it
+// arrived. Changing the device clock does not move performance.now(), so it
+// cannot finish builds or reset timers while a server sample exists.
+let serverSample = null;
+const monotonic = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
 function learnClock(result) {
   const serverNow = result?.data?.serverNow;
-  if (result?.ok && Number.isFinite(serverNow)) clockOffsetMs = serverNow - Date.now();
+  if (result?.ok && Number.isFinite(serverNow)) serverSample = { serverNow, at: monotonic() };
   return result;
 }
 
 export function trustedNow() {
-  return Date.now() + clockOffsetMs;
+  return serverSample ? serverSample.serverNow + (monotonic() - serverSample.at) : Date.now();
 }
 
 export const fetchCloudSave = async () => learnClock(await request('GET', '/v1/saves/current'));

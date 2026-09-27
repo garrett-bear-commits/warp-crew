@@ -2,7 +2,7 @@
 
 Authority for two things the browser cannot be trusted with:
 
-- **Purchases.** `POST /v1/purchases/verify` accepts only the signed Jest receipt (`purchaseSigned` from `beginPurchase`, or `purchasesSigned` from `getIncompletePurchases`). The server checks the HS256 signature, the game id and that the receipt belongs to the calling player, then chooses the grant from `src/data/products.js`. The purchase token is unique in the ledger, so replays never grant twice. One-time packs (starter kit, wall packs) grant once per player; a second payment is recorded as `duplicate_one_time` for support to refund. Signed price 0 is recorded as `sandbox`.
+- **Purchases.** `POST /v1/purchases/verify` accepts only the signed Jest receipt (`purchaseSigned` from `beginPurchase`, or `purchasesSigned` from `getIncompletePurchases`). The server checks the HS256 signature, the game id and that the receipt belongs to the calling player, then chooses the grant from `src/data/products.js`. The purchase token is unique in the ledger, so replays never grant twice. One-time packs (starter kit, wall packs) grant once per player; a second payment is recorded as `duplicate_one_time` for support to refund. Signed price 0 is recorded as `sandbox` and grants nothing unless `JEST_GRANT_SANDBOX=1` (set it only on a QA server).
 - **Cloud saves.** `PUT /v1/saves` appends to an insert-only log with a server-assigned sequence; refused writes are kept for recovery. `GET /v1/saves/current` returns the newest accepted save plus every granting purchase, so a device can catch up on purchases it never saw.
 
 Every request carries `x-player-id` and `authorization: Bearer <JestSDK.getPlayerSigned().playerSigned>`.
@@ -27,8 +27,8 @@ TEST_DATABASE_URL=postgres://postgres@localhost:5434/warpcrew_test PGSSL=off npm
 
 1. New Project → Deploy from GitHub repo → `warp-crew` (root directory empty: the server imports `src/data/products.js`). `railway.json` sets start command and health check.
 2. New → Database → Add PostgreSQL. On the service, set `DATABASE_URL` as a reference to it.
-3. Variables: `JEST_PLAYER_SECRET` (the base64 shared secret from the Jest Developer Console), `JEST_GAME_ID`, and `ALLOW_ORIGINS` (comma-separated game origins, e.g. the Jest and Pages hosts).
-4. `WARPCREW_DEV_AUTH=1` trusts `x-player-id` with no token. Use it only for a first QA without Jest; **never** where real players can reach it. The server refuses to start with it when `NODE_ENV` or `RAILWAY_ENVIRONMENT_NAME` is `production`, and refuses to start at all without a valid `JEST_PLAYER_SECRET` (base64, >= 16 bytes) and `JEST_GAME_ID`.
+3. Variables: `JEST_PLAYER_SECRET` (the base64 shared secret from the Jest Developer Console), `JEST_GAME_ID`, and `ALLOW_ORIGINS` (comma-separated game origins, e.g. the Jest and Pages hosts; **required** — with none set, browsers cannot call the server). `JEST_GRANT_SANDBOX=1` only on a QA server.
+4. `WARPCREW_DEV_AUTH=1` trusts `x-player-id` with no token. Use it only for a first QA without Jest; **never** where real players can reach it. The server refuses to start with it unless `NODE_ENV=development`, and refuses to start at all without a valid `JEST_PLAYER_SECRET` (base64, >= 16 bytes) and `JEST_GAME_ID`.
 5. Settings → Networking → Generate Domain; build the game with `VITE_WARPCREW_SERVER=<that URL>`.
 
 Migrations run on boot.
@@ -40,4 +40,5 @@ HS256 with a symmetric, base64-encoded secret; no JWKS; no `exp` on player token
 ## Known limits (security model)
 
 - **Premium balances live in the player's save.** The server is the authority for *purchases* (what was bought, one-time ownership, no double grants), not for spending. A player who edits their own local save can change their own gem count; that affects only their single-player game. Server-owned gem spending is the next step if gems ever feed leaderboards, trading or anything shared.
-- **Timers use the server clock while online** (drydock builds, offer windows, siege resets via the `serverNow` offset). Offline, only the device clock exists, so a player who changes their clock offline can finish their own builds early.
+- **Timers use the server clock while online:** the last `serverNow` plus monotonic elapsed time (`performance.now()`), so changing the device clock mid-session does nothing. Before the first server response, or fully offline, only the device clock exists, so a player who changes their clock offline can finish their own builds early.
+- **Merges never lose purchases:** when two devices conflict, the losing save's applied purchases are re-granted to the winner from the catalog (by token), and one-time ownership is merged.

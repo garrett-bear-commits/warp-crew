@@ -41,6 +41,8 @@ export function applyGrant(player, grantTable, token = null, sku = null) {
     ...(drydockFinishes ? { drydockFinishes: (player.drydockFinishes || 0) + drydockFinishes } : {}),
     ...(oneTime ? { oneTimePurchases: [...(player.oneTimePurchases || []), sku] } : {}),
     iapFulfilled: token ? [...fulfilled, token] : fulfilled,
+    // Which product each token bought, so a merge can re-grant it from the catalog.
+    ...(token && sku ? { purchaseSkus: { ...(player.purchaseSkus || {}), [token]: sku } } : {}),
   };
 }
 
@@ -73,6 +75,8 @@ export async function buyProduct(player, sku, { verifyReceipt = null, persist = 
   const def = PRODUCT_DEFS[sku];
   if (!def) return { ok: false, reason: 'unknown_sku', player };
   if (def.oneTime && ownsOneTime(player, sku)) return { ok: false, reason: 'already_owned', player };
+  // Never open a real checkout that nothing can verify.
+  if (isReal() && !verifyReceipt) return { ok: false, reason: 'store_unavailable', player };
 
   const begin = await purchaseProduct(sku);
   if (!begin.ok) {
