@@ -65,7 +65,9 @@ export async function listShopProducts() {
     const r = (remote || []).find((p) => p.sku === def.sku);
     return {
       ...def,
-      price: r?.price ?? null,
+      // Jest prices arrive in cents; keep both for display and value maths.
+      priceCents: Number.isInteger(r?.price) ? r.price : null,
+      price: Number.isInteger(r?.price) ? r.price / 100 : null,
       currency: r?.currency ?? 'USD',
       remoteName: r?.name,
     };

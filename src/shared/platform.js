@@ -281,10 +281,11 @@ export async function getProducts() {
     return sdk.payments.getProducts();
   }
   return [
-    { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', price: 0.99, currency: 'USD' },
-    { sku: 'wc_gems_100', name: 'Gem Pack 100', price: 1.99, currency: 'USD' },
-    { sku: 'wc_starter', name: 'Starter Pack', price: 4.99, currency: 'USD' },
-    { sku: 'wc_gems_500', name: 'Gem Crate 500', price: 7.99, currency: 'USD' },
+    // Jest reports prices in minor units (cents); the local mock matches.
+    { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', price: 99, currency: 'USD' },
+    { sku: 'wc_gems_100', name: 'Gem Pack 100', price: 199, currency: 'USD' },
+    { sku: 'wc_starter', name: 'Starter Pack', price: 499, currency: 'USD' },
+    { sku: 'wc_gems_500', name: 'Gem Crate 500', price: 799, currency: 'USD' },
   ];
 }
 

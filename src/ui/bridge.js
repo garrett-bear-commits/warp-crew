@@ -1408,7 +1408,7 @@ function renderShop(player, shopProducts) {
             <b>${escapeHtml(p.name)}</b>
             <div class="muted">${escapeHtml(p.blurb)}</div>
           </div>
-          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">${p.price != null ? `$${p.price}` : 'Buy'}</button>
+          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">${p.price != null ? `$${p.price.toFixed(2)}` : 'Buy'}</button>
         </div>
       `).join('')}
       ${renderPlatformLoginEntry()}
