@@ -39,14 +39,7 @@ import { dailyPlan, ensureDailyLoop } from '../systems/dailyLoop.js';
 import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
-
-const NAV_ICO = {
-  ship: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 18H4L12 3z"/><path d="M12 10v8"/></svg>',
-  crew: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.4"/><path d="M4 19c.4-3 2.6-5 5-5s4.6 2 5 5"/><path d="M14 19c.2-2 1.6-3.4 3.4-3.6 1.6.2 2.8 1.4 3.2 3.6"/></svg>',
-  missions: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg>',
-  shop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 11H6L5 8z"/><path d="M8 8V7a4 4 0 0 1 8 0v1"/></svg>',
-  log: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16H7z"/><path d="M10 8h4M10 12h4M10 16h3"/></svg>',
-};
+import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
 
 const NODE_KIND_ART = {
   station: 'c',
@@ -196,6 +189,15 @@ function bindOnce(root, ctx) {
   });
 }
 
+/** Whole-ship home view, clear of the top status panels. */
+export function homeCamera(viewport) {
+  const world = { w: 1152, h: 1728 };
+  const top = 78;
+  const bottom = 12;
+  const scale = Math.min(viewport.w / world.w, Math.max(80, viewport.h - top - bottom) / world.h);
+  return makeCamera(viewport, world, { x: world.w / 2, y: world.h / 2 - (top - bottom) / 2 / scale }, scale);
+}
+
 export function initialSessionCamera(viewport) {
   const camera = makeCamera(viewport, { w: 1152, h: 1728 });
   const bridge = ROOMS.find(room => room.id === 'bridge');
@@ -217,9 +219,8 @@ function bindCamera(root, ctx) {
     }
   });
   const size = () => ({ w: stage.clientWidth || 390, h: stage.clientHeight || 620 });
-  root._wcCamera = [4, 5].includes(ctx?.player?.tutorial?.script)
-    && (!ctx.player.tutorial.completed || (ctx.player.stats?.contractsCompleted || 0) <= 1)
-    ? initialSessionCamera(size()) : makeCamera(size(), { w: 1152, h: 1728 });
+  root._wcCamera = [4, 5].includes(ctx?.player?.tutorial?.script) && !ctx.player.tutorial.completed
+    ? initialSessionCamera(size()) : homeCamera(size());
   root._wcSetCamera = camera => {
     root._wcCamera = camera;
     fit.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
@@ -293,6 +294,7 @@ function buildShell() {
           <canvas class="space-canvas" data-slot="space"></canvas>
         </div>
         <div class="stage-hud" data-slot="stage-hud"></div>
+        <div data-slot="crew-rail"></div>
         <div data-slot="ship-sequence"></div>
         <div class="ship-fit">
           <img class="sparrow-hull" src="${SPACE_ART.hull}" alt="" />
@@ -362,7 +364,7 @@ function patchShell(root, ctx) {
   root._wcPlayer = player;
   const leavingFirstSession = root._wcFirstSession === true && !(firstSession || v5Session);
   root._wcFirstSession = firstSession || v5Session;
-  if (leavingFirstSession) root._wcSetCamera(initialSessionCamera(root._wcCamera.viewport));
+  if (leavingFirstSession) root._wcSetCamera(homeCamera(root._wcCamera.viewport));
   const fighting = isBattlePlaying();
   let coachStep = step && !step.modal ? step : null;
   if (coachStep && coachStep.act === 'goto-missions' && tab === 'missions') {
@@ -396,6 +398,7 @@ function patchShell(root, ctx) {
 
   setSlot(root, 'hud', renderHud(player, fuel, chips, firstSession || v5Session));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, root._wcCameraOpen));
+  setSlot(root, 'crew-rail', isHome && !fighting && !firstSession && !v5Session && !selectedRoom ? renderCrewRail(player) : '');
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
   setSlot(root, 'modal', ctx.confirmRestartSave ? renderRestartSaveConfirm() : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene }));
@@ -456,23 +459,15 @@ function renderHud(player, fuel, chips, firstSession = false) {
 }
 
 function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, cameraOpen = false) {
-  const filled = Math.max(0, Math.min(10, Math.round(hullPct / 10)));
-  const pips = Array.from({ length: 10 }, (_, i) => `<i class="${i < filled ? 'on' : ''}"></i>`).join('');
   const stationId = Object.keys(STATIONS).find(id => STATIONS[id].roomId === selectedRoom);
   const station = stationId ? stationOutputs(player, now)[stationId] : null;
   return `
-        <div class="meter-chip">
-          <span class="lbl">HULL</span>
-          <div class="hull-pips" aria-label="Hull ${hullPct}">${pips}</div>
-          <span class="pct">${hullPct}</span>
-        </div>
-        <div class="loc-chip" ${station ? `aria-label="${station.label} output ${station.total}"` : ''}>${station ? `${station.label} ${station.total}` : escapeHtml(locName)}</div>
-        <div class="meter-chip ghost">
-          <span class="lbl">SHLD</span>
-          <div class="meter shield"><span style="width:${shieldPct}%"></span></div>
+        ${renderStatusPanel(hullPct, shieldPct)}
+        <div class="objective-panel" ${station ? `aria-label="${station.label} output ${station.total}"` : ''}>
+          ${renderObjectiveHead(locName, station ? `${station.label} ${station.total}` : null)}
         </div>
         <div class="camera-controls${cameraOpen ? ' is-open' : ''}" aria-label="Ship view controls">
-          <button type="button" data-camera="toggle" aria-label="Camera controls" aria-expanded="${cameraOpen}">Camera</button>
+          <button type="button" data-camera="toggle" aria-label="Camera controls" aria-expanded="${cameraOpen}">${pixelIcon('camera')}</button>
           <div class="camera-actions">
           <button type="button" data-camera="focus" aria-label="Focus ship view">Focus</button>
           <button type="button" data-camera="zoom-in" aria-label="Zoom in">+</button>
@@ -484,19 +479,12 @@ function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, 
 
 export function renderNav(tab, player, expReady, tabs, step, crewAttentionSeen = false) {
   const ids = tabs && tabs.length ? tabs : unlockedTabs(player);
-  const labels = { ship: 'Ship', crew: 'Crew', missions: 'Missions', shop: 'Shop', log: 'Log' };
-  const badge = {
-    ship: false,
+  const badges = {
     crew: tab !== 'crew' && !crewAttentionSeen && player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha')
       && ((player.crew || []).length < (player.crewSlots || 0) || (player.reserve || []).length < RESERVE_CAP),
     missions: expReady,
-    shop: false,
-    log: false,
   };
-  return ids.map((id) => {
-    const spot = step?.spotlight === `nav-${id}` ? 'spot-glow' : '';
-    return navBtn(id, labels[id], tab, badge[id], spot);
-  }).join('');
+  return renderCommandBar(tab, player, expReady, ids, { spotlight: step?.spotlight || null, badges });
 }
 
 export function renderHotspots(player, fuel, expReady, selectedRoom) {
@@ -553,7 +541,7 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
   if (isHome && player.tutorial?.script === 4 && player.tutorial.completed && !player.activeContract
     && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return `<aside class="first-session-cue" aria-label="Next job"><p>Next job is ready.</p><button class="primary" data-act="goto-contracts">See contracts</button><small>Away teams are on Missions when you're ready.</small></aside>`;
   if (isHome && player.tutorial?.script === 5 && player.tutorial.completed && !player.activeContract
-    && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return '<aside class="first-session-cue" aria-label="Next job"><p>Your crew is ready for another job.</p><button class="primary" data-act="goto-contracts">See contracts</button></aside>';
+    && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return '<button type="button" class="next-job-callout" data-act="goto-contracts" aria-label="Your crew is ready for another job. See contracts">Crew ready · See contracts</button>';
   const def = SHIPS[player.ship?.shipId] || SHIPS.sparrow;
   const room = ROOMS.find((r) => r.id === selectedRoom);
   const showHangar = isFeatureUnlocked(player, 'hangar');
@@ -766,15 +754,6 @@ function renderDossier(player, id) {
         </div>
       </div>
     </div>`;
-}
-
-function navBtn(id, label, tab, badge, extraClass = '') {
-  return `
-    <button data-tab="${id}" data-spot-target="nav-${id}" class="${tab === id ? 'active' : ''} ${extraClass}">
-      ${NAV_ICO[id] || ''}
-      <span>${label}</span>
-      ${badge ? '<i class="nav-badge"></i>' : ''}
-    </button>`;
 }
 
 function roomPip(room, player, fuel, expReady) {

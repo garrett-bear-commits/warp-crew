@@ -163,7 +163,7 @@ const shadowFeet = [];
 const gradient = { addColorStop() {} };
 const context = {
   setTransform() {}, clearRect() {}, save() {}, restore() {}, beginPath() {},
-  fill() {}, fillRect() {}, drawImage() {}, moveTo() {}, lineTo() {}, closePath() {},
+  fill() {}, fillRect() {}, drawImage() {}, moveTo() {}, lineTo() {}, closePath() {}, quadraticCurveTo() {},
   createRadialGradient: () => gradient,
   createLinearGradient: () => gradient,
   ellipse(x, y, rx, ry) {
@@ -374,6 +374,7 @@ const spaceDraws = [];
 const spaceContext = {
   setTransform() {}, clearRect() { spaceDraws.length = 0; }, save() {}, restore() {},
   beginPath() {}, fill() {}, arc() {},
+  createLinearGradient: () => gradient, createRadialGradient: () => gradient,
   fillRect(...args) { spaceDraws.push(['rect', ...args]); },
   translate(...args) { spaceDraws.push(['translate', ...args]); },
   rotate(...args) { spaceDraws.push(['rotate', ...args]); },

@@ -44,7 +44,7 @@ export function contractShipSignals(player) {
     operationsActive: Boolean(stage && stage !== 'return' && stage !== 'claimed'),
     cargoReady: stage === 'return',
     firstRepairLit: player?.flags?.sparrowFirstRepair === true,
-    berth3Open: player?.flags?.berth3Opened === true && (player?.crewSlots || 0) >= 3,
+    berth3Open: player?.flags?.berth3Opened === true && (player?.crewSlots || 0) >= 3 && player?.tutorial?.completed !== true,
   };
 }
 
@@ -73,7 +73,7 @@ export function renderShipSequence(sequence, recruit = null) {
 }
 
 export function renderRoomHotspot({ room, selected = false, alert = '', signal = '', level = null }) {
-  const tag = level == null ? room.label : `${room.label} ${level}`;
+  const tag = room.label;
   const state = contractSignalLabel(signal) || alertLabel(alert);
   const aria = [room.label, level == null ? '' : `level ${level}`, state].filter(Boolean).join(', ');
   const classes = [

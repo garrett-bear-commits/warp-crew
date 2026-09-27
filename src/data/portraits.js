@@ -96,6 +96,7 @@ export const SPACE_ART = {
   stars: artUrl('art/space/stars.png'),
   nebula: artUrl('art/space/nebula.png'),
   planet: artUrl('art/space/planet.png'),
+  planetHero: artUrl('art/space/planet-hero.png'),
   planetIce: artUrl('art/space/planet-ice.png'),
   blackhole: artUrl('art/space/blackhole.png'),
   pirate: sliceUrl('pirate_scout'),
