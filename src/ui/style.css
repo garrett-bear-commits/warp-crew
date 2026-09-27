@@ -2572,3 +2572,180 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 @media (prefers-reduced-motion: reduce) { .ship-fit { transition: none; } }
 .room-sheet { max-height: min(54%, 470px); }
 .room-sheet[data-room-position="lower"] { top: 84px; max-height: min(46%, 400px); }
+
+/* First-session dialogs share the ops skin. */
+.first-session-modal {
+  border-radius: 0;
+  clip-path: var(--ops-chamfer);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px),
+    var(--ops-grad);
+  border: 1px solid var(--ops-edge) !important;
+  border-top: 2px solid var(--ops-amber) !important;
+}
+.modal-kicker {
+  font: 700 12px var(--font-display);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ops-amber);
+  margin-bottom: -6px;
+}
+.first-session-modal h2 { font-size: 24px; letter-spacing: 0.02em; }
+.first-session-modal input {
+  border-radius: 0;
+  background: #060a11;
+  border: 1px solid var(--ops-edge-hi);
+  font: 700 17px var(--font-display);
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.first-session-modal label { font: 700 11px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+.captain-option {
+  border-radius: 0;
+  clip-path: var(--ops-chamfer-sm);
+  background: #0a0f18;
+  border: 1px solid var(--ops-edge);
+}
+.captain-option[aria-pressed="true"] {
+  border-color: var(--ops-amber);
+  background: linear-gradient(180deg, rgba(255, 181, 71, 0.18), rgba(255, 181, 71, 0.03)), #0a0f18;
+  box-shadow: inset 0 0 18px rgba(255, 181, 71, 0.2);
+}
+.captain-option img { border: 1px solid var(--ops-edge-hi); }
+.captain-option b { font: 700 17px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; }
+.captain-option small { font-size: 14px; color: var(--muted); }
+.first-session-cue p { font-size: 17px; }
+.distress-transmission { border-top-color: var(--bad) !important; }
+
+/* Transient tickers stack under the status plates instead of over them. */
+.ship-sequence-status {
+  top: 84px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 5px 12px;
+  border-radius: 0;
+  clip-path: var(--ops-chamfer-sm);
+  background: rgba(6, 10, 17, 0.92);
+  border: 1px solid rgba(111, 224, 140, 0.55);
+  color: var(--good);
+  font: 700 13px var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.camera-orientation-cue {
+  top: auto;
+  bottom: 150px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 0;
+  clip-path: var(--ops-chamfer-sm);
+  background: rgba(6, 10, 17, 0.94);
+  border: 1px solid var(--ops-edge-hi);
+}
+.camera-orientation-cue p { font-size: 15px; color: var(--muted); }
+.camera-orientation-cue button { min-height: 40px; font: 700 13px var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; }
+.departure-status { border-radius: 0; clip-path: var(--ops-chamfer-sm); font-family: var(--font-display); letter-spacing: 0.06em; }
+.wc-shell.first-session .status-row .lbl { font-size: 12px; }
+.wc-shell.first-session .status-row .pct { font-size: 13px; }
+
+/* Combat readout. */
+.ship-encounter {
+  border-radius: 0;
+  clip-path: var(--ops-chamfer);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px),
+    var(--ops-grad);
+  border: 1px solid var(--ops-edge);
+  border-top: 2px solid var(--bad);
+}
+.ship-encounter .encounter-panel.target-window { outline: none; box-shadow: none; border: 0; }
+.encounter-bars { grid-template-columns: 74px 1fr; gap: 5px 10px; }
+.encounter-bars span { font: 700 13px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.encounter-bars meter {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 0;
+}
+.encounter-bars meter::-webkit-meter-bar { background: rgba(255, 255, 255, 0.07); border: 0; border-radius: 0; height: 10px; }
+.encounter-bars meter::-webkit-meter-optimum-value,
+.encounter-bars meter::-webkit-meter-suboptimum-value,
+.encounter-bars meter::-webkit-meter-even-less-good-value { border-radius: 0; background: linear-gradient(180deg, #9dffb4, #3fbf63); }
+.encounter-bars meter::-moz-meter-bar { border-radius: 0; background: linear-gradient(180deg, #9dffb4, #3fbf63); }
+.encounter-bars meter[aria-label="Shield charge"]::-webkit-meter-optimum-value,
+.encounter-bars meter[aria-label="Shield charge"]::-webkit-meter-suboptimum-value,
+.encounter-bars meter[aria-label="Shield charge"]::-webkit-meter-even-less-good-value { background: linear-gradient(180deg, #9fd3ff, #2f7fe0); }
+.encounter-bars meter[aria-label="Shield charge"]::-moz-meter-bar { background: linear-gradient(180deg, #9fd3ff, #2f7fe0); }
+.encounter-bars meter[aria-label="Pirate hull"]::-webkit-meter-optimum-value,
+.encounter-bars meter[aria-label="Pirate hull"]::-webkit-meter-suboptimum-value,
+.encounter-bars meter[aria-label="Pirate hull"]::-webkit-meter-even-less-good-value { background: linear-gradient(180deg, #ff9a8a, #d8412f); }
+.encounter-bars meter[aria-label="Pirate hull"]::-moz-meter-bar { background: linear-gradient(180deg, #ff9a8a, #d8412f); }
+.encounter-threat {
+  padding: 8px 10px;
+  background:
+    repeating-linear-gradient(-45deg, rgba(255, 100, 100, 0.08) 0 8px, transparent 8px 16px),
+    #0a0f18;
+  border-left: 3px solid var(--bad);
+  font: 700 16px var(--font-display);
+  letter-spacing: 0.04em;
+  color: #ffd2cc;
+}
+.target-caption { font: 700 15px var(--font-display); letter-spacing: 0.06em; color: var(--ops-amber-hi); }
+.encounter-stations summary { font: 700 12px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.encounter-actions button span { text-transform: none; letter-spacing: 0; font: 500 13px var(--font-sans); opacity: 0.85; }
+.encounter-bars { grid-template-columns: 104px 1fr; }
+
+/* Recruit reveal. */
+.recruit-reveal { text-align: center; justify-items: center; }
+.recruit-reveal .modal-kicker { justify-self: center; }
+.reveal-portrait {
+  --ring: #7fb2d6;
+  position: relative;
+  width: 132px;
+  height: 132px;
+  padding: 4px;
+  border: 2px solid var(--ring);
+  background: radial-gradient(circle, color-mix(in srgb, var(--ring) 35%, transparent), transparent 70%), #060a11;
+  box-shadow: 0 0 28px color-mix(in srgb, var(--ring) 55%, transparent);
+  clip-path: var(--ops-chamfer);
+}
+.reveal-portrait img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+[data-rarity="uncommon"] { --ring: #6fe08c; }
+[data-rarity="rare"] { --ring: #58a8ff; }
+[data-rarity="epic"] { --ring: #b58cff; }
+[data-rarity="legendary"] { --ring: #ffb547; }
+.reveal-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.reveal-tags > span {
+  padding: 2px 8px;
+  font: 700 12px var(--font-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+  border: 1px solid var(--ops-edge-hi);
+  background: #060a11;
+}
+.reveal-tags .reveal-rarity { color: var(--ring, #7fb2d6); border-color: var(--ring, #7fb2d6); }
+.reveal-line { font: 700 15px var(--font-display) !important; letter-spacing: 0.06em; color: var(--accent); }
+.first-session-modal .reveal-note { font-size: 13px; color: var(--muted); }
+.recruit-beacon {
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  color: var(--good);
+  --icon-accent: #d6ffe0;
+  border: 1px solid rgba(111, 224, 140, 0.6);
+  background: radial-gradient(circle, rgba(111, 224, 140, 0.25), transparent 70%), #060a11;
+  clip-path: var(--ops-chamfer);
+}
+.recruit-beacon .px-icon { width: 44px; }
+@media (prefers-reduced-motion: no-preference) {
+  .recruit-beacon { animation: beacon 1.4s ease-in-out infinite; }
+  .reveal-portrait { animation: reveal-in 520ms var(--ease-out) both; }
+}
+@keyframes beacon { 50% { box-shadow: 0 0 26px rgba(111, 224, 140, 0.55); } }
+@keyframes reveal-in { from { transform: scale(0.6); opacity: 0; filter: brightness(3); } }
