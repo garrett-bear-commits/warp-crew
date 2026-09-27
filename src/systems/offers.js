@@ -5,9 +5,10 @@
  * never before the Shop is unlocked, and stays for a real 48-hour window.
  */
 import { isTabUnlocked } from './tutorial.js';
-import { PRODUCT_DEFS } from './iap.js';
+import { PRODUCT_DEFS, GEM_LADDER, ownsOneTime } from './iap.js';
+import { FUEL_REFILL } from './gemSinks.js';
 
-export const STARTER_OFFER = Object.freeze({ sku: 'wc_starter', windowMs: 48 * 3600 * 1000, contractsTrigger: 4 });
+export const STARTER_OFFER = Object.freeze({ sku: 'wc_starter_kit', windowMs: 48 * 3600 * 1000, contractsTrigger: 4 });
 
 export function evaluateStarterOffer(player, now = Date.now()) {
   if (!player || player.offers?.starter) return player;
@@ -22,7 +23,7 @@ export function starterOfferState(player, now = Date.now()) {
   const offer = player?.offers?.starter;
   if (!offer) return { active: false };
   const endsAt = offer.triggeredAt + STARTER_OFFER.windowMs;
-  const active = !offer.purchased && now < endsAt;
+  const active = !offer.purchased && !ownsOneTime(player, STARTER_OFFER.sku) && now < endsAt;
   return { active, endsAt, remainingMs: Math.max(0, endsAt - now), showModal: active && !offer.seen, reason: offer.reason, purchased: offer.purchased };
 }
 
@@ -33,19 +34,25 @@ export function markStarterOffer(player, patch) {
 }
 
 /**
- * Truthful value line: price the kit's gems and fuel at the best live per-unit
- * rate of the ordinary gem and fuel packs. Credits and medals are extra.
+ * Truthful value line: compare a pack with the regular gem pack at the same
+ * price. Fuel counts at the in-game refill rate; medals and credits are extra.
  */
-export function starterValue(products = []) {
+export function packValue(sku, products = []) {
   const bySku = Object.fromEntries(products.filter(p => Number.isFinite(p?.price)).map(p => [p.sku, p]));
-  const kit = bySku[STARTER_OFFER.sku];
-  const grant = PRODUCT_DEFS[STARTER_OFFER.sku].grant;
-  const rate = (skus, key) => Math.min(...skus.map(sku => bySku[sku] && PRODUCT_DEFS[sku].grant[key]
-    ? bySku[sku].price / PRODUCT_DEFS[sku].grant[key] : Infinity));
-  const gemRate = rate(['wc_gems_100', 'wc_gems_500'], 'gems');
-  const fuelRate = rate(['wc_fuel_5'], 'fuel');
-  if (!kit || !Number.isFinite(gemRate) || !Number.isFinite(fuelRate)) return null;
-  const worth = Math.round(((grant.gems || 0) * gemRate + (grant.fuel || 0) * fuelRate) * 100) / 100;
-  const savedPct = Math.round((1 - kit.price / worth) * 100);
-  return { price: kit.price, currency: kit.currency || 'USD', worth, savedPct: savedPct > 0 ? savedPct : 0, grant };
+  const pack = bySku[sku];
+  const grant = PRODUCT_DEFS[sku]?.grant;
+  if (!pack || !grant) return null;
+  const rungs = GEM_LADDER.map(id => bySku[id]).filter(Boolean).filter(rung => rung.price <= pack.price)
+    .sort((a, b) => b.price - a.price);
+  const rung = rungs[0];
+  if (!rung) return null;
+  const rungGems = PRODUCT_DEFS[rung.sku].grant.gems;
+  const gemValue = (grant.gems || 0) + (grant.fuel || 0) * (FUEL_REFILL.gems / FUEL_REFILL.fuel);
+  const morePct = Math.round((gemValue / rungGems - 1) * 100 * (rung.price / pack.price));
+  return { sku, price: pack.price, currency: pack.currency || 'USD', grant, rung: { sku: rung.sku, name: PRODUCT_DEFS[rung.sku].name, price: rung.price, gems: rungGems },
+    gemValue, morePct: morePct > 0 ? morePct : 0 };
+}
+
+export function starterValue(products = []) {
+  return packValue(STARTER_OFFER.sku, products);
 }

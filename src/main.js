@@ -118,6 +118,7 @@ function pushLog(msg) {
 }
 
 const SESSION_ERROR_COPY = {
+  fuel_full: 'Fuel tanks are already full.',
   drydock_busy: 'The drydock is already building an upgrade.',
   not_enough_gems: 'Not enough gems to finish the build now.',
   no_build: 'Nothing is building in the drydock.',

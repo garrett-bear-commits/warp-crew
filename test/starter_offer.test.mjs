@@ -26,21 +26,24 @@ assert.equal(starterOfferState(markStarterOffer(afterLoss, { seen: true }), now)
 assert.equal(starterOfferState(afterLoss, now + STARTER_OFFER.windowMs).active, false, 'the timer is real');
 assert.equal(starterOfferState(markStarterOffer(afterLoss, { purchased: true }), now).active, false, 'bought once');
 
-// The saving line is computed from live pack prices and never invented.
+// The value line compares with the same-price gem pack and never invents a saving.
 const products = [
-  { sku: 'wc_fuel_5', price: 0.99 }, { sku: 'wc_gems_100', price: 1.99 }, { sku: 'wc_gems_500', price: 7.99 }, { sku: 'wc_starter', price: 4.99 },
+  { sku: 'wc_gems_s', price: 1.99 }, { sku: 'wc_gems_m', price: 4.99 }, { sku: 'wc_gems_l', price: 9.99 },
+  { sku: 'wc_starter_kit', price: 4.99 },
 ];
 const value = starterValue(products);
-assert.ok(value.worth > value.price, 'the kit is genuinely cheaper than its gems and fuel');
-assert.ok(value.savedPct > 0 && value.savedPct < 100);
-assert.equal(starterValue(products.map(p => p.sku === 'wc_starter' ? { ...p, price: 99 } : p)).savedPct, 0, 'no fake discount when it is not cheaper');
+assert.equal(value.rung.sku, 'wc_gems_m');
+assert.equal(value.gemValue, 350, '250 gems plus 10 fuel at 10 gems each');
+assert.equal(value.morePct, 25);
+assert.equal(starterValue(products.map(p => p.sku === 'wc_starter_kit' ? { ...p, price: 99 } : p)).morePct, 0, 'no claim when it is not better value');
 assert.equal(starterValue([]), null);
+assert.equal(starterOfferState({ ...afterLoss, oneTimePurchases: ['wc_starter_kit'] }, now).active, false, 'owned kit never shows again');
 state = starterOfferState(afterLoss, now);
 const html = renderStarterOffer(state, value);
 assert.match(html, /One time only · 48h 0m left/);
-assert.match(html, new RegExp(`Save ${value.savedPct}%`));
-assert.match(html, /data-act="iap-buy" data-sku="wc_starter">\$4\.99/);
+assert.match(html, /25% more than the \$4\.99 Gem Pack \(280 gems\)/);
+assert.match(html, /data-act="iap-buy" data-sku="wc_starter_kit">\$4\.99/);
 assert.match(html, /data-act="starter-dismiss"/);
-assert.doesNotMatch(renderStarterOffer(state, { ...value, savedPct: 0 }), /Save \d/);
+assert.doesNotMatch(renderStarterOffer(state, { ...value, morePct: 0 }), /more than the/);
 
 console.log('starter_offer.test.mjs OK');

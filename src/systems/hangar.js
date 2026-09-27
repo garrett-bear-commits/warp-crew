@@ -225,6 +225,11 @@ export function completeShipBuild(player, now = Date.now()) {
 export function skipShipBuild(player, now = Date.now()) {
   const build = player?.shipBuild;
   if (!build) return { ok: false, reason: 'no_build' };
+  // Drydock finish tokens (from wall packs) are spent before gems.
+  if ((player.drydockFinishes || 0) > 0) {
+    const paid = { ...player, drydockFinishes: player.drydockFinishes - 1 };
+    return { ok: true, gems: 0, token: true, ...completeShipBuild(paid, Math.max(now, build.endAt)) };
+  }
   const gems = buildSkipGems(build.endAt - now);
   if ((player.wallet?.gems || 0) < gems) return { ok: false, reason: 'not_enough_gems', gems };
   const paid = { ...player, wallet: { ...player.wallet, gems: player.wallet.gems - gems } };

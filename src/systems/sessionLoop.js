@@ -21,6 +21,7 @@ import { canAfford, formatReward } from './economy.js';
 import { beatDelayMs } from './fightPacing.js';
 import { evaluateStarterOffer } from './offers.js';
 import { ensureWallOffer } from './walls.js';
+import { refuelWithGems } from './gemSinks.js';
 import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
 import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
@@ -500,11 +501,16 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     player = res.player;
     milestone('improve');
     if (act === 'ship-upgrade') events.push(event(res.build ? 'ship_build_started' : 'ship_upgrade', { system: data.system, level: res.nextLevel, ...(res.build ? { minutes: Math.round((res.build.endAt - res.build.startedAt) / 60000) } : {}) }));
+  } else if (act === 'refuel-gems') {
+    const res = refuelWithGems(player);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    events.push(event('gem_spend', { sink: 'fuel_refill', gems: res.gems }));
   } else if (act === 'ship-build-skip') {
     const res = skipShipBuild(player, now);
     if (!res.ok) return fail(res.reason);
     player = res.player;
-    events.push(event('ship_build_skipped', { system: res.completed?.system, gems: res.gems }));
+    events.push(event('ship_build_skipped', { system: res.completed?.system, gems: res.gems, token: Boolean(res.token) }));
   } else if (act === 'travel-to') {
     if (player.activeContract) return fail('active_contract');
     if (isTutorialActive(player)) return fail('tutorial_contract_required');

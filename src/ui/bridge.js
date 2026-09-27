@@ -41,6 +41,7 @@ import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue } from '../systems/offers.js';
+import { FUEL_REFILL } from '../systems/gemSinks.js';
 import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
 
 const NODE_KIND_ART = {
@@ -865,6 +866,12 @@ export function renderRoomSheet(player, room, fuel, now) {
     </div>`;
 }
 
+function gemRefuelButton(player) {
+  if (isTutorialActive(player) || !hudChips(player).includes('gems')) return '';
+  const full = (player.wallet?.fuel || 0) >= (player.fuelMax ?? 10);
+  return `<button data-act="refuel-gems" ${full ? 'disabled' : ''}>Refuel +${FUEL_REFILL.fuel} · ${FUEL_REFILL.gems}g</button>`;
+}
+
 function fuelBuyButtons(player) {
   if (isTutorialActive(player)) return '';
   const fuel = player.wallet?.fuel || 0;
@@ -882,7 +889,8 @@ function upgradeButton(player, system, label, next) {
   const build = player.shipBuild;
   if (build?.system === system) {
     const left = Math.max(0, build.endAt - Date.now());
-    return `<button class="upgrade-btn is-building" data-act="ship-build-skip"><span>Building ${escapeHtml(label)} Lv ${build.targetLevel} · ${formatDuration(left)} left</span><b>Skip ${buildSkipGems(left)}g</b></button>`;
+    const skip = (player.drydockFinishes || 0) > 0 ? `Finish · ${player.drydockFinishes} token${player.drydockFinishes === 1 ? '' : 's'}` : `Skip ${buildSkipGems(left)}g`;
+    return `<button class="upgrade-btn is-building" data-act="ship-build-skip"><span>Building ${escapeHtml(label)} Lv ${build.targetLevel} · ${formatDuration(left)} left</span><b>${skip}</b></button>`;
   }
   const minutes = buildMinutesFor(next.level + 1);
   const timing = minutes ? ` · ${minutes >= 60 ? `${minutes / 60}h` : `${minutes}m`} build` : '';
@@ -946,6 +954,7 @@ function roomActions(room, player) {
     return `
       <button class="primary" data-act="claim">Claim fuel</button>
       ${fuelBuyButtons(player)}
+      ${gemRefuelButton(player)}
       ${offer ? `<button data-act="repair-hull">Repair ${offer.cost}cr (+${offer.amount}%)</button>` : ''}
       ${hangar && en ? `${upgradeButton(player, 'engines', 'Engines', en)}` : ''}`;
   }
@@ -1275,9 +1284,9 @@ function starterPrice(value) {
 }
 
 function starterSaving(value) {
-  // Only claim a saving the live pack prices support.
-  return value?.savedPct > 0
-    ? `<p class="kit-saving">Save ${value.savedPct}%: the gems and fuel alone cost $${value.worth.toFixed(2)} in regular packs. Credits and medals are extra.</p>` : '';
+  // Only claim value the live prices support: compare with the gem pack at the same price.
+  return value?.morePct > 0
+    ? `<p class="kit-saving">${value.morePct}% more than the $${value.rung.price.toFixed(2)} ${escapeHtml(value.rung.name)} (${value.rung.gems} gems), counting fuel at its gem price. Medals and credits are extra.</p>` : '';
 }
 
 function starterClock(state) {
@@ -1296,7 +1305,7 @@ export function renderStarterOffer(state, value) {
     <p>${escapeHtml(lead)}</p>
     ${starterContents(value)}
     ${starterSaving(value)}
-    <button class="primary" data-act="iap-buy" data-sku="wc_starter">${starterPrice(value)}</button>
+    <button class="primary" data-act="iap-buy" data-sku="wc_starter_kit">${starterPrice(value)}</button>
     <button class="ghost" data-act="starter-dismiss">Maybe later</button>
     <p class="kit-note">Stays in the Shop until the timer ends. Can only be bought once.</p>
   </section></div>`;
@@ -1308,15 +1317,17 @@ function renderStarterCard(state, value) {
     <h2>New Captain's Kit</h2>
     ${starterContents(value)}
     ${starterSaving(value)}
-    <button class="primary" data-act="iap-buy" data-sku="wc_starter">${starterPrice(value)}</button>
+    <button class="primary" data-act="iap-buy" data-sku="wc_starter_kit">${starterPrice(value)}</button>
   </section>`;
 }
 
 function renderShop(player, shopProducts) {
   const SKU_COPY = {
-    wc_fuel_5: { name: 'Fuel ×5', blurb: 'Jump five times' },
-    wc_gems_100: { name: '100 gems', blurb: 'One hire, or luck' },
-    wc_gems_500: { name: '500 gems', blurb: '10-pull, leftover 100' },
+    wc_gems_s: { name: 'Gem Pouch', blurb: '100 gems' },
+    wc_gems_m: { name: 'Gem Pack', blurb: '280 gems · +12%' },
+    wc_gems_l: { name: 'Gem Crate', blurb: '600 gems · +20%' },
+    wc_gems_xl: { name: 'Gem Vault', blurb: '1,300 gems · +30%' },
+    wc_gems_xxl: { name: 'Gem Hoard', blurb: '3,500 gems · +40%' },
   };
   const bySku = Object.fromEntries((shopProducts || []).map((p) => [p.sku, p]));
   const products = Object.keys(SKU_COPY).map((sku) => {

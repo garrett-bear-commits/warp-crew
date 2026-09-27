@@ -282,10 +282,17 @@ export async function getProducts() {
   }
   return [
     // Jest reports prices in minor units (cents); the local mock matches.
-    { sku: 'wc_fuel_5', name: 'Fuel Cell ×5', price: 99, currency: 'USD' },
-    { sku: 'wc_gems_100', name: 'Gem Pack 100', price: 199, currency: 'USD' },
-    { sku: 'wc_starter', name: 'Starter Pack', price: 499, currency: 'USD' },
-    { sku: 'wc_gems_500', name: 'Gem Crate 500', price: 799, currency: 'USD' },
+    { sku: 'wc_gems_s', name: 'Gem Pouch', price: 199, currency: 'USD' },
+    { sku: 'wc_gems_m', name: 'Gem Pack', price: 499, currency: 'USD' },
+    { sku: 'wc_gems_l', name: 'Gem Crate', price: 999, currency: 'USD' },
+    { sku: 'wc_gems_xl', name: 'Gem Vault', price: 1999, currency: 'USD' },
+    { sku: 'wc_gems_xxl', name: 'Gem Hoard', price: 4999, currency: 'USD' },
+    { sku: 'wc_starter_kit', name: "New Captain's Kit", price: 499, currency: 'USD' },
+    { sku: 'wc_wall_spur', name: 'Corsair Breaker Pack', price: 499, currency: 'USD' },
+    { sku: 'wc_wall_veil', name: 'Frigate Breaker Pack', price: 799, currency: 'USD' },
+    { sku: 'wc_wall_ember', name: 'Raider Breaker Pack', price: 999, currency: 'USD' },
+    { sku: 'wc_wall_hollow', name: 'Shade Breaker Pack', price: 1299, currency: 'USD' },
+    { sku: 'wc_wall_crown', name: 'Throne Breaker Pack', price: 1499, currency: 'USD' },
   ];
 }
 
