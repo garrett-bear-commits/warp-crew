@@ -6,6 +6,7 @@ import { defaultTutorial, isTutorialActive } from '../systems/tutorial.js';
 import { resolveExpedition, applyExpeditionResult, visiblePlanets } from '../systems/expedition.js';
 import { nextUpgradeCost, upgradeSystem, SHIP_SYSTEMS } from '../systems/hangar.js';
 import { markDailyMilestone } from '../systems/dailyLoop.js';
+import { repelStatus } from '../systems/autoCombat.js';
 
 export const STRATEGIES = {
   cautious: { profiles: ['reliable', 'strange', 'risky'], route: 'secure', order: 'brace' },
@@ -169,7 +170,8 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
           while (player.activeEncounter && !player.activeEncounter.result && beats < 40) {
             const encounter = player.activeEncounter;
             const open = encounter.orderWindow?.availableOrders || [];
-            const order = open.includes('target_weapons') ? 'target_weapons'
+            const order = repelStatus(encounter).available ? 'repel'
+              : open.includes('target_weapons') ? 'target_weapons'
                 : open.includes('brace') ? 'brace'
                   : open.includes('repair') && encounter.hull <= 18 ? 'repair' : null;
             const ident = { acceptanceId: encounter.acceptanceId, revision: encounter.revision };

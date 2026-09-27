@@ -77,6 +77,16 @@ export function renderShipEncounter(model = {}) {
 const orderReason = { insufficient_resource: 'Needs more shield charge', cooldown: 'Cooling down', used: 'Already used', hull_full: 'Hull is full' };
 const tacticReason = { not_enough_fuel: 'Needs 1 fuel', used: 'Used this fight', enemy_too_strong: 'Enemy above half hull', finished: 'Fight over' };
 
+function renderBoarders(model, identity) {
+  const b = model.boarders;
+  if (!b || model.result) return '';
+  const line = b.phase === 'incoming' ? `Clamps on the airlock. Boarders land next beat, heading for ${e(b.target)}.`
+    : b.phase === 'aboard' ? `${e(b.strength)} raider${b.strength === 1 ? '' : 's'} sabotaging ${e(b.target)} · systems ${e(b.system)}%${b.defenderName ? ` · ${e(b.defenderName)} fighting them` : ''}`
+      : `${b.defenderName ? `${e(b.defenderName)} threw the boarders` : 'Boarders thrown'} out of ${e(b.target)}.`;
+  const repel = b.canRepel ? `<button type="button" class="tactic tactic-repel" data-act="encounter-order" data-order="repel" ${identity}>Repel boarders<span>${e(b.repelCost)}</span></button>` : '';
+  return `<div class="boarder-alert" data-phase="${e(b.phase)}" role="status"><p>${line}</p>${repel}</div>`;
+}
+
 function renderTactics(model, identity) {
   if (!model.tactics?.length || model.result) return '';
   return `<div class="tactic-row" role="group" aria-label="Initiative orders">${model.tactics.map(tactic => {
@@ -110,7 +120,7 @@ export function renderEncounter(model = {}, { compact = false } = {}) {
       : `<p class="encounter-threat" role="status">${model.weaponDisabled ? 'Next pirate volley canceled. Crew firing.' : model.beatsToImpact ? `Incoming fire at ${e(target)} · ${e(model.beatsToImpact)} ${model.beatsToImpact === 1 ? 'beat' : 'beats'}${eta}` : 'Pirate weapons charging'}</p>${beatTimer}
         <div class="encounter-actions">${(guidedCrew || autoPaced) && model.retryBeat
           ? `<p role="alert">Fight progress was not saved. Try the next beat again.</p><button type="button" class="primary" data-primary-pulse data-act="encounter-advance" ${identity}>Retry fight progress</button>`
-          : guidedAfterBrace || guidedCrew ? '<span>Crew engaging…</span>' : `${autoPaced ? '<span class="crew-engaging">Crew engaging · orders are optional</span>' : ''}${renderTactics(model, identity)}${orders.map(order => `<button type="button" class="${(guidedBrace || guidedTarget) && order.available ? 'primary' : ''}" ${(guidedTarget && order.id === 'target_weapons') ? 'data-primary-pulse data-spotlight-target' : ''} data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
+          : guidedAfterBrace || guidedCrew ? '<span>Crew engaging…</span>' : `${autoPaced ? '<span class="crew-engaging">Crew engaging · orders are optional</span>' : ''}${renderBoarders(model, identity)}${renderTactics(model, identity)}${orders.map(order => `<button type="button" class="${(guidedBrace || guidedTarget) && order.available ? 'primary' : ''}" ${(guidedTarget && order.id === 'target_weapons') ? 'data-primary-pulse data-spotlight-target' : ''} data-act="encounter-order" data-order="${e(order.id)}" ${identity} ${order.available ? '' : 'disabled'}>
           ${order.id === 'target_weapons' ? `Target their weapons<span>Stop the next volley · free · once this fight</span>` : guidedBrace && order.id === 'brace' ? `Brace<span>Spend ${e(order.cost)} shield to block the hit.</span>` : `${e(order.id === 'brace' ? 'Brace' : 'Repair')} · ${e(order.cost)} shield <span>${e(order.effectLabel)} · ${e(order.cooldownLabel || '')}</span>`}${order.available ? '' : ` · ${e(orderReason[order.reason] || order.reason || 'Unavailable')}${order.cooldownBeats ? ` (${e(order.cooldownBeats)} beats)` : ''}`}
         </button>`).join('')}`}${guidedBrace || guidedV2 || autoPaced ? '' : `<button type="button" class="${guidedAfterBrace ? '' : 'primary'}" data-act="encounter-advance" ${identity}>${guidedAfterBrace ? 'Continue fight' : model.beatsToImpact ? 'No order · conserve shield' : 'Advance combat'}</button>`}</div>`;
   const threatLabel = model.threatLabel || '';

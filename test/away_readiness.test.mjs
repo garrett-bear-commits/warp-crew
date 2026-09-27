@@ -35,7 +35,7 @@ const picker = sessionModels(player, { selectedExpeditionId: planet.id, selected
 assert.match(renderAwayPicker(picker), /Ship combat power \d+ → <b>\d+<\/b> · 1 aboard · Weapons unstaffed/);
 
 // Contract review states the fight threat with the crew actually aboard.
-assert.equal(threatLabel(0.8), 'Outmatched');
+assert.equal(threatLabel(0.8), 'Favorable');
 assert.equal(threatLabel(1.0), 'Even');
 assert.equal(threatLabel(1.2), 'Dangerous');
 assert.equal(threatLabel(1.5), 'Deadly');
@@ -46,7 +46,7 @@ const away = sessionModels({ ...player, crew: player.crew.map(member => member.i
   { reviewedOfferId: risky.id }, now).contractReview;
 assert.ok(aboard.fightThreat && away.fightThreat);
 assert.equal(away.fightThreat.awayCount, 1);
-const order = ['Outmatched', 'Even', 'Dangerous', 'Deadly'];
+const order = ['Favorable', 'Even', 'Dangerous', 'Deadly'];
 assert.ok(order.indexOf(away.fightThreat.label) >= order.indexOf(aboard.fightThreat.label), 'sending crew away cannot make the fight safer');
 assert.match(renderContractReview(away), /Fight threat with crew aboard: <b>\w+<\/b> · 1 crew away/);
 

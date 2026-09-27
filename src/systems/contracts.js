@@ -11,7 +11,7 @@ import { applyStoryFlag } from './story.js';
 import { normalizeContractState as normalizeSavedContractState, validContractResult } from './contractState.js';
 import { CURRENCIES, readyContractCrew, normalizeCurrencyReward as normalizeRewards, resolveRoutePayout, resolveContractCombatPayout, formatRewardBand } from './contractRewards.js';
 import { beginContractEncounter, applyEncounterAction, normalizeEncounterState } from './encounterState.js';
-import { tacticStatus } from './autoCombat.js';
+import { tacticStatus, repelStatus } from './autoCombat.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -537,6 +537,7 @@ export function commitContractAction(player, preview, { rng = Math.random, now =
 const ENCOUNTER_POLICIES = [
   () => null,
   encounter => {
+    if (repelStatus(encounter).available) return 'repel';
     const open = encounter.orderWindow?.availableOrders || [];
     if (open.includes('target_weapons')) return 'target_weapons';
     if (open.includes('brace')) return 'brace';
@@ -545,6 +546,7 @@ const ENCOUNTER_POLICIES = [
   },
   // Initiative: burn early, then try to board once the enemy is below half.
   encounter => {
+    if (repelStatus(encounter).available) return 'repel';
     if (tacticStatus(encounter, 'board').available) return 'board';
     if (tacticStatus(encounter, 'burn').available) return 'burn';
     const open = encounter.orderWindow?.availableOrders || [];

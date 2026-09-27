@@ -105,6 +105,58 @@ export function tacticStatus(state, name) {
   return { available: true, reason: null, ...(name === 'board' ? { chance: boardChance(state) } : {}) };
 }
 
+/** Raiders that dock a boarding party mid-fight (their tells already threaten it). */
+export const BOARDING_ENEMIES = Object.freeze(['scrapper_gang', 'ice_raiders', 'corsair_king']);
+export const BOARDERS = Object.freeze({ warnBeat: 2, strength: 3, sabotage: 10, minSystem: 60 });
+const BOARDER_TARGETS = ['weapons', 'shields', 'engineering', 'helm'];
+
+export function defenderPower(role) {
+  return ['security', 'gunner'].includes(role) ? 3 : 2;
+}
+
+export function repelStatus(state) {
+  const boarders = state?.boarders;
+  if (!boarders) return { available: false, reason: 'order_unavailable' };
+  if (state.result !== null) return { available: false, reason: 'finished' };
+  if (!['incoming', 'aboard'].includes(boarders.phase)) return { available: false, reason: 'no_boarders' };
+  if (boarders.defenderId) return { available: false, reason: 'defending' };
+  return { available: true, reason: null };
+}
+
+function advanceBoarders(next, events) {
+  const boarders = next.boarders;
+  if (!boarders) return;
+  if (boarders.phase === 'none' && next.beat === BOARDERS.warnBeat) {
+    boarders.phase = 'incoming';
+    boarders.target = BOARDER_TARGETS[seededIndex(next.seed, next.beat + 404, BOARDER_TARGETS.length)];
+    boarders.landsBeat = next.beat + 1;
+    events.push({ type: 'boarders_incoming', target: boarders.target, landsBeat: boarders.landsBeat });
+    return;
+  }
+  if (boarders.phase === 'incoming' && next.beat >= boarders.landsBeat) {
+    boarders.phase = 'aboard';
+    boarders.strength = BOARDERS.strength;
+    events.push({ type: 'boarders_landed', target: boarders.target, strength: boarders.strength });
+  }
+  if (boarders.phase !== 'aboard') return;
+  if (boarders.defenderId) {
+    const hit = Math.min(boarders.strength, defenderPower(boarders.defenderRole));
+    boarders.strength -= hit;
+    events.push({ type: 'boarders_fought', target: boarders.target, amount: hit, remaining: boarders.strength });
+    if (boarders.strength <= 0) {
+      boarders.phase = 'repelled';
+      boarders.repelledBeat = next.beat;
+      events.push({ type: 'boarders_repelled', target: boarders.target });
+      return;
+    }
+  }
+  const before = next.systems[boarders.target];
+  next.systems[boarders.target] = Math.max(BOARDERS.minSystem, before - BOARDERS.sabotage);
+  if (next.systems[boarders.target] < before) {
+    events.push({ type: 'sabotage', target: boarders.target, system: boarders.target, amount: before - next.systems[boarders.target] });
+  }
+}
+
 /** Normal-fight volley damage scales with the enemy's threat against this crew (1 = even). */
 export function enemyVolleyDamage(threat = 1) {
   const t = Number.isFinite(Number(threat)) ? Number(threat) : 1;
@@ -112,7 +164,7 @@ export function enemyVolleyDamage(threat = 1) {
 }
 
 export function startEncounter({ acceptanceId, encounterId, kind, seed, assignments = {}, outputs = {},
-  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1', threat = null, tactics = [] }) {
+  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1', threat = null, tactics = [], boarders = false }) {
   if (kind !== 'guided' && kind !== 'normal') throw new TypeError("kind must be 'guided' or 'normal'");
   if (ruleset !== 'v1' && ruleset !== 'v2') throw new TypeError("ruleset must be 'v1' or 'v2'");
   const stationOutputs = Object.fromEntries(STATIONS.map(station => [station, outputValue(outputs, station)]));
@@ -144,6 +196,8 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
     braceThroughBeat: 0,
     ...(kind === 'normal' && tactics.length ? { tactics: Object.fromEntries(TACTICS.filter(name => tactics.includes(name))
       .map(name => [name, name === 'burn' ? { uses: 0, throughBeat: 0 } : { uses: 0, success: null }])) } : {}),
+    ...(kind === 'normal' && boarders && BOARDING_ENEMIES.includes(String(encounterId))
+      ? { boarders: { phase: 'none', target: null, landsBeat: 0, strength: 0, defenderId: null, defenderRole: null, defenderStation: null } } : {}),
     orderWindow: null,
     result: null,
     lossReason: null,
@@ -151,10 +205,14 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
 }
 
 /** Resolve one deterministic beat. Rejections preserve the exact input state. */
-export function advanceEncounter(state, order = null) {
+export function advanceEncounter(state, order = null, { defender = null } = {}) {
   if (state.result !== null) return { state, events: [] };
 
-  if (order !== null && TACTICS.includes(order)) {
+  if (order === 'repel') {
+    const status = repelStatus(state);
+    if (!status.available) return { ok: false, reason: status.reason, state };
+    if (!defender?.id) return { ok: false, reason: 'no_defender', state };
+  } else if (order !== null && TACTICS.includes(order)) {
     const status = tacticStatus(state, order);
     if (!status.available) return { ok: false, reason: status.reason, state };
   } else if (order !== null) {
@@ -202,6 +260,11 @@ export function advanceEncounter(state, order = null) {
     next.enemy.weaponDisabledThroughBeat = next.beat + 2;
     events.push({ type: 'order', order: 'target_weapons', cost: { shield: 0 }, target: 'weapons' });
     events.push({ type: 'enemy_weapon_disabled', target: 'weapons', throughBeat: next.enemy.weaponDisabledThroughBeat });
+  } else if (order === 'repel') {
+    next.boarders.defenderId = String(defender.id);
+    next.boarders.defenderRole = String(defender.role || '');
+    next.boarders.defenderStation = defender.station || null;
+    events.push({ type: 'order', order: 'repel', cost: {}, target: next.boarders.target, defender: next.boarders.defenderId });
   } else if (order === 'burn') {
     next.tactics.burn = { uses: 1, throughBeat: next.beat + BURN.beats - 1 };
     events.push({ type: 'order', order: 'burn', cost: { fuel: BURN.fuel }, target: 'weapons', throughBeat: next.tactics.burn.throughBeat });
@@ -225,6 +288,13 @@ export function advanceEncounter(state, order = null) {
       next.eventIndex += events.length;
       return { state: next, events };
     }
+  }
+
+  advanceBoarders(next, events);
+  // A defender off their post leaves it running at baseline until the boarders are gone.
+  const defending = next.boarders?.phase === 'aboard' && next.boarders.defenderStation;
+  if (defending && Number.isFinite(next.outputs[next.boarders.defenderStation])) {
+    next.outputs[next.boarders.defenderStation] = Math.min(next.outputs[next.boarders.defenderStation], 100);
   }
 
   const impactThisBeat = next.beat % 3 === 0;

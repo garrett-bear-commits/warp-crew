@@ -1,5 +1,5 @@
 // Saved bridge between a contract and the deterministic crew-run fight.
-import { startEncounter, advanceEncounter, enemyVolleyDamage, TACTICS, BURN } from './autoCombat.js';
+import { startEncounter, advanceEncounter, enemyVolleyDamage, TACTICS, BURN, BOARDERS, BOARDING_ENEMIES } from './autoCombat.js';
 import { normalizeAssignments, stationOutputs } from './stations.js';
 import { resolveSimulatedCombatPayout, readyContractCrew } from './contractRewards.js';
 import { crewPower, encounterById, rubberBandPower } from './combat.js';
@@ -41,6 +41,21 @@ function validTactics(encounter) {
       && (!board.success || (encounter.result === 'win' && encounter.enemy.hull === 0))));
 }
 
+function validBoarders(encounter) {
+  if (!Object.hasOwn(encounter, 'boarders')) return true;
+  const b = encounter.boarders;
+  if (encounter.kind !== 'normal' || !BOARDING_ENEMIES.includes(encounter.encounterId) || !record(b)) return false;
+  if (!['none', 'incoming', 'aboard', 'repelled'].includes(b.phase)) return false;
+  if (b.phase === 'none') return b.target === null && b.strength === 0 && b.defenderId === null && encounter.beat < BOARDERS.warnBeat + 1;
+  return ['weapons', 'shields', 'engineering', 'helm'].includes(b.target)
+    && Number.isInteger(b.strength) && numberIn(b.strength, 0, BOARDERS.strength)
+    && Number.isInteger(b.landsBeat) && b.landsBeat === BOARDERS.warnBeat + 1
+    && (b.phase !== 'repelled' || (b.strength === 0 && typeof b.defenderId === 'string'
+      && Number.isInteger(b.repelledBeat) && numberIn(b.repelledBeat, BOARDERS.warnBeat + 1, encounter.beat)))
+    && (b.defenderId === null || (typeof b.defenderId === 'string' && typeof b.defenderRole === 'string'))
+    && (b.defenderStation === null || ['helm', 'shields', 'weapons', 'engineering'].includes(b.defenderStation));
+}
+
 function validOrderWindow(window, encounter) {
   if (window == null) return true;
   const names = encounter.kind === 'guided' ? ['brace'] : ['brace', 'repair'];
@@ -77,6 +92,22 @@ const THREAT_RANGE = [0.6, 1.6];
 
 /** New captains meet Burn after three finished contracts and Board after five. */
 export const TACTIC_UNLOCKS = Object.freeze({ burn: 3, board: 5 });
+export const BOARDERS_UNLOCK = 8;
+
+export function boardersUnlocked(player) {
+  const guidedFlow = [4, 5].includes(player?.tutorial?.script) && player.tutorial.completed;
+  return !guidedFlow || (player?.stats?.contractsCompleted || 0) >= BOARDERS_UNLOCK;
+}
+
+/** Security first, then gunners, then the strongest non-captain; the captain only as a last resort. */
+export function pickDefender(player, now = Date.now()) {
+  const ready = readyContractCrew(player, now);
+  const rank = member => (member.role === 'security' ? 300 : member.role === 'gunner' ? 200 : 100)
+    + (member.instanceId === player.captainInstanceId ? -150 : 0) + (member.power || 10);
+  const best = [...ready].sort((a, b) => rank(b) - rank(a))[0];
+  if (!best) return null;
+  return { id: best.instanceId, name: best.name, role: best.role, station: normalizeAssignments(player)[best.instanceId] || null };
+}
 
 export function unlockedTactics(player) {
   const guidedFlow = [4, 5].includes(player?.tutorial?.script) && player.tutorial.completed;
@@ -86,7 +117,7 @@ export function unlockedTactics(player) {
 
 export function threatLabel(threat) {
   if (threat == null) return null;
-  return threat >= 1.3 ? 'Deadly' : threat >= 1.05 ? 'Dangerous' : threat >= 0.9 ? 'Even' : 'Outmatched';
+  return threat >= 1.3 ? 'Deadly' : threat >= 1.05 ? 'Dangerous' : threat >= 0.9 ? 'Even' : 'Favorable';
 }
 
 /** Same power model the order-based fights used, expressed as enemy/crew threat. */
@@ -115,6 +146,7 @@ export function beginContractEncounter(player, now = Date.now()) {
     outputs: stationOutputs(player, now),
     threat: kind === 'normal' ? contractThreat(player, contract, now) : null,
     tactics: kind === 'normal' ? unlockedTactics(player) : [],
+    boarders: kind === 'normal' && boardersUnlocked(player),
   });
   return {
     ...player,
@@ -163,6 +195,7 @@ function validSnapshot(encounter, contract, tutorial) {
     || !STATIONS.every(station => numberIn(encounter.outputs?.[station], 0, 10000)
       && numberIn(encounter.systems?.[station], 0, 100))
     || !validTactics(encounter)
+    || !validBoarders(encounter)
     || !record(encounter.assignments)
     || !validOrders(encounter)
     || !validOrderWindow(encounter.orderWindow, encounter)
@@ -225,7 +258,8 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
     assignments: normalizeAssignments(player),
     outputs: Object.fromEntries(STATIONS.map(station => [station, outputs[station].total])),
   };
-  const advanced = advanceEncounter(input, order);
+  const defender = order === 'repel' ? pickDefender(player, now) : null;
+  const advanced = advanceEncounter(input, order, { defender });
   if (advanced.ok === false) return { ok: false, reason: advanced.reason, player };
   let nextContract = { ...contract, revision: contract.revision + 1 };
   let nextPlayer = { ...player, activeEncounter: advanced.state, activeContract: nextContract };

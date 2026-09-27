@@ -19,9 +19,9 @@ import { portraitFor } from '../data/portraits.js';
 import { NODES } from '../data/sectors.js';
 import { canAfford, formatReward } from './economy.js';
 import { beatDelayMs } from './fightPacing.js';
-import { tacticStatus, BURN } from './autoCombat.js';
+import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
-import { contractThreat, threatLabel } from './encounterState.js';
+import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -160,6 +160,15 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
           effectLabel: id === 'brace' ? 'Blocks the next hit' : id === 'target_weapons' ? 'Disrupt the pirate weapons' : 'Restore up to 8 hull',
           cooldownLabel: id === 'brace' && encounter.kind === 'guided' ? 'Once this fight'
             : `${id === 'brace' ? 3 : 4}-beat cooldown` })),
+        boarders: encounter.boarders && encounter.boarders.phase !== 'none' ? (() => {
+          const b = encounter.boarders;
+          const defender = b.defenderId ? player.crew.find(member => member.instanceId === b.defenderId) : null;
+          const candidate = repelStatus(encounter).available ? pickDefender(player, now) : null;
+          return { phase: b.phase, target: STATIONS[b.target]?.label || b.target, strength: b.strength,
+            system: encounter.systems?.[b.target] ?? null, defenderName: defender?.name || null,
+            canRepel: Boolean(candidate), repelName: candidate?.name || null,
+            repelCost: candidate?.station ? `${candidate.name} leaves ${STATIONS[candidate.station].label}` : candidate ? `${candidate.name} goes` : null };
+        })() : null,
         tactics: Object.keys(encounter.tactics || {}).map(id => {
           const status = tacticStatus(encounter, id);
           const noFuel = id === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel;

@@ -49,7 +49,22 @@ export function crewTargetStates(player, {
   const contractStage = ['briefing', 'choice'].includes(player?.activeContract?.stage);
   const legacyRooms = ['bridge', 'engineering'];
   const occupied = new Set(onDuty.map(member => STATIONS[assignments[member.instanceId]]?.roomId).filter(Boolean));
+  const boarders = player?.activeEncounter && !player.activeEncounter.result ? player.activeEncounter.boarders : null;
+  // The defender stays one beat after the fight so the win is visible in the room.
+  const defending = boarders?.defenderId && (boarders.phase === 'aboard'
+    || (boarders.phase === 'repelled' && player.activeEncounter.beat <= boarders.repelledBeat + 1));
+  const repelRoom = defending ? STATIONS[boarders.target]?.roomId : null;
   return onDuty.flatMap((member) => {
+    if (repelRoom && member.instanceId === boarders.defenderId) {
+      const room = ROOMS.find((candidate) => candidate.id === repelRoom);
+      return {
+        crewInstanceId: member.instanceId,
+        mode: 'repel-boarders',
+        roomId: room.id,
+        anchors: [{ x: room.workAnchor.x - 3, y: room.workAnchor.y }],
+        immediate,
+      };
+    }
     let roomId = STATIONS[assignments[member.instanceId]]?.roomId;
     if (!roomId && contractStage) {
       roomId = legacyRooms.find(id => !occupied.has(id));
@@ -132,7 +147,7 @@ function beginWalk(a, destId) {
 function atWorkFor(a) {
   const job = a.assignment || '';
   if (job.startsWith('expedition-departure') || job.startsWith('crew-arrival') || job === 'departure-complete') return false;
-  if (job.startsWith('contract-station')) return true;
+  if (job.startsWith('contract-station') || job.startsWith('repel-boarders') || job.startsWith('hostile')) return true;
   return a.room === a.home;
 }
 
@@ -384,6 +399,27 @@ function drawThrusters(g, dt, policy) {
   g.restore();
 }
 
+// Raider colours: the frame is tinted blood-red only where the sprite has pixels.
+let raiderCanvas = null;
+function raiderFrame(image, source) {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+  raiderCanvas ||= document.createElement('canvas');
+  if (raiderCanvas.width !== source.sw || raiderCanvas.height !== source.sh) {
+    raiderCanvas.width = source.sw;
+    raiderCanvas.height = source.sh;
+  }
+  const t = raiderCanvas.getContext?.('2d');
+  if (!t) return null;
+  t.globalCompositeOperation = 'source-over';
+  t.clearRect(0, 0, source.sw, source.sh);
+  t.imageSmoothingEnabled = false;
+  t.drawImage(image, source.sx, source.sy, source.sw, source.sh, 0, 0, source.sw, source.sh);
+  t.globalCompositeOperation = 'source-atop';
+  t.fillStyle = 'rgba(200,20,20,0.5)';
+  t.fillRect(0, 0, source.sw, source.sh);
+  return raiderCanvas;
+}
+
 function drawAgent(g, a, animate = true) {
   const asset = walkAssetFor(a.templateId, a.role);
   const profile = asset.profile;
@@ -404,14 +440,24 @@ function drawAgent(g, a, animate = true) {
     Math.PI * 2
   );
   g.fill();
+  if (a.hostile) {
+    g.strokeStyle = 'rgba(255,80,70,0.85)';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.ellipse(foot.x, foot.y + profile.shadow.offsetY, profile.shadow.width / 2 + 3, profile.shadow.height / 2 + 2, 0, 0, Math.PI * 2);
+    g.stroke();
+  }
+  const frame = image && a.hostile ? raiderFrame(image, source) : null;
   if (image) {
     g.imageSmoothingEnabled = false;
+    const src = frame || image;
+    const [sx, sy] = frame ? [0, 0] : [source.sx, source.sy];
     if (pose.flip) {
       g.translate(destination.x + destination.width, destination.y);
       g.scale(-1, 1);
-      g.drawImage(image, source.sx, source.sy, source.sw, source.sh, 0, 0, destination.width, destination.height);
+      g.drawImage(src, sx, sy, source.sw, source.sh, 0, 0, destination.width, destination.height);
     } else {
-      g.drawImage(image, source.sx, source.sy, source.sw, source.sh, destination.x, destination.y, destination.width, destination.height);
+      g.drawImage(src, sx, sy, source.sw, source.sh, destination.x, destination.y, destination.width, destination.height);
     }
   }
   g.restore();
@@ -560,6 +606,34 @@ export function moveCrewToDeparture(player, crewInstanceIds, {
   return targets;
 }
 
+const RAIDER_LOOKS = ['merc_hex', 'merc_skarn', 'merc_vorn'];
+
+/** Boarders are hostile actors that walk in from the airlock to the room they sabotage. */
+function syncHostiles(player, live) {
+  const encounter = player?.activeEncounter;
+  const boarders = encounter && !encounter.result ? encounter.boarders : null;
+  const count = boarders?.phase === 'aboard' ? boarders.strength : 0;
+  const roomId = count ? STATIONS[boarders.target]?.roomId : null;
+  const room = ROOMS.find((candidate) => candidate.id === roomId);
+  for (let i = 0; i < count && room; i++) {
+    const id = `hostile:${i}`;
+    live.add(id);
+    let a = agents.get(id);
+    if (!a) {
+      const airlock = SPARROW_LAYOUT.anchors.airlock;
+      a = {
+        id, hostile: true, templateId: RAIDER_LOOKS[i % RAIDER_LOOKS.length], role: 'security', bodyFamily: 'standard_humanoid',
+        home: 'cargo', room: 'cargo', x: airlock.x + i * 0.8, y: airlock.y, dir: 'right', face: 'right', state: 'idle',
+        atWork: false, clip: 'idle', path: [], timer: 0, jitter: i / 3, frame: 0, assignment: null, authoredTarget: null,
+      };
+      agents.set(id, a);
+    }
+    const target = { crewInstanceId: id, mode: 'hostile', roomId: room.id,
+      anchors: [{ x: room.workAnchor.x + 2 + i * 2, y: room.workAnchor.y + (i % 2 ? 2 : -1) }], immediate: reducedMotion };
+    if (a.assignment !== assignmentKey(target)) beginAuthoredTarget(a, target);
+  }
+}
+
 export function syncCrewLayer(el, player) {
   if (!el) return;
   if (el.tagName === 'CANVAS') {
@@ -582,6 +656,7 @@ export function syncCrewLayer(el, player) {
     a.bodyFamily = c.bodyFamily || 'standard_humanoid';
     a.home = homeRoomId(c.role);
   }
+  syncHostiles(player, live);
   for (const [id] of agents) {
     if (live.has(id)) continue;
     agents.delete(id);

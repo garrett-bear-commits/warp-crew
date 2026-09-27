@@ -2818,7 +2818,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .enemy-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .enemy-head b { font: 700 16px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: #ffb3a6; }
 .enemy-head span { padding: 0 6px; font: 700 11px/18px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid currentColor; }
-.enemy-head [data-threat="outmatched"] { color: var(--good); }
+.enemy-head [data-threat="favorable"] { color: var(--good); }
 .enemy-head [data-threat="even"] { color: var(--accent); }
 .enemy-head [data-threat="dangerous"] { color: var(--warn); }
 .enemy-head [data-threat="deadly"] { color: var(--bad); }
@@ -2838,7 +2838,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .tactic-board { color: #ffb3a6; border-color: rgba(255, 100, 100, 0.6); background: linear-gradient(180deg, rgba(255, 90, 80, 0.16), transparent), #120909; }
 .fight-threat, .ship-readiness { margin: 8px 0; padding: 6px 10px; font-size: 14px; background: #060a11; border-left: 3px solid var(--accent); }
 .fight-threat b, .ship-readiness b { font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
-.fight-threat[data-threat="outmatched"] { border-color: var(--good); }
+.fight-threat[data-threat="favorable"] { border-color: var(--good); }
 .fight-threat[data-threat="dangerous"] { border-color: var(--warn); }
 .fight-threat[data-threat="deadly"] { border-color: var(--bad); }
 .party-row[disabled] { opacity: 0.55; }
@@ -2850,3 +2850,9 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ship-encounter .encounter-actions button { min-height: 48px; padding: 6px 8px; font-size: 14px; }
 .ship-encounter .encounter-actions button span { font-size: 12px; }
 .ship-encounter .enemy-head p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.boarder-alert { grid-column: 1 / -1; display: grid; gap: 6px; padding: 8px 10px; border-left: 3px solid var(--bad);
+  background: repeating-linear-gradient(-45deg, rgba(255, 100, 100, 0.1) 0 8px, transparent 8px 16px), #0a0f18; }
+.boarder-alert p { margin: 0; font: 700 14px var(--font-display); letter-spacing: 0.04em; color: #ffd2cc; }
+.boarder-alert[data-phase="repelled"] { border-color: var(--good); background: #0a0f18; }
+.boarder-alert[data-phase="repelled"] p { color: #c8ffd6; }
+.tactic-repel { color: #fff; border-color: var(--bad); background: linear-gradient(180deg, rgba(255, 90, 80, 0.35), rgba(255, 90, 80, 0.08)), #1a0b0b; }

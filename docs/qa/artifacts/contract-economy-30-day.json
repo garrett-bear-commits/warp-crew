@@ -50191,10 +50191,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-10-07_strange:11",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
@@ -63040,10 +63041,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-10-07_strange:14",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
@@ -72276,10 +72278,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-09-24_risky:3",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
@@ -72560,10 +72563,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-09-25_risky:4",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
@@ -83969,10 +83973,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-09-24_risky:3",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
@@ -84253,10 +84258,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-09-25_risky:4",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
@@ -89941,10 +89947,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-09-24_risky:4",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
@@ -90232,10 +90239,11 @@
               "ok": true
             },
             {
-              "action": "encounter-advance",
+              "action": "encounter-order",
               "fields": {
                 "acceptanceId": "contract_2026-09-25_risky:5",
-                "revision": 2
+                "revision": 2,
+                "order": "repel"
               },
               "ok": true
             },
