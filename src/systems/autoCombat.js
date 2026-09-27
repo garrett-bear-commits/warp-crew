@@ -37,23 +37,29 @@ function finish(next, result, events, lossReason = null) {
   events.push({ type: 'result', result, reason: lossReason });
 }
 
+// Threat-scaled fights (contract crew fights) carry seeded swing so underdogs keep a chance.
+const hasSwing = state => Number.isFinite(state.enemy?.threat);
+export const CREW_CRIT = Object.freeze({ chance: 15, bonus: 3 });
+
 function fireWeapons(next, events) {
   const weaponOutput = Math.floor(next.outputs.weapons * next.systems.weapons / 100);
-  const weaponDamage = Math.max(0, Math.floor((weaponOutput - 50) / 10));
+  const crit = hasSwing(next) && seededIndex(next.seed, next.beat + 202, 100) < CREW_CRIT.chance;
+  const weaponDamage = Math.max(0, Math.floor((weaponOutput - 50) / 10)) + (crit ? CREW_CRIT.bonus : 0);
   if (weaponDamage > 0 && next.enemy.hull > 0) {
     const amount = Math.min(weaponDamage, next.enemy.hull);
     next.enemy.hull -= amount;
-    events.push({ type: 'weapon_damage', target: 'enemy', system: 'weapons', amount, output: weaponOutput });
+    events.push({ type: 'weapon_damage', target: 'enemy', system: 'weapons', amount, output: weaponOutput, ...(crit ? { crit: true } : {}) });
   }
 }
 
 function resolveEnemyImpact(next, selectedWindow, events) {
   const target = selectedWindow?.target || next.enemy.target;
-  const rawDamage = next.kind === 'normal' ? 22 : 12;
+  const rawDamage = Number.isInteger(next.enemy.damage) ? next.enemy.damage : next.kind === 'normal' ? 22 : 12;
   const shieldOutput = Math.floor(next.outputs.shields * next.systems.shields / 100);
   const helmOutput = Math.floor(next.outputs.helm * next.systems.helm / 100);
   const mitigation = Math.max(0, Math.floor((shieldOutput - 50) / 10)) + Math.max(0, Math.floor((helmOutput - 100) / 10));
-  let amount = Math.max(1, rawDamage - mitigation);
+  const swing = hasSwing(next) ? 0.7 + seededIndex(next.seed, next.beat + 101, 61) / 100 : 1;
+  let amount = Math.max(1, Math.round(rawDamage * swing) - mitigation);
   if (next.braceThroughBeat >= next.beat) amount = 0;
   const shieldLoss = Math.min(next.shield, amount);
   next.shield -= shieldLoss;
@@ -77,8 +83,14 @@ function resolvePirateVolley(next, selectedWindow, events) {
 }
 
 /** Create the JSON-safe, replayable snapshot for one crew-run encounter. */
+/** Normal-fight volley damage scales with the enemy's threat against this crew (1 = even). */
+export function enemyVolleyDamage(threat = 1) {
+  const t = Number.isFinite(Number(threat)) ? Number(threat) : 1;
+  return Math.max(12, Math.min(45, Math.round(28 * t)));
+}
+
 export function startEncounter({ acceptanceId, encounterId, kind, seed, assignments = {}, outputs = {},
-  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1' }) {
+  ruleset = encounterId === 'pirate_scout' ? 'v2' : 'v1', threat = null }) {
   if (kind !== 'guided' && kind !== 'normal') throw new TypeError("kind must be 'guided' or 'normal'");
   if (ruleset !== 'v1' && ruleset !== 'v2') throw new TypeError("ruleset must be 'v1' or 'v2'");
   const stationOutputs = Object.fromEntries(STATIONS.map(station => [station, outputValue(outputs, station)]));
@@ -99,6 +111,7 @@ export function startEncounter({ acceptanceId, encounterId, kind, seed, assignme
     systems: { helm: 100, shields: 100, weapons: 100, engineering: 100 },
     enemy: {
       hull: kind === 'guided' ? 25 : 42,
+      ...(kind === 'normal' && threat !== null ? { threat: Math.round(Number(threat) * 100) / 100, damage: enemyVolleyDamage(threat) } : {}),
       target: 'hull',
       pattern: 'charging_volley',
       ...(ruleset === 'v2' ? { weaponDisabledThroughBeat: 0 } : {}),

@@ -533,6 +533,17 @@ export function commitContractAction(player, preview, { rng = Math.random, now =
 }
 
 /** Only production-approved actions on ephemeral players contribute a terminal path. */
+const ENCOUNTER_POLICIES = [
+  () => null,
+  encounter => {
+    const open = encounter.orderWindow?.availableOrders || [];
+    if (open.includes('target_weapons')) return 'target_weapons';
+    if (open.includes('brace')) return 'brace';
+    if (open.includes('repair') && encounter.hull <= 18) return 'repair';
+    return null;
+  },
+];
+
 function enumerateRewardPaths(player, offer, now) {
   let copy = JSON.parse(JSON.stringify(player));
   const active = copy.activeContract;
@@ -555,15 +566,20 @@ function enumerateRewardPaths(player, offer, now) {
       return;
     }
     if (current.activeEncounter) {
-      let branch = current;
-      for (let beat = 0; beat < 40 && !branch.activeEncounter.result; beat += 1) {
-        const { acceptanceId, revision } = branch.activeEncounter;
-        const advanced = applyEncounterAction(branch, { acceptanceId, revision, order: null }, now);
-        if (!advanced.ok) return;
-        branch = advanced.player;
-      }
-      if (branch.activeContract.stage === 'return' && validContractResult(branch.activeContract.result)) {
-        terminals.push(branch.activeContract.result);
+      // A payout is possible if hands-off crew or a simple defensive order policy can win.
+      for (const policy of ENCOUNTER_POLICIES) {
+        let branch = current;
+        for (let beat = 0; beat < 40 && !branch.activeEncounter.result; beat += 1) {
+          const { acceptanceId, revision } = branch.activeEncounter;
+          const order = policy(branch.activeEncounter);
+          let advanced = applyEncounterAction(branch, { acceptanceId, revision, order }, now);
+          if (!advanced.ok && order) advanced = applyEncounterAction(branch, { acceptanceId, revision, order: null }, now);
+          if (!advanced.ok) break;
+          branch = advanced.player;
+        }
+        if (branch.activeContract?.stage === 'return' && validContractResult(branch.activeContract.result)) {
+          terminals.push(branch.activeContract.result);
+        }
       }
       return;
     }
@@ -607,16 +623,16 @@ export function claimContractReward(player, now = Date.now()) {
   if (!validContractResult(contract.result)) {
     return { ok: false, reason: 'invalid_contract_state', player: normalizeContractState(player) };
   }
-  if ((contract.encounterMode === 'crew' || player.activeEncounter) && (
-    contract.encounterMode !== 'crew'
-    || !player.activeEncounter
-    || player.activeEncounter.result !== 'win'
-    || player.activeEncounter.acceptanceId !== contract.acceptanceId
-    || !normalizeEncounterState(player).activeContract
-  )) return { ok: false, reason: 'invalid_encounter_state', player };
   if ((player?.contractBoard?.completedOfferIds || []).includes(contract.offerId)) {
     return { ok: false, reason: 'already_claimed', player };
   }
+  if ((contract.encounterMode === 'crew' || player.activeEncounter) && (
+    contract.encounterMode !== 'crew'
+    || !player.activeEncounter
+    || !(player.activeEncounter.result === 'win' || (player.activeEncounter.result === 'loss' && contract.result.success === false))
+    || player.activeEncounter.acceptanceId !== contract.acceptanceId
+    || !normalizeEncounterState(player).activeContract
+  )) return { ok: false, reason: 'invalid_encounter_state', player };
 
   let nextPlayer = player;
   if (contract.result.storyFlag) nextPlayer = applyStoryFlag(nextPlayer, contract.result.storyFlag).player;

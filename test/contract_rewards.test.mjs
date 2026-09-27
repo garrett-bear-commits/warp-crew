@@ -1,3 +1,4 @@
+import { finishCrewFight } from './helpers/crewFight.mjs';
 import assert from 'node:assert/strict';
 import { createNewPlayer } from '../src/systems/player.js';
 import { ensureContractBoard, contractRewardBand, acceptContract, previewContractAction, commitContractAction, tutorialDistressOffer } from '../src/systems/contracts.js';
@@ -53,8 +54,13 @@ assert.equal(win.player.stats.combatsWon, (player.stats.combatsWon || 0) + 1);
 const throne = { ...risky, routeContent: { ...risky.routeContent, routeOutcome: { kind: 'combat', encounter: 'eclipse_throne' }, secureOutcome: { kind: 'combat', encounter: 'eclipse_throne' }, encounterId: 'eclipse_throne' } };
 const thronePlayer = { ...player, contractBoard: { ...player.contractBoard, offers: [throne] } };
 const throneBand = contractRewardBand(thronePlayer, throne, { now });
-assert.equal(throneBand.label, '92–525 credits · 9–45 medals · 0–18 reputation · up to 8 gems');
-assert.equal(throneBand.paths.length, 3, 'deduplicate Brace/Burn and all failures');
+// Crew fights have no lucky roll: a starter crew cannot beat the end boss, so only salvage is possible.
+assert.equal(throneBand.label, '92 credits · 9 medals');
+assert.equal(throneBand.paths.length, 1, 'every losing policy settles to the same salvage');
+const veteranCrew = { ...thronePlayer, crew: thronePlayer.crew.map(member => ({ ...member, power: 60 })),
+  stationAssignments: thronePlayer.stationAssignments };
+const veteranBand = contractRewardBand(veteranCrew, throne, { now });
+assert.ok(veteranBand.currencies.credits.max > 92, 'a crew strong enough to win sees the victory payout');
 const twoFuel = { ...thronePlayer, wallet: { ...player.wallet, fuel: 2 } };
 let active = acceptContract(twoFuel, throne.id, now).player;
 for (const id of ['launch', 'push']) {
@@ -67,9 +73,10 @@ assert.deepEqual(contractRewardBand(twoFuel, throne, { now }), throneBand, 'disa
 assert.deepEqual(contractRewardBand(active, active.activeContract, { now }), throneBand, 'accepted routes do not repay launch/choice costs');
 const mutatedBoard = { ...active, contractBoard: { ...active.contractBoard, offers: [{ ...throne, routeContent: null }] } };
 assert.deepEqual(contractRewardBand(mutatedBoard, active.activeContract, { now }), throneBand, 'saved accepted identity survives board changes');
-const finish = commitContractAction(active, previewContractAction(active, { id: 'order', orderId: 'board' }, now), { rng: () => 0, now });
-assert.deepEqual(finish.result.rewards, win.result.rewards);
-assert.deepEqual(contractRewardBand(finish.player, finish.player.activeContract, { now }), unavailable, 'resolved result is displayed separately');
+const finished = finishCrewFight(active, now);
+assert.equal(finished.activeContract.stage, 'return');
+assert.deepEqual(finished.activeContract.result.rewards, throneBand.paths[0], 'the settled fight pays what the band promised');
+assert.deepEqual(contractRewardBand(finished, finished.activeContract, { now }), unavailable, 'resolved result is displayed separately');
 const bad = { ...throne, routeContent: { ...throne.routeContent, encounterId: null } };
 assert.deepEqual(contractRewardBand(player, bad, { now }), unavailable, 'inconsistent combat identity is invalid');
 // Reject unknown story catalog IDs before fallback rewards can invent a band.

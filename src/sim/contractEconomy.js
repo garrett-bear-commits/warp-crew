@@ -162,6 +162,27 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
             && JSON.stringify(previews.push.consequence) !== JSON.stringify(previews.secure.consequence)) route = 'push';
           day.contract.route = route;
           if (!act('contract-action', contractIdentity(player, { action: route }))) break;
+        } else if (stage === 'confrontation' && player.activeEncounter) {
+          // Contract fights are real-time crew fights; every strategy plays disciplined orders.
+          day.contract.order = 'crew';
+          let beats = 0;
+          while (player.activeEncounter && !player.activeEncounter.result && beats < 40) {
+            const encounter = player.activeEncounter;
+            const open = encounter.orderWindow?.availableOrders || [];
+            const order = open.includes('target_weapons') ? 'target_weapons'
+                : open.includes('brace') ? 'brace'
+                  : open.includes('repair') && encounter.hull <= 18 ? 'repair' : null;
+            const ident = { acceptanceId: encounter.acceptanceId, revision: encounter.revision };
+            const ok = order ? act('encounter-order', { ...ident, order }) : act('encounter-advance', ident);
+            if (!ok) break;
+            beats += 1;
+          }
+          day.contract.beats = beats;
+          day.contract.threat = player.activeEncounter?.enemy?.threat ?? null;
+          if (player.activeContract?.stage !== 'return') {
+            if (player.activeEncounter?.result === 'loss') act('encounter-recover', { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision });
+            break;
+          }
         } else if (stage === 'confrontation') {
           let order = 'brace';
           const brace = previews['order:brace'], burn = previews['order:burn'], board = previews['order:board'];

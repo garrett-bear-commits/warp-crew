@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { finishCrewFight } from './helpers/crewFight.mjs';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { createCrewInstance } from '../src/data/crewRoster.js';
 import { TUTORIAL_SCRIPT, defaultTutorial, currentTutorialStep } from '../src/systems/tutorial.js';
@@ -62,8 +63,9 @@ for (const tutorial of [undefined, { script: 1 }]) {
 // and malformed snapshots that the production route validator rejects.
 let route = ensureContractBoard({ ...fresh, tutorial: { script: 3, completed: true, phase: 'done' } }).player;
 route = acceptContract(route, route.contractBoard.offers.find((offer) => offer.profile === 'risky').id).player;
-for (const action of [null, { id: 'launch' }, { id: 'push' }, { id: 'order', orderId: 'brace' }]) {
-  if (action) route = commitContractAction(route, previewContractAction(route, action), { rng: () => 0 }).player;
+for (const action of [null, { id: 'launch' }, { id: 'push' }, 'fight']) {
+  if (action === 'fight') route = finishCrewFight(route);
+  else if (action) route = commitContractAction(route, previewContractAction(route, action), { rng: () => 0 }).player;
   const saved = JSON.parse(JSON.stringify(route));
   const migrated = migratePlayer(saved);
   assert.deepEqual(migrated.activeContract, saved.activeContract, `preserve ${saved.activeContract.stage}`);

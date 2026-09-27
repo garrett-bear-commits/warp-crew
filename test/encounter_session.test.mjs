@@ -131,24 +131,33 @@ test('a saved win claims its route reward once, after the final beat', () => {
   assert.equal(claimContractReward(claimed.player, now).ok, false);
 });
 
-test('a damaged normal ship can lose, then recover without a reward', () => {
+test('a lost normal fight settles to salvage once, and a legacy saved loss still recovers', () => {
   let player = normal();
   player = { ...player, activeEncounter: { ...player.activeEncounter, systems: { ...player.activeEncounter.systems, weapons: 0 } } };
   const initial = clone(player.wallet);
   for (let i = 0; i < 40 && !player.activeEncounter.result; i++) player = beat(player);
   assert.equal(player.activeEncounter.result, 'loss');
-  assert.equal(player.activeContract.stage, 'confrontation');
-  assert.ok(player.activeEncounter.lossReason);
-  assert.deepEqual(player.wallet, initial);
+  assert.equal(player.activeContract.stage, 'return', 'a crew loss resolves to the salvage payout');
+  assert.equal(player.activeContract.result.success, false);
+  assert.equal(player.activeContract.result.hullLoss, 30 - player.activeEncounter.hull);
+  assert.ok(player.activeContract.result.rewards.credits >= 8);
+  assert.deepEqual(player.wallet, initial, 'salvage is paid only on claim');
   const loaded = migratePlayer(clone(player));
-  const recovered = recoverEncounter(loaded, { acceptanceId: loaded.activeEncounter.acceptanceId, revision: loaded.activeEncounter.revision });
-  assert.equal(recovered.ok, true);
+  assert.equal(loaded.activeContract.stage, 'return', 'a settled loss survives reload');
+  const claimed = claimContractReward(loaded, now);
+  assert.equal(claimed.ok, true, claimed.reason);
+  assert.equal(claimed.player.wallet.credits, initial.credits + player.activeContract.result.rewards.credits);
+  assert.equal(claimContractReward(claimed.player, now).ok, false);
+
+  // Saves from before salvage kept a lost fight at confrontation awaiting recovery.
+  const legacy = { ...loaded, activeContract: { ...loaded.activeContract, stage: 'confrontation', result: null } };
+  const legacyLoaded = migratePlayer(clone(legacy));
+  const recovered = recoverEncounter(legacyLoaded, { acceptanceId: legacyLoaded.activeEncounter.acceptanceId, revision: legacyLoaded.activeEncounter.revision });
+  assert.equal(recovered.ok, true, recovered.reason);
   assert.equal(recovered.player.activeContract, null);
-  assert.equal(recovered.player.activeEncounter, null);
-  assert.ok(recovered.player.ship.hull >= 1);
   assert.deepEqual(recovered.player.wallet, initial);
-  assert.equal(recoverEncounter(recovered.player, { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision }).ok, false);
 });
+
 
 test('script-5 distress uses v2 for every starting captain output and the targeted guided win survives reload', () => {
   const cases = [

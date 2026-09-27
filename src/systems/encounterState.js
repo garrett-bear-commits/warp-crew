@@ -1,7 +1,9 @@
 // Saved bridge between a contract and the deterministic crew-run fight.
-import { startEncounter, advanceEncounter } from './autoCombat.js';
+import { startEncounter, advanceEncounter, enemyVolleyDamage } from './autoCombat.js';
 import { normalizeAssignments, stationOutputs } from './stations.js';
-import { resolveSimulatedCombatPayout } from './contractRewards.js';
+import { resolveSimulatedCombatPayout, readyContractCrew } from './contractRewards.js';
+import { crewPower, encounterById, rubberBandPower } from './combat.js';
+import { combatBonuses } from './passives.js';
 import { isCanonicalGuidedContract } from './contractState.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
@@ -54,8 +56,20 @@ function validOrderWindow(window, encounter) {
 function eligibleContract(player, contract) {
   return contract?.stage === 'confrontation' && (
     (contract.profile === 'distress' && [4, 5].includes(player.tutorial?.script) && contract.encounterId === 'pirate_scout')
-    || (contract.profile === 'reliable' && contract.choiceId === 'push' && contract.encounterId === 'pirate_scout')
+    || (contract.profile !== 'distress' && ['secure', 'push'].includes(contract.choiceId) && Boolean(contract.encounterId))
   );
+}
+
+const THREAT_RANGE = [0.6, 1.6];
+
+/** Same power model the order-based fights used, expressed as enemy/crew threat. */
+export function contractThreat(player, contract, now = Date.now()) {
+  const encounter = encounterById(contract.encounterId);
+  const crew = readyContractCrew(player, now);
+  const bonus = combatBonuses(player, encounter);
+  const playerPower = Math.max(1, crewPower(crew) + bonus.extraPower);
+  const enemyPower = Math.max(6, Math.round(rubberBandPower(encounter.power, playerPower) * bonus.enemyScale));
+  return Math.max(THREAT_RANGE[0], Math.min(THREAT_RANGE[1], Math.round((enemyPower / playerPower) * 100) / 100));
 }
 
 /** Called only by the action that freshly enters confrontation. */
@@ -72,6 +86,7 @@ export function beginContractEncounter(player, now = Date.now()) {
     seed: contract.routeSeed,
     assignments: normalizeAssignments(player),
     outputs: stationOutputs(player, now),
+    threat: kind === 'normal' ? contractThreat(player, contract, now) : null,
   });
   return {
     ...player,
@@ -85,10 +100,10 @@ export function beginContractEncounter(player, now = Date.now()) {
 }
 
 function validSnapshot(encounter, contract, tutorial) {
-  // The only new-mode entry paths are distress Launch (one route action) and
-  // reliable Push (Launch plus choice). Every later contract revision is a beat.
+  // New-mode entry paths are distress Launch (one route action) and any
+  // route choice into a confrontation (Launch plus choice). Every later contract revision is a beat.
   const entryRevision = contract.profile === 'distress' ? 1
-    : contract.profile === 'reliable' && contract.choiceId === 'push' ? 2 : null;
+    : ['secure', 'push'].includes(contract.choiceId) ? 2 : null;
   if (!encounter || contract.encounterMode !== 'crew' || ![1, 2].includes(encounter.version) || encounter.acceptanceId !== contract.acceptanceId
     || (tutorial?.script === 5 && !tutorial.completed && ['fight', 'claim'].includes(tutorial.phase)
       && !isCanonicalGuidedContract(contract))
@@ -106,6 +121,9 @@ function validSnapshot(encounter, contract, tutorial) {
     || encounter.phase !== (encounter.result === null ? 'combat' : 'complete')
     || !numberIn(encounter.hull, 1, 30) || !numberIn(encounter.shield, 0, 12)
     || !record(encounter.enemy) || !numberIn(encounter.enemy.hull, 0, 42)
+    || (Object.hasOwn(encounter.enemy, 'damage') && (encounter.kind !== 'normal' || !Number.isInteger(encounter.enemy.damage)
+      || !numberIn(encounter.enemy.damage, 12, 45) || !numberIn(encounter.enemy.threat, THREAT_RANGE[0], THREAT_RANGE[1])
+      || encounter.enemy.damage !== enemyVolleyDamage(encounter.enemy.threat)))
     || (encounter.version === 1 && Object.hasOwn(encounter.enemy, 'weaponDisabledThroughBeat'))
     || (encounter.version === 2 && (encounter.encounterId !== 'pirate_scout'
       || !Number.isInteger(encounter.enemy.weaponDisabledThroughBeat)
@@ -122,8 +140,11 @@ function validSnapshot(encounter, contract, tutorial) {
     || (encounter.result !== null && !['win', 'loss'].includes(encounter.result))) return false;
   if (encounter.result === 'win' && (encounter.beat === 0 || encounter.enemy.hull !== 0 || encounter.orderWindow !== null)) return false;
   if (encounter.result === 'loss' && (encounter.beat === 0 || encounter.hull !== 1 || encounter.enemy.hull <= 0 || encounter.orderWindow !== null)) return false;
-  if (contract.stage === 'return') return encounter.result === 'win' && contract.result?.success === true
-    && contract.result.hullLoss === 30 - encounter.hull;
+  if (contract.stage === 'return') {
+    const settled = (encounter.result === 'win' && contract.result?.success === true)
+      || (encounter.result === 'loss' && contract.profile !== 'distress' && contract.result?.success === false);
+    return settled && contract.result.hullLoss === 30 - encounter.hull;
+  }
   return contract.stage === 'confrontation' && encounter.result !== 'win';
 }
 
@@ -178,8 +199,8 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
   if (advanced.ok === false) return { ok: false, reason: advanced.reason, player };
   let nextContract = { ...contract, revision: contract.revision + 1 };
   let nextPlayer = { ...player, activeEncounter: advanced.state, activeContract: nextContract };
-  if (advanced.state.result === 'win') {
-    const payout = resolveSimulatedCombatPayout(nextPlayer, nextContract, advanced.state);
+  if (advanced.state.result === 'win' || (advanced.state.result === 'loss' && contract.profile !== 'distress')) {
+    const payout = resolveSimulatedCombatPayout(nextPlayer, nextContract, advanced.state, now);
     nextPlayer = payout.player;
     nextContract = { ...nextContract, stage: 'return', result: payout.result };
     nextPlayer = { ...nextPlayer, activeContract: nextContract };

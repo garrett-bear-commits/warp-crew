@@ -134,11 +134,20 @@ export function resolveContractCombatPayout(player, contract, orderId, { rng = M
 }
 
 /** Construct a prize from a saved crew-run victory without rolling combat again. */
-export function resolveSimulatedCombatPayout(player, contract, encounter) {
+export function resolveSimulatedCombatPayout(player, contract, encounter, now = Date.now()) {
   const catalog = encounterById(contract.encounterId);
-  const rawRewards = contract.profile === 'distress'
+  const lost = encounter.result === 'loss' && contract.profile !== 'distress';
+  const winRewards = contract.profile === 'distress'
     ? { credits: 120, medals: 8, reputation: 4 }
     : catalog.rewards;
+  // A lost crew fight pays the same salvage share the order-based fights paid on failure.
+  const rawRewards = lost
+    ? {
+        credits: Math.max(8, Math.floor((winRewards.credits || 0) * 0.22)),
+        medals: Math.max(1, Math.floor((winRewards.medals || 0) * 0.25)),
+        reputation: 0,
+      }
+    : winRewards;
   const visits = player?.stats?.visits?.[contract.destinationId] || 0;
   const rewards = contract.profile === 'distress'
     ? normalizeCurrencyReward(rawRewards)
@@ -148,20 +157,33 @@ export function resolveSimulatedCombatPayout(player, contract, encounter) {
     ...player,
     ship: { ...player.ship, hull: Math.max(1, (player.ship?.hull ?? 100) - hullLoss) },
   };
-  if (contract.profile !== 'distress') {
+  let injuredCrewId = null;
+  if (lost && !encounter.orders?.brace?.uses) {
+    // Bracing during the fight keeps the crew safe, as Brace did before.
+    const participants = (contract.participantIds || []).filter(id => nextPlayer.crew?.some(member => member.instanceId === id));
+    injuredCrewId = participants.length ? participants[Math.abs(encounter.seed) % participants.length] : null;
+    if (injuredCrewId) {
+      const injuredUntil = now + injuryMinutesFor(nextPlayer, 20) * 60000;
+      nextPlayer = {
+        ...nextPlayer,
+        crew: nextPlayer.crew.map(member => member.instanceId === injuredCrewId ? { ...member, status: 'injured', injuredUntil } : member),
+      };
+    }
+  }
+  if (contract.profile !== 'distress' && !lost) {
     nextPlayer = grantCrewXp(nextPlayer, contract.participantIds || [], 10);
     nextPlayer = { ...nextPlayer, stats: { ...nextPlayer.stats, combatsWon: (nextPlayer.stats?.combatsWon || 0) + 1 } };
   }
   return {
     player: nextPlayer,
     result: {
-      success: true,
+      success: !lost,
       rewards,
-      rewardPresence: currencyPresence(rawRewards),
+      rewardPresence: currencyPresence(winRewards),
       hullLoss,
-      injuredCrewId: null,
+      injuredCrewId,
       storyFlag: null,
-      summary: catalog.win || 'The enemy ship breaks off. Cargo aboard.',
+      summary: lost ? (catalog.fail || 'The crew breaks off. Salvage recovered.') : (catalog.win || 'The enemy ship breaks off. Cargo aboard.'),
     },
   };
 }

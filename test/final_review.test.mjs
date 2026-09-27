@@ -6,12 +6,22 @@ import { prepareSession, sessionAction, sessionModels, persistSessionTransition 
 import { NODES } from '../src/data/sectors.js';
 import { encounterById } from '../src/systems/combat.js';
 import { defaultTutorial } from '../src/systems/tutorial.js';
+import { finishCrewFight } from './helpers/crewFight.mjs';
 
 const now = new Date(2026, 8, 21, 12).getTime();
 const reload = player => prepareSession(migratePlayer(JSON.parse(JSON.stringify(player))), now);
-const veteran = () => ({ ...createNewPlayer({ tutorialScript: 4 }), tutorial: { script: 3, completed: true, phase: 'done' } });
+const veteran = () => {
+  const base = createNewPlayer({ tutorialScript: 4 });
+  // Seasoned crew: contract fights are crew fights, so these route tests need winnable fights.
+  return { ...base, crew: base.crew.map(member => ({ ...member, power: 30 })), tutorial: { script: 3, completed: true, phase: 'done' } };
+};
 const identity = player => ({ revision: player.activeContract.revision, acceptanceId: player.activeContract.acceptanceId });
 function step(player, id, orderId = 'brace', rng = () => 0) {
+  if (id === 'order' && player.activeEncounter) {
+    const finished = finishCrewFight(player, now);
+    assert.equal(finished.activeEncounter.result, 'win');
+    return finished;
+  }
   const result = commitContractAction(player, previewContractAction(player, { id, orderId }), { rng });
   assert.equal(result.ok, true, result.reason);
   return result.player;
@@ -180,7 +190,7 @@ test('Risky branches snapshot low and high authored destination encounters and d
   assert.equal(pushed.activeContract.stage, 'confrontation');
   assert.equal(secured.activeContract.encounterId, 'swarm_probe');
   assert.equal(pushed.activeContract.encounterId, 'pirate_wing');
-  assert.ok(previewContractAction(secured, { id: 'order', orderId: 'brace' }).consequence.chance > previewContractAction(pushed, { id: 'order', orderId: 'brace' }).consequence.chance);
+  assert.ok(secured.activeEncounter.enemy.threat < pushed.activeEncounter.enemy.threat, 'the secure branch is the lower-threat crew fight');
   assert.ok(step(secured, 'order').activeContract.result.rewards.credits < step(pushed, 'order').activeContract.result.rewards.credits);
   const actions = sessionModels(player).activeContractView.actions;
   assert.match(actions[0].consequence, /Eclipse Probe/);
@@ -198,7 +208,12 @@ test('contract claims apply route, win, and participant XP progression once with
   for (const success of [true, false]) {
     let player = step(step(accepted(), 'launch'), 'push');
     const participants = player.crew.map(c => c.instanceId);
-    player = step(player, 'order', 'brace', () => success ? 0 : 1);
+    if (success) player = step(player, 'order');
+    else {
+      // Only legacy saved confrontations can roll a failed-but-paid result now.
+      const { encounterMode, participantIds, ...legacy } = player.activeContract;
+      player = step({ ...player, activeContract: legacy, activeEncounter: null }, 'order', 'brace', () => 1);
+    }
     assert.equal(player.stats.combatsWon, success ? 1 : 0, 'combat progression commits with combat resolution');
     assert.deepEqual(player.crew.map(c => c.xp), success ? [10, 10] : [0, 0], 'participants earn XP before later crew management');
     const oldIdentity = identity(player);

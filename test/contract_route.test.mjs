@@ -1,3 +1,4 @@
+import { finishCrewFight } from './helpers/crewFight.mjs';
 import { createNewPlayer } from '../src/systems/player.js';
 import {
   ensureContractBoard,
@@ -17,6 +18,8 @@ let player = {
   wallet: { ...createNewPlayer({ tutorialScript: 4 }).wallet, fuel: 8 },
   tutorial: { script: 3, completed: true, phase: 'done' },
 };
+// A seasoned crew, so this route test's fight is winnable rather than a coin flip.
+player = { ...player, crew: player.crew.map(member => ({ ...member, power: 30 })) };
 player = ensureContractBoard(player, now).player;
 const offer = player.contractBoard.offers.find((candidate) => candidate.profile === 'risky');
 let res = acceptContract(player, offer.id);
@@ -39,9 +42,10 @@ if (!res.ok || res.player.activeContract.stage !== 'confrontation' || res.player
   throw new Error('push');
 }
 
-const order = previewContractAction(res.player, { id: 'order', orderId: 'brace' });
-res = commitContractAction(res.player, order, { rng: () => 0 });
-if (!res.ok || res.player.activeContract.stage !== 'return' || !res.player.activeContract.result) {
+// Confrontations are real-time crew fights; the old order menu is closed.
+if (previewContractAction(res.player, { id: 'order', orderId: 'brace' }).ok) throw new Error('legacy order during crew fight');
+res = { ok: true, player: finishCrewFight(res.player, now) };
+if (res.player.activeContract.stage !== 'return' || !res.player.activeContract.result) {
   throw new Error('resolve');
 }
 const beforeClaim = res.player.wallet.credits;
@@ -109,7 +113,10 @@ function confrontationPlayer() {
     previewContractAction(routePlayer, { id: 'push' }),
     { rng: () => 0 },
   ).player;
-  return routePlayer;
+  // Shape of a confrontation saved before contract fights became crew fights:
+  // those saves keep resolving through the legacy order menu.
+  const { encounterMode, participantIds, ...legacyContract } = routePlayer.activeContract;
+  return { ...routePlayer, activeContract: legacyContract, activeEncounter: null };
 }
 
 // Catches dropping Brace's injury prevention / half hull loss and Board's
@@ -197,7 +204,7 @@ const partial = normalizeContractState({
 });
 if (partial.activeContract !== null) throw new Error('partial save recovery');
 const normalizedReload = normalizeContractState(saved);
-if (normalizedReload.activeContract.stage !== 'return' || normalizedReload.activeContract.revision !== 3) {
+if (normalizedReload.activeContract.stage !== 'return' || normalizedReload.activeContract.revision !== saved.activeContract.revision || saved.activeContract.revision < 3) {
   throw new Error('valid save normalization');
 }
 const malformedRewardsPlayer = {

@@ -296,22 +296,22 @@ Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cu
 | cautious | End gems | 60 | 4219 | 60 |
 | cautious | End medals | 334 | 88421 | 340 |
 | cautious | End reputation | 238 | 240911 | 246 |
-| balanced | Useful sessions / 30 | 13 | 17031 | 8 |
+| balanced | Useful sessions / 30 | 11 | 240911 | 7 |
 | balanced | Fuel-starved days | 0 | 4219 | 0 |
-| balanced | Upgrades / 30 days | 18 | 17031 | 15 |
-| balanced | End credits | 144 | 17031 | 279 |
+| balanced | Upgrades / 30 days | 16 | 240911 | 15 |
+| balanced | End credits | 219 | 88421 | 313 |
 | balanced | End fuel | 12 | 4219 | 12 |
 | balanced | End gems | 60 | 4219 | 60 |
-| balanced | End medals | 500 | 88421 | 556 |
-| balanced | End reputation | 151 | 88421 | 174 |
-| ambitious | Useful sessions / 30 | 8 | 4219 | 4 |
+| balanced | End medals | 426 | 990001 | 450 |
+| balanced | End reputation | 135 | 88421 | 150 |
+| ambitious | Useful sessions / 30 | 3 | 88421 | 2 |
 | ambitious | Fuel-starved days | 0 | 4219 | 0 |
-| ambitious | Upgrades / 30 days | 15 | 4219 | 14 |
-| ambitious | End credits | 71 | 4219 | 231 |
+| ambitious | Upgrades / 30 days | 14 | 4219 | 13 |
+| ambitious | End credits | 73 | 4219 | 232 |
 | ambitious | End fuel | 12 | 4219 | 12 |
 | ambitious | End gems | 60 | 4219 | 60 |
-| ambitious | End medals | 356 | 88421 | 403 |
-| ambitious | End reputation | 125 | 88421 | 148 |
+| ambitious | End medals | 337 | 990001 | 342 |
+| ambitious | End reputation | 118 | 88421 | 121 |
 
 Conservation: 15/15 runs PASS. Detailed daily ledgers: [JSON](artifacts/contract-economy-30-day.json).
 

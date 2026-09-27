@@ -129,11 +129,16 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
           && ui.guidedBeatSaveFailed?.acceptanceId === encounter.acceptanceId
           && ui.guidedBeatSaveFailed?.revision === encounter.revision,
         result: encounter.result,
+        settled: contract.stage === 'return',
         lossReason: encounter.lossReason,
         hull: encounter.hull,
         shield: encounter.shield,
         systems: encounter.systems,
         enemyHull: encounter.enemy.hull,
+        ...(encounter.kind === 'normal' ? (() => {
+          const catalog = encounterById(encounter.encounterId);
+          return { enemyName: catalog.name, tell: catalog.tell ? { label: catalog.tell.label, text: catalog.tell.text } : null, threat: encounter.enemy.threat ?? null };
+        })() : {}),
         target: encounter.orderWindow?.target || encounter.enemy.target,
         weaponDisabled: encounter.version === 2 && encounter.enemy.weaponDisabledThroughBeat > 0
           && encounter.enemy.weaponDisabledThroughBeat >= encounter.beat,

@@ -20,6 +20,14 @@ player = ensureContractBoard(player).player;
 player = acceptContract(player, player.contractBoard.offers.find((x) => x.profile === 'risky').id).player;
 player = commitContractAction(player, previewContractAction(player, { id: 'launch' }), { rng: () => 0 }).player;
 player = commitContractAction(player, previewContractAction(player, { id: 'push' }), { rng: () => 0 }).player;
+// Contract confrontations are crew fights that surface the authored tell.
+const crewView = sessionModels(player, {}).activeContractView.encounter;
+const authored = ENCOUNTERS_V1.find((x) => x.id === player.activeContract.encounterId);
+assert.equal(crewView.enemyName, authored.name);
+assert.deepEqual(crewView.tell, { label: authored.tell.label, text: authored.tell.text });
+// Saves from before the crew-fight conversion keep the recommended-order menu.
+const { encounterMode, participantIds, ...legacyContract } = player.activeContract;
+player = { ...player, activeContract: legacyContract, activeEncounter: null };
 const ui = sessionModels(player, {}).activeContractView.combat;
 assert.deepEqual(ui.tell, player.activeContract && ENCOUNTERS_V1.find((x) => x.id === player.activeContract.encounterId).tell);
 assert.equal(ui.orders.filter((x) => x.recommended).length, 1);

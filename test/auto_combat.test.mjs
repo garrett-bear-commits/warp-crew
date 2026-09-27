@@ -231,30 +231,41 @@ function reliablePushEncounter({ staffWeapons = false } = {}) {
   assert.deepEqual(advanceEncounter(braced), advanceEncounter(restored), 'the order branch still replays after JSON reload');
 }
 
-// Mutation caught: the real reliable Ice Spur Push winning hands-free before station choice matters.
+// Mutation caught: contract fights where orders or station choice stop mattering.
+// The real starter Reliable Push carries threat and seeded swing; compare policies across seeds.
 {
   const push = reliablePushEncounter();
   assert.deepEqual(push.outputs, { helm: 110, shields: 100, weapons: 100, engineering: 100 });
-  const noOrder = advanceUntil(push, current => current.result !== null, 40);
-  assert.equal(noOrder.result, 'loss');
-  assert.equal(noOrder.beat, 9, 'the authored baseline survives eight committed beats before the fatal volley');
-  assert.equal(noOrder.enemy.hull, 2);
-  assert.ok(noOrder.hull >= 1);
-  assert.ok(noOrder.lossReason);
-
-  let bracedPush = reliablePushEncounter();
-  const bracedWin = advanceUntil(bracedPush, current => current.result !== null, 40,
-    current => current.beat === 1 && current.orderWindow?.availableOrders.includes('brace') ? 'brace' : null);
-  assert.equal(bracedWin.result, 'win', 'a legal Brace at the first threat window turns the real baseline Push into a win');
-  assert.equal(bracedWin.beat, 9);
-  assert.ok(bracedWin.hull > noOrder.hull, 'the same final volley is survivable when Brace is timed at the first tell');
-  assert.equal(bracedWin.orders.brace.uses, 1);
-
+  assert.ok(Number.isFinite(push.enemy.threat), 'contract fights carry threat-scaled damage');
   const staffedPush = reliablePushEncounter({ staffWeapons: true });
   assert.deepEqual(staffedPush.outputs, { helm: 110, shields: 100, weapons: 110, engineering: 100 });
-  const staffedWin = advanceUntil(staffedPush, current => current.result !== null, 40);
-  assert.equal(staffedWin.result, 'win');
-  assert.ok(staffedWin.beat < noOrder.beat, 'a matching Weapons assignment changes the route from loss to a faster win');
+  const disciplined = current => {
+    const open = current.orderWindow?.availableOrders || [];
+    return open.includes('target_weapons') ? 'target_weapons' : open.includes('brace') ? 'brace'
+      : open.includes('repair') && current.hull <= 18 ? 'repair' : null;
+  };
+  const beats = { value: 0 };
+  const rate = (base, policy, tally = null) => {
+    let wins = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const result = advanceUntil({ ...base, seed: seed * 7919 }, current => current.result !== null, 40, policy);
+      if (result.result === 'win') wins++;
+      if (tally) tally.value += result.beat;
+      assert.ok(result.hull >= 1);
+    }
+    return wins / 120;
+  };
+  const orderedBeats = { value: 0 };
+  const handsOff = rate(push, () => null);
+  const ordered = rate(push, disciplined, orderedBeats);
+  const staffed = rate(staffedPush, disciplined, beats);
+  assert.ok(handsOff < 0.9, `hands-off starter push should not be a formality (${handsOff})`);
+  assert.ok(ordered > handsOff + 0.05, `timely orders must improve the odds (${handsOff} -> ${ordered})`);
+  assert.ok(staffed >= ordered, `a gunner on Weapons must not hurt the odds (${ordered} -> ${staffed})`);
+  assert.ok(beats.value < orderedBeats.value, 'a gunner on Weapons ends the fight sooner');
+  const replay = JSON.parse(JSON.stringify(push));
+  assert.deepEqual(advanceUntil(push, current => current.result !== null, 40, disciplined),
+    advanceUntil(replay, current => current.result !== null, 40, disciplined), 'swing is seeded, not random');
 }
 
 // Mutation caught: changing a terminal encounter after completion.

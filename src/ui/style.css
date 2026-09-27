@@ -2815,3 +2815,11 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 @keyframes beat-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (prefers-reduced-motion: reduce) { .beat-timer span { animation: none; transform: scaleX(0.5); } }
 .crew-engaging { font: 700 13px var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.enemy-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.enemy-head b { font: 700 16px var(--font-display); letter-spacing: 0.08em; text-transform: uppercase; color: #ffb3a6; }
+.enemy-head span { padding: 0 6px; font: 700 11px/18px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; border: 1px solid currentColor; }
+.enemy-head [data-threat="outmatched"] { color: var(--good); }
+.enemy-head [data-threat="even"] { color: var(--accent); }
+.enemy-head [data-threat="dangerous"] { color: var(--warn); }
+.enemy-head [data-threat="deadly"] { color: var(--bad); }
+.enemy-head p { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--muted); line-height: 1.35; }

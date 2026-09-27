@@ -165,15 +165,19 @@ assert.equal(sessionAction({ ...player, ship: { ...player.ship, hull: 8 } }, ui,
 assert.equal(sessionAction({ ...player, crew: [] }, ui, 'contract-action', { action: 'launch', ...identity() }).reason, 'no_ready_crew');
 act('contract-action', { action: 'launch', ...identity() });
 act('contract-action', { action: 'push', ...identity() });
-const emptyFuel = { ...player, wallet: { ...player.wallet, fuel: 0 } };
-const disabledBurn = sessionModels(emptyFuel, ui).activeContractView.combat.orders.find(x => x.id === 'burn');
-assert.equal(disabledBurn.enabled, false);
-assert.equal(disabledBurn.costLabel, '1F extra');
-assert.ok(disabledBurn.chance > 0);
-const resolvedEvents = events.filter(x => x.event === 'contract_resolved').length;
-act('contract-order', { order: 'brace', ...identity() }, { rng: () => 0 });
-assert.equal(events.filter(x => x.event === 'contract_resolved').length, resolvedEvents + 1);
+// Risky confrontations are real-time crew fights now, scaled by enemy threat.
+assert.equal(player.activeEncounter?.kind, 'normal');
+assert.ok(player.activeEncounter.enemy.threat >= 0.6 && player.activeEncounter.enemy.threat <= 1.6);
+assert.equal(sessionModels(player, ui).activeContractView.combat, undefined, 'no pre-rolled order menu');
+for (let i = 0; i < 40 && !player.activeEncounter.result; i++) {
+  const open = player.activeEncounter.orderWindow?.availableOrders || [];
+  const order = open.includes('brace') ? 'brace' : null;
+  const ident = { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision };
+  const step = order ? act('encounter-order', { ...ident, order }) : act('encounter-advance', ident);
+  assert.ok(step.ok, step.reason);
+}
+assert.ok(['win', 'loss'].includes(player.activeEncounter.result));
 assert.equal(improvementFocus({ ...player, ship: { ...player.ship, hull: 69 } }).selectedRoom, 'engineering');
-assert.equal(improvementFocus({ ...player, wallet: { credits: 100000, medals: 0 } }).selectedRoom, 'operations');
-assert.equal(improvementFocus({ ...player, wallet: { credits: 0, medals: 0 } }).missionView, 'away');
+assert.equal(improvementFocus({ ...player, ship: { ...player.ship, hull: 100 }, wallet: { credits: 100000, medals: 0 } }).selectedRoom, 'operations');
+assert.equal(improvementFocus({ ...player, ship: { ...player.ship, hull: 100 }, wallet: { credits: 0, medals: 0 } }).missionView, 'away');
 console.log('session_loop.test.mjs OK');
