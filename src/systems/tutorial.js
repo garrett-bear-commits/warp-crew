@@ -158,10 +158,28 @@ export function isFeatureUnlocked(player, feature) {
   return list.includes(feature);
 }
 
+/**
+ * After the guided first session, new-flow captains meet systems one at a time:
+ * Shop, Log and gems after the second finished contract, Explore after the third.
+ * Returns null for veterans or anyone who already holds premium value.
+ */
+export function postTutorialStage(player) {
+  if (![4, 5].includes(player?.tutorial?.script) || !player.tutorial.completed) return null;
+  if ((player.wallet?.gems || 0) > 0 || (player.iapFulfilled || []).length) return null;
+  return player.stats?.contractsCompleted || 0;
+}
+
 export function unlockedTabs(player) {
   if (isTutorialActive(player) && [4, 5].includes(player.tutorial?.script)) return ['ship'];
+  const stage = postTutorialStage(player);
+  if (stage != null && stage < 2) return ['ship', 'crew', 'missions'];
   const phase = tutorialPhase(player);
   return TABS_BY_PHASE[phase] || TABS_BY_PHASE.done;
+}
+
+export function missionViews(player) {
+  const stage = postTutorialStage(player);
+  return stage != null && stage < 3 ? ['contracts', 'away'] : ['contracts', 'away', 'explore'];
 }
 
 export function isTabUnlocked(player, tab) {
@@ -183,6 +201,8 @@ export function preferredTab(player, fallback = 'ship') {
 
 export function hudChips(player) {
   if (isTutorialActive(player) && [4, 5].includes(player.tutorial?.script)) return ['fuel', 'credits'];
+  const stage = postTutorialStage(player);
+  if (stage != null && stage < 2) return ['fuel', 'credits', 'medals'];
   const phase = tutorialPhase(player);
   if (phase === 'done') return ['fuel', 'credits', 'gems', 'medals'];
   if (['return', 'recruit', 'choose', 'away'].includes(phase)) {

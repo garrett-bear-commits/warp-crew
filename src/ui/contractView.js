@@ -1,3 +1,5 @@
+import { SPACE_ART, NODE_ART } from '../data/portraits.js';
+
 /** Pure presentation. Callers supply costs, availability, previews and selected crew.
  * No player mutations, reward calculations, party recommendations or route decisions.
  * Action data is consumed by the bridge's existing delegated action handler.
@@ -6,24 +8,31 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 const e = escapeHtml;
+
+const PROFILE_ART = { reliable: SPACE_ART.trader, risky: SPACE_ART.pirate, strange: NODE_ART.b, distress: SPACE_ART.trader };
+const dangerKey = (value) => String(value || '').toLowerCase().replace(/[^a-z]/g, '') || 'unknown';
 const profileLabel = (offer) => offer.profileLabel || ({ reliable: 'Reliable', risky: 'Risky', strange: 'Strange', distress: 'Distress' }[offer.profile] || offer.profile || 'Contract');
 const profileIcon = (offer) => ({ reliable: '◆', risky: '⚔', strange: '✦', distress: '!' }[offer.profile] || '◇');
 const rewardLabel = (offer) => offer.rewardBand?.label || offer.primaryReward || offer.rewardLabel || 'Reward unavailable';
-const trait = (value) => value ? `<p class="contract-consequence">Favored: ${e(value.label)}${value.why ? ` · ${e(value.why)}` : ''}</p>` : '';
+const trait = (value) => value ? `<p class="contract-consequence contract-favored"><b>Favored: ${e(value.label)}</b>${value.why ? `<span> · ${e(value.why)}</span>` : ''}</p>` : '';
 const reason = (value) => value ? `<p class="contract-consequence">${e(value)}</p>` : '';
 
-export function renderMissionSwitcher(view = 'contracts') {
-  return `<nav class="mission-switcher" aria-label="Mission views">${[['contracts', 'Contracts'], ['away', 'Away'], ['explore', 'Explore']].map(([id, label]) => `<button type="button" data-act="mission-view" data-view="${id}" aria-pressed="${id === view}">${label}</button>`).join('')}</nav>`;
+export function renderMissionSwitcher(view = 'contracts', views = ['contracts', 'away', 'explore']) {
+  return `<nav class="mission-switcher" style="--views:${views.length}" aria-label="Mission views">${[['contracts', 'Contracts'], ['away', 'Away'], ['explore', 'Explore']].filter(([id]) => views.includes(id)).map(([id, label]) => `<button type="button" data-act="mission-view" data-view="${id}" aria-pressed="${id === view}">${label}</button>`).join('')}</nav>`;
 }
 
 export function renderContractBoard(model = {}) {
-  return `<section class="contract-board" aria-label="Contract Board"><h2>Contracts</h2>${(model.offers || []).map((offer) => {
+  return `<section class="contract-board" aria-label="Contract Board"><header class="board-head"><h2>Contracts</h2><span>Pick one job for the crew</span></header>${(model.offers || []).map((offer) => {
     const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, Possible payout now: ${rewardLabel(offer)}`;
-    return `<article class="contract-card" data-profile="${e(offer.profile)}">
-      <p class="contract-profile"><span aria-hidden="true">${profileIcon(offer)}</span> ${e(profileLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
-      <h3>${e(offer.title)}</h3><p>${e(offer.brief)}</p>
-      <dl class="contract-facts"><div><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div><dt>Possible payout now</dt><dd>${e(rewardLabel(offer))}</dd></div><div><dt>Danger</dt><dd>${e(offer.danger)}</dd></div></dl>
-      ${trait(offer.favoredTrait)}<button type="button" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
+    const art = PROFILE_ART[offer.profile];
+    return `<article class="contract-card${offer.completed ? ' is-completed' : ''}" data-profile="${e(offer.profile)}">
+      <div class="contract-banner">
+        <p class="contract-profile"><span aria-hidden="true">${profileIcon(offer)}</span> ${e(profileLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
+        ${art ? `<img class="contract-art" src="${e(art)}" alt="" />` : ''}
+      </div>
+      <h3>${e(offer.title)}</h3><p class="contract-brief">${e(offer.brief)}</p>
+      <dl class="contract-facts"><div class="fact-fuel"><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div class="fact-length"><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(offer))}</dd></div></dl>
+      ${trait(offer.favoredTrait)}<button type="button" class="contract-review-btn" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
     </article>`;
   }).join('') || '<p>No contracts available.</p>'}</section>`;
 }
@@ -32,11 +41,12 @@ export function renderContractReview(model = {}) {
   const offer = model.offer || {};
   return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-labelledby="contract-review-title">
     <button type="button" class="icon-close" data-act="contract-review-close" aria-label="Close contract review">×</button>
-    <p>${e(profileLabel(offer))}</p><h2 id="contract-review-title">${e(offer.title)}</h2>
-    <p>${e(offer.brief)}</p><p>Destination: ${e(model.destinationName || offer.destinationName)}</p>
-    <dl class="contract-facts"><div><dt>Payable route fuel</dt><dd>${e(model.cost?.fuel)}F</dd></div><div><dt>Possible payout now</dt><dd>${e(rewardLabel(model))}</dd></div><div><dt>Danger</dt><dd>${e(offer.danger)}</dd></div></dl>
+    <div class="contract-banner" data-profile="${e(offer.profile)}"><p class="contract-profile">${e(profileLabel(offer))}</p>${PROFILE_ART[offer.profile] ? `<img class="contract-art" src="${e(PROFILE_ART[offer.profile])}" alt="" />` : ''}</div>
+    <h2 id="contract-review-title">${e(offer.title)}</h2>
+    <p class="contract-brief">${e(offer.brief)}</p><p class="contract-destination">Destination: ${e(model.destinationName || offer.destinationName)}</p>
+    <dl class="contract-facts"><div class="fact-fuel"><dt>Payable route fuel</dt><dd>${e(model.cost?.fuel)}F</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(model))}</dd></div></dl>
     ${reason(model.consequence)}${trait(model.favoredTrait || offer.favoredTrait)}${reason(model.reason)}
-    <p>Accepting spends no fuel. Fuel is spent by route actions.</p>
+    <p class="contract-note">Accepting spends no fuel. Fuel is spent by route actions.</p>
     <button type="button" class="primary" data-act="contract-accept" data-offer="${e(offer.id)}" aria-label="${e(`Accept contract, Possible payout now: ${rewardLabel(model)}`)}" ${model.enabled === false || model.ok === false ? 'disabled' : ''}>Accept contract</button>
   </section></div>`;
 }

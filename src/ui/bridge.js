@@ -15,6 +15,7 @@ import {
   hudChips,
   isTutorialActive,
   tutorialPhase,
+  missionViews,
 } from '../systems/tutorial.js';
 import { readyCrew, fightingCrew } from '../systems/player.js';
 import { normalizeAssignments, previewStationAssignment, stationOutputs, STATIONS } from '../systems/stations.js';
@@ -1009,8 +1010,9 @@ function renderNodeCard(n, player, here, step) {
 }
 
 export function renderMissions(player, now, model = {}) {
-  const view = ['contracts', 'away', 'explore'].includes(model.missionView) ? model.missionView : 'contracts';
-  const switcher = renderMissionSwitcher(view);
+  const views = missionViews(player);
+  const view = views.includes(model.missionView) ? model.missionView : 'contracts';
+  const switcher = renderMissionSwitcher(view, views);
   if (view === 'contracts') {
     const board = model.contractBoard || player.contractBoard || { offers: [] };
     const content = player.activeContract
