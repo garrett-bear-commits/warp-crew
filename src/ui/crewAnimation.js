@@ -12,11 +12,11 @@ export const ANIMATION_PROFILES = Object.freeze({
     id: 'crew_rig',
     sourceCell: Object.freeze({ width: CREW_RIG.cell.w, height: CREW_RIG.cell.h }),
     footAnchor: Object.freeze({ x: CREW_RIG.footAnchor.x, y: CREW_RIG.footAnchor.y }),
-    // World pixels per sheet pixel. The figure is ~34 sheet px tall, so ~119
-    // world px: ~26 CSS px at the battle-margin whole-ship camera on a
-    // 390px-wide phone, ~40 CSS px when the hull fills the width.
-    scale: 3.5,
-    shadow: Object.freeze({ width: 44, height: 12, offsetY: 1 }),
+    // World pixels per sheet pixel. The figure is ~34 sheet px tall, so ~136
+    // world px: ~30 CSS px at the whole-ship camera on a 390x844 phone,
+    // ~46 CSS px when the hull fills the width.
+    scale: 4,
+    shadow: Object.freeze({ width: 48, height: 12, offsetY: 1 }),
     clips: CREW_CLIPS,
   }),
 });

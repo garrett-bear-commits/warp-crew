@@ -166,7 +166,8 @@ const shadowFeet = [];
 const gradient = { addColorStop() {} };
 const context = {
   setTransform() {}, clearRect() {}, save() {}, restore() {}, beginPath() {},
-  fill() {}, fillRect() {}, drawImage() {}, moveTo() {}, lineTo() {}, closePath() {},
+  fill() {}, fillRect() {}, drawImage() {}, moveTo() {}, lineTo() {}, closePath() {}, quadraticCurveTo() {},
+  translate() {}, scale() {},
   createRadialGradient: () => gradient,
   createLinearGradient: () => gradient,
   ellipse(x, y, rx, ry) {
