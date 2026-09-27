@@ -23,6 +23,7 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
       lastGesture = false;
     }
     pointers.set(event.pointerId, { start: point(event), current: point(event) });
+    surface.classList?.add('is-dragging');
     if (pointers.size > 1) gestureMoved = true;
     surface.setPointerCapture?.(event.pointerId);
   }
@@ -81,6 +82,7 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
       suppressNativeClickUntil = suppressClickUntil;
     }
     pointers.delete(event.pointerId);
+    if (!pointers.size) surface.classList?.remove('is-dragging');
     if (surface.hasPointerCapture?.(event.pointerId)) surface.releasePointerCapture?.(event.pointerId);
   }
 

@@ -388,6 +388,18 @@ function patchShell(root, ctx) {
     };
   }
 
+  if (root._wcSetCamera && !(firstSession || v5Session) && root._wcLastSelectedRoom !== selectedRoom) {
+    const roomSel = ROOMS.find(r => r.id === selectedRoom);
+    const viewport = root._wcCamera.viewport;
+    if (roomSel) {
+      // Keep the chosen room clear of its sheet: sheets sit below upper rooms and above lower ones.
+      const point = { x: roomSel.labelAnchor.x * 11.52, y: roomSel.labelAnchor.y * 17.28 };
+      const targetY = roomSel.labelAnchor.y >= 55 ? viewport.h * 0.72 : viewport.h * 0.27;
+      const focused = focusCamera(root._wcCamera, point, root._wcCamera.scale * 1.35);
+      root._wcSetCamera(pan(focused, 0, targetY - viewport.h / 2));
+    } else if (root._wcLastSelectedRoom && root._wcLastSelectedRoom !== 'hangar') root._wcSetCamera(homeCamera(viewport));
+  }
+  root._wcLastSelectedRoom = selectedRoom;
   root.querySelector('.wc-shell')?.classList.toggle('tab-home', isHome);
   root._wcBattleActive = fighting;
   root._wcSelectedRoom = selectedRoom;
@@ -822,13 +834,13 @@ export function renderRoomSheet(player, room, fuel, now) {
     ? `Lv ${sys}${room.system ? ` · ${escapeHtml(systemStat(room.system, sys))}` : ''}`
     : assigned ? escapeHtml(assigned.role) : 'Empty';
   const crewChoices = stationId ? `
-    <div class="muted">${output.label} output: ${output.baseline} + ${output.bonus} = ${output.total} (provisional)</div>
-    <div class="muted">${output.staffedBy ? '● Working here' : assigned ? '● Assigned · unavailable' : '○ Work marker · open'}</div>
+    <div class="sheet-output"><span>${output.label} output</span><b>${output.total}</b><small>${output.baseline} + ${output.bonus} crew bonus · ${output.staffedBy ? 'staffed' : assigned ? 'assigned · unavailable' : 'open station'}</small></div>
+    <div class="sheet-kicker">Who works here?</div>
     <div class="row crew-actions">
       ${player.crew.map(c => {
         const preview = previewStationAssignment(player, c.instanceId, stationId, now);
         const label = preview.ok ? `${preview.after} (${preview.delta >= 0 ? '+' : ''}${preview.delta})` : 'Unavailable';
-        return `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${stationId}" ${preview.ok ? '' : 'disabled'}>${escapeHtml(c.name)} · ${label}${assignments[c.instanceId] === stationId ? ' · assigned' : ''}</button>`;
+        return `<button class="station-crew${assignments[c.instanceId] === stationId ? ' is-current' : ''}" data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${stationId}" ${preview.ok ? '' : 'disabled'}><img src="${escapeHtml(portraitFor(c.templateId, c.role))}" alt="" /><span>${escapeHtml(c.name)}</span><b>${label}${assignments[c.instanceId] === stationId ? ' · assigned' : ''}</b></button>`;
       }).join('')}
     </div>` : '';
   return `
@@ -873,26 +885,26 @@ function roomActions(room, player) {
     const shields = nextUpgradeCost(player, 'shields');
     return `
       <button class="primary" data-act="goto-missions">Contracts</button>
-      ${hangar && sensors ? `<button data-act="ship-upgrade" data-system="sensors">Sensors ${sensors.level} · ${sensors.credits}cr</button>` : ''}
-      ${hangar && shields ? `<button data-act="ship-upgrade" data-system="shields">Shields ${shields.level} · ${shields.credits}cr</button>` : ''}`;
+      ${hangar && sensors ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="sensors"><span>Upgrade Sensors → Lv ${sensors.level + 1}</span><b>${sensors.credits}cr</b></button>` : ''}
+      ${hangar && shields ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="shields"><span>Upgrade Shields → Lv ${shields.level + 1}</span><b>${shields.credits}cr</b></button>` : ''}`;
   }
   if (room.id === 'medbay') {
     const medbay = nextUpgradeCost(player, 'medbay');
     return `
-      ${crewOpen ? '<button class="primary" data-act="goto-crew">Crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
-      ${hangar && medbay ? `<button data-act="ship-upgrade" data-system="medbay">Medbay ${medbay.level} · ${medbay.credits}cr</button>` : ''}`;
+      ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
+      ${hangar && medbay ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="medbay"><span>Upgrade Medbay → Lv ${medbay.level + 1}</span><b>${medbay.credits}cr</b></button>` : ''}`;
   }
   if (room.id === 'quarters') {
     const quarters = nextUpgradeCost(player, 'quarters');
     return `
-      ${crewOpen ? '<button class="primary" data-act="goto-crew">Crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
-      ${hangar && quarters ? `<button data-act="ship-upgrade" data-system="quarters">Quarters ${quarters.level} · ${quarters.credits}cr</button>` : ''}`;
+      ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
+      ${hangar && quarters ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="quarters"><span>Upgrade Quarters → Lv ${quarters.level + 1}</span><b>${quarters.credits}cr</b></button>` : ''}`;
   }
   if (room.id === 'workshop') {
     const weapons = nextUpgradeCost(player, 'weapons');
     return `
-      ${crewOpen ? '<button class="primary" data-act="goto-crew">Crew</button>' : ''}
-      ${hangar && weapons ? `<button data-act="ship-upgrade" data-system="weapons">Weapons ${weapons.level} · ${weapons.credits}cr</button>` : ''}`;
+      ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : ''}
+      ${hangar && weapons ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="weapons"><span>Upgrade Weapons → Lv ${weapons.level + 1}</span><b>${weapons.credits}cr</b></button>` : ''}`;
   }
   if (room.id === 'cargo') {
     const contract = player.activeContract;
@@ -901,11 +913,11 @@ function roomActions(room, player) {
     return `
       <button class="primary" data-act="goto-away">Away teams</button>
       ${fuelBuyButtons(player)}
-      ${hangar && cg ? `<button data-act="ship-upgrade" data-system="cargo">Cargo ${cg.level} · ${cg.credits}cr</button>` : ''}`;
+      ${hangar && cg ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="cargo"><span>Upgrade Cargo → Lv ${cg.level + 1}</span><b>${cg.credits}cr</b></button>` : ''}`;
   }
   if (room.id === 'mess') {
     return crewOpen
-      ? '<button class="primary" data-act="goto-crew">Crew</button>'
+      ? '<button class="ghost" data-act="goto-crew">Manage crew</button>'
       : '<button class="primary" data-act="goto-missions">Jump</button>';
   }
   if (room.id === 'stores') {
@@ -917,7 +929,7 @@ function roomActions(room, player) {
       <button class="primary" data-act="claim">Claim fuel</button>
       ${fuelBuyButtons(player)}
       ${offer ? `<button data-act="repair-hull">Repair ${offer.cost}cr (+${offer.amount}%)</button>` : ''}
-      ${hangar && en ? `<button data-act="ship-upgrade" data-system="engines">Engines ${en.level} · ${en.credits}cr</button>` : ''}`;
+      ${hangar && en ? `<button class="upgrade-btn" data-act="ship-upgrade" data-system="engines"><span>Upgrade Engines → Lv ${en.level + 1}</span><b>${en.credits}cr</b></button>` : ''}`;
   }
   if (room.system && hangar) {
     const up = nextUpgradeCost(player, room.system);
@@ -926,7 +938,7 @@ function roomActions(room, player) {
   }
   if (room.role) {
     return crewOpen
-      ? '<button class="primary" data-act="goto-crew">Crew</button>'
+      ? '<button class="ghost" data-act="goto-crew">Manage crew</button>'
       : '<button class="primary" data-act="goto-missions">Jump</button>';
   }
   return '';
@@ -1127,58 +1139,68 @@ export function renderCrew(player, now = Date.now()) {
   const reserve = player.reserve || [];
   const assignments = normalizeAssignments(player);
   const outputs = stationOutputs(player, now);
+  const showGems = hudChips(player).includes('gems');
   return `
-    <div class="panel">
+    <section class="panel roster-head">
       <h2>Crew · ${player.crew.length}/${player.crewSlots}</h2>
-      <div class="muted">Power ${crewPower(fightingCrew(player))}${open ? ` · ${open} open` : ''}</div>
-      <div class="muted">Stations · ${Object.entries(outputs).map(([id, output]) => `${escapeHtml(output.label)} ${output.total}`).join(' · ')} (provisional output)</div>
-      ${canHire ? `
-        <div class="luck-meter">
-          <div class="muted">Luck ${g.luck || 0}/${LUCK_CAP} · pity ${g.pityRare || 0}/${PITY.rareHard}</div>
-          <div class="pity-bar"><span style="width:${pityRarePct}%"></span></div>
-          <div class="row hire-row">
-            <button data-act="buy-luck" data-currency="credits" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckCreditCost(g.luck)}cr`}</button>
-            <button data-act="buy-luck" data-currency="gems" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckGemCost(g.luck)}g`}</button>
-          </div>
-        </div>
+      <div class="roster-stats">
+        <div><span>Power</span><b>${crewPower(fightingCrew(player))}</b></div>
+        <div><span>Open berths</span><b>${open}</b></div>
+      </div>
+      <div class="station-strip" aria-label="Station output (provisional)">${Object.entries(outputs).map(([id, output]) => `<div class="station-out"><span>${escapeHtml(output.label)}</span><b>${output.total}</b></div>`).join('')}</div>
+    </section>
+    ${canHire ? `
+    <section class="panel recruit-panel">
+      <h2>Recruit</h2>
+      <button class="primary recruit-main ${teachHire && free ? 'spot-glow' : ''}" data-act="gacha">
+        ${free ? 'Free hire' : 'Hire 500cr'}
+      </button>
+      ${showGems ? `<div class="row hire-row">
+        ${free ? '' : `<button data-act="gacha-gems">Hire ${GACHA_COSTS.gems.gems}g</button>`}
+        <button data-act="gacha-10">10-pull ${GACHA_COSTS.gems10.gems}g</button>
+      </div>` : ''}
+      <details class="luck-meter">
+        <summary>Improve odds · Luck ${g.luck || 0}/${LUCK_CAP}</summary>
+        <div class="muted">Rare guaranteed in ${Math.max(0, PITY.rareHard - (g.pityRare || 0))} hires · pity ${g.pityRare || 0}/${PITY.rareHard}</div>
+        <div class="pity-bar"><span style="width:${pityRarePct}%"></span></div>
         <div class="row hire-row">
-          <button class="primary ${teachHire && free ? 'spot-glow' : ''}" data-act="gacha">
-            ${free ? 'Free hire' : 'Hire 500cr'}
-          </button>
-          ${free ? '' : `<button data-act="gacha-gems">Hire ${GACHA_COSTS.gems.gems}g</button>`}
-          <button data-act="gacha-10">10-pull ${GACHA_COSTS.gems10.gems}g</button>
-        </div>` : ''}
+          <button data-act="buy-luck" data-currency="credits" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckCreditCost(g.luck)}cr`}</button>
+          ${showGems ? `<button data-act="buy-luck" data-currency="gems" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckGemCost(g.luck)}g`}</button>` : ''}
+        </div>
+      </details>
+    </section>` : ''}
+    <section class="crew-list">
       ${player.crew.map((c) => {
         const cost = medalLevelCostFor(c);
         const hurt = c.status === 'injured' && (c.injuredUntil || 0) > now
           ? ` · down ${formatDuration(c.injuredUntil - now)}`
           : '';
         return `
-        <div class="crew-card">
+        <article class="crew-card panel">
           <div class="crew-body">
             ${identityCard({ ...c, currentJob: assignments[c.instanceId] ? `${STATIONS[assignments[c.instanceId]].label} · working` : 'On deck' })}
-            ${hurt ? `<div class="crew-meta">${hurt.slice(3)}</div>` : ''}
-            <div class="row crew-actions">
+            ${hurt ? `<div class="crew-meta crew-hurt">${hurt.slice(3)}</div>` : ''}
+            <div class="station-grid" role="group" aria-label="Assign ${escapeHtml(c.name)} to a station">
               ${Object.entries(STATIONS).map(([id, station]) => {
                 const preview = previewStationAssignment(player, c.instanceId, id, now);
                 const label = preview.ok ? `${preview.after} (${preview.delta >= 0 ? '+' : ''}${preview.delta})` : 'Unavailable';
-                return `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${id}" ${preview.ok ? '' : 'disabled'}>${escapeHtml(station.label)} ${label}</button>`;
+                return `<button class="station-pick${assignments[c.instanceId] === id ? ' is-current' : ''}" data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="${id}" ${preview.ok ? '' : 'disabled'}>${escapeHtml(station.label)} ${label}</button>`;
               }).join('')}
-              ${assignments[c.instanceId] ? `<button data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="">Leave station</button>` : ''}
             </div>
             <div class="row crew-actions">
               <button class="ghost" data-act="select-crew" data-id="${c.instanceId}">Dossier</button>
               ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
-                ? `<button data-act="level-crew" data-id="${c.instanceId}">Lv ${c.level + 1} · ${cost} med</button>`
+                ? `<button class="level-up" data-act="level-crew" data-id="${c.instanceId}">Lv ${c.level + 1} · ${cost} med</button>`
                 : ''}
+              ${assignments[c.instanceId] ? `<button class="ghost" data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="">Leave station</button>` : ''}
               ${isFeatureUnlocked(player, 'gacha') && !c.isCaptain && c.status !== 'expedition' && player.crew.length > 1
                 ? `<button class="ghost" data-act="crew-bench" data-id="${c.instanceId}">Bench</button>`
                 : ''}
             </div>
           </div>
-        </div>`;
+        </article>`;
       }).join('') || '<div class="empty-hint">No crew.</div>'}
-    </div>
+    </section>
     ${canHire && reserve.length ? `
     <div class="panel">
       <h2>Reserve · ${reserve.length}/${RESERVE_CAP}</h2>

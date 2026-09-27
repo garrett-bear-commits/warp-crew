@@ -2457,3 +2457,118 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .contract-note { font-size: 13px; color: var(--muted); }
 .contract-sheet > .icon-close { position: absolute; right: 8px; top: 8px; z-index: 2; float: none; margin: 0; }
 .mission-switcher { grid-template-columns: repeat(var(--views, 3), minmax(0, 1fr)); }
+
+/* Crew roster. */
+.roster-head h2, .recruit-panel h2 { font-size: 19px; letter-spacing: 0.08em; text-transform: uppercase; }
+.roster-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 8px 0; }
+.roster-stats > div, .station-out {
+  display: grid;
+  padding: 6px 8px;
+  background: #060a11;
+  border: 1px solid #1c2939;
+}
+.roster-stats span, .station-out span {
+  font: 700 10px var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.roster-stats b { font: 700 20px var(--font-display); color: var(--accent); }
+.station-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.station-out b { font: 700 16px var(--font-display); color: var(--text); }
+.recruit-panel { display: grid; gap: 8px; }
+.recruit-panel h2 { margin: 0; }
+.recruit-main { width: 100%; min-height: 52px; }
+.recruit-panel .hire-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 6px; }
+.luck-meter summary {
+  cursor: pointer;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  font: 700 13px var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.luck-meter[open] summary { color: var(--accent); }
+.crew-list { display: grid; gap: 10px; }
+.crew-card.panel { margin: 0; padding: 12px; }
+.crew-card .crew-identity { display: flex; gap: 12px; align-items: center; }
+.crew-card .crew-identity .portrait {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  object-fit: cover;
+  border: 1px solid var(--ops-edge-hi);
+  image-rendering: pixelated;
+}
+.crew-identity-copy b { font: 700 18px var(--font-display); letter-spacing: 0.03em; }
+.station-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 10px 0 8px; }
+.station-pick {
+  min-height: 40px;
+  padding: 6px 8px;
+  font: 700 14px var(--font-display);
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: var(--muted);
+}
+.station-pick.is-current {
+  color: var(--good);
+  border-color: var(--good);
+  background: linear-gradient(180deg, rgba(111, 224, 140, 0.16), transparent), #0b111a;
+}
+.crew-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.crew-actions button { flex: 1 1 auto; min-height: 40px; font-size: 14px; }
+.crew-actions .level-up { color: var(--ops-amber-hi); border-color: rgba(255, 181, 71, 0.5); }
+.crew-hurt { color: var(--bad); }
+
+/* Room sheet. */
+.room-sheet .sheet-head h2 { margin: 0; }
+.sheet-output {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  margin: 10px 0 8px;
+  padding: 8px 10px;
+  background: #060a11;
+  border: 1px solid #1c2939;
+}
+.sheet-output span { font: 700 11px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.sheet-output b { font: 700 22px var(--font-display); color: var(--accent); }
+.sheet-output small { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.sheet-kicker { font: 700 11px var(--font-display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 4px 0; }
+.room-sheet .crew-actions { display: grid; gap: 6px; }
+.station-crew {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 10px 4px 4px;
+  text-align: left;
+}
+.station-crew img { width: 34px; height: 34px; object-fit: cover; image-rendering: pixelated; }
+.station-crew span { font: 700 15px var(--font-display); letter-spacing: 0.03em; }
+.station-crew b { font: 600 13px var(--font-sans); color: var(--muted); }
+.station-crew.is-current { border-color: var(--good); background: linear-gradient(90deg, rgba(111, 224, 140, 0.16), transparent), #0b111a; }
+.station-crew.is-current b { color: var(--good); }
+.sheet-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.sheet-actions > button { flex: 1 1 auto; }
+.upgrade-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font: 700 14px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+  border-color: rgba(255, 181, 71, 0.5);
+}
+.upgrade-btn b { color: var(--ops-amber-hi); }
+.ship-fit { transition: transform 320ms var(--ease-out); }
+.stage.is-dragging .ship-fit { transition: none; }
+@media (prefers-reduced-motion: reduce) { .ship-fit { transition: none; } }
+.room-sheet { max-height: min(54%, 470px); }
+.room-sheet[data-room-position="lower"] { top: 84px; max-height: min(46%, 400px); }
