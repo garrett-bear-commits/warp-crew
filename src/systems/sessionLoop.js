@@ -19,6 +19,7 @@ import { portraitFor } from '../data/portraits.js';
 import { NODES } from '../data/sectors.js';
 import { canAfford, formatReward } from './economy.js';
 import { beatDelayMs } from './fightPacing.js';
+import { evaluateStarterOffer } from './offers.js';
 import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
 import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
@@ -32,7 +33,7 @@ export function prepareSession(player, now = Date.now()) {
   } else if (!early && !next.activeContract && next.contractBoard?.offers.some(x => x.profile === 'distress')) {
     next = { ...next, contractBoard: generateContractBoard(next, now) };
   } else if (!early) next = ensureContractBoard(next, now).player;
-  return next;
+  return evaluateStarterOffer(next, now);
 }
 
 const event = (name, fields) => ({ event: name, fields });

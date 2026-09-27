@@ -35,9 +35,10 @@ export const PRODUCT_DEFS = {
   },
   wc_starter: {
     sku: 'wc_starter',
-    name: 'Starter Pack',
-    blurb: 'Fuel + gems + medals',
-    grant: { fuel: 10, gems: 150, medals: 30, credits: 500 },
+    name: "New Captain's Kit",
+    blurb: 'One time only: gems, fuel, medals and credits',
+    oneTime: true,
+    grant: { fuel: 10, gems: 250, medals: 50, credits: 800 },
   },
 };
 

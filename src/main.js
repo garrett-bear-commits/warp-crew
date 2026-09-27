@@ -53,6 +53,7 @@ import { startStageLoop } from './ui/stageLoop.js';
 import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
+import { STARTER_OFFER, starterOfferState, markStarterOffer } from './systems/offers.js';
 import { applyResolvedSlicePortraits } from './data/portraits.js';
 
 let app = null;
@@ -789,17 +790,26 @@ async function handleAction(act, data = {}) {
       return;
     }
     const sku = data.sku;
+    if (sku === STARTER_OFFER.sku && !starterOfferState(player).active) {
+      pushLog("The New Captain's Kit is no longer available.");
+      render();
+      return;
+    }
     pushLog(`Purchasing ${sku}…`);
     const res = await buyProduct(player, sku);
     if (!res.ok) pushLog(`Purchase failed: ${res.reason}`);
     else {
       player = res.player;
+      if (sku === STARTER_OFFER.sku) player = markStarterOffer(player, { purchased: true, seen: true });
       pushLog(`Purchased ${sku}. Rewards applied.`);
       showToast({ title: 'Purchase applied' });
       sfx('coin');
       captureEvent('iap_success', { sku });
       await refreshNotifs();
     }
+  } else if (act === 'starter-dismiss') {
+    player = markStarterOffer(player, { seen: true });
+    captureEvent('offer_dismissed', { offer: 'starter', reason: player.offers?.starter?.reason });
   } else if (act === 'prompt-login') {
     const result = await handleJoinJest({ reason: 'shop_prompt' });
     if (result.registered) player = { ...player, _jestRegistered: true, captainName: result.username || player.captainName };

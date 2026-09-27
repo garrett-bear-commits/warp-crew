@@ -2856,3 +2856,15 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .boarder-alert[data-phase="repelled"] { border-color: var(--good); background: #0a0f18; }
 .boarder-alert[data-phase="repelled"] p { color: #c8ffd6; }
 .tactic-repel { color: #fff; border-color: var(--bad); background: linear-gradient(180deg, rgba(255, 90, 80, 0.35), rgba(255, 90, 80, 0.08)), #1a0b0b; }
+
+/* New Captain's Kit. */
+.kit-contents { list-style: none; margin: 4px 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.kit-contents li { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; background: #060a11; border: 1px solid rgba(255, 181, 71, 0.4); }
+.kit-contents img { width: 26px; height: 26px; image-rendering: pixelated; }
+.kit-contents b { font: 700 18px var(--font-display); color: var(--ops-amber-hi); }
+.kit-contents span { font: 700 10px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.kit-saving { margin: 0; font-size: 13px; color: var(--good); }
+.first-session-modal .kit-note, .kit-note { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+.starter-offer .ghost { min-height: 40px; }
+.starter-card { border-color: var(--ops-amber); display: grid; gap: 8px; }
+.starter-card h2 { margin: 0; }

@@ -40,6 +40,7 @@ import { dailyPlan, ensureDailyLoop, MILESTONES as DAILY_MILESTONES } from '../s
 import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
+import { starterOfferState, starterValue } from '../systems/offers.js';
 import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
 
 const NODE_KIND_ART = {
@@ -414,7 +415,11 @@ function patchShell(root, ctx) {
   setSlot(root, 'crew-rail', isHome && !fighting && !firstSession && !v5Session && !selectedRoom ? renderCrewRail(player) : '');
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
-  setSlot(root, 'modal', ctx.confirmRestartSave ? renderRestartSaveConfirm() : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene }));
+  const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
+  const starter = starterOfferState(player, now);
+  const offerModal = !baseModal.trim() && starter.showModal && isHome && !fighting && !player.activeEncounter && !selectedRoom
+    ? renderStarterOffer(starter, starterValue(ctx.shopProducts || [])) : '';
+  setSlot(root, 'modal', baseModal.trim() ? baseModal : offerModal);
   setSlot(root, 'hotspots', v5Session && phase === 'assign' ? renderV5AssignmentHotspot(player)
     : firstSession || v5Session ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'captain-marker', v5Session && phase === 'assign' ? renderCaptainMarker(player) : '');
@@ -1244,12 +1249,63 @@ export function renderPlatformLoginEntry() {
   return `<button data-act="prompt-login" style="margin-top:8px">Optional Jest sign-in</button>`;
 }
 
+function starterContents(value) {
+  const g = value?.grant || { gems: 250, fuel: 10, medals: 50, credits: 800 };
+  return `<ul class="kit-contents">
+    <li><img src="${ICONS.gems}" alt="" /><b>${g.gems}</b><span>gems</span></li>
+    <li><img src="${ICONS.fuel}" alt="" /><b>${g.fuel}</b><span>fuel</span></li>
+    <li><img src="${ICONS.medals}" alt="" /><b>${g.medals}</b><span>medals</span></li>
+    <li><img src="${ICONS.credits}" alt="" /><b>${g.credits}</b><span>credits</span></li>
+  </ul>`;
+}
+
+function starterPrice(value) {
+  return value ? `$${value.price.toFixed(2)}` : 'Buy';
+}
+
+function starterSaving(value) {
+  // Only claim a saving the live pack prices support.
+  return value?.savedPct > 0
+    ? `<p class="kit-saving">Save ${value.savedPct}%: the gems and fuel alone cost $${value.worth.toFixed(2)} in regular packs. Credits and medals are extra.</p>` : '';
+}
+
+function starterClock(state) {
+  const hours = Math.floor(state.remainingMs / 3600000);
+  const minutes = Math.floor((state.remainingMs % 3600000) / 60000);
+  return hours >= 1 ? `${hours}h ${minutes}m` : `${minutes}m`;
+}
+
+export function renderStarterOffer(state, value) {
+  const lead = state.reason === 'first_loss'
+    ? 'Rough fight. This kit gets the Sparrow back in the air with a stronger crew behind it.'
+    : "You've got the hang of the Sparrow. This kit helps you push further, faster.";
+  return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal starter-offer" role="dialog" aria-modal="true" aria-label="New Captain's Kit">
+    <span class="modal-kicker">One time only · ${starterClock(state)} left</span>
+    <h2>New Captain's Kit</h2>
+    <p>${escapeHtml(lead)}</p>
+    ${starterContents(value)}
+    ${starterSaving(value)}
+    <button class="primary" data-act="iap-buy" data-sku="wc_starter">${starterPrice(value)}</button>
+    <button class="ghost" data-act="starter-dismiss">Maybe later</button>
+    <p class="kit-note">Stays in the Shop until the timer ends. Can only be bought once.</p>
+  </section></div>`;
+}
+
+function renderStarterCard(state, value) {
+  return `<section class="panel starter-card">
+    <span class="modal-kicker">One time only · ${starterClock(state)} left</span>
+    <h2>New Captain's Kit</h2>
+    ${starterContents(value)}
+    ${starterSaving(value)}
+    <button class="primary" data-act="iap-buy" data-sku="wc_starter">${starterPrice(value)}</button>
+  </section>`;
+}
+
 function renderShop(player, shopProducts) {
   const SKU_COPY = {
     wc_fuel_5: { name: 'Fuel ×5', blurb: 'Jump five times' },
     wc_gems_100: { name: '100 gems', blurb: 'One hire, or luck' },
     wc_gems_500: { name: '500 gems', blurb: '10-pull, leftover 100' },
-    wc_starter: { name: 'Starter', blurb: '10 fuel · 150g · 30 med · 500cr' },
   };
   const bySku = Object.fromEntries((shopProducts || []).map((p) => [p.sku, p]));
   const products = Object.keys(SKU_COPY).map((sku) => {
@@ -1334,6 +1390,7 @@ function renderShop(player, shopProducts) {
     <div class="panel">
       <h2>Buy</h2>
       <div class="muted">Real money. Gems skip the grind.</div>
+      ${starterOfferState(player).active ? renderStarterCard(starterOfferState(player), starterValue(shopProducts || [])) : ''}
       ${products.map((p) => `
         <div class="iap-row">
           <div>

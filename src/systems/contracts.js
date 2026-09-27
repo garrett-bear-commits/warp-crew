@@ -668,6 +668,7 @@ export function claimContractReward(player, now = Date.now()) {
       visits,
       jumps: (player.stats?.jumps || 0) + 1,
       contractsCompleted: (player?.stats?.contractsCompleted || 0) + 1,
+      contractsLost: (player?.stats?.contractsLost || 0) + (contract.result.success === false ? 1 : 0),
       contractsByProfile,
     },
     dailyLoop,
