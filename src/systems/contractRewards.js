@@ -141,6 +141,7 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
   const wallSegment = contract.wall && Number.isInteger(encounter.enemy?.startHull) ? encounter.enemy.startHull : null;
   const wallOutcome = wallSegment != null ? {
     id: contract.wall.id,
+    segment: wallSegment,
     dealt: wallSegment - Math.max(0, encounter.enemy.hull),
     defeated: !lost && encounter.enemy.remainingBefore != null && encounter.enemy.remainingBefore <= wallSegment,
   } : null;

@@ -40,7 +40,9 @@ import { dailyPlan, ensureDailyLoop, MILESTONES as DAILY_MILESTONES } from '../s
 import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
-import { starterOfferState, starterValue } from '../systems/offers.js';
+import { starterOfferState, starterValue, wallPackState, packValue } from '../systems/offers.js';
+import { currentWall } from '../systems/walls.js';
+import { PRODUCT_DEFS } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
 import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
 
@@ -418,8 +420,10 @@ function patchShell(root, ctx) {
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
   const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
-  const offerModal = !baseModal.trim() && starter.showModal && isHome && !fighting && !player.activeEncounter && !selectedRoom
-    ? renderStarterOffer(starter, starterValue(ctx.shopProducts || [])) : '';
+  const wallPack = wallPackState(player, currentWall(player, now));
+  const calm = !baseModal.trim() && isHome && !fighting && !player.activeEncounter && !selectedRoom;
+  const offerModal = calm && starter.showModal ? renderStarterOffer(starter, starterValue(ctx.shopProducts || []))
+    : calm && wallPack.showModal ? renderWallPack(wallPack, packValue(wallPack.sku, ctx.shopProducts || []), { modal: true }) : '';
   setSlot(root, 'modal', baseModal.trim() ? baseModal : offerModal);
   setSlot(root, 'hotspots', v5Session && phase === 'assign' ? renderV5AssignmentHotspot(player)
     : firstSession || v5Session ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
@@ -1057,7 +1061,8 @@ export function renderMissions(player, now, model = {}) {
     const content = player.activeContract
       ? renderActiveContract(model.activeContractView || player.activeContract)
       : renderContractBoard({ ...board, offers: (board.offers || []).map((offer) => ({ ...offer, completed: offer.completed || (board.completedOfferIds || []).includes(offer.id) })) });
-    return switcher + content;
+    const pack = !player.activeContract ? wallPackState(player, currentWall(player, now)) : { active: false };
+    return switcher + content + (pack.active ? renderWallPack(pack, packValue(pack.sku, model.shopProducts || [])) : '');
   }
   const exp = player.activeExpedition;
   const here = player.location;
@@ -1295,6 +1300,29 @@ function starterClock(state) {
   return hours >= 1 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
+export function renderWallPack(state, value, { modal = false } = {}) {
+  const def = PRODUCT_DEFS[state.sku];
+  const g = def.grant;
+  const lead = state.reason === 'near_miss'
+    ? 'So close. This pack gets the crew ready to finish the flagship.'
+    : 'This flagship has held for days. This pack gives the crew what it needs to break through.';
+  const body = `<span class="modal-kicker">One time only · this wall</span>
+    <h2>${escapeHtml(def.name)}</h2>
+    <p>${escapeHtml(lead)}</p>
+    <ul class="kit-contents">
+      <li><img src="${ICONS.gems}" alt="" /><b>${g.gems}</b><span>gems</span></li>
+      <li><img src="${ICONS.medals}" alt="" /><b>${g.medals}</b><span>medals</span></li>
+      <li><img src="${ICONS.credits}" alt="" /><b>${g.credits}</b><span>credits</span></li>
+      <li><img src="${ICONS.fuel}" alt="" /><b>${g.fuel}</b><span>fuel</span></li>
+    </ul>
+    <p class="kit-note">+ ${g.drydockFinishes} instant drydock finish${g.drydockFinishes === 1 ? '' : 'es'}</p>
+    ${starterSaving(value)}
+    <button class="primary" data-act="iap-buy" data-sku="${state.sku}">${starterPrice(value)}</button>`;
+  return modal
+    ? `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal starter-offer" role="dialog" aria-modal="true" aria-label="${escapeHtml(def.name)}">${body}<button class="ghost" data-act="wall-pack-dismiss" data-wall="${state.wallId}">Maybe later</button><p class="kit-note">Stays available until this wall falls. Can only be bought once.</p></section></div>`
+    : `<section class="panel starter-card wall-pack-card">${body}</section>`;
+}
+
 export function renderStarterOffer(state, value) {
   const lead = state.reason === 'first_loss'
     ? 'Rough fight. This kit gets the Sparrow back in the air with a stronger crew behind it.'
@@ -1413,6 +1441,7 @@ function renderShop(player, shopProducts) {
       <h2>Buy</h2>
       <div class="muted">Real money. Gems skip the grind.</div>
       ${starterOfferState(player).active ? renderStarterCard(starterOfferState(player), starterValue(shopProducts || [])) : ''}
+      ${wallPackState(player, currentWall(player)).active ? renderWallPack(wallPackState(player, currentWall(player)), packValue(wallPackState(player, currentWall(player)).sku, shopProducts || [])) : ''}
       ${products.map((p) => `
         <div class="iap-row">
           <div>

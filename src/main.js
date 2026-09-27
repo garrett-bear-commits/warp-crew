@@ -53,7 +53,8 @@ import { startStageLoop } from './ui/stageLoop.js';
 import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
-import { STARTER_OFFER, starterOfferState, markStarterOffer } from './systems/offers.js';
+import { STARTER_OFFER, starterOfferState, markStarterOffer, markWallPackSeen, wallPackState } from './systems/offers.js';
+import { currentWall } from './systems/walls.js';
 import { applyResolvedSlicePortraits } from './data/portraits.js';
 
 let app = null;
@@ -474,6 +475,13 @@ function doHire({ gems = false, ten = false } = {}) {
   return true;
 }
 
+// One-time offers can only be bought while their offer is live.
+function res0Blocked(sku) {
+  if (sku === STARTER_OFFER.sku) return !starterOfferState(player).active;
+  if (sku.startsWith('wc_wall_')) return !wallPackState(player, currentWall(player)).active;
+  return false;
+}
+
 async function handleAction(act, data = {}) {
   if (isBattlePlaying()) return;
   if (act === 'restart-save') {
@@ -794,8 +802,8 @@ async function handleAction(act, data = {}) {
       return;
     }
     const sku = data.sku;
-    if (sku === STARTER_OFFER.sku && !starterOfferState(player).active) {
-      pushLog("The New Captain's Kit is no longer available.");
+    if (res0Blocked(sku)) {
+      pushLog('That offer is no longer available.');
       render();
       return;
     }
@@ -805,12 +813,16 @@ async function handleAction(act, data = {}) {
     else {
       player = res.player;
       if (sku === STARTER_OFFER.sku) player = markStarterOffer(player, { purchased: true, seen: true });
+      if (sku.startsWith('wc_wall_')) player = markWallPackSeen(player, sku.slice('wc_wall_'.length));
       pushLog(`Purchased ${sku}. Rewards applied.`);
       showToast({ title: 'Purchase applied' });
       sfx('coin');
       captureEvent('iap_success', { sku });
       await refreshNotifs();
     }
+  } else if (act === 'wall-pack-dismiss') {
+    player = markWallPackSeen(player, data.wall);
+    captureEvent('offer_dismissed', { offer: 'wall_pack', wall: data.wall });
   } else if (act === 'starter-dismiss') {
     player = markStarterOffer(player, { seen: true });
     captureEvent('offer_dismissed', { offer: 'starter', reason: player.offers?.starter?.reason });

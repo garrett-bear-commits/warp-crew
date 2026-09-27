@@ -56,3 +56,33 @@ export function packValue(sku, products = []) {
 export function starterValue(products = []) {
   return packValue(STARTER_OFFER.sku, products);
 }
+
+/** Wall breaker packs: once per wall, after a near miss or two days stuck. No timer. */
+export const WALL_PACK_STUCK_MS = 2 * 86400 * 1000;
+export const wallPackSku = wallId => `wc_wall_${wallId}`;
+
+export function evaluateWallPackOffer(player, wall, now = Date.now()) {
+  if (!player || !wall) return player;
+  const sku = wallPackSku(wall.id);
+  if (player.offers?.walls?.[wall.id] || ownsOneTime(player, sku) || !PRODUCT_DEFS[sku]) return player;
+  const record = player.siege?.[wall.id];
+  const nearMiss = record?.nearMiss === true;
+  const stuck = Number.isFinite(record?.firstSeenAt) && now - record.firstSeenAt >= WALL_PACK_STUCK_MS;
+  if (!nearMiss && !stuck) return player;
+  return { ...player, offers: { ...(player.offers || {}), walls: { ...(player.offers?.walls || {}),
+    [wall.id]: { triggeredAt: now, reason: nearMiss ? 'near_miss' : 'stuck', seen: false } } } };
+}
+
+export function wallPackState(player, wall) {
+  if (!wall) return { active: false };
+  const offer = player?.offers?.walls?.[wall.id];
+  const sku = wallPackSku(wall.id);
+  const active = Boolean(offer) && !ownsOneTime(player, sku) && player?.flags?.[`wall_${wall.id}`] !== true;
+  return { active, sku, wallId: wall.id, reason: offer?.reason, showModal: active && !offer.seen };
+}
+
+export function markWallPackSeen(player, wallId) {
+  const offer = player?.offers?.walls?.[wallId];
+  if (!offer) return player;
+  return { ...player, offers: { ...player.offers, walls: { ...player.offers.walls, [wallId]: { ...offer, seen: true } } } };
+}

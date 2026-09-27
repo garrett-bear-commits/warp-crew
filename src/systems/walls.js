@@ -102,8 +102,11 @@ export function ensureWallOffer(player, now = Date.now()) {
   const activeWall = player.activeContract?.wall?.id;
   const others = board.offers.filter(offer => !offer.wall);
   const offers = wall && activeWall !== wall.id ? [...others, wallOffer(player, wall, now)] : others;
-  if (JSON.stringify(offers) === JSON.stringify(board.offers)) return player;
-  return { ...player, contractBoard: { ...board, offers } };
+  // Remember when the captain first met this wall (for the stuck-at-wall offer).
+  const seen = wall && !player.siege?.[wall.id]?.firstSeenAt
+    ? { siege: { ...(player.siege || {}), [wall.id]: { ...(player.siege?.[wall.id] || {}), firstSeenAt: now } } } : {};
+  if (JSON.stringify(offers) === JSON.stringify(board.offers) && !seen.siege) return player;
+  return { ...player, ...seen, contractBoard: { ...board, offers } };
 }
 
 /** Encounter setup for a wall attempt: this segment's hull and the threat floor. */
@@ -128,7 +131,9 @@ export function recordSiege(player, contract, now = Date.now()) {
   const beaten = outcome.defeated === true || damage >= wall.pool;
   return {
     ...player,
-    siege: { ...(player.siege || {}), [wall.id]: { dayKey: dayKey(now), damage, attempts: siege.attempts + 1 } },
+    siege: { ...(player.siege || {}), [wall.id]: { ...(player.siege?.[wall.id] || {}), dayKey: dayKey(now), damage, attempts: siege.attempts + 1,
+      // A lost attempt that left the flagship's segment at 20% or less.
+      nearMiss: contract.result.success === false && outcome.segment > 0 && (outcome.segment - outcome.dealt) <= outcome.segment * 0.2 } },
     flags: beaten ? { ...(player.flags || {}), [`wall_${wall.id}`]: true } : player.flags,
   };
 }
