@@ -2,6 +2,7 @@
 import { SHIPS, getShipDef, SHIP_SYSTEMS } from '../data/ships.js';
 import { canAfford, pay, upgradeCost, grant, sellContract, clampFuel } from './economy.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
+import { SUBSCRIPTION_DEFS } from '../data/products.js';
 import { RESERVE_CAP } from './gacha.js';
 
 const ZERO_START = new Set(['quarters', 'sensors', 'medbay']);
@@ -42,7 +43,9 @@ export function fuelMaxFor(player, def) {
   const hull = def || getShipDef(player.ship?.shipId || 'sparrow');
   const engines = player.ship?.systems?.engines || 1;
   const engineBonus = Math.floor(Math.max(0, engines) / 2);
-  return DEFAULT_FUEL_CONFIG.startingMax + (hull.fuelMaxBonus || 0) + engineBonus;
+  // Captain's Commission (verified entitlement) adds tank space.
+  const commissionBonus = player.commission?.active ? SUBSCRIPTION_DEFS.wc_sub_commission.perks.fuelMaxBonus : 0;
+  return DEFAULT_FUEL_CONFIG.startingMax + (hull.fuelMaxBonus || 0) + engineBonus + commissionBonus;
 }
 
 export function fuelRateFor(player, def) {

@@ -71,12 +71,23 @@ export async function listShopProducts() {
  * the grant is saved, so a crash or network failure at any step recovers.
  * Without a server (Pages QA, local mock) the old local grant path runs.
  */
-export async function buyProduct(player, sku, { verifyReceipt = null, persist = null } = {}) {
+export async function buyProduct(player, sku, { verifyReceipt = null, persist = null, checkOwned = null } = {}) {
   const def = PRODUCT_DEFS[sku];
   if (!def) return { ok: false, reason: 'unknown_sku', player };
   if (def.oneTime && ownsOneTime(player, sku)) return { ok: false, reason: 'already_owned', player };
   // Never open a real checkout that nothing can verify.
   if (isReal() && !verifyReceipt) return { ok: false, reason: 'store_unavailable', player };
+  // A one-time pack is checked against the server before any money moves: this
+  // device's save may not know about a purchase made on another device.
+  if (def.oneTime && verifyReceipt) {
+    const owned = checkOwned ? await checkOwned() : { ok: false };
+    if (!owned.ok) return { ok: false, reason: 'store_unavailable', player };
+    if ((owned.data?.oneTime || []).includes(sku)) {
+      const next = { ...player, oneTimePurchases: [...new Set([...(player.oneTimePurchases || []), sku])] };
+      persist?.(next);
+      return { ok: false, reason: 'already_owned', player: next };
+    }
+  }
 
   const begin = await purchaseProduct(sku);
   if (!begin.ok) {

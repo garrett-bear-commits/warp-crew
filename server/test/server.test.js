@@ -46,7 +46,7 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
   });
 
   await t.test('saves are insert-only with server-assigned sequence', async () => {
-    assert.deepEqual((await call('GET', '/v1/saves/current', 'saver')).json(), { save: null, purchases: [], serverNow: NOW });
+    assert.deepEqual((await call('GET', '/v1/saves/current', 'saver')).json(), { save: null, purchases: [], purchaseSkus: {}, serverNow: NOW });
     const first = (await call('PUT', '/v1/saves', 'saver', saveBody(10, { clientSeq: 1 }))).json();
     assert.deepEqual(first, { seq: 1, accepted: true, rejectReason: null, conflict: false, serverNow: NOW });
     const second = (await call('PUT', '/v1/saves', 'saver', saveBody(20, { clientSeq: 1, baseSeq: 1 }))).json();
@@ -110,7 +110,12 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     // Price-0 sandbox receipts are recorded but grant nothing unless sandbox granting is on (QA only).
     assert.equal((await buy('buyer', 'tok-s', 'wc_gems_s', 0)).json().purchases[0].status, 'sandbox_refused');
     const [sandbox] = await sql`SELECT classification FROM purchase_transactions WHERE provider_token = 'tok-s'`;
-    assert.equal(sandbox.classification, 'sandbox');
+    assert.equal(sandbox.classification, 'sandbox_refused');
+    // A refused sandbox receipt never counts as owning a one-time pack: the real purchase still grants.
+    assert.equal((await buy('sbx', 'kit-s0', 'wc_starter_kit', 0)).json().purchases[0].status, 'sandbox_refused');
+    assert.deepEqual((await call('GET', '/v1/purchases/owned', 'sbx')).json(), { oneTime: [] });
+    assert.equal((await buy('sbx', 'kit-s1', 'wc_starter_kit')).json().purchases[0].status, 'granted');
+    assert.deepEqual((await call('GET', '/v1/purchases/owned', 'sbx')).json(), { oneTime: ['wc_starter_kit'] });
     const qa = buildApp({ store: createStore(sql, { grantSandbox: true }), secret: SECRET, gameId: GAME, now: () => NOW });
     const qaBuy = await qa.inject({ method: 'POST', url: '/v1/purchases/verify', headers: headers('qa-tester'),
       payload: { receipt: receipt('qa-tester', [purchase('tok-qa', 'wc_gems_s', 0)]) } });
@@ -130,9 +135,36 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     const remaining = (await call('GET', '/v1/saves/current', 'buyer')).json().purchases.map(p => p.purchaseToken);
     assert.ok(!remaining.includes('tok-1') && !remaining.includes('kit-1'));
     assert.ok(remaining.includes('b-1'));
+    // Provenance survives delivery, so a later two-device merge can still re-grant it.
+    const skus = (await call('GET', '/v1/saves/current', 'buyer')).json().purchaseSkus;
+    assert.equal(skus['tok-1'], 'wc_gems_m');
+    assert.equal(skus['kit-1'], 'wc_starter_kit');
+    assert.ok(!('kit-2' in skus) && !('tok-s' in skus), 'non-granting rows carry no provenance');
+    // The checkout preflight knows every one-time pack this player owns.
+    assert.deepEqual((await call('GET', '/v1/purchases/owned', 'buyer')).json().oneTime.sort(), ['wc_starter_kit', 'wc_wall_spur']);
     // Concurrent duplicate one-time purchases still grant exactly once.
     const racers = await Promise.all(['r-1', 'r-2', 'r-3'].map(token => buy('racer', token, 'wc_wall_veil')));
     assert.equal(racers.map(r => r.json().purchases[0].status).filter(s => s === 'granted').length, 1);
+  });
+
+  await t.test('subscriptions: signed list only, for this player, recent', async () => {
+    const sub = (status, extra = {}) => ({ sku: 'wc_sub_commission', status, trialEligible: false, introOffer: null, retentionOffer: null, price: 999, currency: 'USD', ...extra });
+    const list = (player, subs, extra = {}) => sign({ aud: GAME, sub: player, iat: Math.floor(NOW / 1000), subscriptions: subs, ...extra });
+    const verify = (player, signed, a = app) => a.inject({ method: 'POST', url: '/v1/subscriptions/verify', headers: headers(player), payload: { signed } });
+    const active = (await verify('subber', list('subber', [sub('active', { retentionOffer: { price: 599, durationPeriods: 2 } }), { sku: 'other_game_sku', status: 'active' }]))).json();
+    assert.deepEqual(active.subscriptions, [{ sku: 'wc_sub_commission', active: true, sandbox: false, trialEligible: false, retentionOffer: { price: 599, durationPeriods: 2 } }]);
+    const single = sign({ aud: GAME, sub: 'subber', subscription: sub('active') });
+    assert.equal((await verify('subber', single)).json().subscriptions[0].active, true, 'subscriptionSigned from checkout works too');
+    assert.equal((await verify('thief', list('subber', [sub('active')]))).json().error, 'player_mismatch');
+    assert.equal((await verify('subber', list('subber', [sub('active')]).replace(/.$/, 'A'))).json().error, 'bad_signature');
+    assert.equal((await verify('subber', list('subber', [sub('active')], { aud: 'nope' }))).json().error, 'wrong_audience');
+    const old = list('subber', [sub('active')], { iat: Math.floor((NOW - 25 * 3600 * 1000) / 1000) });
+    assert.equal((await verify('subber', old)).json().error, 'stale', 'an old list cannot be replayed after a cancel');
+    // Sandbox subscriptions unlock only where sandbox granting is on.
+    assert.equal((await verify('subber', list('subber', [sub('active', { sandbox: true })]))).json().subscriptions[0].active, false);
+    const qa = buildApp({ store: createStore(sql), secret: SECRET, gameId: GAME, grantSandbox: true, now: () => NOW });
+    assert.equal((await verify('subber', list('subber', [sub('active', { sandbox: true })]), qa)).json().subscriptions[0].active, true);
+    await qa.close();
   });
 
   await t.test('misconfiguration fails closed', async () => {

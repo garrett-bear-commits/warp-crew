@@ -29,6 +29,7 @@ const app = buildApp({
   secret: env.JEST_PLAYER_SECRET,
   gameId: env.JEST_GAME_ID,
   devAuth,
+  grantSandbox: env.JEST_GRANT_SANDBOX === '1',
   // No cross-origin access unless the game's origins are listed explicitly.
   allowOrigins: (env.ALLOW_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean),
   logger: true,

@@ -5,6 +5,7 @@
 import Fastify from 'fastify';
 import { authenticate } from './auth.js';
 import { verifyPurchaseReceipts } from './receipts.js';
+import { verifySubscriptions } from './subscriptions.js';
 import { PRODUCT_DEFS } from '../src/data/products.js';
 
 export const MAX_SAVE_BYTES = 1_000_000;
@@ -19,7 +20,7 @@ export function saveRejectReason(blob) {
   return null;
 }
 
-export function buildApp({ store, secret, gameId, devAuth = false, now = () => Date.now(), allowOrigins = [], logger = false }) {
+export function buildApp({ store, secret, gameId, devAuth = false, grantSandbox = false, now = () => Date.now(), allowOrigins = [], logger = false }) {
   const app = Fastify({ logger, bodyLimit: MAX_SAVE_BYTES + 64_000 });
 
   app.addHook('onRequest', async (req, reply) => {
@@ -48,8 +49,8 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
   app.get('/v1/saves/current', async (req, reply) => {
     const player = auth(req, reply);
     if (!player) return reply;
-    const [save, purchases] = await Promise.all([store.currentSave(player.playerId), store.purchasesFor(player.playerId)]);
-    return { save, purchases, serverNow: now() };
+    const [save, purchases, purchaseSkus] = await Promise.all([store.currentSave(player.playerId), store.purchasesFor(player.playerId), store.purchaseSkus(player.playerId)]);
+    return { save, purchases, purchaseSkus, serverNow: now() };
   });
 
   app.put('/v1/saves', async (req, reply) => {
@@ -77,7 +78,7 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
     // A stale device never overwrites: it gets the current save back to reconcile.
     const current = written.stale ? await store.currentSave(player.playerId) : null;
     return { seq: written.seq, accepted: written.accepted, rejectReason: written.rejectReason, conflict: written.stale,
-      ...(current ? { current, purchases: await store.purchasesFor(player.playerId) } : {}), serverNow: now() };
+      ...(current ? { current, purchases: await store.purchasesFor(player.playerId), purchaseSkus: await store.purchaseSkus(player.playerId) } : {}), serverNow: now() };
   });
 
   app.post('/v1/purchases/verify', async (req, reply) => {
@@ -96,6 +97,23 @@ export function buildApp({ store, secret, gameId, devAuth = false, now = () => D
       results.push({ purchaseToken: purchase.purchaseToken, sku: purchase.productSku, status: recorded.status, grant: recorded.grant });
     }
     return { purchases: results };
+  });
+
+  app.get('/v1/purchases/owned', async (req, reply) => {
+    const player = auth(req, reply);
+    if (!player) return reply;
+    return { oneTime: await store.ownedOneTime(player.playerId) };
+  });
+
+  // Stateless: the signed list is the entitlement. Nothing is stored or granted here.
+  app.post('/v1/subscriptions/verify', async (req, reply) => {
+    const player = auth(req, reply);
+    if (!player) return reply;
+    const signed = req.body?.signed;
+    if (typeof signed !== 'string' || !signed) return reply.code(400).send({ error: 'bad_request' });
+    const verified = verifySubscriptions(signed, { secret, gameId, playerId: player.playerId, now: now(), grantSandbox });
+    if (!verified.ok) return reply.code(400).send({ error: verified.reason });
+    return { subscriptions: verified.subscriptions, serverNow: now() };
   });
 
   return app;

@@ -22,7 +22,8 @@ function storage() {
  * player's Jest token or inject saves and grants.
  */
 function devOverridesAllowed() {
-  return Boolean(import.meta.env?.DEV) || import.meta.env?.VITE_ALLOW_SERVER_OVERRIDE === '1';
+  // No build flag re-enables this: a QA build compiles its server in instead.
+  return Boolean(import.meta.env?.DEV);
 }
 
 function acceptableServer(value) {
@@ -123,3 +124,6 @@ export async function pushCloudSave(player, { savedAt = trustedNow(), clientSeq 
 }
 
 export const verifyReceipt = (receipt) => request('POST', '/v1/purchases/verify', { receipt });
+/** One-time SKUs the server already recorded for this player (checked before any checkout). */
+export const fetchOwnedOneTime = () => request('GET', '/v1/purchases/owned');
+export const verifySubscriptions = async (signed) => learnClock(await request('POST', '/v1/subscriptions/verify', { signed }));

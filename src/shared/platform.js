@@ -358,3 +358,67 @@ export async function getIncompletePurchases() {
   }
   return { hasMore: false, purchases: [], purchasesSigned: '' };
 }
+
+// --- Subscriptions (https://docs.jest.com/sdk/subscriptions) -------------
+// The mock mirrors the documented rules: a trial only for a wallet that never
+// subscribed, a cancel keeps the entitlement until the period ends, and the
+// retention discount can be claimed once, not during a trial.
+const mockSubs = new Map();
+function mockSubData(sku) {
+  const s = mockSubs.get(sku) || {};
+  return {
+    sku,
+    displayName: "Captain's Commission",
+    displayDescription: null,
+    price: 999,
+    currency: 'USD',
+    billingPeriod: 'monthly',
+    status: s.active ? 'active' : 'inactive',
+    trialEligible: !s.everSubscribed,
+    introOffer: null,
+    retentionOffer: s.active && !s.retentionClaimed && !s.inTrial ? { price: 599, durationPeriods: 2 } : null,
+    sandbox: true,
+    estimatedRevenue: 0,
+  };
+}
+const MOCK_SUB_SKUS = ['wc_sub_commission'];
+// The local SDK mock bridge has no subscription controls (a checkout never
+// resolves), so outside real Jest the subscription calls use this mock.
+
+export async function getSubscriptions() {
+  const sdk = globalJest();
+  if (ready && isReal() && sdk?.payments?.getSubscriptions) return sdk.payments.getSubscriptions();
+  return { subscriptions: MOCK_SUB_SKUS.map(mockSubData), signed: '', mock: true };
+}
+
+export async function beginSubscription(subscriptionSku) {
+  const sdk = globalJest();
+  if (ready && isReal() && sdk?.payments?.beginSubscription) return sdk.payments.beginSubscription({ subscriptionSku });
+  mockLog.push({ type: 'beginSubscription', subscriptionSku });
+  const s = mockSubs.get(subscriptionSku) || {};
+  if (s.active) return { result: 'error', error: 'already_subscribed' };
+  // Local QA skips the 7-day trial state so the retention flow can be tried.
+  mockSubs.set(subscriptionSku, { ...s, active: true, everSubscribed: true, inTrial: false });
+  return { result: 'success', subscription: mockSubData(subscriptionSku), subscriptionSigned: '', mock: true };
+}
+
+export async function cancelSubscription(subscriptionSku) {
+  const sdk = globalJest();
+  if (ready && isReal() && sdk?.payments?.cancelSubscription) return sdk.payments.cancelSubscription({ subscriptionSku });
+  mockLog.push({ type: 'cancelSubscription', subscriptionSku });
+  const s = mockSubs.get(subscriptionSku);
+  if (!s?.active) return { result: 'error', error: 'not_active' };
+  // A real cancel lapses at period end; the mock lapses now so QA sees the change.
+  mockSubs.set(subscriptionSku, { ...s, active: false });
+  return { result: 'success' };
+}
+
+export async function claimRetentionOffer(subscriptionSku) {
+  const sdk = globalJest();
+  if (ready && isReal() && sdk?.payments?.claimRetentionOffer) return sdk.payments.claimRetentionOffer({ subscriptionSku });
+  mockLog.push({ type: 'claimRetentionOffer', subscriptionSku });
+  const s = mockSubs.get(subscriptionSku);
+  if (!s?.active || s.inTrial) return { result: 'error', error: 'not_eligible' };
+  mockSubs.set(subscriptionSku, { ...s, retentionClaimed: true });
+  return { result: 'success', subscription: mockSubData(subscriptionSku), subscriptionSigned: '', mock: true };
+}

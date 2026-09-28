@@ -32,6 +32,10 @@ import {
   getEntryPayload,
   showRegistrationOverlay,
   login,
+  getSubscriptions,
+  beginSubscription,
+  cancelSubscription,
+  claimRetentionOffer,
 } from './shared/platform.js';
 import { renderApp } from './ui/bridge.js';
 import { buyHull, switchHull } from './systems/hangar.js';
@@ -55,8 +59,9 @@ import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreloa
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
 import { STARTER_OFFER, starterOfferState, markStarterOffer, markWallPackSeen, wallPackState } from './systems/offers.js';
-import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt, trustedNow } from './shared/cloud.js';
-import { chooseSave, applyLedger } from './systems/cloudSync.js';
+import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt, verifySubscriptions, fetchOwnedOneTime, trustedNow } from './shared/cloud.js';
+import { refreshCommission, subscribeCommission, cancelCommission, acceptRetention, claimCommissionDaily } from './systems/subscription.js';
+import { chooseSave, applyLedger, withPurchaseSkus } from './systems/cloudSync.js';
 import { currentWall } from './systems/walls.js';
 import { applyResolvedSlicePortraits } from './data/portraits.js';
 
@@ -70,6 +75,8 @@ let sessionUi = { missionView: 'contracts', reviewedOfferId: null, selectedExped
 let selectedRoom = null;
 let selectedCrewId = null;
 let confirmRestartSave = false;
+/** Cancel-save sheet for the Captain's Commission subscription. */
+let commissionWinback = false;
 let cinematic = null;
 let platformStatus = 'booting';
 let shopProducts = null;
@@ -183,7 +190,7 @@ async function pushCloudNow({ keepalive = false } = {}) {
     const result = await pushCloudSave(player, { keepalive });
     if (result.ok && result.data.conflict && player) {
       // Another device saved first. Reconcile before this device's changes can count as synced.
-      await reconcileCloud(result.data.current, result.data.purchases);
+      await reconcileCloud(result.data.current, result.data.purchases, result.data.purchaseSkus);
     } else if (result.ok && result.data.accepted && player) {
       // Record the server sequence locally without scheduling another upload.
       // Anything saved while the upload was in flight stays dirty for the next one.
@@ -199,8 +206,24 @@ async function pushCloudNow({ keepalive = false } = {}) {
   }
 }
 
+const subscriptionDeps = () => ({
+  sdk: { getSubscriptions, beginSubscription, cancelSubscription, claimRetentionOffer },
+  real: isReal(),
+  verify: cloudEnabled() ? verifySubscriptions : null,
+  now: trustedNow,
+});
+
+/** Pay today's Commission perks once, with a toast. */
+function claimCommissionPerks() {
+  const daily = claimCommissionDaily(player, trustedNow());
+  if (!daily.granted) return;
+  player = daily.player;
+  pushLog(`Captain's Commission: +${daily.granted.gems} gems, +${daily.granted.drydockFinishes} drydock finish.`);
+  showToast({ title: "Commission daily", rewards: { gems: daily.granted.gems } });
+}
+
 const purchaseOptions = () => (cloudEnabled()
-  ? { verifyReceipt, persist: next => { player = next; writeSave(next); } }
+  ? { verifyReceipt, checkOwned: fetchOwnedOneTime, persist: next => { player = next; writeSave(next); } }
   : {});
 
 async function syncCloudOnBoot() {
@@ -210,15 +233,15 @@ async function syncCloudOnBoot() {
     console.warn('[cloud] load failed', cloud.reason);
     return;
   }
-  await reconcileCloud(cloud.data.save, cloud.data.purchases);
+  await reconcileCloud(cloud.data.save, cloud.data.purchases, cloud.data.purchaseSkus);
   const retried = await retryPendingReceipts(player, purchaseOptions());
   player = retried.player;
   writeSave(player);
 }
 
 /** Merge a server save and undelivered purchases into the live player. */
-async function reconcileCloud(save, purchases) {
-  const chosen = chooseSave(player, save);
+async function reconcileCloud(save, purchases, purchaseSkus = {}) {
+  const chosen = chooseSave(player, save, purchaseSkus);
   if (chosen.archived) {
     // Keep the losing side of a two-device conflict recoverable on the server.
     await pushCloudSave(chosen.archived, { archive: true });
@@ -228,7 +251,7 @@ async function reconcileCloud(save, purchases) {
     player = prepareSession(restoreTutorialPlayer(chosen.player), trustedNow());
     pushLog('Cloud save restored from another device.');
   } else player = chosen.player;
-  const ledger = applyLedger(player, purchases);
+  const ledger = applyLedger(withPurchaseSkus(player, purchaseSkus), purchases);
   player = ledger.player;
   if (ledger.applied.length) pushLog(`Purchases restored: ${ledger.applied.join(', ')}`);
   // The winner is uploaded next, based on the newest server seq, so the devices converge.
@@ -404,6 +427,14 @@ async function boot() {
   }
 
   try {
+    const sub = await refreshCommission(player, subscriptionDeps());
+    player = sub.player;
+    claimCommissionPerks();
+  } catch (e) {
+    console.warn('subscription refresh', e);
+  }
+
+  try {
     shopProducts = await listShopProducts();
   } catch {
     shopProducts = null;
@@ -430,18 +461,21 @@ function render() {
   }
   const prepared = prepareSession(player, trustedNow());
   if (prepared !== player && saveLocal(prepared)) player = prepared;
-  const models = sessionModels(player, { ...sessionUi, pendingCombat });
+  const renderNow = trustedNow();
+  const models = sessionModels(player, { ...sessionUi, pendingCombat }, renderNow);
   sessionUi.contractPreviews = models.contractPreviews;
   renderApp(app, {
     ...sessionUi,
     ...models,
     player,
+    now: renderNow,
     log,
     tab,
     pendingCombat,
     selectedRoom,
     selectedCrewId,
     confirmRestartSave,
+    commissionWinback,
     cinematic,
     platformStatus,
     jestLive: isReal(),
@@ -913,6 +947,9 @@ async function handleAction(act, data = {}) {
       player = res.player;
       pushLog('Purchase received. Confirming with the server; it will apply automatically.');
       showToast({ title: 'Purchase received — confirming' });
+    } else if (!res.ok && res.reason === 'already_owned') {
+      player = res.player;
+      pushLog('You already own this pack.');
     } else if (!res.ok) pushLog(`Purchase failed: ${res.reason}`);
     else {
       player = res.player;
@@ -924,6 +961,46 @@ async function handleAction(act, data = {}) {
       captureEvent('iap_success', { sku });
       await refreshNotifs();
     }
+  } else if (act === 'commission-subscribe') {
+    if (!isFeatureUnlocked(player, 'shop')) return;
+    const res = await subscribeCommission(player, subscriptionDeps());
+    player = res.player;
+    if (res.ok) {
+      pushLog("Captain's Commission active.");
+      showToast({ title: "Commission active" });
+      sfx('coin');
+      captureEvent('subscription_start', { sku: 'wc_sub_commission' });
+      claimCommissionPerks();
+    } else if (res.reason === 'pending_verification') {
+      pushLog('Subscription received. Confirming; perks apply on the next launch.');
+    } else if (res.reason !== 'cancelled') {
+      pushLog(res.reason === 'guest_not_allowed' ? 'Sign in to Jest to subscribe.' : `Subscription unavailable: ${res.reason}`);
+    }
+  } else if (act === 'commission-cancel') {
+    // Jest allows one cancel-save discount; offer it before the real cancel.
+    if (player.commission?.retentionOffer) {
+      commissionWinback = true;
+      captureEvent('subscription_winback_shown', {});
+    } else return handleAction('commission-cancel-confirm');
+  } else if (act === 'commission-stay') {
+    commissionWinback = false;
+    const res = await acceptRetention(player, subscriptionDeps());
+    player = res.player;
+    if (res.ok) {
+      pushLog('Thanks for staying, Captain. Your discount starts at the next renewal.');
+      showToast({ title: 'Discount applied' });
+      captureEvent('subscription_winback_accepted', {});
+    } else pushLog(`Could not apply the discount (${res.reason}). Try again.`);
+  } else if (act === 'commission-cancel-confirm') {
+    commissionWinback = false;
+    const res = await cancelCommission(player, subscriptionDeps());
+    player = res.player;
+    if (res.ok) {
+      pushLog("Commission cancelled. Perks continue until the paid period ends.");
+      captureEvent('subscription_cancel', {});
+    } else if (res.reason !== 'kept') pushLog(`Cancel failed: ${res.reason}`);
+  } else if (act === 'commission-winback-close') {
+    commissionWinback = false;
   } else if (act === 'wall-pack-dismiss') {
     player = markWallPackSeen(player, data.wall);
     captureEvent('offer_dismissed', { offer: 'wall_pack', wall: data.wall });

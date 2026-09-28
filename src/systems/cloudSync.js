@@ -18,7 +18,7 @@ export function progressScore(player) {
  * save with more progress wins (newer save on a tie) and the loser is returned
  * so it can be archived on the server instead of vanishing.
  */
-export function chooseSave(local, cloud) {
+export function chooseSave(local, cloud, purchaseSkus = {}) {
   if (!cloud?.blob) return { player: local, source: 'local' };
   let remote;
   let remoteSavedAt = 0;
@@ -28,20 +28,22 @@ export function chooseSave(local, cloud) {
     remoteSavedAt = Number(parsed?.savedAt) || cloud.savedAt || 0;
   } catch { return { player: local, source: 'local' }; }
   if (!remote?.wallet) return { player: local, source: 'local' };
-  const localSeq = Number.isSafeInteger(local?.cloudSeq) ? local.cloudSeq : 0;
-  // Unsynced local progress is never "fresh", even for a brand-new captain.
-  const localIsFresh = !local || (!local.cloudDirty && !local.tutorial?.completed && !(local.stats?.contractsCompleted > 0) && !local.cloudSeq);
   const adoptCloud = { player: { ...remote, cloudSeq: cloud.seq, cloudDirty: false }, source: 'cloud' };
-  if (localIsFresh) return adoptCloud;
+  if (!local) return adoptCloud;
+  const neverSynced = !Number.isSafeInteger(local.cloudSeq);
+  const localSeq = neverSynced ? 0 : local.cloudSeq;
   if (cloud.seq <= localSeq) return { player: { ...local, cloudSeq: Math.max(localSeq, cloud.seq) }, source: 'local' };
-  if (!local.cloudDirty) return adoptCloud;
+  // A save that never synced (including one from before cloud save existed) is
+  // treated as unsynced progress: it is compared and archived, never dropped.
+  if (!local.cloudDirty && !neverSynced) return adoptCloud;
   // Both devices changed since the last sync.
   const localScore = progressScore(local);
   const remoteScore = progressScore(remote);
-  const localWins = localScore > remoteScore || (localScore === remoteScore && (local.lastSavedAt || 0) > remoteSavedAt);
+  // On a tie a never-synced device defers to the cloud; its save is archived.
+  const localWins = localScore > remoteScore || (localScore === remoteScore && !neverSynced && (local.lastSavedAt || 0) > remoteSavedAt);
   return localWins
-    ? { player: carryPurchases({ ...local, cloudSeq: cloud.seq }, remote), source: 'local', conflict: true, archived: remote }
-    : { ...adoptCloud, player: carryPurchases(adoptCloud.player, local), conflict: true, archived: local };
+    ? { player: carryPurchases({ ...local, cloudSeq: cloud.seq }, remote, purchaseSkus), source: 'local', conflict: true, archived: remote }
+    : { ...adoptCloud, player: carryPurchases(adoptCloud.player, local, purchaseSkus), conflict: true, archived: local };
 }
 
 /**
@@ -49,17 +51,34 @@ export function chooseSave(local, cloud) {
  * that the winner has not is re-granted from the catalog, and one-time
  * ownership is merged.
  */
-export function carryPurchases(winner, loser) {
+export function carryPurchases(winner, loser, serverSkus = {}) {
   let next = winner;
-  const skus = loser?.purchaseSkus || {};
+  // The server's ledger is the provenance authority; saves fill in mock tokens.
+  const skus = { ...(winner?.purchaseSkus || {}), ...(loser?.purchaseSkus || {}), ...(serverSkus || {}) };
   for (const token of loser?.iapFulfilled || []) {
     if ((next.iapFulfilled || []).includes(token)) continue;
-    const sku = skus[token];
+    const sku = skus[token] || mockTokenSku(token);
     const grant = sku ? PRODUCT_DEFS[sku]?.grant : null;
-    next = grant ? applyGrant(next, grant, token, sku) : { ...next, iapFulfilled: [...(next.iapFulfilled || []), token] };
+    // An unmapped token is left off the winner rather than marked carried, so
+    // it is never mistaken for a grant that arrived.
+    if (grant) next = applyGrant(next, grant, token, sku);
   }
   const owned = new Set([...(next.oneTimePurchases || []), ...(loser?.oneTimePurchases || [])]);
   return owned.size ? { ...next, oneTimePurchases: [...owned] } : next;
+}
+
+/** Local mock tokens name their SKU: `local_<sku>_<time>`. */
+function mockTokenSku(token) {
+  const m = /^local_(wc_[a-z0-9_]+)_\d+$/.exec(String(token));
+  return m && PRODUCT_DEFS[m[1]] ? m[1] : null;
+}
+
+/** Record the server's token→SKU provenance so a later merge can re-grant any purchase. */
+export function withPurchaseSkus(player, purchaseSkus = {}) {
+  if (!player || !purchaseSkus || !Object.keys(purchaseSkus).length) return player;
+  const known = new Set(player.iapFulfilled || []);
+  const add = Object.fromEntries(Object.entries(purchaseSkus).filter(([token, sku]) => known.has(token) && PRODUCT_DEFS[sku]));
+  return Object.keys(add).length ? { ...player, purchaseSkus: { ...add, ...(player.purchaseSkus || {}) } } : player;
 }
 
 /** Grant every ledger purchase this save has never applied (idempotent by token). */

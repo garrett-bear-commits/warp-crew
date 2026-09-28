@@ -34,3 +34,20 @@ export const PRODUCT_DEFS = {
 
 /** Gem ladder rungs, used for honest value comparisons. */
 export const GEM_LADDER = ['wc_gems_s', 'wc_gems_m', 'wc_gems_l', 'wc_gems_xl', 'wc_gems_xxl'];
+
+/**
+ * Subscriptions. One SKU per tier: the Jest console configures the 7-day free
+ * trial and the cancel-save retention discount ($5.99/mo for 2 months) on this
+ * same SKU. A second "win-back" SKU would bill a subscriber twice, so there is none.
+ * Console setup: monthly, 999 cents, trial 7 days, retention offer 599 cents × 2.
+ */
+export const SUBSCRIPTION_DEFS = {
+  wc_sub_commission: {
+    sku: 'wc_sub_commission',
+    name: "Captain's Commission",
+    priceCents: 999,
+    trialDays: 7,
+    retention: { priceCents: 599, periods: 2 },
+    perks: { dailyGems: 30, dailyDrydockFinishes: 1, fuelMaxBonus: 2 },
+  },
+};

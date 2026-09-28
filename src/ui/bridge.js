@@ -41,6 +41,7 @@ import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue, wallPackState, packValue } from '../systems/offers.js';
+import { COMMISSION, commissionActive } from '../systems/subscription.js';
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
@@ -419,7 +420,7 @@ function patchShell(root, ctx) {
   setSlot(root, 'crew-rail', isHome && !fighting && !firstSession && !v5Session && !selectedRoom ? renderCrewRail(player) : '');
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
-  const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
+  const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
   const wallPack = wallPackState(player, currentWall(player, now));
   const calm = !baseModal.trim() && isHome && !fighting && !player.activeEncounter && !selectedRoom;
@@ -447,8 +448,8 @@ function patchShell(root, ctx) {
   if (!isHome) {
     const detail = `${emptyHints(player, fuel, tab)}
           ${tab === 'missions' ? renderMissions(player, now, ctx) : ''}
-          ${tab === 'crew' ? renderCrew(player) : ''}
-          ${tab === 'shop' ? renderShop(player, shopProducts) : ''}
+          ${tab === 'crew' ? renderCrew(player, now) : ''}
+          ${tab === 'shop' ? renderShop(player, shopProducts, now) : ''}
           ${tab === 'log' ? renderLog(player, log, goals) : ''}`;
     setSlot(root, 'detail', detail);
   }
@@ -1324,6 +1325,51 @@ export function renderWallPack(state, value, { modal = false } = {}) {
     : `<section class="panel starter-card wall-pack-card">${body}</section>`;
 }
 
+const dollars = cents => `$${(cents / 100).toFixed(2)}`;
+
+/** Captain's Commission: one subscription, trial and cancel-save handled by Jest. */
+export function renderCommissionCard(player, now = Date.now()) {
+  const c = player.commission || {};
+  const { perks } = COMMISSION;
+  const perkList = `<ul class="kit-contents">
+      <li><img src="${ICONS.gems}" alt="" /><b>${perks.dailyGems}</b><span>gems daily</span></li>
+      <li><img src="${ICONS.fuel}" alt="" /><b>+${perks.fuelMaxBonus}</b><span>fuel tank</span></li>
+    </ul>
+    <p class="kit-note">+ ${perks.dailyDrydockFinishes} free drydock finish every day</p>`;
+  if (commissionActive(player, now)) {
+    return `<section class="panel starter-card commission-card">
+      <span class="modal-kicker">Subscription · active</span>
+      <h2>${escapeHtml(COMMISSION.name)}</h2>
+      ${perkList}
+      <p class="kit-note">${c.cancelRequested ? 'Cancelled. Perks continue until the paid period ends.' : c.lastClaimDay ? "Today's perks are in your hold." : 'Perks arrive each day you play.'}</p>
+      ${c.cancelRequested ? '' : '<button class="ghost" data-act="commission-cancel">Cancel subscription</button>'}
+    </section>`;
+  }
+  const trial = c.trialEligible !== false;
+  return `<section class="panel starter-card commission-card">
+    <span class="modal-kicker">Subscription</span>
+    <h2>${escapeHtml(COMMISSION.name)}</h2>
+    ${perkList}
+    <button class="primary" data-act="commission-subscribe">${trial ? `Start ${COMMISSION.trialDays}-day free trial` : `Subscribe · ${dollars(COMMISSION.priceCents)}/mo`}</button>
+    <p class="kit-note">${trial ? `Then ${dollars(COMMISSION.priceCents)}/month. ` : ''}Cancel anytime.</p>
+  </section>`;
+}
+
+/** Cancel-save: Jest's one-time retention discount on the same subscription. */
+export function renderCommissionWinback(player) {
+  const offer = player.commission?.retentionOffer;
+  const periods = offer?.durationPeriods || COMMISSION.retention.periods;
+  const price = dollars(COMMISSION.retention.priceCents);
+  return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal starter-offer" role="dialog" aria-modal="true" aria-label="Keep your Commission">
+    <span class="modal-kicker">Before you go</span>
+    <h2>Stay aboard for ${price}/mo?</h2>
+    <p>Keep every Commission perk for ${price} a month for your next ${periods} months. Then it returns to ${dollars(COMMISSION.priceCents)}.</p>
+    <button class="primary" data-act="commission-stay">Stay for ${price}/mo</button>
+    <button class="ghost" data-act="commission-cancel-confirm">Cancel anyway</button>
+    <button class="ghost" data-act="commission-winback-close">Back</button>
+  </section></div>`;
+}
+
 export function renderStarterOffer(state, value) {
   const lead = state.reason === 'first_loss'
     ? 'Rough fight. This kit gets the Sparrow back in the air with a stronger crew behind it.'
@@ -1350,7 +1396,7 @@ function renderStarterCard(state, value) {
   </section>`;
 }
 
-function renderShop(player, shopProducts) {
+function renderShop(player, shopProducts, now = Date.now()) {
   const SKU_COPY = {
     wc_gems_s: { name: 'Gem Pouch', blurb: '100 gems' },
     wc_gems_m: { name: 'Gem Pack', blurb: '280 gems · +12%' },
@@ -1441,8 +1487,9 @@ function renderShop(player, shopProducts) {
     <div class="panel">
       <h2>Buy</h2>
       <div class="muted">Real money. Gems skip the grind.</div>
-      ${starterOfferState(player).active ? renderStarterCard(starterOfferState(player), starterValue(shopProducts || [])) : ''}
-      ${wallPackState(player, currentWall(player)).active ? renderWallPack(wallPackState(player, currentWall(player)), packValue(wallPackState(player, currentWall(player)).sku, shopProducts || [])) : ''}
+      ${renderCommissionCard(player, now)}
+      ${starterOfferState(player, now).active ? renderStarterCard(starterOfferState(player, now), starterValue(shopProducts || [])) : ''}
+      ${wallPackState(player, currentWall(player, now)).active ? renderWallPack(wallPackState(player, currentWall(player, now)), packValue(wallPackState(player, currentWall(player, now)).sku, shopProducts || [])) : ''}
       ${products.map((p) => `
         <div class="iap-row">
           <div>

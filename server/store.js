@@ -65,8 +65,10 @@ export function createStore(sql, { grantSandbox = false } = {}) {
         }
         let classification = product ? classifyReceipt(receipt) : 'unsupported';
         // Price-0 sandbox receipts grant only where sandbox granting is switched on (QA).
-        let grant = product && (classification !== 'sandbox' || grantSandbox) ? product.grant : {};
-        if (product?.oneTime) {
+        // A refused one never counts as owning a one-time pack.
+        if (classification === 'sandbox' && !grantSandbox) classification = 'sandbox_refused';
+        let grant = product && classification !== 'sandbox_refused' ? product.grant : {};
+        if (product?.oneTime && classification !== 'sandbox_refused') {
           const [owned] = await tx`
             SELECT 1 FROM purchase_transactions
             WHERE player_key = ${playerKey} AND sku = ${receipt.productSku} AND one_time
@@ -80,12 +82,28 @@ export function createStore(sql, { grantSandbox = false } = {}) {
           INSERT INTO purchase_transactions
             (provider_token, player_key, sku, classification, granted, one_time, price, currency, created_at, completed_at)
           VALUES (${receipt.purchaseToken}, ${playerKey}, ${receipt.productSku}, ${classification}, ${tx.json(grant)},
-            ${Boolean(product?.oneTime)}, ${Number.isInteger(receipt.price) ? receipt.price : null}, ${receipt.currency ?? null},
+            ${Boolean(product?.oneTime) && classification !== 'sandbox_refused'}, ${Number.isInteger(receipt.price) ? receipt.price : null}, ${receipt.currency ?? null},
             ${new Date(receipt.createdAt)}, ${receipt.completedAt ? new Date(receipt.completedAt) : null})`;
         const status = classification === 'unsupported' ? 'unsupported' : classification === 'duplicate_one_time' ? 'duplicate_one_time'
-          : classification === 'sandbox' && !grantSandbox ? 'sandbox_refused' : 'granted';
+          : classification === 'sandbox_refused' ? 'sandbox_refused' : 'granted';
         return { status, sku: receipt.productSku, grant, classification };
       });
+    },
+
+    /** One-time SKUs this player already owns: checked before a checkout opens. */
+    async ownedOneTime(playerKey) {
+      const rows = await sql`
+        SELECT DISTINCT sku FROM purchase_transactions
+        WHERE player_key = ${playerKey} AND one_time AND classification IN ('paid', 'sandbox', 'unclassified')`;
+      return rows.map(row => row.sku);
+    },
+
+    /** Which SKU every granting token bought, delivered or not, so a merge can re-grant it. */
+    async purchaseSkus(playerKey) {
+      const rows = await sql`
+        SELECT provider_token, sku FROM purchase_transactions
+        WHERE player_key = ${playerKey} AND classification IN ('paid', 'sandbox', 'unclassified') AND granted <> '{}'::jsonb`;
+      return Object.fromEntries(rows.map(row => [row.provider_token, row.sku]));
     },
 
     /** Granting purchases no accepted save has delivered yet, so a device can catch up. */

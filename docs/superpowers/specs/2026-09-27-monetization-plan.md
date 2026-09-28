@@ -17,9 +17,11 @@ Principles kept from the [product direction](../../design/20-product-direction-d
 | `wc_starter_kit` (one time) | $4.99 | 250 gems, 10 fuel, 50 medals, 800 credits | First purchase, deliberately generous (shipped as `wc_starter`) | One time, after first loss or 3rd post-tutorial contract, 48 h |
 | `wc_wall_<sector>` (×5, one time each) | $4.99 / $7.99 / $9.99 / $12.99 / $14.99 | Gems, medals for levels, credits for the next upgrade, 1 free drydock finish | Wall breaker: solves the wall the player is facing | Once per wall, after a near-miss wall attempt or 2 days stuck |
 | `wc_drydock_2` | $9.99 | Permanent second drydock slot | Convenience that compounds (loop) | After first timed upgrade finishes |
-| `wc_sub_commission` | $9.99/mo | Daily gems, +2 fuel cap, 1 free drydock finish/day, cosmetic insignia | Predictable recurring value | Phase 4 |
-| (trial on `wc_sub_commission`) | free 7 days, then $9.99/mo | Same | Starter trial | First subscription offer only |
-| `wc_sub_commission_winback` | $5.99/mo × 2 | Same | Cancel-save offer | Shown only when a subscriber cancels |
+| `wc_sub_commission` (subscription) | $9.99/mo | 30 gems/day, +2 fuel tank, 1 free drydock finish/day | Predictable recurring value | Shop, after the intro |
+| (trial on `wc_sub_commission`) | free 7 days, then $9.99/mo | Same | Starter trial | Wallets that never subscribed (Jest decides) |
+| (retention offer on `wc_sub_commission`) | $5.99/mo × 2 | Same | Cancel-save offer | Shown when a subscriber taps Cancel, once |
+
+The trial and the cancel-save discount are both set on the one `wc_sub_commission` SKU in the Jest console. Jest's docs warn that a second SKU for the same perks bills the player twice, and an intro offer cannot win back a subscriber. So there is no `wc_sub_commission_winback` SKU.
 
 Retire `wc_fuel_5` ($0.99, below the floor). Fuel refills move to gems in-game (a sink, see layer 3). Every future discount (e.g. a sale on `wc_gems_l`) ships as its own SKU such as `wc_gems_l_sale40`; the regular SKU never changes price.
 
@@ -81,8 +83,8 @@ Watch the gem buffer at each wall: if players arrive with hundreds of spare gems
 1. SKU ladder and prices approved. Nothing below $1.99; every product and every discount is its own SKU; Jest prices in cents.
 2. Rally raised to 60 gems (first free) and fuel refill to 50 gems for 5 fuel — the proposed 30/20 were too cheap.
 3. Wall packs approved; starter kit and every wall pack are one-time purchases.
-4. Subscription: free 7-day trial, then $9.99/month; cancel-save/win-back at $5.99/month for 2 months (`wc_sub_commission_winback`). Not the first priority.
+4. Subscription: free 7-day trial, then $9.99/month; cancel-save/win-back at $5.99/month for 2 months. Built as Jest's trial and retention discount on `wc_sub_commission` (see Layer 1).
 
 ## Status
 
-Built on branch `claude/hud-overhaul`: gem ladder SKUs, one-time starter kit and wall packs (near-miss / stuck triggers), Rally, gem fuel refill, drydock finish tokens, timed upgrades with gem skip, Siege walls. Remaining before any live sale: verified purchase authority and cloud save; then create every SKU in the Jest Developer Console. Subscription, `wc_drydock_2`, welcome-back and sale SKUs follow.
+Built on branch `claude/hud-overhaul`: gem ladder SKUs, one-time starter kit and wall packs (near-miss / stuck triggers), Rally, gem fuel refill, drydock finish tokens, timed upgrades with gem skip, Siege walls. Remaining before any live sale: verified purchase authority and cloud save; then create every SKU in the Jest Developer Console. Subscription built (2026-09-28): `wc_sub_commission` with server-verified entitlement (`POST /v1/subscriptions/verify`), daily perks, and a cancel-save sheet. `wc_drydock_2`, welcome-back and sale SKUs follow.
