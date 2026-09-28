@@ -113,7 +113,7 @@ export function buildApp({ store, secret, gameId, devAuth = false, grantSandbox 
     if (typeof signed !== 'string' || !signed) return reply.code(400).send({ error: 'bad_request' });
     const verified = verifySubscriptions(signed, { secret, gameId, playerId: player.playerId, now: now(), grantSandbox });
     if (!verified.ok) return reply.code(400).send({ error: verified.reason });
-    return { subscriptions: verified.subscriptions, serverNow: now() };
+    return { subscriptions: verified.subscriptions, issuedAt: verified.issuedAt, serverNow: now() };
   });
 
   return app;

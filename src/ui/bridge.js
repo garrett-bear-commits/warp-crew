@@ -1393,13 +1393,16 @@ export function renderCommissionCard(player, now = Date.now()) {
 export function renderCommissionWinback(player) {
   // Show exactly what Jest will apply (price in cents, like products).
   const offer = player.commission?.retentionOffer;
+  const terms = player.commission?.terms;
   const periods = offer?.durationPeriods;
-  const price = dollars(priceCents(offer?.price));
+  const unit = { weekly: 'week', monthly: 'month', yearly: 'year' }[terms?.billingPeriod] || 'period';
+  const cur = terms?.currency && terms.currency !== 'USD' ? `${terms.currency} ` : '';
+  const price = `${cur}${dollars(priceCents(offer?.price))}`;
   return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal starter-offer" role="dialog" aria-modal="true" aria-label="Keep your Commission">
     <span class="modal-kicker">Before you go</span>
-    <h2>Stay aboard for ${price}/mo?</h2>
-    <p>Keep every Commission perk for ${price} a month for your next ${periods} months. Then it returns to ${dollars(COMMISSION.priceCents)}.</p>
-    <button class="primary" data-act="commission-stay">Stay for ${price}/mo</button>
+    <h2>Stay aboard for ${price}/${unit}?</h2>
+    <p>Keep every Commission perk for ${price} a ${unit} for your next ${periods === 1 ? unit : `${periods} ${unit}s`}.${terms ? ` Then it returns to ${cur}${dollars(terms.priceCents)}.` : ''}</p>
+    <button class="primary" data-act="commission-stay">Stay for ${price}/${unit}</button>
     <button class="ghost" data-act="commission-cancel-confirm">Cancel anyway</button>
     <button class="ghost" data-act="commission-winback-close">Back</button>
   </section></div>`;

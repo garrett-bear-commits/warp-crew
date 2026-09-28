@@ -69,12 +69,21 @@ export function syncCommission(player, now = Date.now()) {
 }
 
 /** Apply a verified entitlement list. Fuel cap follows the entitlement. */
-export function applyEntitlements(player, subscriptions, now = Date.now()) {
+/** A complete verified price tuple, or null: the shop never invents or keeps old terms. */
+function verifiedTerms(entry) {
+  const cents = priceCents(entry.price);
+  const period = ['weekly', 'monthly', 'yearly'].includes(entry.billingPeriod) ? entry.billingPeriod : null;
+  const currency = typeof entry.currency === 'string' && /^[A-Z]{3}$/.test(entry.currency) ? entry.currency : null;
+  return cents && period && currency ? { priceCents: cents, currency, billingPeriod: period } : null;
+}
+
+export function applyEntitlements(player, subscriptions, now = Date.now(), { issuedAt: listIssuedAt = null } = {}) {
   if (!Array.isArray(subscriptions)) return player;
-  // Missing from a verified list means not entitled (unless never subscribed).
-  const entry = subscriptions.find(s => s.sku === COMMISSION_SKU)
-    || (player.commission ? { sku: COMMISSION_SKU, active: false, trialEligible: false, retentionOffer: null } : null);
-  if (!entry) return player;
+  // Missing from a verified list means not entitled (unless never subscribed),
+  // as of when that list was signed.
+  const entry = subscriptions.find(s => s?.sku === COMMISSION_SKU)
+    || (player.commission ? { sku: COMMISSION_SKU, active: false, trialEligible: false, retentionOffer: null, issuedAt: listIssuedAt } : null);
+  if (!entry || typeof entry !== 'object') return player;
   const prev = player.commission || {};
   // A proof older than one already applied never overrides it (replay of a pre-cancel list).
   const issuedAt = Number.isFinite(entry.issuedAt) ? Math.min(entry.issuedAt, now) : now;
@@ -86,7 +95,7 @@ export function applyEntitlements(player, subscriptions, now = Date.now()) {
     trialEligible: entry.trialEligible,
     retentionOffer: entry.retentionOffer || null,
     verifiedAt: issuedAt,
-    terms: entry.price != null ? { priceCents: priceCents(entry.price), currency: entry.currency || 'USD', billingPeriod: entry.billingPeriod || 'monthly' } : (prev.terms || null),
+    terms: verifiedTerms(entry),
     since: entry.active ? (prev.active ? prev.since : now) : null,
     // A fresh subscription is not a cancelled one.
     cancelRequested: entry.active && prev.active ? Boolean(prev.cancelRequested) : false,
@@ -118,10 +127,10 @@ export function claimCommissionDaily(player, now = Date.now()) {
  * after our server verifies its signature; the local mock is trusted as is.
  */
 async function entitlementsFrom(plainList, signed, { real, verify, now }) {
-  if (!real) return { ok: true, subscriptions: fromPlain(plainList, now()) };
+  if (!real) return { ok: true, subscriptions: fromPlain(plainList, now()), issuedAt: now() };
   if (!verify) return { ok: false, reason: 'store_unavailable' };
   const res = await verify(signed);
-  return res.ok ? { ok: true, subscriptions: res.data.subscriptions } : { ok: false, reason: res.reason || 'unverified' };
+  return res.ok ? { ok: true, subscriptions: res.data.subscriptions, issuedAt: res.data.issuedAt } : { ok: false, reason: res.reason || 'unverified' };
 }
 
 /** Boot / return-to-app: re-read the wallet's entitlement (catches renewals and lapses). */
@@ -129,7 +138,7 @@ export async function refreshCommission(player, { sdk, real, verify, now }) {
   const list = await sdk.getSubscriptions();
   const ent = await entitlementsFrom(list?.subscriptions || [], list?.signed, { real, verify, now });
   if (!ent.ok) return { ok: false, reason: ent.reason, player };
-  return { ok: true, player: applyEntitlements(player, ent.subscriptions, now()) };
+  return { ok: true, player: applyEntitlements(player, ent.subscriptions, now(), { issuedAt: ent.issuedAt }) };
 }
 
 export async function subscribeCommission(player, { sdk, real, verify, now }) {
@@ -150,7 +159,7 @@ export async function subscribeCommission(player, { sdk, real, verify, now }) {
     // Charged but not yet verified: the next boot's refresh picks it up.
     return { ok: false, reason: 'pending_verification', player };
   }
-  return { ok: true, player: applyEntitlements(player, ent.subscriptions, now()) };
+  return { ok: true, player: applyEntitlements(player, ent.subscriptions, now(), { issuedAt: ent.issuedAt }) };
 }
 
 export async function acceptRetention(player, { sdk, real, verify, now }) {
@@ -162,7 +171,7 @@ export async function acceptRetention(player, { sdk, real, verify, now }) {
     const refreshed = await refreshCommission(player, { sdk, real, verify, now }).catch(() => null);
     return { ok: true, player: refreshed?.ok ? refreshed.player : { ...player, commission: { ...player.commission, retentionOffer: null } } };
   }
-  return { ok: true, player: applyEntitlements(player, ent.subscriptions, now()) };
+  return { ok: true, player: applyEntitlements(player, ent.subscriptions, now(), { issuedAt: ent.issuedAt }) };
 }
 
 export async function cancelCommission(player, { sdk, real, verify, now }) {

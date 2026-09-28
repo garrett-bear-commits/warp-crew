@@ -59,5 +59,5 @@ export function verifySubscriptions(token, { secret, gameId, playerId, now, gran
       issuedAt: iatMs,
     });
   }
-  return { ok: true, subscriptions };
+  return { ok: true, subscriptions, issuedAt: iatMs };
 }

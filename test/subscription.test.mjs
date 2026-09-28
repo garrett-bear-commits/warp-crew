@@ -135,4 +135,23 @@ const { renderCommissionCard } = await import('../src/ui/bridge.js');
 assert.match(renderCommissionCard(withTerms, NOW), /Start 7-day free trial[\s\S]*Then \$9\.99\/month/);
 assert.doesNotMatch(renderCommissionCard(base, NOW), /commission-subscribe/, 'no verified terms, no checkout button');
 
+// Terms are a complete verified tuple or nothing: never kept from before, never invented.
+const noTerms = applyEntitlements(withTerms, [{ sku: 'wc_sub_commission', active: false, trialEligible: true }], NOW + 1);
+assert.equal(noTerms.commission.terms, null);
+assert.doesNotMatch(renderCommissionCard(noTerms, NOW), /commission-subscribe/);
+assert.equal(applyEntitlements(base, [{ sku: 'wc_sub_commission', active: false, price: 1299 }], NOW).commission.terms, null, 'no invented USD/monthly');
+assert.equal(applyEntitlements(base, [null], NOW), base, 'a malformed member changes nothing');
+// An old list that omits the Commission cannot revoke a newer active proof.
+const fresh = applyEntitlements(base, [{ sku: 'wc_sub_commission', active: true, issuedAt: NOW }], NOW);
+assert.equal(applyEntitlements(fresh, [], NOW + 1000, { issuedAt: NOW - 3600_000 }).commission.active, true);
+assert.equal(applyEntitlements(fresh, [], NOW + 1000, { issuedAt: NOW + 500 }).commission.active, false);
+// The cancel-save sheet uses Jest's offer and the verified renewal terms.
+const { renderCommissionWinback } = await import('../src/ui/bridge.js');
+const yearly = { commission: { retentionOffer: { price: 4999, durationPeriods: 1 }, terms: { priceCents: 7999, currency: 'USD', billingPeriod: 'yearly' } } };
+const sheet = renderCommissionWinback(yearly);
+assert.match(sheet, /\$49\.99\/year/);
+assert.match(sheet, /returns to \$79\.99/);
+assert.doesNotMatch(sheet, /\/mo\b|\$9\.99/);
+assert.match(sheet, /for your next year\./);
+
 console.log('subscription.test.mjs OK');
