@@ -51,6 +51,12 @@ export function verifySubscriptions(token, { secret, gameId, playerId, now, gran
       trialEligible: item.trialEligible === true,
       retentionOffer: item.retentionOffer && Number.isFinite(item.retentionOffer.price)
         ? { price: item.retentionOffer.price, durationPeriods: item.retentionOffer.durationPeriods } : null,
+      // The signed catalog terms, so the shop shows what Jest will actually bill.
+      price: Number.isFinite(item.price) ? item.price : null,
+      currency: typeof item.currency === 'string' ? item.currency : null,
+      billingPeriod: ['weekly', 'monthly', 'yearly'].includes(item.billingPeriod) ? item.billingPeriod : null,
+      // When Jest signed this: entitlement grace runs from here, not from when it was shown to us.
+      issuedAt: iatMs,
     });
   }
   return { ok: true, subscriptions };

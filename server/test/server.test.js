@@ -152,7 +152,8 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     const list = (player, subs, extra = {}) => sign({ aud: GAME, sub: player, iat: Math.floor(NOW / 1000), subscriptions: subs, ...extra });
     const verify = (player, signed, a = app) => a.inject({ method: 'POST', url: '/v1/subscriptions/verify', headers: headers(player), payload: { signed } });
     const active = (await verify('subber', list('subber', [sub('active', { retentionOffer: { price: 599, durationPeriods: 2 } }), { sku: 'other_game_sku', status: 'active' }]))).json();
-    assert.deepEqual(active.subscriptions, [{ sku: 'wc_sub_commission', active: true, sandbox: false, trialEligible: false, retentionOffer: { price: 599, durationPeriods: 2 } }]);
+    assert.deepEqual(active.subscriptions, [{ sku: 'wc_sub_commission', active: true, sandbox: false, trialEligible: false, retentionOffer: { price: 599, durationPeriods: 2 },
+      price: 999, currency: 'USD', billingPeriod: null, issuedAt: Math.floor(NOW / 1000) * 1000 }]);
     assert.equal((await verify('subber', sign({ aud: GAME, sub: 'subber', subscriptions: [sub('active')] }))).json().error, 'no_iat', 'a proof with no iat is never accepted');
     const single = sign({ aud: GAME, sub: 'subber', iat: Math.floor(NOW / 1000), subscription: sub('active') });
     assert.equal((await verify('subber', single)).json().subscriptions[0].active, true, 'subscriptionSigned from checkout works too');

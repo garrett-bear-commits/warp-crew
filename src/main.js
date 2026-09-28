@@ -60,7 +60,7 @@ import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
 import { STARTER_OFFER, starterOfferState, markStarterOffer, markWallPackSeen, wallPackState } from './systems/offers.js';
 import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt, verifySubscriptions, fetchOwnedOneTime, trustedNow } from './shared/cloud.js';
-import { refreshCommission, subscribeCommission, cancelCommission, acceptRetention, claimCommissionDaily } from './systems/subscription.js';
+import { refreshCommission, subscribeCommission, cancelCommission, acceptRetention, claimCommissionDaily, syncCommission } from './systems/subscription.js';
 import { chooseSave, applyLedger, withPurchaseSkus } from './systems/cloudSync.js';
 import { currentWall } from './systems/walls.js';
 import { applyResolvedSlicePortraits } from './data/portraits.js';
@@ -355,7 +355,7 @@ function hydratePlayer() {
     };
   }
 
-  const claimed = claimFuelRegen(player);
+  const claimed = claimFuelRegen(syncCommission(player, trustedNow()));
   player = tickCrewStatus(claimed.player);
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
@@ -749,7 +749,7 @@ async function handleAction(act, data = {}) {
     return;
   }
   if (act === 'claim' || act === 'exp-claim') {
-    const claimed = claimFuelRegen(player);
+    const claimed = claimFuelRegen(syncCommission(player, trustedNow()));
     player = claimed.player;
     const resolved = tryResolveExpedition();
     if (claimed.gained) {

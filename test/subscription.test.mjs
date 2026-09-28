@@ -116,4 +116,23 @@ const fallback = await subscribeCommission(base, { sdk, real: true, now, verify:
   ? { ok: true, data: { subscriptions: [{ sku: 'wc_sub_commission', active: true }] } } : { ok: false, reason: 'no_iat' } });
 assert.equal(fallback.ok, true);
 
+// Grace runs from when Jest signed the proof, and an older proof never overrides a newer one.
+const { priceCents } = await import('../src/systems/subscription.js');
+const signedEarly = applyEntitlements(base, [{ sku: 'wc_sub_commission', active: true, issuedAt: NOW - 23 * 3600_000 }], NOW);
+assert.equal(signedEarly.commission.verifiedAt, NOW - 23 * 3600_000);
+assert.equal(commissionActive(signedEarly, NOW + 50 * 3600_000), false, 'a 23 h-old proof leaves 49 h of grace, not 72');
+const cancelledNow = applyEntitlements(signedEarly, [{ sku: 'wc_sub_commission', active: false, issuedAt: NOW }], NOW);
+const replayed = applyEntitlements(cancelledNow, [{ sku: 'wc_sub_commission', active: true, issuedAt: NOW - 3600_000 }], NOW + 60_000);
+assert.equal(replayed.commission.active, false, 'replaying an older "active" proof after a cancel does nothing');
+assert.equal(applyEntitlements(base, undefined, NOW), base, 'a malformed answer changes nothing');
+// Shop terms come from the verified catalog.
+const withTerms = applyEntitlements(base, [{ sku: 'wc_sub_commission', active: false, trialEligible: true, price: 999, currency: 'USD', billingPeriod: 'monthly' }], NOW);
+assert.deepEqual(withTerms.commission.terms, { priceCents: 999, currency: 'USD', billingPeriod: 'monthly' });
+assert.equal(priceCents(9.99), 999);
+assert.equal(priceCents(599), 599);
+assert.equal(priceCents(0), null);
+const { renderCommissionCard } = await import('../src/ui/bridge.js');
+assert.match(renderCommissionCard(withTerms, NOW), /Start 7-day free trial[\s\S]*Then \$9\.99\/month/);
+assert.doesNotMatch(renderCommissionCard(base, NOW), /commission-subscribe/, 'no verified terms, no checkout button');
+
 console.log('subscription.test.mjs OK');

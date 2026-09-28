@@ -21,14 +21,28 @@ export function commissionActive(player, now = Date.now()) {
 }
 
 /** The SDK's plain objects, used only by the local mock (no money involved). */
-export function fromPlain(list = []) {
+export function fromPlain(list = [], now = Date.now()) {
   return list.filter(s => SUBSCRIPTION_DEFS[s?.sku]).map(s => ({
     sku: s.sku,
     active: s.status === 'active',
     sandbox: s.sandbox === true,
     trialEligible: s.trialEligible === true,
     retentionOffer: s.retentionOffer || null,
+    price: Number.isFinite(s.price) ? s.price : null,
+    currency: s.currency || null,
+    billingPeriod: s.billingPeriod || null,
+    issuedAt: now,
   }));
+}
+
+/**
+ * Jest's price as cents. Products arrive in cents; an integer is read the same
+ * way, a fractional amount (e.g. 9.99) as whole currency units.
+ * (Staging check: confirm the unit Jest uses for subscriptions.)
+ */
+export function priceCents(price) {
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return Number.isInteger(price) ? price : Math.round(price * 100);
 }
 
 /**
@@ -56,18 +70,23 @@ export function syncCommission(player, now = Date.now()) {
 
 /** Apply a verified entitlement list. Fuel cap follows the entitlement. */
 export function applyEntitlements(player, subscriptions, now = Date.now()) {
+  if (!Array.isArray(subscriptions)) return player;
   // Missing from a verified list means not entitled (unless never subscribed).
   const entry = subscriptions.find(s => s.sku === COMMISSION_SKU)
     || (player.commission ? { sku: COMMISSION_SKU, active: false, trialEligible: false, retentionOffer: null } : null);
   if (!entry) return player;
   const prev = player.commission || {};
+  // A proof older than one already applied never overrides it (replay of a pre-cancel list).
+  const issuedAt = Number.isFinite(entry.issuedAt) ? Math.min(entry.issuedAt, now) : now;
+  if (Number.isFinite(prev.verifiedAt) && issuedAt < prev.verifiedAt) return player;
   const commission = {
     ...prev,
     sku: COMMISSION_SKU,
     active: entry.active,
     trialEligible: entry.trialEligible,
     retentionOffer: entry.retentionOffer || null,
-    verifiedAt: now,
+    verifiedAt: issuedAt,
+    terms: entry.price != null ? { priceCents: priceCents(entry.price), currency: entry.currency || 'USD', billingPeriod: entry.billingPeriod || 'monthly' } : (prev.terms || null),
     since: entry.active ? (prev.active ? prev.since : now) : null,
     // A fresh subscription is not a cancelled one.
     cancelRequested: entry.active && prev.active ? Boolean(prev.cancelRequested) : false,
@@ -98,8 +117,8 @@ export function claimCommissionDaily(player, now = Date.now()) {
  * Turn an SDK answer into entitlements. A real Jest answer is trusted only
  * after our server verifies its signature; the local mock is trusted as is.
  */
-async function entitlementsFrom(plainList, signed, { real, verify }) {
-  if (!real) return { ok: true, subscriptions: fromPlain(plainList) };
+async function entitlementsFrom(plainList, signed, { real, verify, now }) {
+  if (!real) return { ok: true, subscriptions: fromPlain(plainList, now()) };
   if (!verify) return { ok: false, reason: 'store_unavailable' };
   const res = await verify(signed);
   return res.ok ? { ok: true, subscriptions: res.data.subscriptions } : { ok: false, reason: res.reason || 'unverified' };
@@ -108,7 +127,7 @@ async function entitlementsFrom(plainList, signed, { real, verify }) {
 /** Boot / return-to-app: re-read the wallet's entitlement (catches renewals and lapses). */
 export async function refreshCommission(player, { sdk, real, verify, now }) {
   const list = await sdk.getSubscriptions();
-  const ent = await entitlementsFrom(list?.subscriptions || [], list?.signed, { real, verify });
+  const ent = await entitlementsFrom(list?.subscriptions || [], list?.signed, { real, verify, now });
   if (!ent.ok) return { ok: false, reason: ent.reason, player };
   return { ok: true, player: applyEntitlements(player, ent.subscriptions, now()) };
 }
@@ -123,7 +142,7 @@ export async function subscribeCommission(player, { sdk, real, verify, now }) {
     if (res.error === 'already_subscribed') return refreshCommission(player, { sdk, real, verify, now });
     return { ok: false, reason: res.error || 'error', player };
   }
-  const ent = await entitlementsFrom(res?.subscription ? [res.subscription] : [], res?.subscriptionSigned, { real, verify });
+  const ent = await entitlementsFrom(res?.subscription ? [res.subscription] : [], res?.subscriptionSigned, { real, verify, now });
   if (!ent.ok) {
     // The checkout proof could not be verified (e.g. it carries no iat): a fresh signed list can.
     const refreshed = await refreshCommission(player, { sdk, real, verify, now }).catch(() => null);
@@ -137,8 +156,12 @@ export async function subscribeCommission(player, { sdk, real, verify, now }) {
 export async function acceptRetention(player, { sdk, real, verify, now }) {
   const res = await sdk.claimRetentionOffer(COMMISSION_SKU);
   if (res?.result !== 'success') return { ok: false, reason: res?.error || 'error', player };
-  const ent = await entitlementsFrom([res.subscription], res.subscriptionSigned, { real, verify });
-  if (!ent.ok) return { ok: true, player: { ...player, commission: { ...player.commission, retentionOffer: null } } };
+  const ent = await entitlementsFrom([res.subscription], res.subscriptionSigned, { real, verify, now });
+  if (!ent.ok) {
+    // Jest applied the discount; re-read a fresh signed list to reflect it.
+    const refreshed = await refreshCommission(player, { sdk, real, verify, now }).catch(() => null);
+    return { ok: true, player: refreshed?.ok ? refreshed.player : { ...player, commission: { ...player.commission, retentionOffer: null } } };
+  }
   return { ok: true, player: applyEntitlements(player, ent.subscriptions, now()) };
 }
 

@@ -41,7 +41,7 @@ import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue, wallPackState, packValue } from '../systems/offers.js';
-import { COMMISSION, commissionActive } from '../systems/subscription.js';
+import { COMMISSION, commissionActive, priceCents } from '../systems/subscription.js';
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
@@ -1374,13 +1374,18 @@ export function renderCommissionCard(player, now = Date.now()) {
       ${c.cancelRequested ? '' : '<button class="ghost" data-act="commission-cancel">Cancel subscription</button>'}
     </section>`;
   }
+  // Terms come from Jest's verified catalog; with none, no price is promised and no checkout is offered.
+  const terms = c.terms?.priceCents ? c.terms : null;
   const trial = c.trialEligible !== false;
+  const period = { weekly: 'week', monthly: 'month', yearly: 'year' }[terms?.billingPeriod] || 'month';
+  const price = terms ? `${terms.currency && terms.currency !== 'USD' ? `${terms.currency} ` : ''}${dollars(terms.priceCents)}/${period}` : '';
   return `<section class="panel starter-card commission-card">
     <span class="modal-kicker">Subscription</span>
     <h2>${escapeHtml(COMMISSION.name)}</h2>
     ${perkList}
-    <button class="primary" data-act="commission-subscribe">${trial ? `Start ${COMMISSION.trialDays}-day free trial` : `Subscribe · ${dollars(COMMISSION.priceCents)}/mo`}</button>
-    <p class="kit-note">${trial ? `Then ${dollars(COMMISSION.priceCents)}/month. ` : ''}Cancel anytime.</p>
+    ${terms ? `<button class="primary" data-act="commission-subscribe">${trial ? `Start ${COMMISSION.trialDays}-day free trial` : `Subscribe · ${price}`}</button>
+    <p class="kit-note">${trial ? `Then ${price}. ` : ''}Cancel anytime.</p>`
+    : '<p class="kit-note">Subscriptions are unavailable right now.</p>'}
   </section>`;
 }
 
@@ -1389,7 +1394,7 @@ export function renderCommissionWinback(player) {
   // Show exactly what Jest will apply (price in cents, like products).
   const offer = player.commission?.retentionOffer;
   const periods = offer?.durationPeriods;
-  const price = dollars(offer?.price);
+  const price = dollars(priceCents(offer?.price));
   return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal starter-offer" role="dialog" aria-modal="true" aria-label="Keep your Commission">
     <span class="modal-kicker">Before you go</span>
     <h2>Stay aboard for ${price}/mo?</h2>
