@@ -1395,6 +1395,7 @@ export function renderCommissionWinback(player) {
   const offer = player.commission?.retentionOffer;
   // Only offered with verified renewal terms (see commission-cancel in main.js).
   const terms = usableTerms(player.commission?.terms);
+  if (!terms || !priceCents(offer?.price) || !(offer.durationPeriods > 0)) return '';
   const periods = offer?.durationPeriods;
   const unit = { weekly: 'week', monthly: 'month', yearly: 'year' }[terms?.billingPeriod] || 'period';
   const cur = terms?.currency && terms.currency !== 'USD' ? `${terms.currency} ` : '';

@@ -157,4 +157,6 @@ assert.match(sheet, /for your next year\./);
 // Partial terms left in an older save never show a checkout.
 assert.doesNotMatch(renderCommissionCard({ ...base, commission: { trialEligible: true, terms: { priceCents: 999 } } }, NOW), /commission-subscribe/);
 
+assert.equal(renderCommissionWinback({ commission: { retentionOffer: { price: 599, durationPeriods: 2 }, terms: null } }), '', 'no verified terms, no pitch');
+
 console.log('subscription.test.mjs OK');
