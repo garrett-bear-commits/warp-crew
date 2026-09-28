@@ -246,7 +246,12 @@ async function reconcileCloud(save, purchases, purchaseSkus = {}) {
   const chosen = chooseSave(player, save, purchaseSkus);
   if (chosen.archived) {
     // Keep the losing side of a two-device conflict recoverable on the server.
-    await pushCloudSave(chosen.archived, { archive: true });
+    // This device's save is replaced only once the server has confirmed its archive copy.
+    const archived = await pushCloudSave(chosen.archived, { archive: true });
+    if (chosen.source === 'cloud' && archived.data?.rejectReason !== 'archived_conflict') {
+      console.warn('[cloud] archive failed; keeping this device\'s save until the next sync', archived.reason);
+      return;
+    }
     pushLog('Two devices had different progress; the furthest-along save was kept.');
   }
   if (chosen.source === 'cloud') {
@@ -610,10 +615,10 @@ function doHire({ gems = false, ten = false } = {}) {
 }
 
 // One-time offers can only be bought while their offer is live.
-function res0Blocked(sku) {
-  if (sku === STARTER_OFFER.sku) return !starterOfferState(player).active;
+function res0Blocked(sku, now = trustedNow()) {
+  if (sku === STARTER_OFFER.sku) return !starterOfferState(player, now).active;
   if (sku.startsWith('wc_wall_')) {
-    const pack = wallPackState(player, currentWall(player));
+    const pack = wallPackState(player, currentWall(player, now));
     return !pack.active || pack.sku !== sku;
   }
   return false;
@@ -981,7 +986,8 @@ async function handleAction(act, data = {}) {
     }
   } else if (act === 'commission-cancel') {
     // Jest allows one cancel-save discount; offer it before the real cancel.
-    if (player.commission?.retentionOffer) {
+    const offer = player.commission?.retentionOffer;
+    if (Number.isInteger(offer?.price) && offer.price > 0 && Number.isInteger(offer.durationPeriods) && offer.durationPeriods > 0) {
       commissionWinback = true;
       captureEvent('subscription_winback_shown', {});
     } else return handleAction('commission-cancel-confirm');

@@ -1,4 +1,5 @@
 // Session orchestration: pure transitions, followed by one durable publication boundary.
+import { syncCommission } from './subscription.js';
 import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, reviewContractOffer, contractRewardBand, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract } from './contracts.js';
 import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
 import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
@@ -39,6 +40,7 @@ export function prepareSession(player, now = Date.now()) {
   if (!early) next = ensureWallOffer(next, now);
   if (!early) next = evaluateWallPackOffer(next, currentWall(next, now), now);
   next = completeShipBuild(next, now).player;
+  next = syncCommission(next, now);
   return evaluateStarterOffer(next, now);
 }
 

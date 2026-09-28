@@ -1361,9 +1361,10 @@ export function renderCommissionCard(player, now = Date.now()) {
 
 /** Cancel-save: Jest's one-time retention discount on the same subscription. */
 export function renderCommissionWinback(player) {
+  // Show exactly what Jest will apply (price in cents, like products).
   const offer = player.commission?.retentionOffer;
-  const periods = offer?.durationPeriods || COMMISSION.retention.periods;
-  const price = dollars(COMMISSION.retention.priceCents);
+  const periods = offer?.durationPeriods;
+  const price = dollars(offer?.price);
   return `<div class="modal-backdrop first-session-backdrop"><section class="first-session-modal starter-offer" role="dialog" aria-modal="true" aria-label="Keep your Commission">
     <span class="modal-kicker">Before you go</span>
     <h2>Stay aboard for ${price}/mo?</h2>

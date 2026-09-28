@@ -9,7 +9,6 @@
 import { SUBSCRIPTION_DEFS } from '../data/products.js';
 import { dayKey } from './daily.js';
 import { fuelMaxFor } from './hangar.js';
-import { clampFuel } from './economy.js';
 
 export const COMMISSION_SKU = 'wc_sub_commission';
 export const COMMISSION = SUBSCRIPTION_DEFS[COMMISSION_SKU];
@@ -32,9 +31,34 @@ export function fromPlain(list = []) {
   }));
 }
 
+/**
+ * Keep the fuel cap in step with the entitlement. When the Commission lapses
+ * (or its offline grace runs out) the extra tank space is not deleted: fuel
+ * already above the normal cap stays, and the cap shrinks as it is spent, so
+ * regeneration never refills past the normal cap.
+ */
+export function syncCommission(player, now = Date.now()) {
+  let c = player?.commission;
+  if (!c) return player;
+  const bonus = COMMISSION.perks.fuelMaxBonus;
+  if (c.active && !commissionActive(player, now)) c = { ...c, active: false, heldFuelBonus: bonus };
+  if (c.active) c = c.heldFuelBonus ? { ...c, heldFuelBonus: 0 } : c;
+  else {
+    const baseMax = fuelMaxFor({ ...player, commission: { ...c, heldFuelBonus: 0 } });
+    const held = Math.min(c.heldFuelBonus || 0, Math.max(0, (player.wallet?.fuel || 0) - baseMax));
+    if (held !== (c.heldFuelBonus || 0)) c = { ...c, heldFuelBonus: held };
+  }
+  const next = { ...player, commission: c };
+  const fuelMax = fuelMaxFor(next);
+  if (c === player.commission && fuelMax === player.fuelMax) return player;
+  return { ...next, fuelMax };
+}
+
 /** Apply a verified entitlement list. Fuel cap follows the entitlement. */
 export function applyEntitlements(player, subscriptions, now = Date.now()) {
-  const entry = subscriptions.find(s => s.sku === COMMISSION_SKU);
+  // Missing from a verified list means not entitled (unless never subscribed).
+  const entry = subscriptions.find(s => s.sku === COMMISSION_SKU)
+    || (player.commission ? { sku: COMMISSION_SKU, active: false, trialEligible: false, retentionOffer: null } : null);
   if (!entry) return player;
   const prev = player.commission || {};
   const commission = {
@@ -48,9 +72,9 @@ export function applyEntitlements(player, subscriptions, now = Date.now()) {
     // A fresh subscription is not a cancelled one.
     cancelRequested: entry.active && prev.active ? Boolean(prev.cancelRequested) : false,
   };
-  const next = { ...player, commission };
-  const fuelMax = fuelMaxFor(next);
-  return { ...next, fuelMax, wallet: clampFuel(next.wallet || {}, fuelMax) };
+  // A lapse starts holding the extra tank space; syncCommission shrinks it as fuel is spent.
+  if (prev.active && !entry.active) commission.heldFuelBonus = COMMISSION.perks.fuelMaxBonus;
+  return syncCommission({ ...player, commission }, now);
 }
 
 /** Once per UTC day while active: gems and a drydock finish. */
@@ -100,8 +124,13 @@ export async function subscribeCommission(player, { sdk, real, verify, now }) {
     return { ok: false, reason: res.error || 'error', player };
   }
   const ent = await entitlementsFrom(res?.subscription ? [res.subscription] : [], res?.subscriptionSigned, { real, verify });
-  // Charged but not yet verified: the next boot's refresh picks it up.
-  if (!ent.ok) return { ok: false, reason: 'pending_verification', player };
+  if (!ent.ok) {
+    // The checkout proof could not be verified (e.g. it carries no iat): a fresh signed list can.
+    const refreshed = await refreshCommission(player, { sdk, real, verify, now }).catch(() => null);
+    if (refreshed?.ok && commissionActive(refreshed.player, now())) return refreshed;
+    // Charged but not yet verified: the next boot's refresh picks it up.
+    return { ok: false, reason: 'pending_verification', player };
+  }
   return { ok: true, player: applyEntitlements(player, ent.subscriptions, now()) };
 }
 

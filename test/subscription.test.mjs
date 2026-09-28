@@ -93,4 +93,27 @@ assert.ok(mocked.player.commission.retentionOffer, 'mock offers the retention di
 const mockStay = await acceptRetention(mocked.player, { sdk: mockSdk, real: false, verify: null, now });
 assert.equal(mockStay.player.commission.retentionOffer, null, 'claimed once');
 
+// A verified list without the Commission revokes it.
+const revoked = applyEntitlements(active, [], NOW);
+assert.equal(commissionActive(revoked, NOW), false);
+// Lapse keeps fuel already in the tank; the extra space shrinks as it is spent and never refills.
+const { syncCommission } = await import('../src/systems/subscription.js');
+const fullTank = { ...active, wallet: { ...active.wallet, fuel: active.fuelMax } };
+const lapsedFull = applyEntitlements(fullTank, [{ sku: 'wc_sub_commission', active: false }], NOW);
+assert.equal(lapsedFull.wallet.fuel, baseFuelMax + 2, 'no fuel deleted on lapse');
+assert.equal(lapsedFull.fuelMax, baseFuelMax + 2);
+const spent = syncCommission({ ...lapsedFull, wallet: { ...lapsedFull.wallet, fuel: baseFuelMax + 1 } }, NOW);
+assert.equal(spent.fuelMax, baseFuelMax + 1, 'cap follows the fuel down');
+const refilled = syncCommission({ ...spent, wallet: { ...spent.wallet, fuel: baseFuelMax } }, NOW);
+assert.equal(refilled.fuelMax, baseFuelMax);
+assert.equal(syncCommission({ ...refilled, wallet: { ...refilled.wallet, fuel: baseFuelMax } }, NOW).fuelMax, baseFuelMax, 'never grows back');
+// Offline grace running out ends the bonus too, not just the daily perks.
+const expired = syncCommission({ ...active, wallet: { ...active.wallet, fuel: 3 } }, NOW + ENTITLEMENT_GRACE_MS + 1);
+assert.equal(expired.commission.active, false);
+assert.equal(expired.fuelMax, baseFuelMax);
+// A checkout proof that cannot be verified falls back to a fresh signed list.
+const fallback = await subscribeCommission(base, { sdk, real: true, now, verify: async (signed) => signed === 'SIGNED-LIST'
+  ? { ok: true, data: { subscriptions: [{ sku: 'wc_sub_commission', active: true }] } } : { ok: false, reason: 'no_iat' } });
+assert.equal(fallback.ok, true);
+
 console.log('subscription.test.mjs OK');

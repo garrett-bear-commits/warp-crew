@@ -4,8 +4,8 @@
 //   - HS256 with the same base64 shared secret as the player token.
 //   - `aud` is the game id and `sub` must be the calling player; a signed list
 //     for player A must never unlock player B.
-//   - A list can be replayed after the player cancels, so when `iat` is present
-//     it must be recent. The client re-reads the list on every boot.
+//   - A list can be replayed after the player cancels, so `iat` is required
+//     and must be recent. The client re-reads the list on every boot.
 //   - Sandbox subscriptions carry `sandbox: true`; they unlock only where
 //     sandbox granting is switched on (QA), like sandbox purchases.
 
@@ -34,10 +34,10 @@ export function verifySubscriptions(token, { secret, gameId, playerId, now, gran
   if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return { ok: false, reason: 'bad_signature' };
   if (!gameId || payload.aud !== gameId) return { ok: false, reason: 'wrong_audience' };
   if (typeof payload.sub !== 'string' || payload.sub !== playerId) return { ok: false, reason: 'player_mismatch' };
-  if (payload.iat !== undefined) {
-    const iatMs = typeof payload.iat === 'number' ? (payload.iat > 1e11 ? payload.iat : payload.iat * 1000) : NaN;
-    if (!Number.isFinite(iatMs) || now - iatMs > SUBSCRIPTION_MAX_AGE_MS || iatMs - now > 5 * 60_000) return { ok: false, reason: 'stale' };
-  }
+  // Every proof must say when it was signed, or an old "active" list could be replayed forever.
+  const iatMs = typeof payload.iat === 'number' ? (payload.iat > 1e11 ? payload.iat : payload.iat * 1000) : NaN;
+  if (!Number.isFinite(iatMs)) return { ok: false, reason: 'no_iat' };
+  if (now - iatMs > SUBSCRIPTION_MAX_AGE_MS || iatMs - now > 5 * 60_000) return { ok: false, reason: 'stale' };
   const raw = payload.subscription ? [payload.subscription] : payload.subscriptions;
   if (!Array.isArray(raw)) return { ok: false, reason: 'malformed_subscription' };
   const subscriptions = [];

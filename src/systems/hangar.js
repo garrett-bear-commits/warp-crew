@@ -44,7 +44,9 @@ export function fuelMaxFor(player, def) {
   const engines = player.ship?.systems?.engines || 1;
   const engineBonus = Math.floor(Math.max(0, engines) / 2);
   // Captain's Commission (verified entitlement) adds tank space.
-  const commissionBonus = player.commission?.active ? SUBSCRIPTION_DEFS.wc_sub_commission.perks.fuelMaxBonus : 0;
+  const commissionBonus = player.commission?.active ? SUBSCRIPTION_DEFS.wc_sub_commission.perks.fuelMaxBonus
+    // After a lapse, only tank space still holding fuel is kept (see syncCommission).
+    : Math.max(0, Math.min(SUBSCRIPTION_DEFS.wc_sub_commission.perks.fuelMaxBonus, player.commission?.heldFuelBonus || 0));
   return DEFAULT_FUEL_CONFIG.startingMax + (hull.fuelMaxBonus || 0) + engineBonus + commissionBonus;
 }
 
