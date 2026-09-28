@@ -69,6 +69,12 @@ export function syncCommission(player, now = Date.now()) {
 }
 
 /** Apply a verified entitlement list. Fuel cap follows the entitlement. */
+/** Saved terms are used only if still a complete tuple (older saves may hold partial ones). */
+export function usableTerms(terms) {
+  return terms && Number.isInteger(terms.priceCents) && terms.priceCents > 0 && /^[A-Z]{3}$/.test(terms.currency || '')
+    && ['weekly', 'monthly', 'yearly'].includes(terms.billingPeriod) ? terms : null;
+}
+
 /** A complete verified price tuple, or null: the shop never invents or keeps old terms. */
 function verifiedTerms(entry) {
   const cents = priceCents(entry.price);

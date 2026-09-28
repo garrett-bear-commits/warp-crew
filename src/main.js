@@ -60,7 +60,7 @@ import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
 import { STARTER_OFFER, starterOfferState, markStarterOffer, markWallPackSeen, wallPackState } from './systems/offers.js';
 import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt, verifySubscriptions, fetchOwnedOneTime, trustedNow } from './shared/cloud.js';
-import { refreshCommission, subscribeCommission, cancelCommission, acceptRetention, claimCommissionDaily, syncCommission } from './systems/subscription.js';
+import { refreshCommission, subscribeCommission, cancelCommission, acceptRetention, claimCommissionDaily, syncCommission, usableTerms } from './systems/subscription.js';
 import { chooseSave, applyLedger, withPurchaseSkus } from './systems/cloudSync.js';
 import { currentWall } from './systems/walls.js';
 import { applyResolvedSlicePortraits } from './data/portraits.js';
@@ -987,7 +987,9 @@ async function handleAction(act, data = {}) {
   } else if (act === 'commission-cancel') {
     // Jest allows one cancel-save discount; offer it before the real cancel.
     const offer = player.commission?.retentionOffer;
-    if (Number.isInteger(offer?.price) && offer.price > 0 && Number.isInteger(offer.durationPeriods) && offer.durationPeriods > 0) {
+    // Pitch the discount only with complete, verified terms; otherwise go straight to Jest's cancel.
+    if (Number.isInteger(offer?.price) && offer.price > 0 && Number.isInteger(offer.durationPeriods) && offer.durationPeriods > 0
+      && usableTerms(player.commission?.terms)) {
       commissionWinback = true;
       captureEvent('subscription_winback_shown', {});
     } else return handleAction('commission-cancel-confirm');

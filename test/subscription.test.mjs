@@ -154,4 +154,7 @@ assert.match(sheet, /returns to \$79\.99/);
 assert.doesNotMatch(sheet, /\/mo\b|\$9\.99/);
 assert.match(sheet, /for your next year\./);
 
+// Partial terms left in an older save never show a checkout.
+assert.doesNotMatch(renderCommissionCard({ ...base, commission: { trialEligible: true, terms: { priceCents: 999 } } }, NOW), /commission-subscribe/);
+
 console.log('subscription.test.mjs OK');

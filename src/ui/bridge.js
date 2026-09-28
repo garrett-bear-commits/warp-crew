@@ -41,7 +41,7 @@ import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue, wallPackState, packValue } from '../systems/offers.js';
-import { COMMISSION, commissionActive, priceCents } from '../systems/subscription.js';
+import { COMMISSION, commissionActive, priceCents, usableTerms } from '../systems/subscription.js';
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
@@ -1375,7 +1375,7 @@ export function renderCommissionCard(player, now = Date.now()) {
     </section>`;
   }
   // Terms come from Jest's verified catalog; with none, no price is promised and no checkout is offered.
-  const terms = c.terms?.priceCents ? c.terms : null;
+  const terms = usableTerms(c.terms);
   const trial = c.trialEligible !== false;
   const period = { weekly: 'week', monthly: 'month', yearly: 'year' }[terms?.billingPeriod] || 'month';
   const price = terms ? `${terms.currency && terms.currency !== 'USD' ? `${terms.currency} ` : ''}${dollars(terms.priceCents)}/${period}` : '';
@@ -1393,7 +1393,8 @@ export function renderCommissionCard(player, now = Date.now()) {
 export function renderCommissionWinback(player) {
   // Show exactly what Jest will apply (price in cents, like products).
   const offer = player.commission?.retentionOffer;
-  const terms = player.commission?.terms;
+  // Only offered with verified renewal terms (see commission-cancel in main.js).
+  const terms = usableTerms(player.commission?.terms);
   const periods = offer?.durationPeriods;
   const unit = { weekly: 'week', monthly: 'month', yearly: 'year' }[terms?.billingPeriod] || 'period';
   const cur = terms?.currency && terms.currency !== 'USD' ? `${terms.currency} ` : '';
