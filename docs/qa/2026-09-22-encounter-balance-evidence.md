@@ -315,6 +315,140 @@ Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cu
 
 Conservation: 15/15 runs PASS. Detailed daily ledgers: [JSON](artifacts/contract-economy-30-day.json).
 
+## 30-day guided-flow economy: siege walls, gems, timed drydock
+
+Added 2026-09-27; the script-3 section above is unchanged. Same seeds, start and one check-in every 24 hours, but each captain plays the shipped script-5 first session (captains rotate by seed: captain_cyborg, captain_gunner, captain_alien, captain_droid), so siege walls apply. All transitions go through production session actions; wall attempts, Rally, gem refills and drydock skips are ledgered in their own buckets (wall:*, rally, refuel-gems, ship-build-skip, hull-repair).
+
+Session order (fights-first): claim returned away team, patch the hull only if critical (production repair-hull: 25 hull for 35 credits), strategy contract, buy every affordable improvement the drydock allows (levels above 3 start a timed build that completes on a later check-in through prepareSession), attack the wall while it is on the board and fuel minus the attempt cost stays at or above the strategy reserve (at most 8 attempts), buy again, then launch the away team. Wall fights use the same disciplined crew orders as contracts. Gem policies: cautious: wall fuel reserve 3, gems never; balanced: wall fuel reserve 1, gems rally-refuel; ambitious: wall fuel reserve 0, gems all. never = no gem spends (the free first Rally is still taken); rally-refuel = paid Rally on a near miss and a 50-gem refill only when the day's contract or first wall attempt is unaffordable; all = paid Rally, a refill whenever it buys another wall attempt, and every drydock skip it can afford. No purchases, ads or force completion; wall-pack offers are recorded when production triggers them but never bought.
+
+Not modeled: Explore travel (under conversion elsewhere), so walls after the first arrive only when contract story flags open their sector; expedition gem skips; a second check-in the same day. Injuries from a same-instant claim still block that day's away launch (empty_party), as in the baseline. Worst: latest wall arrival and fall, most attempts and near-miss losses, largest gem buffer at the wall (least need for a wall pack), fewest gems earned, most gems spent, most repair credits, fewest useful sessions/upgrades/walls.
+
+| Strategy | Metric | Median | Worst seed | Worst value |
+|---|---|---:|---:|---:|
+| cautious | Useful sessions / 30 | 18 | 4219 | 17 |
+| cautious | Fuel-starved days | 0 | 4219 | 0 |
+| cautious | Upgrade days / 30 | 23 | 4219 | 23 |
+| cautious | Upgrade levels / 30 | 26 | 4219 | 26 |
+| cautious | Drydock-busy days | 0 | 4219 | 1 |
+| cautious | First wall arrival day | 3 | 4219 | 3 |
+| cautious | First wall fell on day | 3 | 4219 | 3 |
+| cautious | First wall attempts | 3 | 4219 | 3 |
+| cautious | First wall attempts / attempt day | 3 | 4219 | 3 |
+| cautious | First wall near-miss losses | 0 | 4219 | 0 |
+| cautious | Gems at first wall arrival | 0 | 4219 | 0 |
+| cautious | Walls broken / 30 days | 1 | 4219 | 1 |
+| cautious | Gems earned | 80 | 4219 | 80 |
+| cautious | Gems spent | 0 | 4219 | 0 |
+| cautious | End gems | 80 | 4219 | 80 |
+| cautious | Hull repair credits | 0 | 4219 | 0 |
+| balanced | Useful sessions / 30 | 18 | 4219 | 16 |
+| balanced | Fuel-starved days | 0 | 4219 | 0 |
+| balanced | Upgrade days / 30 | 22 | 17031 | 21 |
+| balanced | Upgrade levels / 30 | 26 | 4219 | 25 |
+| balanced | Drydock-busy days | 3 | 240911 | 4 |
+| balanced | First wall arrival day | 3 | 4219 | 3 |
+| balanced | First wall fell on day | 3 | 4219 | 3 |
+| balanced | First wall attempts | 3 | 4219 | 3 |
+| balanced | First wall attempts / attempt day | 3 | 4219 | 3 |
+| balanced | First wall near-miss losses | 0 | 4219 | 0 |
+| balanced | Gems at first wall arrival | 0 | 4219 | 0 |
+| balanced | Walls broken / 30 days | 3 | 4219 | 3 |
+| balanced | Gems earned | 120 | 4219 | 120 |
+| balanced | Gems spent | 0 | 4219 | 0 |
+| balanced | End gems | 120 | 4219 | 120 |
+| balanced | Hull repair credits | 280 | 990001 | 420 |
+| ambitious | Useful sessions / 30 | 15 | 4219 | 15 |
+| ambitious | Fuel-starved days | 0 | 4219 | 0 |
+| ambitious | Upgrade days / 30 | 17 | 4219 | 17 |
+| ambitious | Upgrade levels / 30 | 19 | 4219 | 18 |
+| ambitious | Drydock-busy days | 0 | 4219 | 0 |
+| ambitious | First wall arrival day | 3 | 4219 | 3 |
+| ambitious | First wall fell on day | 3 | 4219 | 3 |
+| ambitious | First wall attempts | 3 | 4219 | 3 |
+| ambitious | First wall attempts / attempt day | 3 | 4219 | 3 |
+| ambitious | First wall near-miss losses | 0 | 4219 | 0 |
+| ambitious | Gems at first wall arrival | 0 | 4219 | 0 |
+| ambitious | Walls broken / 30 days | 1 | 4219 | 1 |
+| ambitious | Gems earned | 80 | 4219 | 80 |
+| ambitious | Gems spent | 35 | 240911 | 55 |
+| ambitious | End gems | 45 | 4219 | 50 |
+| ambitious | Hull repair credits | 420 | 88421 | 490 |
+
+### Walls per run (fights-first)
+
+| Strategy | Seed | Captain | Wall | Arrival day | Gems at arrival | Attempts | Attempt days | Attempts / attempt day | Fell on day | Days to break | Losses | Near-miss losses | Rally free/paid | Wall-pack offer |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
+| cautious | 4219 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| cautious | 17031 | captain_gunner | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| cautious | 88421 | captain_alien | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| cautious | 240911 | captain_droid | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| cautious | 990001 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 4219 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 4219 | captain_cyborg | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 4219 | captain_cyborg | ember (160) | 19 | 70 | 4 | 1 | 4 | 19 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 17031 | captain_gunner | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 17031 | captain_gunner | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 17031 | captain_gunner | ember (160) | 19 | 70 | 4 | 1 | 4 | 19 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 88421 | captain_alien | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 88421 | captain_alien | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 88421 | captain_alien | ember (160) | 19 | 70 | 4 | 1 | 4 | 19 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 240911 | captain_droid | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 240911 | captain_droid | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 240911 | captain_droid | ember (160) | 19 | 70 | 4 | 1 | 4 | 19 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 990001 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 990001 | captain_cyborg | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 0 | 0 | 0/0 | none |
+| balanced | 990001 | captain_cyborg | ember (160) | 19 | 70 | 8 | 2 | 4 | 20 | 2 | 2 | 0 | 0/0 | none |
+| ambitious | 4219 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| ambitious | 17031 | captain_gunner | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| ambitious | 88421 | captain_alien | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| ambitious | 240911 | captain_droid | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+| ambitious | 990001 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 1 | 0 | 0/0 | none |
+
+### Gem ledger per run (fights-first)
+
+| Strategy | Seed | Earned | Daily login | Wall takedowns | Other | Spent: Rally | Spent: refill | Spent: drydock skip | End gems | Rallies free/paid/declined | Useful sessions |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
+| cautious | 4219 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 17 |
+| cautious | 17031 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 18 |
+| cautious | 88421 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 18 |
+| cautious | 240911 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 23 |
+| cautious | 990001 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 19 |
+| balanced | 4219 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/0 | 16 |
+| balanced | 17031 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/0 | 17 |
+| balanced | 88421 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/0 | 18 |
+| balanced | 240911 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/0 | 22 |
+| balanced | 990001 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/0 | 19 |
+| ambitious | 4219 | 80 | 60 | 20 | 0 | 0 | 0 | 30 | 50 | 1/0/4 | 15 |
+| ambitious | 17031 | 80 | 60 | 20 | 0 | 0 | 0 | 35 | 45 | 1/0/2 | 15 |
+| ambitious | 88421 | 80 | 60 | 20 | 0 | 0 | 0 | 35 | 45 | 1/0/1 | 15 |
+| ambitious | 240911 | 80 | 60 | 20 | 0 | 0 | 0 | 55 | 25 | 1/0/2 | 17 |
+| ambitious | 990001 | 80 | 60 | 20 | 0 | 0 | 0 | 35 | 45 | 0/0/0 | 15 |
+
+### Session-order sensitivity: away team launched before the fights
+
+Same runs, but the away team leaves first (the baseline order), so the wall and the contract are fought without it. Medians across seeds; walls broken counts every wall.
+
+| Strategy | Order | First wall fell on day | First wall attempts | Walls broken | Near-miss losses (all walls) | Paid Rallies | Gems spent | Hull repair credits | Useful sessions |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| cautious | fights-first | 3 | 3 | 1 | 0 | 0 | 0 | 0 | 18 |
+| cautious | away-first | 4 | 6 | 1 | 0 | 0 | 0 | 70 | 19 |
+| balanced | fights-first | 3 | 3 | 3 | 0 | 0 | 0 | 280 | 18 |
+| balanced | away-first | 3 | 4 | 2 | 8 | 1 | 60 | 1960 | 18 |
+| ambitious | fights-first | 3 | 3 | 1 | 0 | 0 | 35 | 420 | 15 |
+| ambitious | away-first | 3 | 4 | 1 | 0 | 1 | 70 | 980 | 12 |
+
+### Script-3 baseline hull lockout (context for the section above)
+
+The historical script-3 runs never patch the hull. Once it reaches the critical floor every launch is refused, which the baseline records as reward_unavailable on contract-accept. Days ending in that state, per strategy (median / worst):
+
+| Strategy | Hull-locked days (median) | Worst seed | Worst value |
+|---|---:|---:|---:|
+| cautious | 0 | 4219 | 0 |
+| balanced | 13 | 240911 | 21 |
+| ambitious | 25 | 990001 | 26 |
+
+Conservation: 15/15 guided runs PASS (fights-first), 15/15 PASS (away-first). Guided daily ledgers are in the same JSON under guided.runs; the away-first set keeps summaries only.
+
 ## Phone-sized runtime evidence
 
 This section is appended by both report generators from this file, so regenerating the balance and economy reports preserves the browser evidence. It is a local production-build check, not a published Pages or Jest build and not physical-device proof.
