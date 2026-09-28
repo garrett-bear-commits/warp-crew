@@ -337,6 +337,7 @@ function patchShell(root, ctx) {
     pendingCombat = null,
     combatOrders = null,
     activeContractView = null,
+    activeTravelView = null,
     contractReview = null,
     awayPicker = null,
     selectedRoom = null,
@@ -431,7 +432,7 @@ function patchShell(root, ctx) {
     : firstSession || v5Session ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'captain-marker', v5Session && phase === 'assign' ? renderCaptainMarker(player) : '');
   setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
-  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, cameraCueDismissed: root._wcCameraCueDismissed, captainCardOpen: root._wcCaptainCardOpen }));
+  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, activeTravelView, cameraCueDismissed: root._wcCameraCueDismissed, captainCardOpen: root._wcCaptainCardOpen }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
@@ -548,9 +549,11 @@ function renderV5AssignmentHotspot(player) {
   return `<button type="button" class="hotspot guided-station" data-act="station-assign" data-room="${escapeHtml(room.id)}" data-id="${escapeHtml(member.instanceId)}" data-station="${station}" style="${roomStyle(room)}" aria-label="Assign ${escapeHtml(member.name)} to ${escapeHtml(STATIONS[station].label)}"><span class="ship-signal" aria-hidden="true">${escapeHtml(STATIONS[station].label)}</span></button>`;
 }
 
-export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, cameraCueDismissed = false, captainCardOpen = false }) {
-  if (isHome && player.activeEncounter) return renderShipEncounter({ ...activeContractView,
-    encounter: { ...activeContractView?.encounter, version: player.activeEncounter.version,
+export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, activeTravelView = null, cameraCueDismissed = false, captainCardOpen = false }) {
+  // Contract confrontations and Explore jumps share one ship fight panel.
+  const fightView = player.activeContract ? activeContractView : activeTravelView;
+  if (isHome && player.activeEncounter) return renderShipEncounter({ ...fightView,
+    encounter: { ...fightView?.encounter, version: player.activeEncounter.version,
       weaponDisabled: player.activeEncounter.orders?.targetWeapons?.used === true
         && player.activeEncounter.enemy?.weaponDisabledThroughBeat >= player.activeEncounter.beat } });
   if (isHome && player.tutorial?.script === 5 && !player.tutorial.completed) {
@@ -1045,7 +1048,7 @@ function renderNodeCard(n, player, here, step) {
   return `
     <button class="map-node hazard-${meta.hazard}${worn} ${hereCls} ${spot}" data-act="travel-to" data-node="${n.id}"
       data-spot-target="node-${n.id}"
-      ${n.id === here || player.activeContract ? 'disabled' : ''} ${player.activeContract ? 'aria-describedby="explore-contract-lock"' : ''}>
+      ${n.id === here || player.activeContract || player.activeTravelFight ? 'disabled' : ''} ${player.activeContract ? 'aria-describedby="explore-contract-lock"' : player.activeTravelFight ? 'aria-describedby="explore-fight-lock"' : ''}>
       <img class="node-thumb" src="${art}" alt="" />
       <span class="map-title">${escapeHtml(n.name)}</span>
       <span class="map-meta">${cost}F · ${escapeHtml(hint)}${decay}</span>
@@ -1087,6 +1090,7 @@ export function renderMissions(player, now, model = {}) {
     <div class="panel">
       <h2>Explore</h2>
       ${player.activeContract ? '<p class="contract-consequence" id="explore-contract-lock">Finish or abandon the active contract first.</p>' : ''}
+      ${!player.activeContract && player.activeTravelFight ? `<p class="contract-consequence" id="explore-fight-lock">${player.activeTravelFight.stage === 'return' ? 'Bring the prize aboard on the Ship tab first.' : 'Your crew is fighting. Return to the Ship tab.'}</p>` : ''}
       ${nodes.length === 0 ? '<div class="empty-hint">No routes.</div>' : ''}
       ${tight ? `<div class="map-grid">${nodes.map((n) => renderNodeCard(n, player, here, step)).join('')}</div>`
         : mapBlock('Spur', spur)

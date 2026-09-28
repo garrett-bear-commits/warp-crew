@@ -47,8 +47,17 @@ const exploreUi = sessionModels(explorer, { pendingCombat }).combatOrders;
 assert.deepEqual(exploreUi.tell, ENCOUNTERS_V1.find((x) => x.id === pendingCombat.encounter.id).tell);
 assert.doesNotMatch(exploreUi.tell.reason, /guaranteed/i, 'normal Scout encounters must not promise a tutorial guarantee');
 assert.equal(exploreUi.orders.filter((x) => x.recommended).length, 1);
+// Legacy migration path: a pending jump held in memory from before the conversion still resolves by order.
 const exploreResult = sessionAction(explorer, { pendingCombat }, 'combat-order', { order: 'burn' }, { rng: () => 0 });
 const exploreEvent = exploreResult.events.find((x) => x.event === 'combat_order_selected');
 assert.equal(exploreEvent.fields.recommendedOrder, 'brace');
 assert.equal(exploreEvent.fields.followedRecommendation, false);
+// New Explore jumps are crew fights that surface the same authored tell on the ship panel.
+const jumped = sessionAction(explorer, {}, 'travel-to', { node: 'lane_a' }, { rng: () => 0.5 });
+assert.equal(jumped.ui.pendingCombat, null);
+const travelView = sessionModels(jumped.player, {}).activeTravelView.encounter;
+const scout = ENCOUNTERS_V1.find((x) => x.id === 'pirate_scout');
+assert.equal(travelView.enemyName, scout.name);
+assert.deepEqual(travelView.tell, { label: scout.tell.label, text: scout.tell.text });
+assert.ok(['Favorable', 'Even', 'Dangerous', 'Deadly'].includes(travelView.threatLabel));
 console.log('encounter_intelligence.test.mjs OK');

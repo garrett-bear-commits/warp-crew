@@ -80,7 +80,7 @@ export function renderShipEncounter(model = {}) {
   if (!model.encounter) return '';
   const salvage = model.encounter.result === 'loss' && model.encounter.settled;
   const claim = model.encounter.result === 'win' || salvage
-    ? `<button type="button" class="primary" data-act="contract-claim" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}">${salvage ? 'Collect salvage' : 'Bring cargo aboard'}</button>`
+    ? `<button type="button" class="primary" data-act="${e(model.claimAct || 'contract-claim')}" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}">${salvage ? 'Collect salvage' : 'Bring cargo aboard'}</button>`
     : '';
   return `<aside class="ship-encounter" aria-label="Crew combat controls">${renderEncounter(model.encounter, { compact: true })}${claim}</aside>`;
 }

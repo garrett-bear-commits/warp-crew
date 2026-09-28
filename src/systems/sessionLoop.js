@@ -25,6 +25,7 @@ import { refuelWithGems, RALLY } from './gemSinks.js';
 import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
 import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
+import { beginTravelFight, applyTravelFightAction, claimTravelFight } from './travelFight.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -87,6 +88,66 @@ function combatModel(encounter, orders, guaranteed, extra = {}) {
     tell: encounter.tell, ...extra };
 }
 
+/** Ship-panel model for any live crew fight (contract or Explore jump). */
+function encounterView(player, encounter, { settled, ui = {}, now = Date.now() }) {
+  const options = encounter.orderWindow?.orderOptions || {};
+  return {
+    acceptanceId: encounter.acceptanceId,
+    revision: encounter.revision,
+    version: encounter.version,
+    beat: encounter.beat,
+    kind: encounter.kind,
+    braceUsed: encounter.orders.brace.used,
+    beatMs: beatDelayMs(encounter),
+    targetWeaponsUsed: encounter.orders.targetWeapons?.used === true,
+    retryBeat: (encounter.kind === 'normal' || (encounter.kind === 'guided' && encounter.version === 2
+      && encounter.orders.targetWeapons?.used === true)) && !encounter.result
+      && ui.guidedBeatSaveFailed?.acceptanceId === encounter.acceptanceId
+      && ui.guidedBeatSaveFailed?.revision === encounter.revision,
+    result: encounter.result,
+    settled,
+    downed: encounter.phase === 'downed' ? { enemyHull: encounter.enemy.hull, free: player.flags?.rallyFreeUsed !== true,
+      rallyCost: player.flags?.rallyFreeUsed ? RALLY.gems : 0, canAfford: (player.wallet?.gems || 0) >= (player.flags?.rallyFreeUsed ? RALLY.gems : 0) } : null,
+    lossReason: encounter.lossReason,
+    hull: encounter.hull,
+    shield: encounter.shield,
+    systems: encounter.systems,
+    enemyHull: encounter.enemy.hull,
+    ...(encounter.kind === 'normal' ? (() => {
+      const catalog = encounterById(encounter.encounterId);
+      return { enemyName: catalog.name, tell: catalog.tell ? { label: catalog.tell.label, text: catalog.tell.text } : null, threat: encounter.enemy.threat ?? null, threatLabel: threatLabel(encounter.enemy.threat ?? null) };
+    })() : {}),
+    target: encounter.orderWindow?.target || encounter.enemy.target,
+    weaponDisabled: encounter.version === 2 && encounter.enemy.weaponDisabledThroughBeat > 0
+      && encounter.enemy.weaponDisabledThroughBeat >= encounter.beat,
+    beatsToImpact: encounter.orderWindow?.beatsToImpact
+      || (encounter.beat > 0 && encounter.enemy.pattern === 'charging_volley' ? 3 - (encounter.beat % 3) : null),
+    outputs: encounter.outputs,
+    orders: Object.entries(options).map(([id, option]) => ({ id, cost: option.cost.shield,
+      available: option.available, reason: option.reason, cooldownBeats: option.cooldownBeats,
+      effectLabel: id === 'brace' ? 'Blocks the next hit' : id === 'target_weapons' ? 'Disrupt the pirate weapons' : 'Restore up to 8 hull',
+      cooldownLabel: id === 'brace' && encounter.kind === 'guided' ? 'Once this fight'
+        : `${id === 'brace' ? 3 : 4}-beat cooldown` })),
+    boarders: encounter.boarders && encounter.boarders.phase !== 'none' ? (() => {
+      const b = encounter.boarders;
+      const defender = b.defenderId ? player.crew.find(member => member.instanceId === b.defenderId) : null;
+      const candidate = repelStatus(encounter).available ? pickDefender(player, now) : null;
+      return { phase: b.phase, target: STATIONS[b.target]?.label || b.target, strength: b.strength,
+        system: encounter.systems?.[b.target] ?? null, defenderName: defender?.name || null,
+        canRepel: Boolean(candidate), repelName: candidate?.name || null,
+        repelCost: candidate?.station ? `${candidate.name} leaves ${STATIONS[candidate.station].label}` : candidate ? `${candidate.name} goes` : null };
+    })() : null,
+    tactics: Object.keys(encounter.tactics || {}).map(id => {
+      const status = tacticStatus(encounter, id);
+      const noFuel = id === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel;
+      return { id, available: status.available && !noFuel, reason: noFuel && status.available ? 'not_enough_fuel' : status.reason,
+        chance: status.chance ?? null, used: encounter.tactics[id].uses > 0,
+        success: id === 'board' ? encounter.tactics.board.success : null,
+        burning: id === 'burn' && encounter.tactics.burn.throughBeat >= encounter.beat && encounter.tactics.burn.uses > 0 };
+    }),
+  };
+}
+
 export function sessionModels(player, ui = {}, now = Date.now()) {
   const contract = player.activeContract;
   const stations = stationOutputs(player, now);
@@ -94,7 +155,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
     contractBoard: player.contractBoard ? { ...player.contractBoard, offers: player.contractBoard.offers.map(offer => {
       const rewardBand = contractRewardBand(player, offer, { now });
       return { ...offer, rewardBand, primaryReward: rewardBand.label, enabled: rewardBand.available && !player.contractBoard.completedOfferIds.includes(offer.id) };
-    }) } : null, activeContractView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {} };
+    }) } : null, activeContractView: null, activeTravelView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {} };
   if (ui.reviewedOfferId) {
     const review = reviewContractOffer(player, ui.reviewedOfferId);
     if (review.ok) {
@@ -129,63 +190,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
       abandon: contract.profile === 'distress' || player.activeEncounter ? null : { enabled: true, label: contract.stage === 'briefing' ? 'Abandon' : 'Break contract', consequence: 'No pending reward. Spent fuel is not refunded.' },
     };
     if (player.activeEncounter) {
-      const encounter = player.activeEncounter;
-      const options = encounter.orderWindow?.orderOptions || {};
-      models.activeContractView.encounter = {
-        acceptanceId: encounter.acceptanceId,
-        revision: encounter.revision,
-        version: encounter.version,
-        beat: encounter.beat,
-        kind: encounter.kind,
-        braceUsed: encounter.orders.brace.used,
-        beatMs: beatDelayMs(encounter),
-        targetWeaponsUsed: encounter.orders.targetWeapons?.used === true,
-        retryBeat: (encounter.kind === 'normal' || (encounter.kind === 'guided' && encounter.version === 2
-          && encounter.orders.targetWeapons?.used === true)) && !encounter.result
-          && ui.guidedBeatSaveFailed?.acceptanceId === encounter.acceptanceId
-          && ui.guidedBeatSaveFailed?.revision === encounter.revision,
-        result: encounter.result,
-        settled: contract.stage === 'return',
-        downed: encounter.phase === 'downed' ? { enemyHull: encounter.enemy.hull, free: player.flags?.rallyFreeUsed !== true,
-          rallyCost: player.flags?.rallyFreeUsed ? RALLY.gems : 0, canAfford: (player.wallet?.gems || 0) >= (player.flags?.rallyFreeUsed ? RALLY.gems : 0) } : null,
-        lossReason: encounter.lossReason,
-        hull: encounter.hull,
-        shield: encounter.shield,
-        systems: encounter.systems,
-        enemyHull: encounter.enemy.hull,
-        ...(encounter.kind === 'normal' ? (() => {
-          const catalog = encounterById(encounter.encounterId);
-          return { enemyName: catalog.name, tell: catalog.tell ? { label: catalog.tell.label, text: catalog.tell.text } : null, threat: encounter.enemy.threat ?? null, threatLabel: threatLabel(encounter.enemy.threat ?? null) };
-        })() : {}),
-        target: encounter.orderWindow?.target || encounter.enemy.target,
-        weaponDisabled: encounter.version === 2 && encounter.enemy.weaponDisabledThroughBeat > 0
-          && encounter.enemy.weaponDisabledThroughBeat >= encounter.beat,
-        beatsToImpact: encounter.orderWindow?.beatsToImpact
-          || (encounter.beat > 0 && encounter.enemy.pattern === 'charging_volley' ? 3 - (encounter.beat % 3) : null),
-        outputs: encounter.outputs,
-        orders: Object.entries(options).map(([id, option]) => ({ id, cost: option.cost.shield,
-          available: option.available, reason: option.reason, cooldownBeats: option.cooldownBeats,
-          effectLabel: id === 'brace' ? 'Blocks the next hit' : id === 'target_weapons' ? 'Disrupt the pirate weapons' : 'Restore up to 8 hull',
-          cooldownLabel: id === 'brace' && encounter.kind === 'guided' ? 'Once this fight'
-            : `${id === 'brace' ? 3 : 4}-beat cooldown` })),
-        boarders: encounter.boarders && encounter.boarders.phase !== 'none' ? (() => {
-          const b = encounter.boarders;
-          const defender = b.defenderId ? player.crew.find(member => member.instanceId === b.defenderId) : null;
-          const candidate = repelStatus(encounter).available ? pickDefender(player, now) : null;
-          return { phase: b.phase, target: STATIONS[b.target]?.label || b.target, strength: b.strength,
-            system: encounter.systems?.[b.target] ?? null, defenderName: defender?.name || null,
-            canRepel: Boolean(candidate), repelName: candidate?.name || null,
-            repelCost: candidate?.station ? `${candidate.name} leaves ${STATIONS[candidate.station].label}` : candidate ? `${candidate.name} goes` : null };
-        })() : null,
-        tactics: Object.keys(encounter.tactics || {}).map(id => {
-          const status = tacticStatus(encounter, id);
-          const noFuel = id === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel;
-          return { id, available: status.available && !noFuel, reason: noFuel && status.available ? 'not_enough_fuel' : status.reason,
-            chance: status.chance ?? null, used: encounter.tactics[id].uses > 0,
-            success: id === 'board' ? encounter.tactics.board.success : null,
-            burning: id === 'burn' && encounter.tactics.burn.throughBeat >= encounter.beat && encounter.tactics.burn.uses > 0 };
-        }),
-      };
+      models.activeContractView.encounter = encounterView(player, player.activeEncounter, { settled: contract.stage === 'return', ui, now });
     } else if (contract.stage === 'confrontation') {
       const encounter = encounterById(contract.encounterId);
       const guaranteed = contract.profile === 'distress';
@@ -202,6 +207,16 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
       models.activeContractView.combat = combatModel(encounter, orders, guaranteed, { legacy: true, action: 'contract-order', revision: contract.revision, acceptanceId: contract.acceptanceId, stationOutputs: stations });
     }
   }
+  const travelFight = !contract ? player.activeTravelFight : null;
+  if (travelFight && player.activeEncounter) {
+    models.activeTravelView = {
+      acceptanceId: travelFight.fightId, revision: travelFight.revision, stage: travelFight.stage,
+      claimAct: 'travel-claim', destinationName: NODES[travelFight.nodeId]?.name || travelFight.nodeId,
+      result: travelFight.result ? { ...travelFight.result, rewardLabel: formatReward(travelFight.result.rewards) } : null,
+      encounter: encounterView(player, player.activeEncounter, { settled: travelFight.stage === 'return', ui, now }),
+    };
+  }
+  // Legacy Explore order menu: only an in-memory pending jump from before the crew-fight conversion reaches this.
   if (ui.pendingCombat) {
     const preview = ui.pendingCombat;
     const orders = listCombatOrders().map(({ id }) => orderDisplay(id, previewCombatOrder({
@@ -364,6 +379,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   } else if (act === 'daily-improve') {
     Object.assign(nextUi, improvementFocus(player));
   } else if (act === 'contract-review') {
+    if (player.activeTravelFight) return fail('travel_fight_active');
     const review = reviewContractOffer(player, data.offer);
     if (!review.ok || player.activeContract || player.contractBoard.completedOfferIds.includes(data.offer)) return fail(review.reason || 'offer_unavailable');
     nextUi.reviewedOfferId = data.offer;
@@ -371,6 +387,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     tutorial('contract_reviewed', { offerId: data.offer });
   } else if (act === 'contract-review-close') nextUi.reviewedOfferId = null;
   else if (act === 'contract-accept') {
+    if (player.activeTravelFight) return fail('travel_fight_active');
     const review = reviewContractOffer(player, data.offer);
     if (review.ok && !contractRewardBand(player, review.offer, { now }).available) return fail('reward_unavailable');
     const res = acceptContract(player, data.offer, now);
@@ -380,15 +397,24 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     tutorial('contract_accepted');
     Object.assign(nextUi, { reviewedOfferId: null, tab: 'missions', selectedRoom: null, missionView: player.tutorial.phase === 'away' ? 'away' : 'contracts' });
   } else if (['encounter-advance', 'encounter-order', 'encounter-recover'].includes(act)) {
+    const travel = Boolean(player.activeTravelFight && !player.activeContract);
+    const beatInput = { acceptanceId: data.acceptanceId, revision: data.revision, order: act === 'encounter-order' ? data.order : null };
     const result = act === 'encounter-recover'
-      ? recoverEncounter(player, data)
-      : applyEncounterAction(player, { acceptanceId: data.acceptanceId, revision: data.revision,
-        order: act === 'encounter-order' ? data.order : null }, now);
+      ? travel ? fail('invalid_encounter_state') : recoverEncounter(player, data)
+      : travel ? applyTravelFightAction(player, beatInput, now) : applyEncounterAction(player, beatInput, now);
     if (!result.ok) return result;
     player = result.player;
     events.push(fromAnalytics(result.analytics));
     if (act === 'encounter-recover') {
       Object.assign(nextUi, { tab: 'ship', selectedRoom: 'engineering' });
+    } else if (travel) {
+      for (const beatEvent of result.events) events.push(event('encounter_event', { acceptanceId: data.acceptanceId, beat: player.activeEncounter.beat, source: 'travel', ...beatEvent }));
+      if (player.activeTravelFight.stage === 'return') {
+        const settled = player.activeTravelFight.result;
+        events.push(event('combat', { success: settled.success, encounter: player.activeTravelFight.encounterId, crewFight: true, beats: player.activeEncounter.beat }));
+        Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
+      }
+      effect = { kind: 'encounter-beat', events: result.events, outcome: player.activeEncounter.result };
     } else {
       for (const beatEvent of result.events) events.push(event('encounter_event', { acceptanceId: data.acceptanceId, beat: player.activeEncounter.beat, ...beatEvent }));
       if (player.activeEncounter.result === 'win') {
@@ -517,11 +543,18 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   } else if (act === 'travel-to') {
     if (player.activeContract) return fail('active_contract');
     if (isTutorialActive(player)) return fail('tutorial_contract_required');
-    if (ui.pendingCombat) return fail('combat_pending');
+    if (ui.pendingCombat || player.activeTravelFight || player.activeEncounter) return fail('combat_pending');
     const preview = previewTravel(player, data.node, { rng });
     if (!preview.ok) return fail(preview.reason);
-    if (preview.needsAssists) nextUi.pendingCombat = preview;
-    else {
+    if (preview.needsAssists) {
+      // Explore fights are real-time crew fights on the ship, like contract confrontations.
+      const res = beginTravelFight(player, preview, now);
+      if (!res.ok) return fail(res.reason);
+      player = res.player;
+      events.push(event('travel', { node: data.node, kind: 'combat' }), fromAnalytics(res.analytics));
+      Object.assign(nextUi, { tab: 'ship', selectedRoom: null, pendingCombat: null });
+      effect = { kind: 'encounter-beat', events: [], outcome: null };
+    } else {
       const res = commitTravel(player, preview, { rng });
       if (!res.ok) return res;
       player = res.player;
@@ -529,8 +562,17 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       events.push(event('travel', { node: data.node, kind: res.result.kind }));
       effect = { kind: 'travel', result: res.result };
     }
+  } else if (act === 'travel-claim') {
+    const res = claimTravelFight(player, data);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    tutorial('travel_success');
+    events.push(fromAnalytics(res.analytics));
+    Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
+    effect = { kind: 'travel', result: res.result };
   } else if (act === 'combat-order') {
-    if (!ui.pendingCombat || player.activeContract) return fail('no_pending_combat');
+    // Legacy dice resolution, kept only for a pending jump opened before crew-fight conversion.
+    if (!ui.pendingCombat || player.activeContract || player.activeTravelFight) return fail('no_pending_combat');
     const preview = ui.pendingCombat;
     const shown = sessionModels(player, ui, now).combatOrders.orders.find(x => x.id === data.order);
     if (!shown?.enabled) return fail('order_unavailable');

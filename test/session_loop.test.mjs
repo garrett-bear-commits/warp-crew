@@ -130,21 +130,30 @@ assert.deepEqual(order, []);
 persistSessionTransition(result, { save: () => { order.push('save'); return true; }, publish: () => order.push('publish'), capture: () => order.push('event'), animate: () => order.push('animation') });
 assert.deepEqual(order, ['save', 'publish', 'event', 'animation']);
 
-// The live pending Explore sheet must be operable and commit the chosen order.
+// An Explore jump into a fight opens the real-time crew fight on the ship, not the old % menu.
 player = prepareSession({ ...createNewPlayer({ tutorialScript: 4 }), tutorial: { script: 3, completed: true, phase: 'done' } });
 ui = { missionView: 'explore' };
-act('travel-to', { node: 'lane_a' }, { rng: () => 0.5 });
-assert.ok(ui.pendingCombat);
-model = sessionModels(player, ui);
-assert.deepEqual(model.combatOrders.orders.map(x => x.id), ['brace', 'burn', 'board']);
-assert.match(renderCombatOrders(model.combatOrders), /data-order="burn"/);
 const pendingFuel = player.wallet.fuel;
-const travelCost = ui.pendingCombat.fuelCost;
-act('combat-order', { order: 'burn' }, { rng: () => 0 });
+act('travel-to', { node: 'lane_a' }, { rng: () => 0.5 });
 assert.equal(ui.pendingCombat, null);
-assert.equal(player.wallet.fuel, pendingFuel - travelCost - 1);
+assert.equal(ui.tab, 'ship');
+assert.equal(player.activeTravelFight.stage, 'fight');
+assert.equal(player.activeEncounter.kind, 'normal');
+assert.equal(player.wallet.fuel, pendingFuel - player.activeTravelFight.fuelSpent);
+model = sessionModels(player, ui);
+assert.equal(model.combatOrders, null);
+assert.equal(model.activeTravelView.encounter.enemyName, 'Pirate Scout');
+for (let i = 0; i < 40 && !player.activeEncounter.result; i++) {
+  const order = player.activeEncounter.phase === 'downed' ? 'concede' : null;
+  act(order ? 'encounter-order' : 'encounter-advance', { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision, order });
+}
+assert.equal(player.activeTravelFight.stage, 'return');
 assert.equal(events.at(-1).event, 'combat');
-assert.ok(events.some(x => x.event === 'combat_order_selected' && x.fields.order === 'burn'));
+act('travel-claim', { acceptanceId: player.activeTravelFight.fightId, revision: player.activeTravelFight.revision });
+assert.equal(player.activeTravelFight, null);
+assert.equal(player.location, 'lane_a');
+// The legacy order menu remains only for a pending jump held in memory from before the conversion.
+assert.match(renderCombatOrders({ orders: [{ id: 'burn', name: 'Burn', enabled: true }] }), /data-order="burn"/);
 
 // Old DOM identity cannot mutate a new acceptance at the same revision.
 act('contract-accept', { offer: player.contractBoard.offers[0].id });
