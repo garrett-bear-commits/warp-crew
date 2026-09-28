@@ -164,30 +164,20 @@ export function beginContractEncounter(player, now = Date.now()) {
   };
 }
 
-function validSnapshot(encounter, contract, tutorial) {
-  // New-mode entry paths are distress Launch (one route action) and any
-  // route choice into a confrontation (Launch plus choice). Every later contract revision is a beat.
-  const entryRevision = contract.profile === 'distress' ? 1
-    : ['secure', 'push'].includes(contract.choiceId) ? 2 : null;
-  if (!encounter || contract.encounterMode !== 'crew' || ![1, 2].includes(encounter.version) || encounter.acceptanceId !== contract.acceptanceId
-    || (tutorial?.script === 5 && !tutorial.completed && ['fight', 'claim'].includes(tutorial.phase)
-      && !isCanonicalGuidedContract(contract))
-    || entryRevision === null
-    || (contract.profile === 'distress'
-      && (tutorial?.script === 4 ? encounter.version !== 1
-        : tutorial?.script === 5 ? encounter.version !== 2 : true))
-    || encounter.encounterId !== contract.encounterId || !['guided', 'normal'].includes(encounter.kind)
-    || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
-    || !Number.isInteger(encounter.seed) || encounter.seed !== contract.routeSeed
+/** Shape and rule checks for any saved crew-fight snapshot, independent of what it is bound to. */
+export function validEncounterBody(encounter) {
+  if (!encounter || ![1, 2].includes(encounter.version) || !['guided', 'normal'].includes(encounter.kind)
+    || !Number.isInteger(encounter.seed)
     || !Number.isInteger(encounter.beat) || encounter.beat < 0
     || !Number.isInteger(encounter.revision) || encounter.revision !== encounter.beat
-    || contract.revision !== entryRevision + encounter.beat
     || !Number.isInteger(encounter.eventIndex) || encounter.eventIndex < encounter.beat
     || !(encounter.result === null ? ['combat', 'downed'].includes(encounter.phase) : encounter.phase === 'complete')
     || (encounter.phase === 'downed' && (encounter.hull !== 1 || encounter.kind !== 'normal'))
     || (Object.hasOwn(encounter, 'rally') && (encounter.kind !== 'normal' || !record(encounter.rally) || encounter.rally.used !== true))
     || !numberIn(encounter.hull, 1, 30) || !numberIn(encounter.shield, 0, 12)
     || !record(encounter.enemy) || !numberIn(encounter.enemy.hull, 0, 42)
+    // A live fight always has an enemy standing: zero hull resolves as a win on the same beat.
+    || (encounter.result === null && encounter.enemy.hull === 0)
     || (Object.hasOwn(encounter.enemy, 'damage') && (encounter.kind !== 'normal' || !Number.isInteger(encounter.enemy.damage)
       || !numberIn(encounter.enemy.damage, 12, 45) || !numberIn(encounter.enemy.threat, THREAT_RANGE[0], THREAT_RANGE[1])
       || encounter.enemy.damage !== enemyVolleyDamage(encounter.enemy.threat)))
@@ -209,6 +199,26 @@ function validSnapshot(encounter, contract, tutorial) {
     || (encounter.result !== null && !['win', 'loss'].includes(encounter.result))) return false;
   if (encounter.result === 'win' && (encounter.beat === 0 || encounter.enemy.hull !== 0 || encounter.orderWindow !== null)) return false;
   if (encounter.result === 'loss' && (encounter.beat === 0 || encounter.hull !== 1 || encounter.enemy.hull <= 0 || encounter.orderWindow !== null)) return false;
+  return true;
+}
+
+function validSnapshot(encounter, contract, tutorial) {
+  // New-mode entry paths are distress Launch (one route action) and any
+  // route choice into a confrontation (Launch plus choice). Every later contract revision is a beat.
+  const entryRevision = contract.profile === 'distress' ? 1
+    : ['secure', 'push'].includes(contract.choiceId) ? 2 : null;
+  if (!encounter || contract.encounterMode !== 'crew' || encounter.acceptanceId !== contract.acceptanceId
+    || (tutorial?.script === 5 && !tutorial.completed && ['fight', 'claim'].includes(tutorial.phase)
+      && !isCanonicalGuidedContract(contract))
+    || entryRevision === null
+    || (contract.profile === 'distress'
+      && (tutorial?.script === 4 ? encounter.version !== 1
+        : tutorial?.script === 5 ? encounter.version !== 2 : true))
+    || encounter.encounterId !== contract.encounterId
+    || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
+    || encounter.seed !== contract.routeSeed
+    || contract.revision !== entryRevision + encounter.beat
+    || !validEncounterBody(encounter)) return false;
   if (contract.stage === 'return') {
     const settled = (encounter.result === 'win' && contract.result?.success === true)
       || (encounter.result === 'loss' && contract.profile !== 'distress' && contract.result?.success === false);
@@ -221,6 +231,8 @@ function validSnapshot(encounter, contract, tutorial) {
 export function normalizeEncounterState(player) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
+  // A travel fight owns the encounter when no contract is active; travelFight.js validates that binding.
+  if (!contract && player?.activeTravelFight) return player;
   if (!contract) return encounter ? { ...player, activeEncounter: null } : player;
   if (!encounter && contract.encounterMode !== 'crew') return player;
   if (validSnapshot(encounter, contract, player.tutorial)) return player;
@@ -247,19 +259,12 @@ export function normalizeEncounterState(player) {
   };
 }
 
-export function applyEncounterAction(player, { acceptanceId, revision, order = null } = {}, now = Date.now()) {
-  const contract = player?.activeContract;
-  const encounter = player?.activeEncounter;
-  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
-    return { ok: false, reason: 'invalid_encounter_state', player };
-  }
-  if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
-    return { ok: false, reason: 'stale_encounter_action', player };
-  }
-  if (encounter.result) return { ok: false, reason: 'encounter_finished', player };
-  if (order === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel) return { ok: false, reason: 'not_enough_fuel', player };
+/** One committed beat for any saved crew fight: order costs, current station outputs, deterministic advance. */
+export function stepEncounter(player, encounter, order = null, now = Date.now()) {
+  if (encounter.result) return { ok: false, reason: 'encounter_finished' };
+  if (order === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel) return { ok: false, reason: 'not_enough_fuel' };
   const rallyCost = order === 'rally' ? (player.flags?.rallyFreeUsed ? RALLY.gems : 0) : 0;
-  if ((player.wallet?.gems ?? 0) < rallyCost) return { ok: false, reason: 'not_enough_gems', player };
+  if ((player.wallet?.gems ?? 0) < rallyCost) return { ok: false, reason: 'not_enough_gems' };
 
   const outputs = stationOutputs(player, now);
   const input = {
@@ -269,23 +274,38 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
   };
   const defender = order === 'repel' ? pickDefender(player, now) : null;
   const advanced = advanceEncounter(input, order, { defender });
-  if (advanced.ok === false) return { ok: false, reason: advanced.reason, player };
-  let nextContract = { ...contract, revision: contract.revision + 1 };
-  let nextPlayer = { ...player, activeEncounter: advanced.state, activeContract: nextContract };
+  if (advanced.ok === false) return { ok: false, reason: advanced.reason };
+  let nextPlayer = { ...player, activeEncounter: advanced.state };
   if (order === 'burn') nextPlayer = { ...nextPlayer, wallet: { ...nextPlayer.wallet, fuel: nextPlayer.wallet.fuel - BURN.fuel } };
   if (order === 'rally') {
     // The first Rally is free, to teach it; later ones cost gems.
     nextPlayer = { ...nextPlayer, wallet: { ...nextPlayer.wallet, gems: nextPlayer.wallet.gems - rallyCost },
       flags: { ...(nextPlayer.flags || {}), rallyFreeUsed: true } };
   }
-  if (advanced.state.result === 'win' || (advanced.state.result === 'loss' && contract.profile !== 'distress')) {
-    const payout = resolveSimulatedCombatPayout(nextPlayer, nextContract, advanced.state, now);
+  return { ok: true, player: nextPlayer, state: advanced.state, events: advanced.events };
+}
+
+export function applyEncounterAction(player, { acceptanceId, revision, order = null } = {}, now = Date.now()) {
+  const contract = player?.activeContract;
+  const encounter = player?.activeEncounter;
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
+    return { ok: false, reason: 'invalid_encounter_state', player };
+  }
+  if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
+    return { ok: false, reason: 'stale_encounter_action', player };
+  }
+  const step = stepEncounter(player, encounter, order, now);
+  if (!step.ok) return { ok: false, reason: step.reason, player };
+  let nextContract = { ...contract, revision: contract.revision + 1 };
+  let nextPlayer = { ...step.player, activeContract: nextContract };
+  if (step.state.result === 'win' || (step.state.result === 'loss' && contract.profile !== 'distress')) {
+    const payout = resolveSimulatedCombatPayout(nextPlayer, nextContract, step.state, now);
     nextPlayer = payout.player;
     nextContract = { ...nextContract, stage: 'return', result: payout.result };
     nextPlayer = { ...nextPlayer, activeContract: nextContract };
   }
-  return { ok: true, player: nextPlayer, events: advanced.events,
-    analytics: { event: 'encounter_beat', acceptanceId, beat: advanced.state.beat, order, result: advanced.state.result } };
+  return { ok: true, player: nextPlayer, events: step.events,
+    analytics: { event: 'encounter_beat', acceptanceId, beat: step.state.beat, order, result: step.state.result } };
 }
 
 export function recoverEncounter(player, { acceptanceId, revision } = {}) {

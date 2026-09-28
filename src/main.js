@@ -127,6 +127,8 @@ const SESSION_ERROR_COPY = {
   not_enough_gems: 'Not enough gems.',
   no_build: 'Nothing is building in the drydock.',
   save_failed: 'Could not save. Try again.',
+  travel_fight_active: 'Finish the fight on the Ship tab first.',
+  combat_pending: 'Finish the fight on the Ship tab first.',
   tutorial_action_locked: 'Finish the current step first.',
   tutorial_station_required: 'Assign your crew member to the required station first.',
   brace_required: 'Brace before the pirate fires.',
@@ -331,6 +333,7 @@ function hydratePlayer() {
   tryResolveExpedition();
   player = prepareSession(player, trustedNow());
   if (player.activeContract?.stage === 'return') { tab = 'ship'; selectedRoom = 'cargo'; }
+  else if (player.activeTravelFight) { tab = 'ship'; selectedRoom = null; }
   else if (player.tutorial?.phase === 'away') sessionUi.missionView = 'away';
 }
 
@@ -684,7 +687,7 @@ async function handleAction(act, data = {}) {
       pushLog(message);
       showToast({ title: message });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
-    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip'].includes(act)) {
+    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'travel-claim', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip'].includes(act)) {
       await refreshNotifs();
     }
     render();
@@ -967,9 +970,9 @@ async function handleAction(act, data = {}) {
 function logTravelResult(r) {
   const pay = r.rewards ? formatReward(r.rewards) : '';
   if (r.combat) {
-    const a = r.combat.orderId || 'brace';
     const hurt = r.injured ? ` · ${r.injured} injured` : '';
-    pushLog(`${r.combat.encounter.name}: ${r.combat.log} [order: ${a}]${pay ? ` · ${pay}` : ''}${hurt}`);
+    const how = r.combat.crewFight ? `${r.combat.success ? 'won' : 'salvage'} in ${r.combat.beats} beats` : `order: ${r.combat.orderId || 'brace'}`;
+    pushLog(`${r.combat.encounter.name}: ${r.combat.log} [${how}]${pay ? ` · ${pay}` : ''}${hurt}`);
   } else if (r.already) {
     pushLog(r.flavor || `Already logged at ${r.node.name}.`);
   } else if (r.beat) {
