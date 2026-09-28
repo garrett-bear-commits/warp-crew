@@ -407,6 +407,31 @@ function patchShell(root, ctx) {
     } else if (root._wcLastSelectedRoom && root._wcLastSelectedRoom !== 'hangar') root._wcSetCamera(homeCamera(viewport));
   }
   root._wcLastSelectedRoom = selectedRoom;
+  // Boarders land in a room the fight panel usually covers. Once per boarding,
+  // frame that room in the strip of ship still visible above the panel (the
+  // camera gets that strip as its viewport), and restore the full view after.
+  const boarding = player.activeEncounter?.boarders;
+  const boardKey = boarding?.phase === 'aboard' && player.activeEncounter.phase === 'combat' ? `${player.activeEncounter.seed}:${boarding.landsBeat}` : null;
+  if (root._wcSetCamera && boardKey && root._wcBoardFocusKey !== boardKey) {
+    const boardedRoom = ROOMS.find(r => r.id === STATIONS[boarding.target]?.roomId);
+    if (boardedRoom) {
+      root._wcBoardFullViewport ||= root._wcCamera.viewport;
+      requestAnimationFrame(() => {
+        const full = root._wcBoardFullViewport;
+        const stageTop = root.querySelector('.stage')?.getBoundingClientRect().top ?? 0;
+        const panelTop = root.querySelector('.ship-encounter')?.getBoundingClientRect().top;
+        const visibleH = Number.isFinite(panelTop) ? Math.max(120, Math.min(full.h, panelTop - stageTop)) : full.h * 0.6;
+        const strip = makeCamera({ w: full.w, h: visibleH }, root._wcCamera.world);
+        const point = { x: boardedRoom.labelAnchor.x * 11.52, y: boardedRoom.labelAnchor.y * 17.28 };
+        root._wcSetCamera(focusCamera(strip, point, strip.maxScale * 0.7));
+      });
+    }
+  }
+  if (boardKey) root._wcBoardFocusKey = boardKey;
+  else if (root._wcBoardFullViewport) {
+    root._wcSetCamera(homeCamera(root._wcBoardFullViewport));
+    root._wcBoardFullViewport = null;
+  }
   root.querySelector('.wc-shell')?.classList.toggle('tab-home', isHome);
   root._wcBattleActive = fighting;
   root._wcSelectedRoom = selectedRoom;
