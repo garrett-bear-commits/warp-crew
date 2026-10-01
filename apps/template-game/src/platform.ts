@@ -53,6 +53,7 @@ export function createPlatform(cfg: GameConfig, clock: Clock): PlatformAdapter {
         payments: mock.payments,
         notifications: mock.notifications,
         share: mock.share,
+        screenshots: mock.screenshots,
         analytics: mock.analytics,
         loading: mock.loading,
         lifecycle: documentLifecycle(),

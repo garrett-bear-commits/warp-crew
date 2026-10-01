@@ -2,7 +2,7 @@ import { Type, type Static } from '@sinclair/typebox';
 import { EpochMs, Mutation, NonNegInt, PlayerKey, Response, StringEnum } from './common.ts';
 import { GrantReward, GrantKey } from './grants.ts';
 import { SnapshotMeta } from './saves.ts';
-import { PLAYER_FLAG_KINDS } from './enums.ts';
+import { ADMIN_SCOPES, PLAYER_FLAG_KINDS } from './enums.ts';
 import { SegmentPredicate } from './liveops.ts';
 
 export const PlayerFlagKindSchema = StringEnum(PLAYER_FLAG_KINDS);
@@ -242,6 +242,13 @@ export const TimelineResponse = Response(
 export type TimelineResponse = Static<typeof TimelineResponse>;
 
 export const AdminPlayerParams = Type.Object({ playerKey: PlayerKey });
+
+/** Admin: the calling key and its scopes (any valid key, no scope); the inspector's sign-in. */
+export const AdminSessionResponse = Response(
+  { keyId: Type.String({ minLength: 1 }), scopes: Type.Array(StringEnum(ADMIN_SCOPES)) },
+  { $id: 'AdminSessionResponse' },
+);
+export type AdminSessionResponse = Static<typeof AdminSessionResponse>;
 
 export const AdminActionRecord = Type.Object({
   id: NonNegInt,

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { assessOps, DEFAULT_OPS_THRESHOLDS } from '../../src/health/index.ts';
+import {
+  assessOps,
+  createOpsAlerter,
+  DEFAULT_OPS_THRESHOLDS,
+  OPS_WARN_REPEAT_MS,
+} from '../../src/health/index.ts';
 import { compareBuildVersions } from '../../src/http/versions.ts';
+import { createHttpStats } from '../../src/observability/httpStats.ts';
 import { requestHash } from '../../src/cqrs/hash.ts';
 import { canonicalJson } from '../../src/db/canonical.ts';
 import { createMemoryLimiter } from '../../src/limits/index.ts';
@@ -26,6 +32,51 @@ const base = {
 
 describe('ops thresholds (two-tier assert)', () => {
   it('quiet system → no issues', () => expect(assessOps(base)).toEqual([]));
+  it('rates the responses that never become a command: 5xx warn then page, 401 and 429 warn', () => {
+    const http = (
+      o: Partial<{ serverErrors: number; unauthorized: number; rateLimited: number }>,
+    ) =>
+      assessOps({
+        ...base,
+        http: { total: 100, serverErrors: 0, unauthorized: 0, rateLimited: 0, ...o },
+      });
+    expect(http({ serverErrors: 4, unauthorized: 20, rateLimited: 4 })).toEqual([]);
+    expect(http({ serverErrors: 6 })).toMatchObject([
+      { tier: 'warn', code: 'http_5xx_rate', value: 0.06 },
+    ]);
+    expect(http({ serverErrors: 25 })).toMatchObject([
+      { tier: 'page', code: 'http_5xx_rate', threshold: 0.2 },
+    ]);
+    expect(http({ unauthorized: 30 })).toMatchObject([{ tier: 'warn', code: 'http_401_rate' }]);
+    expect(http({ rateLimited: 5 })).toMatchObject([{ tier: 'warn', code: 'http_429_rate' }]);
+    // Too few responses to rate.
+    expect(
+      assessOps({
+        ...base,
+        http: { total: 10, serverErrors: 10, unauthorized: 0, rateLimited: 0 },
+      }),
+    ).toEqual([]);
+  });
+  it("counts this instance's responses over a sliding window", () => {
+    const stats = createHttpStats(15 * 60_000);
+    stats.record(200, 0);
+    stats.record(500, 30_000);
+    stats.record(401, 61_000);
+    stats.record(429, 61_000);
+    expect(stats.snapshot(61_000)).toEqual({
+      total: 4,
+      serverErrors: 1,
+      unauthorized: 1,
+      rateLimited: 1,
+    });
+    // Fifteen minutes on, the first minute has left the window.
+    expect(stats.snapshot(16 * 60_000)).toEqual({
+      total: 2,
+      serverErrors: 0,
+      unauthorized: 1,
+      rateLimited: 1,
+    });
+  });
   it('dead letters page; outbox lag warns then pages; error rate warns then pages; p95 warns then pages', () => {
     expect(
       assessOps({ ...base, outbox: { ...base.outbox, deadLetters: 1 } }).map((i) => i.tier),
@@ -66,6 +117,73 @@ describe('ops thresholds (two-tier assert)', () => {
     ).toMatchObject({ code: 'restore_verify_stale' });
     expect(DEFAULT_OPS_THRESHOLDS.deadLettersPage).toBe(1);
   });
+  it('any unclassified purchase in the window warns', () => {
+    expect(assessOps({ ...base, purchases: { paid: 3, sandbox: 0, unclassified: 1 } })).toEqual([
+      {
+        tier: 'warn',
+        code: 'purchases_unclassified',
+        message: 'unclassified purchases in the window',
+        value: 1,
+        threshold: 1,
+      },
+    ]);
+  });
+});
+
+describe('ops alerter (Sentry delivery of /health/ops issues)', () => {
+  function alerter() {
+    const clock = fixedClock(0);
+    const sent: Array<{
+      message: string;
+      level?: string | undefined;
+      fingerprint?: string[] | undefined;
+    }> = [];
+    const alert = createOpsAlerter({
+      clock,
+      log: { error: () => undefined } as never,
+      sentry: {
+        captureMessage: (message: string, o?: { level?: string; fingerprint?: string[] }) =>
+          void sent.push({ message, level: o?.level, fingerprint: o?.fingerprint }),
+      } as never,
+    });
+    const snap = (issues: ReturnType<typeof assessOps>) => ({
+      ...base,
+      issues,
+      status: (issues.some((i) => i.tier === 'page') ? 'page' : issues.length ? 'warn' : 'ok') as
+        'ok' | 'warn' | 'page',
+    });
+    return { clock, sent, alert, snap };
+  }
+  it('pages every check while an issue lasts; warns at most every few hours; quiet when healthy', () => {
+    const { clock, sent, alert, snap } = alerter();
+    const page = assessOps({ ...base, outbox: { ...base.outbox, deadLetters: 2 } });
+    const warn = assessOps({ ...base, outbox: { ...base.outbox, lagSeconds: 90 } });
+    expect(alert(snap([...page, ...warn]))).toEqual({
+      status: 'page',
+      page: ['outbox_dead_letters'],
+      warn: ['outbox_lag'],
+    });
+    clock.advance(5 * 60_000);
+    expect(alert(snap([...page, ...warn]))).toMatchObject({
+      page: ['outbox_dead_letters'],
+      warn: [],
+    });
+    clock.advance(OPS_WARN_REPEAT_MS);
+    expect(alert(snap(warn))).toMatchObject({ page: [], warn: ['outbox_lag'] });
+    expect(alert(snap([]))).toEqual({ status: 'ok', page: [], warn: [] });
+    // a warn that cleared and came back reports at once
+    expect(alert(snap(warn)).warn).toEqual(['outbox_lag']);
+    expect(sent[0]).toEqual({
+      message: 'ops page: outbox_dead_letters',
+      level: 'error',
+      fingerprint: ['ops', 'page', 'outbox_dead_letters'],
+    });
+    expect(sent.filter((m) => m.level === 'warning').map((m) => m.fingerprint)).toEqual([
+      ['ops', 'warn', 'outbox_lag'],
+      ['ops', 'warn', 'outbox_lag'],
+      ['ops', 'warn', 'outbox_lag'],
+    ]);
+  });
 });
 
 describe('build versions', () => {
@@ -74,6 +192,14 @@ describe('build versions', () => {
     expect(compareBuildVersions('2.0.0+abc', '2.0.0')).toBe(0);
     expect(compareBuildVersions('2.0.1-rc', '2.0.0')).toBe(1);
     expect(compareBuildVersions('dev', '0.0.0')).toBe(0);
+  });
+  it('reads v1.0.0 and staging prereleases by X.Y.Z', () => {
+    expect(compareBuildVersions('1.0.0', '0.20.0')).toBe(1);
+    // A stray tag-style `v` must not read as 0 and fail every minBuildVersion check.
+    expect(compareBuildVersions('v1.0.0', '0.20.0')).toBe(1);
+    expect(compareBuildVersions('v0.22.0', '0.22.0')).toBe(0);
+    expect(compareBuildVersions('0.23.0-staging.41', '0.23.0')).toBe(0);
+    expect(compareBuildVersions('0.22.1-staging.7+abc1234', '0.23.0')).toBe(-1);
   });
 });
 

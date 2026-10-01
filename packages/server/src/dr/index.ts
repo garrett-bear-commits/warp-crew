@@ -38,11 +38,18 @@ export async function verifyLiveIntegrity(
     { id: string; blob_sha256: string }[]
   >`SELECT s.id, s.blob_sha256 FROM save_snapshots s JOIN save_blobs b ON b.save_id = s.id WHERE s.disposition = 'anchored' ORDER BY s.received_at DESC LIMIT ${sampleSize}`;
   let ok = 0;
+  const mismatched: string[] = [];
   for (const r of rows) {
     const b = await q<{ blob: Buffer }[]>`SELECT blob FROM save_blobs WHERE save_id = ${r.id}`;
     if (b[0] && sha256Hex(b[0].blob.toString('utf8')) === r.blob_sha256) ok++;
+    else mismatched.push(r.id);
   }
   const verified = ok === rows.length;
+  // A mismatch fails the job, so the runner logs and captures it with the save ids.
+  if (!verified)
+    throw new Error(
+      `live integrity: ${mismatched.length} of ${rows.length} anchored blobs failed re-hash (save ids ${mismatched.slice(0, 20).join(', ')})`,
+    );
   if (verified) {
     await q`INSERT INTO ops_markers (key, value) VALUES ('live_integrity_verified_at', ${q.json({ at: now, sampled: rows.length })}) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
   }

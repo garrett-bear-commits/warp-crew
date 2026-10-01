@@ -1,13 +1,15 @@
 // loop.ts (§5.1, ADR-017): rAF-style accumulator with a fixed tick rate, a catch-up cap, a
 // big-gap hand-off to engine.onGap (which MUST NOT raise progressOf — the loop refuses such a
 // result and reports it), isPaused re-checked every tick, and {state, rev} publication.
+// Between ticks the loop sleeps (a delay hint to the scheduler) instead of waking every frame.
 // The scheduler is injectable so tests drive frames by hand; the loop never reads Date.now.
 import type { Ctx, Effect, EffectRing, Engine, Rng } from './contract.ts';
 import type { JournalEntryKind } from '@foundation/contracts/enums';
 
 /** Frame scheduler: rAF in browsers, setInterval in workers, manual in tests. */
 export interface FrameScheduler {
-  request(cb: () => void): unknown;
+  /** `delayMs` is how long the loop can sleep before it needs a frame (0 or absent: next frame). */
+  request(cb: () => void, delayMs?: number): unknown;
   cancel(handle: unknown): void;
 }
 
@@ -72,30 +74,65 @@ export interface Loop<S, A> {
   tick(): number;
   /** Replace the state (adopt remote, restore, generation change). Resets the accumulator. */
   replaceState(state: S): void;
+  /** Hand a verified boot-time gap to engine.onGap once, before live frames begin. */
+  resumeGap(gap: { deviceSec: number; serverSec: number }): boolean;
   subscribe(cb: (p: Published<S>) => void): () => void;
   /** Diagnostics: frames that hit the catch-up cap and gap hand-offs performed. */
   stats(): { catchUpFrames: number; gaps: number; droppedTicks: number };
 }
 
-/** rAF-backed scheduler for browsers; falls back to setTimeout(16) when rAF is absent. */
+/** One frame's budget: a long sleep wakes this early so the frame after it is still on time. */
+const FRAME_MS = 16;
+/** Delays below this just take the next frame. */
+const MIN_SLEEP_MS = 20;
+
+/**
+ * rAF-backed scheduler for browsers; falls back to setTimeout (at least 16 ms) when rAF is absent.
+ * A long delay sleeps on a timer until one frame before it ends, then waits for a frame, so the
+ * page does not render between ticks and a hidden page still never runs the frame.
+ */
 export function browserScheduler(g: typeof globalThis = globalThis): FrameScheduler {
   const raf = (g as { requestAnimationFrame?: (cb: () => void) => number }).requestAnimationFrame;
   const caf = (g as { cancelAnimationFrame?: (h: number) => void }).cancelAnimationFrame;
   if (typeof raf === 'function' && typeof caf === 'function') {
-    return { request: (cb) => raf.call(g, cb), cancel: (h) => caf.call(g, h as number) };
+    type Pending = { timer: ReturnType<typeof setTimeout> | null; frame: number | null };
+    return {
+      request(cb, delayMs = 0) {
+        const p: Pending = { timer: null, frame: null };
+        if (delayMs < MIN_SLEEP_MS) p.frame = raf.call(g, cb);
+        else
+          p.timer = g.setTimeout(() => {
+            p.timer = null;
+            p.frame = raf.call(g, cb);
+          }, delayMs - FRAME_MS);
+        return p;
+      },
+      cancel(h) {
+        const p = h as Pending;
+        if (p.timer !== null) g.clearTimeout(p.timer);
+        if (p.frame !== null) caf.call(g, p.frame);
+      },
+    };
   }
   return {
-    request: (cb) => g.setTimeout(cb, 16),
+    request: (cb, delayMs = 0) => g.setTimeout(cb, Math.max(FRAME_MS, delayMs)),
     cancel: (h) => g.clearTimeout(h as ReturnType<typeof setTimeout>),
   };
 }
 
 /** Manual scheduler for tests: `flush()` runs the pending frame callback once. */
-export function manualScheduler(): FrameScheduler & { flush(): boolean; pending(): boolean } {
+export function manualScheduler(): FrameScheduler & {
+  flush(): boolean;
+  pending(): boolean;
+  /** The delay hint of the latest request. */
+  lastDelay(): number;
+} {
   let cb: (() => void) | null = null;
+  let delay = 0;
   return {
-    request(fn) {
+    request(fn, delayMs = 0) {
       cb = fn;
+      delay = delayMs;
       return 1;
     },
     cancel() {
@@ -109,6 +146,7 @@ export function manualScheduler(): FrameScheduler & { flush(): boolean; pending(
       return true;
     },
     pending: () => cb !== null,
+    lastDelay: () => delay,
   };
 }
 
@@ -138,6 +176,29 @@ export function createLoop<S, A, E extends Effect>(deps: LoopDeps<S, A, E>): Loo
   };
   const ctx = (catchUp: boolean): Ctx => ({ now: lastNow, rng, tick, catchUp });
 
+  const handoffGap = (gap: { deviceSec: number; serverSec: number }): boolean => {
+    if (!engine.onGap) return false;
+    const before = engine.progressOf(state);
+    const r = engine.onGap(state, gap, ctx(false));
+    let accepted = true;
+    if (engine.progressOf(r.state) > before) {
+      deps.onInvariant?.('engine.onGap raised progressOf; result refused (§1 engine purity)');
+      accepted = false;
+    } else {
+      state = r.state;
+      effects.push(r.effects);
+    }
+    deps.onJournal?.({
+      tick,
+      now: lastNow,
+      kind: 'gap',
+      name: 'gap',
+      args: { deviceSec: Math.round(gap.deviceSec), serverSec: Math.round(gap.serverSec) },
+    });
+    publish();
+    return accepted;
+  };
+
   const runFrame = (): void => {
     const now = clock.now();
     const dev = clock.deviceNow();
@@ -157,25 +218,7 @@ export function createLoop<S, A, E extends Effect>(deps: LoopDeps<S, A, E>): Loo
       // Big gap: hand off to the engine ONCE; never replay ticks; never advance progressOf.
       acc = 0;
       stats.gaps++;
-      if (engine.onGap) {
-        const before = engine.progressOf(state);
-        const gap = { deviceSec: devElapsed / 1000, serverSec: elapsed / 1000 };
-        const r = engine.onGap(state, gap, ctx(false));
-        if (engine.progressOf(r.state) > before) {
-          deps.onInvariant?.('engine.onGap raised progressOf; result refused (§1 engine purity)');
-        } else {
-          state = r.state;
-          effects.push(r.effects);
-        }
-        deps.onJournal?.({
-          tick,
-          now: lastNow,
-          kind: 'gap',
-          name: 'gap',
-          args: { deviceSec: Math.round(gap.deviceSec), serverSec: Math.round(gap.serverSec) },
-        });
-        publish();
-      }
+      handoffGap({ deviceSec: devElapsed / 1000, serverSec: elapsed / 1000 });
       return;
     }
 
@@ -208,12 +251,14 @@ export function createLoop<S, A, E extends Effect>(deps: LoopDeps<S, A, E>): Loo
   };
 
   const schedule = (): void => {
+    // Sleep until the next tick is due; an unprimed loop primes on the next frame.
+    const untilNext = primed ? Math.max(0, tickMs - acc) : 0;
     handle = scheduler.request(() => {
       handle = null;
       if (!isRunning) return;
       runFrame();
       if (isRunning) schedule();
-    });
+    }, untilNext);
   };
 
   return {
@@ -237,6 +282,9 @@ export function createLoop<S, A, E extends Effect>(deps: LoopDeps<S, A, E>): Loo
         lastNow = now;
         lastDevice = clock.deviceNow();
       }
+      // A sleeping loop banks the time since its last frame, up to the tick it is waiting for,
+      // so moving ctx.now to the action does not push that tick back.
+      if (isRunning && engine.step) acc = Math.max(acc, Math.min(acc + now - lastNow, tickMs));
       lastNow = now;
       const r = engine.apply(state, action, ctx(false));
       state = r.state;
@@ -267,6 +315,26 @@ export function createLoop<S, A, E extends Effect>(deps: LoopDeps<S, A, E>): Loo
       acc = 0;
       primed = false;
       publish();
+      // Prime on the next frame rather than at the end of the current sleep.
+      if (handle !== null) {
+        scheduler.cancel(handle);
+        schedule();
+      }
+    },
+    resumeGap(gap) {
+      if (
+        !Number.isFinite(gap.deviceSec) ||
+        !Number.isFinite(gap.serverSec) ||
+        gap.deviceSec <= 0 ||
+        gap.serverSec <= 0
+      )
+        return false;
+      acc = 0;
+      lastNow = clock.now();
+      lastDevice = clock.deviceNow();
+      primed = true;
+      stats.gaps++;
+      return handoffGap(gap);
     },
     subscribe(cb) {
       subs.add(cb);

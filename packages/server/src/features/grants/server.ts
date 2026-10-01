@@ -299,8 +299,15 @@ export function registerGrants(app: FastifyInstance, ctx: AppContext): void {
     return { outcome: 'redeemed', duplicate: false, grant: { ...m.grant, claimedAt: exec.now } };
   });
 
+  /** Refuse rewards the game cannot apply (GamePolicy.grantRewardProblem) before minting. */
+  const checkRewards = (rewards: readonly GrantReward[]): void => {
+    const problem = ctx.policy.grantRewardProblem?.(rewards) ?? null;
+    if (problem) throw new AppError('validation_failed', `rewards: ${problem}`);
+  };
+
   bus.register(AdminGrant, async (input, exec, tx) => {
     const t = tx!;
+    checkRewards(input.rewards);
     const m = await mintGrant(t, {
       playerKey: input.playerKey,
       grantKey: input.grantKey,
@@ -326,6 +333,7 @@ export function registerGrants(app: FastifyInstance, ctx: AppContext): void {
 
   bus.register(AdminCohortGrant, async (input, exec, tx) => {
     const t = tx!;
+    checkRewards(input.rewards);
     let matched = 0;
     let minted = 0;
     let after: string | null = null;

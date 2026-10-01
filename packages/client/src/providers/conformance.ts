@@ -286,6 +286,19 @@ export function platformConformance(
       },
     },
     {
+      name: 'screenshots.available() is boolean and setProvider() never throws',
+      run: async () => {
+        if (typeof platform.screenshots.available() !== 'boolean') return false;
+        try {
+          platform.screenshots.setProvider(() => null);
+          platform.screenshots.setProvider(null);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+    },
+    {
       name: 'analytics.track() never throws',
       run: async () => {
         try {

@@ -3,8 +3,9 @@
 // https://docs.jest.com/sdk/html5/platform-login, https://docs.jest.com/sdk/html5/app-lifecycle,
 // https://docs.jest.com/sdk/html5/notifications, https://docs.jest.com/sdk/html5/payments,
 // https://docs.jest.com/sdk/html5/loading-screen, https://docs.jest.com/sdk/html5/analytics,
-// https://docs.jest.com/sdk/html5/entry-payload. Review this mirror at least once per quarter and
-// before every Jest launch. Signed data is carried to the server; browser code never decides grants.
+// https://docs.jest.com/sdk/html5/entry-payload, https://docs.jest.com/sdk/html5/social. Review
+// this mirror at least once per quarter and before every Jest launch. Signed data is carried to the
+// server; browser code never decides grants.
 import type { IntegrityEvent } from '@foundation/contracts';
 import { createClock } from '../clock/index.ts';
 import {
@@ -25,9 +26,10 @@ import {
   type PurchaseRecoveryReport,
   type RecoveryBatch,
   type ScheduleResult,
+  type ScreenshotSource,
 } from './types.ts';
 
-type JP = { playerId: string; registered: boolean };
+type JP = { playerId: string; registered: boolean; username?: unknown };
 type JPurchase = {
   purchaseToken: string;
   productSku: string;
@@ -104,6 +106,10 @@ export interface JestSdkLike {
     }>;
   };
   share?(payload: { title?: string; text?: string; url?: string }): Promise<void>;
+  // https://docs.jest.com/sdk/html5/social: the footer camera button calls the registered provider.
+  social?: {
+    setScreenshotProvider?(provider: (() => string | null | Promise<string | null>) | null): void;
+  };
 }
 export interface JestPlatformOptions {
   sdk?: Partial<JestSdkLike> | null;
@@ -124,6 +130,9 @@ const isPlayer = (x: unknown): x is JP =>
 const toPlayer = (p: JP): Player => ({
   playerId: p.playerId,
   registered: p.registered,
+  ...(typeof p.username === 'string' && p.username.trim()
+    ? { displayName: p.username.trim().slice(0, 256) }
+    : {}),
 });
 const safeOff = (off: unknown): (() => void) => {
   let used = false;
@@ -139,7 +148,7 @@ const safeOff = (off: unknown): (() => void) => {
 };
 function absent(sdk: Partial<JestSdkLike> | null): string[] {
   // Every method below backs a configured template launch feature and is required in Jest mode.
-  // `share` is the sole optional capability in this minimal mirror.
+  // `share` and the `social` screenshot methods are the optional capabilities in this minimal mirror.
   if (!sdk) return ['JestSDK'];
   const out: string[] = [];
   const f = (x: unknown, n: string) => {
@@ -195,8 +204,23 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
     }
     return incompat;
   };
-  const report = (message: string): void =>
-    errors.report({ kind: 'game_error', at: now(), message });
+  // The SDK's own words go with each failure: without them every report reads the same.
+  const report = (message: string, error?: unknown): void =>
+    errors.report({
+      kind: 'game_error',
+      at: now(),
+      message,
+      ...(error === undefined
+        ? {}
+        : {
+            detail: {
+              error: (error instanceof Error
+                ? `${error.name}: ${error.message}`
+                : String(error)
+              ).slice(0, 256),
+            },
+          }),
+    });
   const signed = async (id: string): Promise<{ player: Player; credential: string }> => {
     const r = await (sdk!.getPlayerSigned as JestSdkLike['getPlayerSigned'])();
     if (!r || !isPlayer(r.player) || typeof r.playerSigned !== 'string' || !r.playerSigned)
@@ -300,8 +324,8 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
       if (cancelled) return;
       try {
         registeredOff = safeOff((sdk!.lifecycle![key] as (c: typeof cb) => () => void)(cb));
-      } catch {
-        report(`Jest lifecycle ${key} failed`);
+      } catch (error) {
+        report(`Jest lifecycle ${key} failed`, error);
       }
     };
     if (ready) register();
@@ -323,6 +347,29 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
       cb();
     });
   let loaded = false;
+  // Jest specifies no behaviour for a rejected or malformed capture, so every failure becomes the
+  // documented null. Registration waits for init because the SDK rejects every pre-init call.
+  let screenshotSource: ScreenshotSource | null = null;
+  const applyScreenshotProvider = (): void => {
+    if (typeof sdk?.social?.setScreenshotProvider !== 'function') return;
+    const source = screenshotSource;
+    try {
+      sdk.social.setScreenshotProvider(
+        source
+          ? async () => {
+              try {
+                const shot = await source();
+                return typeof shot === 'string' && shot ? shot : null;
+              } catch {
+                return null;
+              }
+            }
+          : null,
+      );
+    } catch (error) {
+      report('Jest setScreenshotProvider failed', error);
+    }
+  };
   const complete = async (purchaseToken: string): Promise<PurchaseCompletionOutcome> => {
     try {
       const result = await (
@@ -444,15 +491,15 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
       set(k, v) {
         try {
           void (sdk!.data!.set as JestSdkLike['data']['set'])(k, v);
-        } catch {
-          report('Jest data.set failed');
+        } catch (error) {
+          report('Jest data.set failed', error);
         }
       },
       delete(k) {
         try {
           void (sdk!.data!.delete as JestSdkLike['data']['delete'])(k);
-        } catch {
-          report('Jest data.delete failed');
+        } catch (error) {
+          report('Jest data.delete failed', error);
         }
       },
       flush: () => (sdk!.data!.flush as JestSdkLike['data']['flush'])(),
@@ -552,7 +599,8 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
               ...(item.entryPayload ? { entryPayload: item.entryPayload } : {}),
             });
             scheduled.push(item.id);
-          } catch {
+          } catch (error) {
+            report('Jest scheduleNotification failed', error);
             failed.push({ id: item.id, reason: 'schedule_failed' });
           }
         }
@@ -566,7 +614,7 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
               .unscheduleNotification as JestSdkLike['notifications']['unscheduleNotification']
           )({ identifier: id });
         } catch (error) {
-          report('Jest unscheduleNotification failed');
+          report('Jest unscheduleNotification failed', error);
           throw error;
         }
       },
@@ -583,19 +631,27 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
         }
       },
     },
+    screenshots: {
+      available: () => typeof sdk?.social?.setScreenshotProvider === 'function',
+      setProvider(source) {
+        screenshotSource = source;
+        if (ready) applyScreenshotProvider();
+        else void boot.then(applyScreenshotProvider, () => undefined);
+      },
+    },
     analytics: {
       track(name, props) {
         try {
           (sdk!.captureEvent as JestSdkLike['captureEvent'])(name, props);
-        } catch {
-          report('Jest captureEvent failed');
+        } catch (error) {
+          report('Jest captureEvent failed', error);
         }
       },
       markFirstMilestone() {
         try {
           (sdk!.markFirstMilestone as JestSdkLike['markFirstMilestone'])();
-        } catch {
-          report('Jest markFirstMilestone failed');
+        } catch (error) {
+          report('Jest markFirstMilestone failed', error);
         }
       },
     },
@@ -605,8 +661,8 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
         loaded = true;
         try {
           (sdk!.markGameLoaded as JestSdkLike['markGameLoaded'])();
-        } catch {
-          report('Jest markGameLoaded failed');
+        } catch (error) {
+          report('Jest markGameLoaded failed', error);
         }
       },
       progress(value) {
@@ -614,8 +670,8 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
           (sdk!.setLoadingProgress as JestSdkLike['setLoadingProgress'])(
             Math.round(Math.max(0, Math.min(1, value)) * 100),
           );
-        } catch {
-          report('Jest setLoadingProgress failed');
+        } catch (error) {
+          report('Jest setLoadingProgress failed', error);
         }
       },
     },
@@ -638,8 +694,8 @@ export function createJestPlatform(options: JestPlatformOptions = {}): PlatformA
       try {
         const value = (sdk!.getEntryPayload as JestSdkLike['getEntryPayload'])();
         return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-      } catch {
-        report('Jest getEntryPayload failed');
+      } catch (error) {
+        report('Jest getEntryPayload failed', error);
         return {};
       }
     },

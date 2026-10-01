@@ -198,6 +198,9 @@
                     },
                     "buildVersion": {
                       "type": "string"
+                    },
+                    "commit": {
+                      "type": "string"
                     }
                   }
                 }
@@ -449,6 +452,21 @@
                         "paid": {},
                         "sandbox": {},
                         "unclassified": {}
+                      }
+                    },
+                    "http": {
+                      "type": "object",
+                      "required": [
+                        "total",
+                        "serverErrors",
+                        "unauthorized",
+                        "rateLimited"
+                      ],
+                      "properties": {
+                        "total": {},
+                        "serverErrors": {},
+                        "unauthorized": {},
+                        "rateLimited": {}
                       }
                     },
                     "restoreVerifiedAt": {
@@ -5176,6 +5194,10 @@
                         {
                           "const": "duplicate",
                           "type": "string"
+                        },
+                        {
+                          "const": "not_eligible",
+                          "type": "string"
                         }
                       ]
                     },
@@ -5185,6 +5207,90 @@
                     },
                     "grantKey": {
                       "type": "string"
+                    },
+                    "rewards": {
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "kind",
+                              "currency",
+                              "amount"
+                            ],
+                            "properties": {
+                              "kind": {
+                                "const": "soft_currency",
+                                "type": "string"
+                              },
+                              "currency": {
+                                "maxLength": 32,
+                                "type": "string"
+                              },
+                              "amount": {
+                                "minimum": 0,
+                                "type": "integer"
+                              }
+                            }
+                          },
+                          {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "kind",
+                              "amount"
+                            ],
+                            "properties": {
+                              "kind": {
+                                "const": "premium_currency",
+                                "type": "string"
+                              },
+                              "amount": {}
+                            }
+                          },
+                          {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "kind",
+                              "itemId",
+                              "qty"
+                            ],
+                            "properties": {
+                              "kind": {
+                                "const": "item",
+                                "type": "string"
+                              },
+                              "itemId": {
+                                "maxLength": 64,
+                                "type": "string"
+                              },
+                              "qty": {}
+                            }
+                          },
+                          {
+                            "additionalProperties": false,
+                            "type": "object",
+                            "required": [
+                              "kind",
+                              "cosmeticId"
+                            ],
+                            "properties": {
+                              "kind": {
+                                "const": "cosmetic",
+                                "type": "string"
+                              },
+                              "cosmeticId": {
+                                "maxLength": 64,
+                                "type": "string"
+                              }
+                            }
+                          }
+                        ]
+                      }
                     },
                     "nextEligibleAt": {
                       "minimum": 0,
@@ -5280,6 +5386,246 @@
                     "description": "RFC 4122 UUID (client-minted for commandId).",
                     "type": "string"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/daily/status": {
+      "get": {
+        "operationId": "daily.status",
+        "summary": "Daily reward eligibility on the server clock, plus current-generation claims",
+        "tags": [
+          "achievements"
+        ],
+        "x-auth": "player",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "cadence",
+                    "state",
+                    "nextEligibleAt",
+                    "generation",
+                    "claims",
+                    "serverNow",
+                    "requestId"
+                  ],
+                  "properties": {
+                    "cadence": {
+                      "anyOf": [
+                        {
+                          "const": "utc_day",
+                          "type": "string"
+                        },
+                        {
+                          "const": "rolling_24h",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "state": {
+                      "anyOf": [
+                        {
+                          "const": "ready",
+                          "type": "string"
+                        },
+                        {
+                          "const": "cooldown",
+                          "type": "string"
+                        },
+                        {
+                          "const": "not_eligible",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "nextEligibleAt": {
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "type": "integer"
+                    },
+                    "generation": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "claims": {
+                      "maxItems": 100,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "grantKey",
+                          "at",
+                          "rewards",
+                          "acknowledged"
+                        ],
+                        "properties": {
+                          "grantKey": {
+                            "type": "string"
+                          },
+                          "at": {},
+                          "rewards": {
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "currency",
+                                    "amount"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "soft_currency",
+                                      "type": "string"
+                                    },
+                                    "currency": {
+                                      "maxLength": 32,
+                                      "type": "string"
+                                    },
+                                    "amount": {}
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "amount"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "premium_currency",
+                                      "type": "string"
+                                    },
+                                    "amount": {}
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "itemId",
+                                    "qty"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "item",
+                                      "type": "string"
+                                    },
+                                    "itemId": {
+                                      "maxLength": 64,
+                                      "type": "string"
+                                    },
+                                    "qty": {}
+                                  }
+                                },
+                                {
+                                  "additionalProperties": false,
+                                  "type": "object",
+                                  "required": [
+                                    "kind",
+                                    "cosmeticId"
+                                  ],
+                                  "properties": {
+                                    "kind": {
+                                      "const": "cosmetic",
+                                      "type": "string"
+                                    },
+                                    "cosmeticId": {
+                                      "maxLength": 64,
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          "acknowledged": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "serverNow": {},
+                    "requestId": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed | bad_request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "build_too_old",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "retry_later | not_configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }
@@ -5497,6 +5843,14 @@
                       "items": {
                         "type": "string"
                       }
+                    },
+                    "firstBuildVersion": {
+                      "type": "string"
+                    },
+                    "firstSeenAt": {
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "type": "integer"
                     },
                     "serverNow": {},
                     "requestId": {
@@ -7914,6 +8268,289 @@
                     "maxLength": 64,
                     "type": "string"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/names/check": {
+      "post": {
+        "operationId": "names.check",
+        "summary": "Screen a player-typed name with Jest's notification moderation (Jev, SHAFT)",
+        "tags": [
+          "names"
+        ],
+        "x-auth": "player",
+        "x-mutation": true,
+        "x-idempotency": "commandId",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "verdict",
+                    "serverNow",
+                    "requestId"
+                  ],
+                  "properties": {
+                    "verdict": {
+                      "anyOf": [
+                        {
+                          "const": "pass",
+                          "type": "string"
+                        },
+                        {
+                          "const": "fail",
+                          "type": "string"
+                        },
+                        {
+                          "const": "unchecked",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "serverNow": {
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "type": "integer"
+                    },
+                    "requestId": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed | bad_request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "build_too_old",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "retry_later | not_configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "commandId",
+                  "name"
+                ],
+                "properties": {
+                  "commandId": {
+                    "format": "uuid",
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+                    "description": "RFC 4122 UUID (client-minted for commandId).",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "maxLength": 32,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/v1/session": {
+      "get": {
+        "operationId": "admin.session",
+        "summary": "The calling admin key and its scopes (inspector sign-in)",
+        "tags": [
+          "admin"
+        ],
+        "x-auth": "admin",
+        "x-admin-scope": "any",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "keyId",
+                    "scopes",
+                    "serverNow",
+                    "requestId"
+                  ],
+                  "properties": {
+                    "keyId": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "scopes": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "const": "read",
+                            "type": "string"
+                          },
+                          {
+                            "const": "support",
+                            "type": "string"
+                          },
+                          {
+                            "const": "grant",
+                            "type": "string"
+                          },
+                          {
+                            "const": "publish",
+                            "type": "string"
+                          },
+                          {
+                            "const": "restore",
+                            "type": "string"
+                          },
+                          {
+                            "const": "erase",
+                            "type": "string"
+                          }
+                        ]
+                      }
+                    },
+                    "serverNow": {
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "type": "integer"
+                    },
+                    "requestId": {
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "validation_failed | bad_request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "idempotency_mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "build_too_old",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "rate_limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "retry_later | not_configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             }

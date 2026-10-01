@@ -14,6 +14,7 @@ export type {
   AdminOutboxReplayBody,
   AdminRebuildProjectionBody,
   AdminActionsResponse,
+  AdminSessionResponse,
   OutboxDeadLettersResponse,
 } from '@foundation/contracts';
 export { ADMIN_SCOPES, HEADERS, type AdminScope } from '@foundation/contracts/enums';

@@ -18,11 +18,22 @@ export interface ApiClientOptions {
   /** Refresh the current provider credential for a server-requested step-up retry. */
   refreshAuth?: () => Promise<boolean>;
   requestId?: () => string;
+  /** Headers added to every call: Sentry's `sentry-trace` and `baggage`, so the API's events
+   *  join the browser's trace. */
+  traceHeaders?: () => Record<string, string>;
 }
 
 export type ApiResult<T> =
   | { ok: true; status: number; body: T }
-  | { ok: false; status: number; error: ErrorEnvelope | null; networkError?: string };
+  | {
+      ok: false;
+      status: number;
+      error: ErrorEnvelope | null;
+      networkError?: string;
+      /** The `x-request-id` this call sent: the API's `request_id`, even when no envelope came
+       *  back (a network failure). */
+      requestId?: string;
+    };
 
 export interface CallOptions {
   /** Attach player headers (default true). */
@@ -93,7 +104,11 @@ export function createApi(o: ApiClientOptions): Api {
           if (a.buildVersion) headers[HEADERS.buildVersion] = a.buildVersion;
         }
       }
-      if (o.requestId) headers[HEADERS.requestId] = o.requestId();
+      const requestId = o.requestId?.();
+      if (requestId) headers[HEADERS.requestId] = requestId;
+      for (const [name, value] of Object.entries(o.traceHeaders?.() ?? {}))
+        if (typeof value === 'string' && value) headers[name] = value;
+      const failed = requestId ? { requestId } : {};
       try {
         const init: RequestInit = { method, headers };
         if (body !== undefined) init.body = typeof body === 'string' ? body : JSON.stringify(body);
@@ -105,13 +120,19 @@ export function createApi(o: ApiClientOptions): Api {
         const res = opts.signal ? await raceAbort(request, opts.signal) : await request;
         const json = (await res.json().catch(() => null)) as unknown;
         if (res.ok) return { ok: true, status: res.status, body: json as T };
-        return { ok: false, status: res.status, error: (json as ErrorEnvelope | null) ?? null };
+        return {
+          ok: false,
+          status: res.status,
+          error: (json as ErrorEnvelope | null) ?? null,
+          ...failed,
+        };
       } catch (e) {
         return {
           ok: false,
           status: 0,
           error: null,
           networkError: e instanceof Error ? e.message : String(e),
+          ...failed,
         };
       }
     };

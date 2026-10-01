@@ -3,18 +3,22 @@
 // confirms: read the local slot + ALWAYS a bounded server head check (GET /v1/saves/current?meta=1,
 // ≤ 800 ms; ~3 s when the cache is empty for a returning identity → "cloud unreachable — retry /
 // start new"); reconcile (adopt / keep / prompt / start new); re-push the last unacked snapshot
-// BEFORE offline credit; re-check on visible after a long hide. Blocked ≠ empty.
+// BEFORE offline credit (sent before it, awaited ≤ bootRepushMs); re-check on visible after a long
+// hide. Blocked ≠ empty. Only a slot from a newer build blocks boot; any other unreadable slot is
+// backed up once, reported, and treated as absent so the server copy decides.
 import type { PendingQuarantine } from '@foundation/contracts';
 import type { Clock } from '../clock/index.ts';
 import type { Timers } from '../ids.ts';
 import type { IdentityClient, Player } from '../providers/types.ts';
 import {
+  backupDamagedSlot,
   createSlot,
   readLastKnownPlayerId,
   slotKey,
   writeLastKnownPlayerId,
   type CacheEnvelope,
   type Slot,
+  type SlotReadFailure,
 } from '../storage/envelope.ts';
 import type { SaveCodec } from '../storage/codec.ts';
 import type { StorageTier } from '../storage/tiers.ts';
@@ -55,6 +59,11 @@ export interface BootResult<S> {
   generation: number;
   state: S;
   sync: SyncClient<S>;
+  /** Persisted timestamps of the reconciled state, captured before boot re-push can replace them. */
+  offlineResumeAnchor: Pick<
+    CacheEnvelope<S>,
+    'savedAt' | 'deviceSavedAt' | 'savedAtServerAnchored'
+  >;
   /** The local slot was migrated from an older schema at read. */
   migrated: boolean;
 }
@@ -74,7 +83,37 @@ export interface BootDeps<S> {
   emptyCacheHeadCheckMs?: number;
   /** Hidden for longer than this → re-check the server head on visible (default 5 min). */
   longHideMs?: number;
+  /** Reconcile a newer remote seq even when its progress ordinal equals local progress. */
+  reconcileEqualProgress?: boolean;
+  /**
+   * How long boot waits on the re-push of the last unacked snapshot before going live (default
+   * 3 s). The push itself carries on in the background with its own request timeout.
+   */
+  bootRepushMs?: number;
+  /** An unreadable local slot (not from a newer build) was set aside: report it. */
+  onDamagedSlot?: (report: DamagedSlotReport) => void;
   onChange?: (s: BootState<S>) => void;
+}
+
+export interface DamagedSlotReport {
+  reason: Exclude<SlotReadFailure, 'empty' | 'incompatible'>;
+  message?: string;
+  /** Length of the raw slot (UTF-16 code units). */
+  chars: number;
+  /** The raw slot was copied to damagedSlotKey(gameId, playerId). */
+  backedUp: boolean;
+}
+
+/** Resolves true once `p` settles, or false when `ms` passes first (`p` keeps running). */
+function settlesWithin(p: Promise<unknown>, ms: number, timers: Timers): Promise<boolean> {
+  return new Promise((resolve) => {
+    const t = timers.set(() => resolve(false), ms);
+    const done = (): void => {
+      timers.clear(t);
+      resolve(true);
+    };
+    p.then(done, done);
+  });
 }
 
 export interface BootMachine<S> {
@@ -92,6 +131,8 @@ export interface BootMachine<S> {
   /** Force a bounded head re-check + reconcile now (visible after long hide, manual refresh). */
   recheck(): Promise<ReconcileDecision | null>;
   sync(): SyncClient<S> | null;
+  /** Preserve an incompatible save and stop all progression until a capable client loads. */
+  requireUpdate(): void;
   /**
    * Identity switch (audit F1): the adapter built a NEW sync/slot for the new player; every later
    * re-check (visible after a long hide, server_deeper, broadcast, manual) must use it. A re-check
@@ -109,6 +150,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
   const headCheckMs = deps.headCheckMs ?? 800;
   const emptyCacheMs = deps.emptyCacheHeadCheckMs ?? 3_000;
   const longHideMs = deps.longHideMs ?? 5 * 60_000;
+  const bootRepushMs = deps.bootRepushMs ?? 3_000;
   const subs = new Set<(s: BootState<S>) => void>();
   let st: BootState<S> = {
     phase: 'booting',
@@ -125,12 +167,23 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
   let promptResolver: ((c: 'keep_local' | 'adopt_remote') => void) | null = null;
   let unreachableResolver: ((c: 'retry' | 'start_new') => void) | null = null;
   let booted = false;
+  let updateRequired = false;
 
   const phase = (): BootPhase => st.phase;
   const set = (patch: Partial<BootState<S>>): void => {
-    st = { ...st, ...patch };
+    st = updateRequired
+      ? { ...st, ...patch, phase: 'blocked', blockedReason: 'update_required', prompt: null }
+      : { ...st, ...patch };
     deps.onChange?.(st);
     for (const s of subs) s(st);
+  };
+  const requireUpdate = (): void => {
+    if (updateRequired) return;
+    updateRequired = true;
+    // Settle an in-flight reconciliation prompt without allowing its callback
+    // to move this terminal state back to reconciled/live.
+    promptResolver?.('keep_local');
+    set({ phase: 'blocked', blockedReason: 'update_required', prompt: null });
   };
   const note = (n: string): void => set({ notes: [...st.notes, n] });
 
@@ -149,6 +202,9 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     new Promise((resolve) => {
       promptResolver = (c) => {
         promptResolver = null;
+        // Keep simulation/writers frozen, but leave the prompt phase before act() so the chosen
+        // adoption can persist. The machine enters live only after the choice has been applied.
+        set({ phase: 'reconciled', prompt: null });
         resolve(c);
       };
       set({ phase: 'prompt', prompt });
@@ -198,7 +254,10 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
           (env.generation < decision.generation ||
             (head.kind === 'snapshot' &&
               head.generation === env.generation &&
-              head.snapshot.progress > env.progress) ||
+              (head.snapshot.progress > env.progress ||
+                (deps.reconcileEqualProgress === true &&
+                  head.snapshot.progress === env.progress &&
+                  head.snapshot.seq > env.lastAckedSeq))) ||
             !hadLocal);
         if (!needAdopt || !head) return true;
         const r = await s.adoptRemote(head, 'boot');
@@ -245,7 +304,13 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     blocked: 'update_required' | null;
   }> => {
     const r = await s.fetchHead({ withBlob: false, timeoutMs });
-    if (r.ok) return { head: r.head, unreachable: false, blocked: null };
+    if (r.ok) {
+      const inspected = await s.inspectRemote(r.head);
+      if (inspected.ok) return { head: inspected.head, unreachable: false, blocked: null };
+      if (inspected.reason === 'newer_schema')
+        return { head: null, unreachable: false, blocked: 'update_required' };
+      return { head: null, unreachable: true, blocked: null };
+    }
     if (r.verdict === 'update_required')
       return { head: null, unreachable: false, blocked: 'update_required' };
     // any other failure (network, 5xx, 401, 429) is "cloud unreachable" for boot purposes
@@ -271,11 +336,29 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
       playerId: player.playerId,
     });
     const read = slot.read();
+    if (!read.ok && read.reason === 'incompatible') {
+      requireUpdate();
+      throw new Error('An update is required to read this save. Your save is preserved.');
+    }
     const local = read.ok ? read.envelope : null;
     const migrated = read.ok && read.migrated;
-    if (!read.ok && read.reason !== 'empty')
+    const damaged = !read.ok && read.reason !== 'empty';
+    if (!read.ok && read.reason !== 'empty' && read.reason !== 'incompatible') {
       note(`local slot unusable: ${read.reason}${read.message ? ` (${read.message})` : ''}`);
-    const returning = local !== null || player.registered || lastKnown === player.playerId;
+      // Set the raw slot aside before anything writes it: boot now treats it as absent.
+      const backup = backupDamagedSlot(deps.storage, deps.gameId, player.playerId);
+      try {
+        deps.onDamagedSlot?.({
+          reason: read.reason,
+          ...(read.message ? { message: read.message } : {}),
+          ...backup,
+        });
+      } catch {
+        /* reporting never blocks boot */
+      }
+    }
+    const returning =
+      local !== null || damaged || player.registered || lastKnown === player.playerId;
 
     sync = deps.createSync(player, local ?? deps.newEnvelope(player), slot);
     set({ phase: 'checkingCloud' });
@@ -285,7 +368,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     for (;;) {
       const hc = await headCheck(sync, local ? headCheckMs : emptyCacheMs);
       if (hc.blocked) {
-        set({ phase: 'blocked', blockedReason: hc.blocked });
+        requireUpdate();
         throw new Error('update required');
       }
       head = hc.head;
@@ -294,6 +377,9 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
         remote: head,
         remoteUnreachable: hc.unreachable,
         returningIdentity: returning,
+        ...(deps.reconcileEqualProgress !== undefined
+          ? { reconcileEqualProgress: deps.reconcileEqualProgress }
+          : {}),
       });
       set({ decision, pendingQuarantine: decision.pendingQuarantine ?? null });
       if (decision.action !== 'cloud_unreachable') break;
@@ -307,10 +393,28 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     }
 
     await act(sync, decision, head, local !== null);
+    if (sync.halted() === 'update_required') requireUpdate();
     if (phase() === 'blocked') throw new Error(`blocked: ${st.blockedReason}`);
     set({ phase: 'reconciled', prompt: null });
-    // §5.2: re-push the last unacked snapshot before offline credit is computed by the loop
-    await sync.bootRepush();
+    const selected = sync.envelope();
+    const offlineResumeAnchor = {
+      savedAt: selected.savedAt,
+      ...(selected.deviceSavedAt !== undefined ? { deviceSavedAt: selected.deviceSavedAt } : {}),
+      ...(selected.savedAtServerAnchored !== undefined
+        ? { savedAtServerAnchored: selected.savedAtServerAnchored }
+        : {}),
+    };
+    // §5.2: re-push the last unacked snapshot before offline credit is computed by the loop. The
+    // request leaves now with the pre-gap snapshot verbatim (same commandId), but a slow or hung
+    // save server must not hold the player at the loading screen: after bootRepushMs boot goes live
+    // and the push settles in the background. That keeps the guarantee: pushes are serialized, so
+    // the credited state (a newer pending minted by the offline resume) only reaches the server
+    // after this one settles; the offline anchor was taken above, so a late ack cannot move it;
+    // and the credited state is saved on the device at once with its own timestamps, so the next
+    // boot credits only the time since then.
+    const repush = sync.bootRepush(decision.reassertPending === true);
+    if (!(await settlesWithin(repush, bootRepushMs, deps.timers)))
+      note(`boot re-push still in flight after ${bootRepushMs} ms; continuing`);
     set({ phase: 'live' });
     return {
       player,
@@ -318,6 +422,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
       generation: sync.envelope().generation,
       state: sync.envelope().state,
       sync,
+      offlineResumeAnchor,
       migrated,
     };
   };
@@ -330,7 +435,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     const hc = await headCheck(s, headCheckMs);
     if (stale(s)) return null;
     if (hc.blocked) {
-      set({ phase: 'blocked', blockedReason: hc.blocked });
+      requireUpdate();
       return null;
     }
     const env = s.envelope();
@@ -339,10 +444,15 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
       remote: hc.head,
       remoteUnreachable: hc.unreachable,
       returningIdentity: true,
+      ...(deps.reconcileEqualProgress !== undefined
+        ? { reconcileEqualProgress: deps.reconcileEqualProgress }
+        : {}),
     });
     set({ decision, pendingQuarantine: decision.pendingQuarantine ?? null });
-    if (decision.action === 'keep_local' || decision.action === 'cloud_unreachable')
+    if (decision.action === 'keep_local' || decision.action === 'cloud_unreachable') {
+      if (decision.reassertPending) await s.bootRepush(true);
       return decision;
+    }
     await act(s, decision, hc.head, true);
     if (stale(s)) return null;
     if (phase() !== 'blocked') set({ phase: 'live', prompt: null });
@@ -372,6 +482,7 @@ export function createBootMachine<S>(deps: BootDeps<S>): BootMachine<S> {
     },
     recheck,
     sync: () => sync,
+    requireUpdate,
     rebind(binding) {
       sync = binding.sync;
       slot = binding.slot;

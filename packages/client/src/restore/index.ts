@@ -31,6 +31,7 @@ export type RestoreOutcome =
       ok: false;
       reason:
         | 'restoring'
+        | 'blocked'
         | 'trial_failed'
         | 'not_deeper'
         | 'write_failed'
@@ -64,6 +65,8 @@ export interface RestoreDeps<S> {
     kind: 'restore_used' | 'kv_break_glass_read',
     detail: Record<string, string | number | boolean>,
   ) => void;
+  /** False while the owning client is fail-closed (for example, update required). */
+  canWrite?: () => boolean;
 }
 
 export interface Restore {
@@ -81,12 +84,14 @@ export interface Restore {
 
 export function createRestore<S>(deps: RestoreDeps<S>): Restore {
   const { api, codec, slot, sync, gate, clock } = deps;
+  const blocked = (): boolean => deps.canWrite?.() === false;
 
   const forwardOnly = async (
     blob: string,
     enc: 'json' | 'gzip+b64' = 'json',
     kind: 'forward' | 'break_glass' = 'forward',
   ): Promise<RestoreOutcome> => {
+    if (blocked()) return { ok: false, reason: 'blocked' };
     if (gate.isRestoring()) return { ok: false, reason: 'restoring' };
     let json: string;
     try {
@@ -102,13 +107,16 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
     if (!trial.ok) return { ok: false, reason: 'trial_failed', message: trial.reason };
     const restoredProgress = deps.progressOf(trial.state);
     if (!(restoredProgress > sync.envelope().progress)) return { ok: false, reason: 'not_deeper' };
+    if (blocked()) return { ok: false, reason: 'blocked' };
 
     // 1. push current — the pre-restore state reaches the server as evidence/fallback. This
     //    happens BEFORE the gate is held because every writer (this push included) refuses to
     //    run while the gate is closed.
     await sync.push('restore');
+    if (blocked()) return { ok: false, reason: 'blocked' };
 
     return gate.hold(async (): Promise<RestoreOutcome> => {
+      if (blocked()) return { ok: false, reason: 'blocked' };
       // 2. write local: the restored state replaces the slot, floor forced to the restored depth
       const cur = sync.envelope();
       const next: CacheEnvelope<S> = {
@@ -116,6 +124,8 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
         state: trial.state,
         progress: restoredProgress,
         savedAt: clock.now(),
+        deviceSavedAt: clock.deviceNow(),
+        savedAtServerAnchored: clock.anchored(),
         dirty: true,
         ratchetFloor: ratchetForce({
           playerId: cur.playerId,
@@ -150,6 +160,7 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
   };
 
   const restoreToSeq = async (seq: number): Promise<RestoreOutcome> => {
+    if (blocked()) return { ok: false, reason: 'blocked' };
     if (gate.isRestoring()) return { ok: false, reason: 'restoring' };
     const env = sync.envelope();
     const body: LineageRestoreToSeqBody = {
@@ -171,12 +182,16 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
       if (res.status === 401) return { ok: false, reason: 'no_token' };
       return { ok: false, reason: 'rejected', message: res.error?.error ?? `http ${res.status}` };
     }
+    if (blocked()) return { ok: false, reason: 'blocked' };
     return gate.hold(async (): Promise<RestoreOutcome> => {
+      if (blocked()) return { ok: false, reason: 'blocked' };
       const head = await sync.fetchHead({ withBlob: true, timeoutMs: 5_000 });
       if (!head.ok) return { ok: false, reason: 'unreachable' };
+      if (blocked()) return { ok: false, reason: 'blocked' };
       // adopt in memory (+ broadcast); the sync client's own persist is gated, so write + confirm here
       const r = await sync.adoptRemote(head.head, 'restore');
       if (!r.ok) return { ok: false, reason: 'blob_unavailable', message: r.reason };
+      if (blocked()) return { ok: false, reason: 'blocked' };
       const w = slot.write(sync.envelope());
       if (!w.ok) return { ok: false, reason: 'write_failed', message: w.reason };
       const back = slot.read();
@@ -198,6 +213,7 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
   };
 
   const fromHistory = async (seq: number): Promise<RestoreOutcome> => {
+    if (blocked()) return { ok: false, reason: 'blocked' };
     const res = await api.call<SaveBlobResponse>('GET', `/v1/saves/history/${seq}/blob`);
     if (!res.ok)
       return res.status === 0
@@ -207,6 +223,7 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
   };
 
   const breakGlassFromKv = async (): Promise<RestoreOutcome> => {
+    if (blocked()) return { ok: false, reason: 'blocked' };
     if (!deps.kv || !deps.kvKey) return { ok: false, reason: 'kv_unavailable' };
     let value: string | null;
     try {
@@ -226,10 +243,12 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
   };
 
   const reattach = async (): Promise<RestoreOutcome> => {
+    if (blocked()) return { ok: false, reason: 'blocked' };
     if (gate.isRestoring()) return { ok: false, reason: 'restoring' };
     const env = sync.envelope();
     const head = await sync.fetchHead({ withBlob: false, timeoutMs: 5_000 });
     if (!head.ok) return { ok: false, reason: 'unreachable' };
+    if (blocked()) return { ok: false, reason: 'blocked' };
     const state = env.state;
     const body: LineageReattachBody = {
       commandId: mintId(),
@@ -250,6 +269,7 @@ export function createRestore<S>(deps: RestoreDeps<S>): Restore {
       if (res.status === 409) return { ok: false, reason: 'stale_generation' };
       return { ok: false, reason: 'rejected', message: res.error?.error ?? `http ${res.status}` };
     }
+    if (blocked()) return { ok: false, reason: 'blocked' };
     sync.resume();
     const h2 = await sync.fetchHead({ withBlob: true, timeoutMs: 5_000 });
     if (h2.ok) await sync.adoptRemote(h2.head, 'restore');

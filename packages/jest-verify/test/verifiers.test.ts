@@ -143,6 +143,61 @@ describe('mock identity verifier — same conformance', () => {
 
 describe('Jest payments verifier — conformance', () => {
   const v = createJestPaymentsVerifier({ secretsB64: [secret, oldSecret] });
+  it('verifies an empty recovery batch and preserves its signed player identity', () => {
+    const token = signHs256({ aud: GAME, sub: 'p1', purchases: [], iat: NOW / 1000 }, secret);
+    expect(v.verifyReceipt(token, GAME)).toEqual({
+      ok: true,
+      playerId: 'p1',
+      purchases: [],
+    });
+  });
+  it.each([
+    { name: 'wrong signing key', overrides: {}, key: otherSecret, reason: 'bad_signature' },
+    { name: 'wrong game', overrides: { aud: 'other-game' }, key: secret, reason: 'wrong_audience' },
+    {
+      name: 'missing player',
+      overrides: { sub: undefined },
+      key: secret,
+      reason: 'malformed_purchase',
+      field: 'sub',
+    },
+    {
+      name: 'empty player',
+      overrides: { sub: '' },
+      key: secret,
+      reason: 'malformed_purchase',
+      field: 'sub',
+    },
+    {
+      name: 'invalid player type',
+      overrides: { sub: 42 },
+      key: secret,
+      reason: 'malformed_purchase',
+      field: 'sub',
+    },
+    {
+      name: 'missing batch',
+      overrides: { purchases: undefined },
+      key: secret,
+      reason: 'malformed_purchase',
+      field: 'no purchase or purchases',
+    },
+    {
+      name: 'invalid batch type',
+      overrides: { purchases: null },
+      key: secret,
+      reason: 'malformed_purchase',
+      field: 'purchases (not an array)',
+    },
+  ])('rejects an empty recovery receipt with $name', ({ overrides, key, reason, field }) => {
+    const token = signHs256({ aud: GAME, sub: 'p1', purchases: [], ...overrides }, key);
+    // A malformed payload names the field that failed.
+    expect(v.verifyReceipt(token, GAME)).toEqual({
+      ok: false,
+      reason,
+      ...(field ? { field } : {}),
+    });
+  });
   runCases(
     paymentsConformance(
       v,
@@ -244,7 +299,11 @@ describe('Jest payments verifier — conformance', () => {
       },
       secret,
     );
-    expect(v.verifyReceipt(t, GAME)).toEqual({ ok: false, reason: 'malformed_purchase' });
+    expect(v.verifyReceipt(t, GAME)).toEqual({
+      ok: false,
+      reason: 'malformed_purchase',
+      field: 'purchase.sandbox',
+    });
   });
   it('rejects signed purchase facts that cannot be safely persisted or are not one official shape', () => {
     const valid = {
@@ -255,24 +314,35 @@ describe('Jest payments verifier — conformance', () => {
       price: 4.99,
       currency: 'USD',
     };
-    const malformed: Record<string, unknown>[] = [
-      { ...valid, purchaseToken: 'x'.repeat(2049) },
-      { ...valid, productSku: 'x'.repeat(257) },
-      { ...valid, createdAt: -1 },
-      { ...valid, createdAt: NOW + 0.5 },
-      { ...valid, completedAt: NOW - 1 },
-      { ...valid, price: -0.01 },
-      { ...valid, price: 10_000_000_000 },
-      { ...valid, currency: 'usd' },
-      { ...valid, currency: 'USDX' },
+    const malformed: [Record<string, unknown>, string][] = [
+      [{ ...valid, purchaseToken: 'x'.repeat(2049) }, 'purchaseToken'],
+      [{ ...valid, productSku: 'x'.repeat(257) }, 'productSku'],
+      [{ ...valid, createdAt: -1 }, 'createdAt'],
+      [{ ...valid, createdAt: NOW + 0.5 }, 'createdAt'],
+      [{ ...valid, completedAt: NOW - 1 }, 'completedAt'],
+      [{ ...valid, price: -0.01 }, 'price'],
+      [{ ...valid, price: 10_000_000_000 }, 'price'],
+      [{ ...valid, currency: 'usd' }, 'currency'],
+      [{ ...valid, currency: 'USDX' }, 'currency'],
     ];
-    for (const purchase of malformed) {
+    for (const [purchase, field] of malformed) {
       const token = signHs256({ aud: GAME, sub: 'p1', purchase }, secret);
       expect(v.verifyReceipt(token, GAME), JSON.stringify(purchase)).toEqual({
         ok: false,
         reason: 'malformed_purchase',
+        field: `purchase.${field}`,
       });
     }
+    // In a batch, the receipt's index too.
+    const batch = signHs256(
+      { aud: GAME, sub: 'p1', purchases: [valid, { ...valid, purchaseToken: 'b', price: -1 }] },
+      secret,
+    );
+    expect(v.verifyReceipt(batch, GAME)).toEqual({
+      ok: false,
+      reason: 'malformed_purchase',
+      field: 'purchases[1].price',
+    });
 
     const ambiguous = signHs256(
       { aud: GAME, sub: 'p1', purchase: valid, purchases: [valid] },
@@ -281,12 +351,21 @@ describe('Jest payments verifier — conformance', () => {
     expect(v.verifyReceipt(ambiguous, GAME)).toEqual({
       ok: false,
       reason: 'malformed_purchase',
+      field: 'purchase and purchases',
     });
   });
 });
 
 describe('mock payments verifier — same conformance', () => {
   const v = createMockPaymentsVerifier();
+  it('preserves player identity for empty recovery batches like the real verifier', () => {
+    const token = mintMockReceipt({ aud: GAME, sub: 'p1', purchases: [] });
+    expect(v.verifyReceipt(token, GAME)).toEqual({
+      ok: true,
+      playerId: 'p1',
+      purchases: [],
+    });
+  });
   runCases(
     paymentsConformance(
       v,

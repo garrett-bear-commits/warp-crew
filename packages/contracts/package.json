@@ -9,6 +9,7 @@
     "./schemas": "./src/index.ts",
     "./enums": "./src/enums.ts",
     "./routes": "./src/routes.ts",
+    "./versions": "./src/versions.ts",
     "./fixtures": "./src/fixtures/index.ts"
   },
   "scripts": {

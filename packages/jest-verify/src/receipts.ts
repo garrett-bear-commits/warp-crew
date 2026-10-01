@@ -17,7 +17,13 @@ export interface VerifiedReceipt {
 }
 
 export type ReceiptResult =
-  { ok: true; purchases: VerifiedReceipt[] } | { ok: false; reason: ReceiptFailure };
+  | { ok: true; playerId: string; purchases: VerifiedReceipt[] }
+  | {
+      ok: false;
+      reason: ReceiptFailure;
+      /** For `malformed_purchase`: the field that failed (`purchases[2].price`, `sub`). */
+      field?: string;
+    };
 
 export interface PaymentsVerifier {
   verifyReceipt(jws: string, gameId: string): ReceiptResult;
@@ -35,25 +41,27 @@ function validEpochMs(value: unknown): value is number {
   );
 }
 
-function readPurchase(sub: string, raw: unknown): VerifiedReceipt | null {
-  if (!raw || typeof raw !== 'object') return null;
+/** A verified receipt, or the name of the first field that failed (`malformed_purchase` says
+ *  only that one did; the field says which, for logs and Sentry). */
+function readPurchase(sub: string, raw: unknown): VerifiedReceipt | string {
+  if (!raw || typeof raw !== 'object') return 'not an object';
   const p = raw as Record<string, unknown>;
   if (
     typeof p.purchaseToken !== 'string' ||
     p.purchaseToken.length === 0 ||
     p.purchaseToken.length > MAX_PROVIDER_TOKEN_LENGTH
   )
-    return null;
+    return 'purchaseToken';
   if (
     typeof p.productSku !== 'string' ||
     p.productSku.length === 0 ||
     p.productSku.length > MAX_SKU_LENGTH
   )
-    return null;
-  if (!validEpochMs(p.createdAt)) return null;
+    return 'productSku';
+  if (!validEpochMs(p.createdAt)) return 'createdAt';
   if (!(p.completedAt === null || (validEpochMs(p.completedAt) && p.completedAt >= p.createdAt)))
-    return null;
-  if (p.sandbox !== undefined && p.sandbox !== true) return null;
+    return 'completedAt';
+  if (p.sandbox !== undefined && p.sandbox !== true) return 'sandbox';
   if (
     p.price !== undefined &&
     !(
@@ -63,17 +71,17 @@ function readPurchase(sub: string, raw: unknown): VerifiedReceipt | null {
       p.price <= MAX_STORED_PRICE
     )
   )
-    return null;
+    return 'price';
   if (
     p.currency !== undefined &&
     !(typeof p.currency === 'string' && /^[A-Z]{3}$/.test(p.currency))
   )
-    return null;
+    return 'currency';
   if (
     p.credits !== undefined &&
     !(typeof p.credits === 'number' && Number.isFinite(p.credits) && p.credits >= 0)
   )
-    return null;
+    return 'credits';
   const out: VerifiedReceipt = {
     playerId: sub,
     purchaseToken: p.purchaseToken,
@@ -85,6 +93,37 @@ function readPurchase(sub: string, raw: unknown): VerifiedReceipt | null {
   if (typeof p.price === 'number') out.price = p.price;
   if (typeof p.currency === 'string') out.currency = p.currency;
   return out;
+}
+
+/** The purchases of a verified payload, or why they are malformed (shared by both verifiers). */
+function readPayloadPurchases(payload: Record<string, unknown>): ReceiptResult {
+  const malformed = (field: string): ReceiptResult => ({
+    ok: false,
+    reason: 'malformed_purchase',
+    field,
+  });
+  const sub = payload.sub;
+  if (typeof sub !== 'string' || !sub || sub.length > 128) return malformed('sub');
+  const hasPurchase = payload.purchase !== undefined;
+  const hasPurchases = payload.purchases !== undefined;
+  if (hasPurchase === hasPurchases)
+    return malformed(hasPurchase ? 'purchase and purchases' : 'no purchase or purchases');
+  const raw = hasPurchase
+    ? [payload.purchase]
+    : Array.isArray(payload.purchases)
+      ? payload.purchases
+      : null;
+  if (!raw) return malformed('purchases (not an array)');
+  if (raw.length > 50) return malformed(`purchases (${raw.length} > 50)`);
+  const purchases: VerifiedReceipt[] = [];
+  for (const [i, r] of raw.entries()) {
+    const v = readPurchase(sub, r);
+    if (typeof v === 'string')
+      return malformed(hasPurchase ? `purchase.${v}` : `purchases[${i}].${v}`);
+    purchases.push(v);
+  }
+  // Keep the signed subject even when there are no purchases to recover.
+  return { ok: true, playerId: sub, purchases };
 }
 
 export function createJestPaymentsVerifier(opts: {
@@ -101,21 +140,7 @@ export function createJestPaymentsVerifier(opts: {
         return { ok: false, reason: 'bad_signature' };
       const p = parsed.payload;
       if (!gameId || p.aud !== gameId) return { ok: false, reason: 'wrong_audience' };
-      if (typeof p.sub !== 'string' || !p.sub || p.sub.length > 128)
-        return { ok: false, reason: 'malformed_purchase' };
-      const hasPurchase = p.purchase !== undefined;
-      const hasPurchases = p.purchases !== undefined;
-      if (hasPurchase === hasPurchases) return { ok: false, reason: 'malformed_purchase' };
-      const raw = hasPurchase ? [p.purchase] : Array.isArray(p.purchases) ? p.purchases : null;
-      if (!raw || raw.length === 0 || raw.length > 50)
-        return { ok: false, reason: 'malformed_purchase' };
-      const purchases: VerifiedReceipt[] = [];
-      for (const r of raw) {
-        const v = readPurchase(p.sub, r);
-        if (!v) return { ok: false, reason: 'malformed_purchase' };
-        purchases.push(v);
-      }
-      return { ok: true, purchases };
+      return readPayloadPurchases(p);
     },
   };
 }
@@ -138,25 +163,7 @@ export function createMockPaymentsVerifier(): PaymentsVerifier {
         return { ok: false, reason: 'malformed' };
       }
       if (!gameId || payload.aud !== gameId) return { ok: false, reason: 'wrong_audience' };
-      if (typeof payload.sub !== 'string' || !payload.sub || payload.sub.length > 128)
-        return { ok: false, reason: 'malformed_purchase' };
-      const hasPurchase = payload.purchase !== undefined;
-      const hasPurchases = payload.purchases !== undefined;
-      if (hasPurchase === hasPurchases) return { ok: false, reason: 'malformed_purchase' };
-      const raw = hasPurchase
-        ? [payload.purchase]
-        : Array.isArray(payload.purchases)
-          ? payload.purchases
-          : null;
-      if (!raw || raw.length === 0 || raw.length > 50)
-        return { ok: false, reason: 'malformed_purchase' };
-      const purchases: VerifiedReceipt[] = [];
-      for (const r of raw) {
-        const v = readPurchase(payload.sub, r);
-        if (!v) return { ok: false, reason: 'malformed_purchase' };
-        purchases.push(v);
-      }
-      return { ok: true, purchases };
+      return readPayloadPurchases(payload);
     },
   };
 }

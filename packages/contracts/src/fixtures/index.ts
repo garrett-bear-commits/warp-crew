@@ -334,6 +334,7 @@ export const achievementsDocument: C.AchievementsDocument = {
 
 export const dailyRewardsDocument: C.DailyRewardsDocument = {
   version: 1,
+  cadence: 'utc_day',
   ladder: [
     { day: 1, rewards: [{ kind: 'soft_currency', currency: 'gold', amount: 50 }] },
     { day: 2, rewards: [{ kind: 'soft_currency', currency: 'gold', amount: 75 }] },
@@ -410,6 +411,70 @@ export const ROUTE_FIXTURES: Record<string, { body?: unknown; response: unknown 
         dropped: 0,
         nextSeq: 3,
         outcome: 'stored',
+        requestId: REQUEST_ID,
+        serverNow: T0,
+      },
+    },
+  ],
+  'names.check': [
+    {
+      body: { commandId: FIXTURE_UUIDS.commandId, name: 'Sir Reginald' },
+      response: { verdict: 'pass', requestId: REQUEST_ID, serverNow: T0 },
+    },
+    {
+      body: { commandId: FIXTURE_UUIDS.commandId2, name: 'Kush' },
+      response: { verdict: 'fail', requestId: REQUEST_ID, serverNow: T0 },
+    },
+  ],
+  'daily.claim': [
+    {
+      body: { commandId: FIXTURE_UUIDS.commandId },
+      response: {
+        outcome: 'claimed',
+        day: 1,
+        grantKey: 'daily:g0:2026-09-27',
+        rewards: [{ kind: 'item', itemId: 'contract_standard', qty: 1 }],
+        nextEligibleAt: T0 + 86_400_000,
+        requestId: REQUEST_ID,
+        serverNow: T0,
+      },
+    },
+    {
+      body: { commandId: FIXTURE_UUIDS.commandId },
+      response: {
+        outcome: 'not_eligible',
+        day: 1,
+        nextEligibleAt: T0,
+        requestId: REQUEST_ID,
+        serverNow: T0,
+      },
+    },
+  ],
+  'daily.status': [
+    {
+      response: {
+        cadence: 'rolling_24h',
+        state: 'cooldown',
+        nextEligibleAt: T0 + 3_600_000,
+        generation: 0,
+        claims: [
+          {
+            grantKey: 'daily:g0:2026-09-27',
+            at: T0 - 82_800_000,
+            rewards: [{ kind: 'item', itemId: 'contract_standard', qty: 1 }],
+            acknowledged: true,
+          },
+        ],
+        requestId: REQUEST_ID,
+        serverNow: T0,
+      },
+    },
+  ],
+  'admin.session': [
+    {
+      response: {
+        keyId: 'staging-read-20261001',
+        scopes: ['read'],
         requestId: REQUEST_ID,
         serverNow: T0,
       },

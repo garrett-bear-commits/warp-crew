@@ -18,6 +18,7 @@ import { QueryBus } from './cqrs/query.ts';
 import { Outbox } from './outbox/index.ts';
 import { systemClock, type ServerClock } from './clock/index.ts';
 import { createMemoryLimiter, createPgLimiter } from './limits/index.ts';
+import { createCfAccessVerifier } from './auth/cf-access.ts';
 import { createJobRunner, type JobDef, type JobRunner } from './jobs/index.ts';
 import type { AppContext } from './http/context.ts';
 import { buildFastify } from './http/app.ts';
@@ -26,17 +27,21 @@ import { registerSaves } from './features/saves/server.ts';
 import { registerLineage } from './features/lineage/server.ts';
 import { registerPurchases } from './features/purchases/server.ts';
 import { registerGrants } from './features/grants/server.ts';
-import { registerAchievements } from './features/achievements/server.ts';
+import { registerAchievements, registerDaily } from './features/achievements/server.ts';
 import { registerLeaderboards } from './features/leaderboards/server.ts';
 import { registerInbox } from './features/inbox/server.ts';
 import { registerLiveops, createLiveopsCache } from './features/liveops/server.ts';
 import { registerTelemetry } from './features/telemetry/server.ts';
+import { registerNames } from './features/names/server.ts';
 import { registerJournal } from './features/journal/server.ts';
 import { registerAdmin } from './features/admin/server.ts';
 import { registerQa } from './features/qa/server.ts';
 import { redactionPaths } from './logging.ts';
 import { verifyLiveIntegrity } from './dr/index.ts';
 import { initSentry, type SentryHandle } from './observability/sentry.ts';
+import { createHttpStats } from './observability/httpStats.ts';
+import { createOpsAlerter, opsSnapshot } from './health/index.ts';
+import { runEconomyAnomaly } from './jobs/economy-anomaly.ts';
 
 export interface CreateServerOptions {
   config: ServerConfig;
@@ -49,6 +54,10 @@ export interface CreateServerOptions {
   skipSchemaCheck?: boolean;
   /** Injected Sentry handle (tests); default: initSentry from config.sentryDsn (no-op without a DSN). */
   sentry?: SentryHandle;
+  /** Live-ops cache refresh period (default LIVEOPS_REFRESH_MS; tests shorten it). */
+  liveopsRefreshMs?: number;
+  /** Reads Cloudflare Access's signing keys (config.cfAccess); default global fetch (tests fake it). */
+  cfAccessFetch?: typeof fetch;
 }
 
 export interface Server {
@@ -62,8 +71,29 @@ export interface Server {
   stop(): Promise<void>;
 }
 
-export function createLogger(level = 'info'): Logger {
-  return pino({ level, redact: { paths: redactionPaths(), censor: '[redacted]' } });
+/** Per-replica live-ops cache refresh (admin publishes refresh the handling replica at once). */
+export const LIVEOPS_REFRESH_MS = 30_000;
+
+/** Somewhere pino can write serialized lines (a log shipper, a test sink). */
+export interface LogSink {
+  write(line: string): void;
+}
+
+/**
+ * pino JSON on stdout with the shared redaction list. With `ship` (PostHog log shipping), every
+ * line also goes to the shipper; stdout output is unchanged. `stdout` replaces fd 1 (tests).
+ */
+export function createLogger(
+  level = 'info',
+  o: { ship?: LogSink | null; stdout?: LogSink } = {},
+): Logger {
+  const opts = { level, redact: { paths: redactionPaths(), censor: '[redacted]' } };
+  if (!o.ship && !o.stdout) return pino(opts);
+  const stdout = o.stdout ?? pino.destination({ dest: process.stdout.fd || 1 });
+  const lvl = level as pino.Level;
+  const streams: pino.StreamEntry[] = [{ level: lvl, stream: stdout }];
+  if (o.ship) streams.push({ level: lvl, stream: o.ship });
+  return pino(opts, pino.multistream(streams));
 }
 
 export async function createServer(o: CreateServerOptions): Promise<Server> {
@@ -87,6 +117,13 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     o.config.paymentsProvider === 'jest'
       ? createJestPaymentsVerifier({ secretsB64: o.config.jestSecrets })
       : createMockPaymentsVerifier();
+  const cfAccess = o.config.cfAccess
+    ? createCfAccessVerifier(o.config.cfAccess, {
+        ...(o.cfAccessFetch ? { fetch: o.cfAccessFetch } : {}),
+        onKeysError: (err) =>
+          log.warn({ err }, 'Cloudflare Access signing keys unreadable; keeping the last ones'),
+      })
+    : null;
   const limiter =
     o.config.rateLimitStore === 'pg' ? createPgLimiter(db.sql, clock) : createMemoryLimiter(clock);
   const sentry =
@@ -97,7 +134,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
       gameId: o.config.gameId,
       env: o.config.env,
     });
-  const outbox = new Outbox(db, clock, {}, log);
+  const outbox = new Outbox(db, clock, {}, log, sentry);
   const jobs: JobDef[] = [];
   const busGuards: AppContext['busGuards'] = [];
   const bus = new CommandBus({
@@ -129,8 +166,11 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     limiter,
     identity,
     payments,
+    cfAccess,
     log,
+    httpStats: createHttpStats(),
     jobs,
+    bootedAt: clock.now(),
     declaredCommands: [],
     declaredQueries: [],
     liveops,
@@ -143,9 +183,11 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
   registerIdentity(app, ctx);
   registerSaves(app, ctx);
   registerLineage(app, ctx);
+  registerNames(app, ctx);
   if (o.game.features.purchases) registerPurchases(app, ctx);
   if (o.game.features.grants) registerGrants(app, ctx);
   if (o.game.features.achievements) registerAchievements(app, ctx);
+  if (o.game.features.achievements || o.game.features.daily) registerDaily(app, ctx);
   if (o.game.features.leaderboards) registerLeaderboards(app, ctx);
   if (o.game.features.inbox) registerInbox(app, ctx);
   if (o.game.features.liveops) registerLiveops(app, ctx);
@@ -172,27 +214,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
   jobs.push({
     name: 'economy.anomaly',
     intervalMs: 24 * 3_600_000,
-    async run() {
-      // nightly z-score over declared summary scalars: flag players whose latest anchored summary is > 4σ from the population mean
-      const stats = await db.sql<{ key: string; mean: number; stddev: number; n: number }[]>`
-        WITH latest AS (
-          SELECT DISTINCT ON (player_key) player_key, summary FROM save_snapshots WHERE disposition = 'anchored' AND summary IS NOT NULL ORDER BY player_key, seq DESC)
-        SELECT k.key, avg((l.summary->>k.key)::numeric)::float AS mean, coalesce(stddev_pop((l.summary->>k.key)::numeric), 0)::float AS stddev, count(*)::int AS n
-        FROM latest l, LATERAL jsonb_object_keys(l.summary) k(key) WHERE jsonb_typeof(l.summary->k.key) = 'number' GROUP BY k.key`;
-      let flagged = 0;
-      for (const s of stats) {
-        if (s.n < 20 || s.stddev === 0) continue;
-        const outliers = await db.sql<{ player_key: string; v: number }[]>`
-          SELECT DISTINCT ON (player_key) player_key, (summary->>${s.key})::float AS v FROM save_snapshots WHERE disposition = 'anchored' AND summary ? ${s.key} ORDER BY player_key, seq DESC`;
-        for (const p of outliers) {
-          if (Math.abs((p.v - s.mean) / s.stddev) > 4) {
-            await db.sql`INSERT INTO integrity_events (player_key, kind, at, detail, message) VALUES (${p.player_key}, 'progress_jump_client', ${new Date(clock.now())}, ${db.sql.json({ key: s.key, value: p.v, mean: s.mean, stddev: s.stddev })}, 'economy anomaly (z > 4)')`;
-            flagged++;
-          }
-        }
-      }
-      return { keys: stats.length, flagged };
-    },
+    run: () => runEconomyAnomaly(db, clock, o.policy, sentry),
   });
   jobs.push({
     name: 'live.integrity',
@@ -202,7 +224,33 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     // verification (dr/index.ts verifyIsolatedRestore → markRestoreVerified; runbook restore-drill).
     run: () => verifyLiveIntegrity(db.sql, clock.now()),
   });
-  const runner = createJobRunner(db, clock, jobs, log);
+  // The SLO's page tier, delivered from inside: /health/ops has no public route for an external
+  // monitor. Its Crons check-in doubles as the API heartbeat (a dead runner misses it).
+  const alertOps = createOpsAlerter(ctx);
+  jobs.push({
+    name: 'ops.alert',
+    intervalMs: 5 * 60_000,
+    monitor: true,
+    run: async () => alertOps(await opsSnapshot(ctx)),
+  });
+  const runner = createJobRunner(db, clock, jobs, { log, sentry });
+
+  // The live-ops cache is per process, so every replica refreshes its own on a plain timer (an
+  // advisory-locked job would refresh only the replica that wins the lock). Not gated by
+  // jobsEnabled: a replica that runs no jobs still serves min-build, maintenance and kill switches.
+  let liveopsTimer: NodeJS.Timeout | undefined;
+  let liveopsFailing = false;
+  const refreshLiveops = async () => {
+    try {
+      await liveops.refresh();
+      liveopsFailing = false;
+    } catch (e) {
+      log.warn({ err: e instanceof Error ? e.message : String(e) }, 'liveops refresh failed');
+      if (!liveopsFailing)
+        sentry.captureException(e, {}, { level: 'warning', fingerprint: ['liveops-refresh'] });
+      liveopsFailing = true;
+    }
+  };
 
   let started = false;
   const boot = async () => {
@@ -233,17 +281,32 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
       await boot();
       started = true;
       if (o.config.jobsEnabled) runner.start();
+      liveopsTimer = setInterval(
+        () => void refreshLiveops(),
+        o.liveopsRefreshMs ?? LIVEOPS_REFRESH_MS,
+      );
+      liveopsTimer.unref();
       await app.listen({ port: o.config.port, host: o.config.host });
       const addr = app.server.address();
       const port = typeof addr === 'object' && addr ? addr.port : o.config.port;
       log.info(
-        { port, gameId: o.config.gameId, env: o.config.env, build: o.config.buildVersion },
+        {
+          port,
+          gameId: o.config.gameId,
+          env: o.config.env,
+          build: o.config.buildVersion,
+          // Whether errors reach Sentry at all: a missing DSN is otherwise silent.
+          sentry: sentry.enabled,
+          // Whether admin requests need a Cloudflare Access token.
+          cfAccess: cfAccess !== null,
+        },
         'listening',
       );
       return { port };
     },
     async stop() {
       runner.stop();
+      clearInterval(liveopsTimer);
       await app.close();
       await sentry.close(2000);
       if (!o.db) await db.end();

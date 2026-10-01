@@ -45,7 +45,11 @@ const config: ServerConfig = {
   opsSecret: E2E_OPS_SECRET,
   rateLimitStore: 'memory',
   sentryDsn: '',
+  posthogLogsToken: '',
+  posthogLogsUrl: '',
+  typesafeApiKey: '',
   buildVersion: 'e2e',
+  buildCommit: '',
   clientOrigins: [
     'http://localhost:4173',
     'http://127.0.0.1:4173',

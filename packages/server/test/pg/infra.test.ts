@@ -18,7 +18,7 @@ import {
 import { setupPg, type PgHarness } from './helpers.ts';
 import { Outbox } from '../../src/outbox/index.ts';
 import { fixedClock } from '../../src/clock/index.ts';
-import { createJobRunner } from '../../src/jobs/index.ts';
+import { createJobRunner, type JobDef } from '../../src/jobs/index.ts';
 import { createPgLimiter } from '../../src/limits/index.ts';
 import { mintGrant } from '../../src/rewards/mint.ts';
 
@@ -159,7 +159,11 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
           VALUES ('purchase.recorded', 'legacy-buyer', ${sql.json({ grantKey: legacyKey })}, ${commandId})`;
 
         const migrated = await migrateUp(t.url);
-        expect(migrated.applied).toEqual(['0015_legacy_purchase_grant_keys.sql']);
+        expect(migrated.applied).toEqual([
+          '0015_legacy_purchase_grant_keys.sql',
+          '0016_sandbox_purchase_grants.sql',
+          '0017_players_first_build.sql',
+        ]);
         const keys = await sql<
           { purchase_key: string; grant_key: string; grant_id: string; alias_key: string }[]
         >`
@@ -292,10 +296,10 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     }
   });
 
-  it('boot check: this image matches at 0015; a declared next extra is ahead here and exact-head-incompatible', async () => {
+  it('boot check: this image matches at 0017; a declared next extra is ahead here and exact-head-incompatible', async () => {
     const t = await createTestDatabase('schema_n1');
     const extraDir = writeMigrationsDir(listMigrations());
-    writeFileSync(join(extraDir, '0016_n1_probe.sql'), `${n1CompatLine(15)}\nSELECT 1;\n`);
+    writeFileSync(join(extraDir, '0018_n1_probe.sql'), `${n1CompatLine(17)}\nSELECT 1;\n`);
     try {
       await migrateUp(t.url);
       const sql = connect(t.url, { max: 1 });
@@ -315,7 +319,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const n1 = await checkSchema(sql);
         expect(n1.ok).toBe(true);
         expect(n1.state).toBe('ahead');
-        expect(n1.ahead).toEqual(['0016_n1_probe.sql']);
+        expect(n1.ahead).toEqual(['0018_n1_probe.sql']);
         expect(
           exactHeadMatches(
             listMigrations().map((m) => ({ name: m.name, checksum: m.checksum })),
@@ -334,23 +338,23 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const afterRepair = await checkSchema(sql);
         expect(afterRepair).toMatchObject({ ok: true, state: 'ahead' });
 
-        writeFileSync(join(extraDir, '0016_n1_probe.sql'), `${n1CompatLine(14)}\nSELECT 1;\n`);
+        writeFileSync(join(extraDir, '0018_n1_probe.sql'), `${n1CompatLine(16)}\nSELECT 1;\n`);
         await expect(repairChecksums(t.url, extraDir)).rejects.toThrow(/does not match stored/);
         expect(await checkSchema(sql)).toMatchObject({ ok: true, state: 'ahead' });
 
         writeFileSync(
-          join(extraDir, '0016_n1_probe.sql'),
-          `${n1CompatLine(15)}\nSELECT 1; -- repaired\n`,
+          join(extraDir, '0018_n1_probe.sql'),
+          `${n1CompatLine(17)}\nSELECT 1; -- repaired\n`,
         );
         await repairChecksums(t.url, extraDir);
         const afterExtraRepair = await checkSchema(sql);
         expect(afterExtraRepair).toMatchObject({
           ok: true,
           state: 'ahead',
-          ahead: ['0016_n1_probe.sql'],
+          ahead: ['0018_n1_probe.sql'],
         });
 
-        await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0017_ghost.sql', 'x')`;
+        await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0019_ghost.sql', 'x')`;
         const over = await checkSchema(sql);
         expect(over.ok).toBe(false);
         expect(over.state).toBe('incompatible');
@@ -366,10 +370,10 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
   it('--repair refuses an applied file that gained an n1 marker without a declaration', async () => {
     const t = await createTestDatabase('repair_n1_gain');
     const extraDir = writeMigrationsDir(listMigrations());
-    writeFileSync(join(extraDir, '0016_gain.sql'), 'SELECT 1;\n');
+    writeFileSync(join(extraDir, '0018_gain.sql'), 'SELECT 1;\n');
     try {
       await migrateUp(t.url, { dir: extraDir });
-      writeFileSync(join(extraDir, '0016_gain.sql'), `${n1CompatLine(15)}\nSELECT 1;\n`);
+      writeFileSync(join(extraDir, '0018_gain.sql'), `${n1CompatLine(17)}\nSELECT 1;\n`);
       await expect(repairChecksums(t.url, extraDir)).rejects.toThrow(/no schema_n1_compat row/);
     } finally {
       rmSync(extraDir, { recursive: true, force: true });
@@ -382,18 +386,39 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     const gapDir = writeMigrationsDir(listMigrations());
     try {
       await migrateUp(t.url, { dir: gapDir });
-      writeFileSync(join(gapDir, '0017_gap.sql'), 'SELECT 1;\n');
+      writeFileSync(join(gapDir, '0019_gap.sql'), 'SELECT 1;\n');
       await expect(migrateUp(t.url, { dir: gapDir })).rejects.toThrow(/contiguous ordinal chain/);
       const sql = connect(t.url, { max: 1 });
       try {
         const extra = await sql<{ n: number }[]>`
-          SELECT count(*)::int AS n FROM schema_migrations WHERE name = '0017_gap.sql'`;
+          SELECT count(*)::int AS n FROM schema_migrations WHERE name = '0019_gap.sql'`;
         expect(extra[0]!.n).toBe(0);
       } finally {
         await sql.end({ timeout: 5 });
       }
     } finally {
       rmSync(gapDir, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
+  it('the 0016 image still boots on a database migrated to 0017 (image rollback)', async () => {
+    const t = await createTestDatabase('rollback_0017');
+    const image0016 = priorMigrationsDir(17);
+    try {
+      await migrateUp(t.url);
+      const sql = connect(t.url, { max: 1 });
+      try {
+        expect(await checkSchema(sql, image0016)).toMatchObject({
+          ok: true,
+          state: 'ahead',
+          ahead: ['0017_players_first_build.sql'],
+        });
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(image0016, { recursive: true, force: true });
       await t.drop();
     }
   });
@@ -449,6 +474,36 @@ describe('outbox: crash mid-drain, lease expiry, at-least-once + idempotent rede
     expect(seen[0]).toBe(seen[1]); // same deterministic id both times → the reaction command is idempotent by construction
     const stats = await outbox.stats();
     expect(stats).toMatchObject({ pending: 0, deadLetters: 0 });
+  });
+  it('a first failure warns and a dead letter reports, each once and grouped per consumer', async () => {
+    const reports: Array<{ context: unknown; fingerprint?: string[] }> = [];
+    const outbox = new Outbox(h.db, clock, { maxAttempts: 2, backoffMs: () => 0 }, undefined, {
+      captureException: (_e, context, o) =>
+        void reports.push({ context, ...(o?.fingerprint ? { fingerprint: o.fingerprint } : {}) }),
+    });
+    outbox.register({
+      name: 'doomed',
+      kinds: ['doom'],
+      async handle() {
+        throw new Error('consumer down');
+      },
+    });
+    const id = await h.db.tx((tx) => outbox.emit(tx, { kind: 'doom', payload: {} }));
+    expect(await outbox.drain()).toMatchObject({ failed: 1, dead: 0 });
+    const firstFailure = {
+      context: { outboxId: id, kind: 'doom', consumer: 'doomed', attempts: 1 },
+      fingerprint: ['outbox-retry', 'doomed'],
+    };
+    expect(reports).toEqual([firstFailure]);
+    expect(await outbox.drain()).toMatchObject({ dead: 1 });
+    expect(await outbox.drain()).toMatchObject({ dead: 0 });
+    expect(reports).toEqual([
+      firstFailure,
+      {
+        context: { outboxId: id, kind: 'doom', consumer: 'doomed', attempts: 2 },
+        fingerprint: ['outbox-dead-letter', 'doomed'],
+      },
+    ]);
   });
   it('emit inside a transaction that rolls back leaves no outbox row (the outbox is written in the originating tx)', async () => {
     const outbox = new Outbox(h.db, clock);
@@ -507,6 +562,60 @@ describe('outbox: crash mid-drain, lease expiry, at-least-once + idempotent rede
       await h.root`SELECT name, ok, error, duration_ms IS NOT NULL AS timed FROM job_runs ORDER BY id`;
     expect(rows.find((r) => r.name === 'slow')).toMatchObject({ ok: true, timed: true });
     expect(rows.find((r) => r.name === 'boom')).toMatchObject({ ok: false, error: 'kaput' });
+  });
+  it('jobs: scheduled jobs catch up on boot from job_runs (stale or never run), not from uptime', async () => {
+    const H = 3_600_000;
+    const id = randomUUID().slice(0, 8);
+    const [stale, fresh, never] = [`stale-${id}`, `fresh-${id}`, `never-${id}`];
+    const ran: string[] = [];
+    const def = (name: string, intervalMs: number): JobDef => ({
+      name,
+      intervalMs,
+      run: async () => void ran.push(name),
+    });
+    await h.root`INSERT INTO job_runs (name, started_at, finished_at, ok) VALUES
+      (${stale}, ${new Date(clock.now() - 25 * H)}, ${new Date(clock.now() - 25 * H)}, true),
+      (${fresh}, ${new Date(clock.now() - H)}, ${new Date(clock.now() - H)}, true)`;
+    const runner = createJobRunner(h.db, clock, [
+      def(stale, 24 * H),
+      def(fresh, 24 * H),
+      def(never, 7 * 24 * H),
+    ]);
+    runner.start();
+    try {
+      for (let i = 0; i < 100 && ran.length < 2; i++) await new Promise((r) => setTimeout(r, 50));
+      expect(ran.sort()).toEqual([never, stale].sort());
+      expect(await runner.runDue(fresh)).toMatchObject({ ran: false, skipped: 'not_due' });
+    } finally {
+      runner.stop();
+    }
+    const rows = await h.root<
+      { name: string; ok: boolean }[]
+    >`SELECT name, ok FROM job_runs WHERE name = ANY(${[stale, fresh, never]}) AND started_at = ${new Date(clock.now())}`;
+    expect(rows.map((r) => r.name).sort()).toEqual([never, stale].sort());
+  });
+  it('jobs: two replicas racing a due job run it once, and the loser sees the committed heartbeat', async () => {
+    const name = `race-${randomUUID().slice(0, 8)}`;
+    let runs = 0;
+    const def = (): JobDef => ({
+      name,
+      intervalMs: 3_600_000,
+      async run() {
+        runs++;
+        await new Promise((r) => setTimeout(r, 150));
+      },
+    });
+    const a = createJobRunner(h.db, clock, [def()]);
+    const b = createJobRunner(h.db, clock, [def()]);
+    const [ra, rb] = await Promise.all([a.runDue(name), b.runDue(name)]);
+    expect([ra.ran, rb.ran].filter(Boolean)).toEqual([true]);
+    expect([ra, rb].find((r) => !r.ran)?.skipped).toBe('locked');
+    // the next tick on either replica reads the winner's heartbeat under the lock
+    expect(await b.runDue(name)).toMatchObject({ ran: false, skipped: 'not_due' });
+    expect(await a.runDue(name)).toMatchObject({ ran: false, skipped: 'not_due' });
+    clock.advance(3_600_000);
+    expect((await b.runDue(name)).ran).toBe(true);
+    expect(runs).toBe(2);
   });
   it('pg rate limiter: fixed windows survive across connections; sweep drops old windows', async () => {
     const l = createPgLimiter(h.db.sql, clock, { b: { limit: 2, windowMs: 60_000 } });

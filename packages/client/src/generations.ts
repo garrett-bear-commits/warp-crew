@@ -109,6 +109,8 @@ export function adoptGeneration<S>(
     progress: number;
     seq: number;
     savedAt: number;
+    deviceSavedAt?: number;
+    savedAtServerAnchored?: boolean;
     sessionId?: string;
   },
 ): CacheEnvelope<S> {
@@ -125,6 +127,11 @@ export function adoptGeneration<S>(
     ratchetFloor: { playerId: env.playerId, generation: next.generation, progress: next.progress },
     lastVerdict: null,
   };
+  if (next.deviceSavedAt !== undefined) out.deviceSavedAt = next.deviceSavedAt;
+  else delete out.deviceSavedAt;
+  if (next.savedAtServerAnchored !== undefined)
+    out.savedAtServerAnchored = next.savedAtServerAnchored;
+  else delete out.savedAtServerAnchored;
   delete out.pending;
   delete out.rngState;
   if (next.sessionId) out.sessionId = next.sessionId;

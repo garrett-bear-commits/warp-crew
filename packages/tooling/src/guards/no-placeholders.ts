@@ -1,4 +1,6 @@
-// Acceptance: no TODO/placeholder/skipped tests in shipped code.
+// Acceptance: no TODO/placeholder/skipped tests in shipped code. A conditional skip
+// (`test.skip(cond, reason)`) is an environment gate, not a skipped test; unconditional
+// forms (a title, `true`, no args, or the first argument on the next line) still fail.
 import { relative } from 'node:path';
 import { repoRoot, walk, read } from '../paths.ts';
 import type { GuardResult } from './run-all.ts';
@@ -22,7 +24,7 @@ export function guardNoPlaceholders(): GuardResult {
     src.split('\n').forEach((line, i) => {
       if (/\b(TODO|FIXME|XXX|HACK)\b/.test(line))
         violations.push(`${rel}:${i + 1} ${line.trim().slice(0, 80)}`);
-      if (/\b(it|test|describe)\.(skip|todo)\(/.test(line))
+      if (/\b(it|test|describe)\.(skip|todo)\(\s*(['"`)]|true\b|$)/.test(line))
         violations.push(`${rel}:${i + 1} skipped/todo test`);
       if (/\bxit\(|\bxdescribe\(/.test(line)) violations.push(`${rel}:${i + 1} skipped test`);
       if (/not implemented/i.test(line) && !/refuse|throws|error/i.test(line))

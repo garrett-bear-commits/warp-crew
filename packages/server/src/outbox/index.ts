@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import type { Sql } from 'postgres';
 import type { Db, Tx } from '../db/index.ts';
 import type { ServerClock } from '../clock/index.ts';
+import type { SentryHandle } from '../observability/sentry.ts';
 
 export interface OutboxMessage {
   id: number;
@@ -73,16 +74,19 @@ export class Outbox {
   #clock: ServerClock;
   #opts: Required<OutboxOptions>;
   #log: { warn(o: object, m: string): void; error(o: object, m: string): void } | undefined;
+  #sentry: Pick<SentryHandle, 'captureException'> | undefined;
 
   constructor(
     db: Db,
     clock: ServerClock,
     opts: OutboxOptions = {},
     log?: { warn(o: object, m: string): void; error(o: object, m: string): void },
+    sentry?: Pick<SentryHandle, 'captureException'>,
   ) {
     this.#db = db;
     this.#clock = clock;
     this.#log = log;
+    this.#sentry = sentry;
     this.#opts = {
       maxAttempts: opts.maxAttempts ?? 8,
       leaseMs: opts.leaseMs ?? 30_000,
@@ -183,31 +187,63 @@ export class Outbox {
       }
       return 'delivered';
     } catch (e) {
-      const err = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-      if (l.attempts >= this.#opts.maxAttempts) {
-        const dead = await this.#db.tx(async (tx) => {
-          const u =
-            await tx`UPDATE outbox_deliveries SET state = 'dead', lease_until = NULL, lease_token = NULL, last_error = ${err} WHERE outbox_id = ${l.outbox_id} AND consumer = ${l.consumer} AND lease_token = ${l.lease_token}`;
-          if (u.count === 0) return false;
-          await tx`INSERT INTO outbox_dead_letters (outbox_id, consumer, attempts, last_error) VALUES (${l.outbox_id}, ${l.consumer}, ${l.attempts}, ${err})`;
-          return true;
-        });
-        if (!dead) return 'stale';
-        this.#log?.error(
-          { outboxId: l.outbox_id, consumer: l.consumer, err },
-          'outbox delivery dead-lettered',
+      // `last_error` keeps a one-line summary; logs and Sentry get the error itself (stack,
+      // cause). If recording the failure fails too, the delivery error is still logged.
+      try {
+        const err = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+        if (l.attempts >= this.#opts.maxAttempts) {
+          const dead = await this.#db.tx(async (tx) => {
+            const u =
+              await tx`UPDATE outbox_deliveries SET state = 'dead', lease_until = NULL, lease_token = NULL, last_error = ${err} WHERE outbox_id = ${l.outbox_id} AND consumer = ${l.consumer} AND lease_token = ${l.lease_token}`;
+            if (u.count === 0) return false;
+            await tx`INSERT INTO outbox_dead_letters (outbox_id, consumer, attempts, last_error) VALUES (${l.outbox_id}, ${l.consumer}, ${l.attempts}, ${err})`;
+            return true;
+          });
+          if (!dead) return 'stale';
+          this.#log?.error(
+            { outboxId: l.outbox_id, consumer: l.consumer, err: e },
+            'outbox delivery dead-lettered',
+          );
+          // SLO: any dead letter pages. One Sentry issue per consumer; replay clears /health/ops.
+          this.#sentry?.captureException(
+            e,
+            { outboxId: msg.id, kind: msg.kind, consumer: l.consumer, attempts: l.attempts },
+            {
+              level: 'error',
+              fingerprint: ['outbox-dead-letter', l.consumer],
+              tags: { outbox_consumer: l.consumer, outbox_kind: msg.kind },
+            },
+          );
+          return 'dead';
+        }
+        const next = new Date(this.#clock.now() + this.#opts.backoffMs(l.attempts));
+        const u = await this.#db
+          .sql`UPDATE outbox_deliveries SET state = 'pending', lease_until = NULL, lease_token = NULL, last_error = ${err}, next_attempt_at = ${next} WHERE outbox_id = ${l.outbox_id} AND consumer = ${l.consumer} AND lease_token = ${l.lease_token}`;
+        if (u.count === 0) return 'stale';
+        this.#log?.warn(
+          { outboxId: l.outbox_id, consumer: l.consumer, attempt: l.attempts, err: e },
+          'outbox delivery failed; will retry',
         );
-        return 'dead';
+        // The first failure warns (one issue per consumer), so a stuck consumer shows hours
+        // before its dead letter pages.
+        if (l.attempts === 1)
+          this.#sentry?.captureException(
+            e,
+            { outboxId: msg.id, kind: msg.kind, consumer: l.consumer, attempts: l.attempts },
+            {
+              level: 'warning',
+              fingerprint: ['outbox-retry', l.consumer],
+              tags: { outbox_consumer: l.consumer, outbox_kind: msg.kind },
+            },
+          );
+        return 'failed';
+      } catch (bookkeeping) {
+        this.#log?.error(
+          { outboxId: l.outbox_id, consumer: l.consumer, err: e, bookkeeping },
+          'outbox failure could not be recorded',
+        );
+        throw bookkeeping;
       }
-      const next = new Date(this.#clock.now() + this.#opts.backoffMs(l.attempts));
-      const u = await this.#db
-        .sql`UPDATE outbox_deliveries SET state = 'pending', lease_until = NULL, lease_token = NULL, last_error = ${err}, next_attempt_at = ${next} WHERE outbox_id = ${l.outbox_id} AND consumer = ${l.consumer} AND lease_token = ${l.lease_token}`;
-      if (u.count === 0) return 'stale';
-      this.#log?.warn(
-        { outboxId: l.outbox_id, consumer: l.consumer, attempt: l.attempts, err },
-        'outbox delivery failed; will retry',
-      );
-      return 'failed';
     }
   }
 

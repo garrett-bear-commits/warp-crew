@@ -8,6 +8,7 @@ import * as liveops from './liveops.ts';
 import * as inbox from './inbox.ts';
 import * as boards from './leaderboards.ts';
 import * as telemetry from './telemetry.ts';
+import * as names from './names.ts';
 import * as ach from './achievements.ts';
 import * as admin from './admin.ts';
 import * as health from './health.ts';
@@ -27,8 +28,8 @@ export interface RouteDef {
   query?: TSchema;
   params?: TSchema;
   response: TSchema;
-  /** Admin scope required (auth=admin). */
-  adminScope?: 'read' | 'support' | 'grant' | 'publish' | 'restore' | 'erase';
+  /** Admin scope required (auth=admin); 'any' = any valid admin key, no scope (reads only). */
+  adminScope?: 'read' | 'support' | 'grant' | 'publish' | 'restore' | 'erase' | 'any';
   /** Step-up: token iat ≤ 5 min (§4.2). */
   stepUp?: boolean;
   /** Extra documented status codes beyond 200 and the error envelope defaults. */
@@ -278,6 +279,15 @@ export const ROUTES: readonly RouteDef[] = [
     body: ach.DailyClaimBody,
     response: ach.DailyClaimResult,
   },
+  {
+    id: 'daily.status',
+    method: 'GET',
+    path: '/v1/daily/status',
+    auth: 'player',
+    feature: 'achievements',
+    summary: 'Daily reward eligibility on the server clock, plus current-generation claims',
+    response: ach.DailyStatusResponse,
+  },
 
   // liveops
   {
@@ -426,7 +436,29 @@ export const ROUTES: readonly RouteDef[] = [
     response: telemetry.JournalShipResult,
   },
 
+  // names
+  {
+    id: 'names.check',
+    method: 'POST',
+    path: '/v1/names/check',
+    auth: 'player',
+    feature: 'names',
+    summary: "Screen a player-typed name with Jest's notification moderation (Jev, SHAFT)",
+    body: names.NameCheckBody,
+    response: names.NameCheckResult,
+  },
+
   // admin (separate key auth; Idempotency-Key header maps to commandId)
+  {
+    id: 'admin.session',
+    method: 'GET',
+    path: '/admin/v1/session',
+    auth: 'admin',
+    adminScope: 'any',
+    feature: 'admin',
+    summary: 'The calling admin key and its scopes (inspector sign-in)',
+    response: admin.AdminSessionResponse,
+  },
   {
     id: 'admin.player',
     method: 'GET',

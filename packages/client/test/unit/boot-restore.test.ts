@@ -554,6 +554,45 @@ describe('restore (§1, §5.2 Restore, ADR-005 break-glass)', () => {
     });
   });
 
+  it('restartJourney opens a new generation and seeds from the previous state', async () => {
+    const w = makeWorld();
+    const { client } = w.newClient();
+    await client.boot();
+    client.dispatch({ type: 'inc', n: 5 });
+    await client.sync.push('important');
+    expect(client.state().count).toBe(5);
+    const out = await client.restartJourney({
+      seed: ({ previous, next }) => {
+        next.note = `from:${previous.count}`;
+      },
+    });
+    expect(out).toMatchObject({ ok: true, generation: 1, entitlement: 0 });
+    expect(client.sync.envelope().generation).toBe(1);
+    expect(client.state().count).toBe(0);
+    expect(client.state().note).toBe('from:5');
+  });
+
+  it('restartJourney refuses a stale generation', async () => {
+    const w = makeWorld();
+    const { client } = w.newClient();
+    await client.boot();
+    w.ff.on(
+      'POST',
+      '/v1/lineage/restart',
+      () =>
+        new Response(
+          JSON.stringify({
+            error: 'stale_generation',
+            correlationId: 't',
+            details: { generation: 4 },
+          }),
+          { status: 409, headers: { 'content-type': 'application/json' } },
+        ),
+    );
+    const stale = await client.restartJourney();
+    expect(stale).toMatchObject({ ok: false, reason: 'stale_generation', serverGeneration: 4 });
+  });
+
   it('KV break-glass: human-initiated read once, trial-deserialise, forward-only; never read on the normal path', async () => {
     const w = makeWorld();
     const { client, platform } = w.newClient();

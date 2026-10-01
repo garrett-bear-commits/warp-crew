@@ -182,6 +182,11 @@ export const INTEGRITY_EVENT_KINDS = [
 ] as const;
 export type IntegrityEventKind = (typeof INTEGRITY_EVENT_KINDS)[number];
 
+/** A player-typed name screened against Jest's notification moderation; `unchecked` when the
+ *  moderation service is unconfigured or unreachable (the client's own blocklist still applies). */
+export const NAME_CHECK_VERDICTS = ['pass', 'fail', 'unchecked'] as const;
+export type NameCheckVerdict = (typeof NAME_CHECK_VERDICTS)[number];
+
 export const FEEDBACK_STATUSES = ['new', 'triaged', 'resolved'] as const;
 export type FeedbackStatus = (typeof FEEDBACK_STATUSES)[number];
 

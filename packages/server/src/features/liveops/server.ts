@@ -387,6 +387,15 @@ export function registerLiveops(app: FastifyInstance, ctx: AppContext): void {
           .filter(([, p]) => evaluateSegment(p, facts))
           .map(([id]) => id);
         out.schedules = out.schedules.filter((s) => inSeg(s.segmentId));
+        // First-seen build and time. No row yet means this request is the player's
+        // first contact (its players insert is still in flight), so its own build and time are
+        // the first.
+        const [seen] = await ctx.db.sql<
+          { first_build: string | null; first_seen_at: Date }[]
+        >`SELECT first_build, first_seen_at FROM players WHERE player_key = ${exec.playerKey}`;
+        const firstBuild = seen ? seen.first_build : (exec.buildVersion ?? null);
+        if (firstBuild) out.firstBuildVersion = firstBuild;
+        out.firstSeenAt = seen ? seen.first_seen_at.getTime() : now;
       } else {
         out.schedules = out.schedules.filter((s) => !s.segmentId);
       }
@@ -483,11 +492,4 @@ export function registerLiveops(app: FastifyInstance, ctx: AppContext): void {
       return out;
     },
   );
-
-  ctx.jobs.push({
-    name: 'liveops.refresh',
-    intervalMs: 30_000,
-    runOnStart: false,
-    run: async () => cache.refresh().then(() => ({ ok: true })),
-  });
 }

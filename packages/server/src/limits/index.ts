@@ -30,6 +30,7 @@ export const DEFAULT_BUCKETS: Record<string, LimitBucket> = {
   codes: { limit: 10, windowMs: 60_000 },
   journal: { limit: 20, windowMs: 60_000 },
   telemetry: { limit: 20, windowMs: 60_000 },
+  names: { limit: 20, windowMs: 60_000 },
   boards: { limit: 60, windowMs: 60_000 },
   inbox: { limit: 60, windowMs: 60_000 },
   achievements: { limit: 60, windowMs: 60_000 },

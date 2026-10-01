@@ -2,6 +2,7 @@
 // refusals as packages/server/src/config.ts — re-implemented here so the tool never loads
 // fastify/env-schema. Keep this list in step with validateConfig().
 import { ADMIN_SCOPES, GAME_ENVS } from '@foundation/contracts/enums';
+import { RELEASE_VERSION_PATTERN } from '@foundation/contracts/versions';
 
 export interface EnvCheck {
   name: string;
@@ -108,11 +109,19 @@ export function preflightEnv(env: Record<string, string>): PreflightResult {
   if (admin.ok) check('ADMIN_KEYS non-empty', admin.count > 0, 'at least one key required');
 
   const build = get('BUILD_VERSION');
+  const buildInfo = get('BUILD_INFO_FILE');
   check(
-    'BUILD_VERSION set',
-    build.length > 0,
-    'set the release version (used in manifests + 426 minBuild)',
+    'BUILD_VERSION or BUILD_INFO_FILE set',
+    build.length > 0 || buildInfo.length > 0,
+    'set the release version (used in manifests + 426 minBuild), or the deploy-written build record',
   );
+  // Without a build record, prod boots on BUILD_VERSION and refuses anything but a release.
+  if (prod && !buildInfo)
+    check(
+      'prod: BUILD_VERSION is a release X.Y.Z',
+      RELEASE_VERSION_PATTERN.test(build),
+      `no v, no -prerelease (got "${build}")`,
+    );
   if (prod)
     check('prod: PUBLIC_URL set', get('PUBLIC_URL').length > 0, 'admin inspector connect-src');
 

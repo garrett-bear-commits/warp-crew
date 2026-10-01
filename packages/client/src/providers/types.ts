@@ -154,6 +154,16 @@ export interface ShareProvider {
   share(payload: { title?: string; text?: string; url?: string }): Promise<boolean>;
 }
 
+/** Base64 PNG (raw or data URL), or null when no capture is meaningful right now. */
+export type ScreenshotSource = () => string | null | Promise<string | null>;
+
+/** Platform-requested captures, e.g. Jest's footer camera button. */
+export interface ScreenshotsProvider {
+  available(): boolean;
+  /** Replaces the page's capture; null restores the platform default. Never throws. */
+  setProvider(source: ScreenshotSource | null): void;
+}
+
 export interface AnalyticsProvider {
   track(name: string, props?: Record<string, string | number | boolean>): void;
   markFirstMilestone(): void;
@@ -183,7 +193,7 @@ export interface ErrorSink {
 
 export type PlatformName = 'jest' | 'mock' | 'standalone';
 
-/** §5.3: one browser seam for identity, data, payments, notifications, analytics/loading, lifecycle, entry, and errors. */
+/** §5.3: one browser seam for identity, data, payments, notifications, share/screenshots, analytics/loading, lifecycle, entry, and errors. */
 export interface PlatformAdapter {
   readonly name: PlatformName;
   identity: IdentityClient;
@@ -191,6 +201,7 @@ export interface PlatformAdapter {
   payments: PaymentsProvider;
   notifications: NotificationsProvider;
   share: ShareProvider;
+  screenshots: ScreenshotsProvider;
   analytics: AnalyticsProvider;
   loading: LoadingProvider;
   lifecycle: LifecycleProvider;

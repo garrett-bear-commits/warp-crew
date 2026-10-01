@@ -93,6 +93,11 @@ export const ConfigResponse = Response(
     shadowFlags: Type.Optional(Type.Record(Type.String(), FlagValue)),
     schedules: Type.Array(ScheduleWindow),
     segmentIds: Type.Optional(Type.Array(Type.String())),
+    /** The build version this player first announced; authenticated calls only, and absent
+     *  for players first seen before it was recorded. */
+    firstBuildVersion: Type.Optional(Type.String()),
+    /** Epoch ms the server first saw this player; authenticated calls only. */
+    firstSeenAt: Type.Optional(EpochMs),
   },
   { $id: 'ConfigResponse' },
 );

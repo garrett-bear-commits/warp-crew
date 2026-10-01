@@ -91,8 +91,13 @@ export function defineSave<S>(o: DefineSaveOptions<S>): SaveCodec<S> {
       let valid = false;
       try {
         valid = o.validate(state);
-      } catch {
-        valid = false;
+      } catch (e) {
+        // Keep the validator's own words: they say which part of the save broke.
+        return {
+          ok: false,
+          reason: 'invalid_state',
+          message: e instanceof Error ? e.message : String(e),
+        };
       }
       if (!valid) return { ok: false, reason: 'invalid_state' };
     }

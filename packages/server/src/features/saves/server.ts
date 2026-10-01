@@ -80,8 +80,12 @@ export const SavesReview = defineCommand<typeof AdminSaveReviewBody, ReviewResul
 
 export const SAVE_RULE_VERSION = 'v1';
 
+const HOUR_MS = 3_600_000;
+const REFUSALS_PER_HOUR = 10;
+
 export function registerSaves(app: FastifyInstance, ctx: AppContext): void {
   const { bus, game, policy } = ctx;
+  const refusalsReported = new Map<string, { since: number; count: number }>();
   ctx.declaredCommands.push(SavesWrite, SavesReview);
 
   const writeHandler = async (
@@ -106,9 +110,11 @@ export function registerSaves(app: FastifyInstance, ctx: AppContext): void {
     let summary = input.summary ?? null;
     let schemaVersion = input.schemaVersion;
     let plausible: boolean | undefined;
+    let policyReason: string | undefined;
     if (decoded.ok) {
       const pol = policy.validateBlob(decoded.value);
       blobValid = pol.ok;
+      policyReason = pol.reason;
       if (pol.summary) summary = pol.summary;
       if (pol.schemaVersion !== undefined) schemaVersion = pol.schemaVersion;
       if (summary && policy.summaryPlausible)
@@ -150,6 +156,35 @@ export function registerSaves(app: FastifyInstance, ctx: AppContext): void {
       keepBlob =
         (await repo.refusedBlobsThisHour(t, playerKey, exec.now)) <
         game.retention.refusedBlobsPerHour;
+    // A blob the server cannot read is a client bug, not a race: say why, once per reason and
+    // build an hour per instance (a broken build would otherwise flood).
+    if (reason === 'malformed' || reason === 'blob_too_large') {
+      const key = `${reason}:${input.buildVersion ?? ''}`;
+      const sent = refusalsReported.get(key);
+      if (!sent || exec.now - sent.since >= HOUR_MS || sent.count < REFUSALS_PER_HOUR) {
+        refusalsReported.set(
+          key,
+          !sent || exec.now - sent.since >= HOUR_MS
+            ? { since: exec.now, count: 1 }
+            : { since: sent.since, count: sent.count + 1 },
+        );
+        ctx.sentry.captureMessage(`Save refused: ${reason}`, {
+          level: 'warning',
+          fingerprint: ['save-refused', reason],
+          context: {
+            requestId: exec.requestId,
+            command: 'saves.write',
+            reason,
+            buildVersion: input.buildVersion,
+            schemaVersion,
+            ...(!decoded.ok ? { decode: `${decoded.reason}: ${decoded.detail}` } : {}),
+            ...(policyReason ? { policy: policyReason } : {}),
+            encBytes: Buffer.byteLength(input.blob, 'utf8'),
+            enc: input.enc,
+          },
+        });
+      }
+    }
     const sha = decoded.ok ? decoded.sha256 : '0'.repeat(64);
     await repo.insertSnapshot(t, {
       playerKey,

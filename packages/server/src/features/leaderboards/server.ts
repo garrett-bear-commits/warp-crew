@@ -240,10 +240,33 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
     const board = input.board;
     const cfg = boardCfg(board);
     if (!cfg) throw new AppError('not_found', 'unknown board');
+    // A refused run answers 200 with its outcome; say so in the logs, and send every outcome but
+    // a hidden player's to Sentry (a client and server out of step, or a score the rules refuse).
+    const rejected = (
+      outcome: Extract<SubmitRes['outcome'], `rejected_${string}`>,
+      detail: Record<string, string | number> = {},
+    ): SubmitRes => {
+      const context = {
+        requestId: exec.requestId,
+        command: 'boards.submit',
+        board,
+        runId: input.runId,
+        reason: outcome,
+        ...detail,
+      };
+      ctx.log.warn(context, 'leaderboard run refused');
+      if (outcome !== 'rejected_boards_hidden')
+        ctx.sentry.captureMessage(`Leaderboard run refused: ${outcome}`, {
+          level: 'warning',
+          fingerprint: ['board-run-refused', outcome],
+          context,
+        });
+      return { outcome };
+    };
     const hidden = await t<
       { n: number }[]
     >`SELECT count(*)::int AS n FROM player_flags WHERE player_key = ${exec.playerKey!} AND flag = 'boards_hidden' AND enabled AND (until IS NULL OR until > ${new Date(exec.now)})`;
-    if ((hidden[0]?.n ?? 0) > 0) return { outcome: 'rejected_boards_hidden' };
+    if ((hidden[0]?.n ?? 0) > 0) return rejected('rejected_boards_hidden');
     const run = await t<
       {
         run_id: string;
@@ -255,7 +278,9 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
       }[]
     >`SELECT run_id, board_key, season_key, player_key, started_at, rules_version FROM leaderboard_runs WHERE run_id = ${input.runId}`;
     if (!run[0] || run[0].player_key !== exec.playerKey || run[0].board_key !== board)
-      return { outcome: 'rejected_unknown_run' };
+      return rejected('rejected_unknown_run', {
+        run: !run[0] ? 'missing' : run[0].board_key !== board ? 'other board' : 'other player',
+      });
     const already = await t<
       { id: string }[]
     >`SELECT id FROM leaderboard_submissions WHERE run_id = ${input.runId}`;
@@ -263,7 +288,7 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
     const season = await t<
       SeasonRow[]
     >`SELECT * FROM leaderboard_seasons WHERE board_key = ${board} AND season_key = ${run[0].season_key}`;
-    if (!season[0]) return { outcome: 'rejected_season_inactive' };
+    if (!season[0]) return rejected('rejected_season_inactive', { season: run[0].season_key });
     const elapsedMs = exec.now - run[0].started_at.getTime(); // server-observed duration
     const summaryBound =
       cfg.summaryBound && input.summary
@@ -282,7 +307,12 @@ export function registerLeaderboards(app: FastifyInstance, ctx: AppContext): voi
         elapsed_out_of_range: 'rejected_duration',
         summary_bound: 'rejected_out_of_range',
       } as const;
-      return { outcome: map[a.reason] };
+      return rejected(map[a.reason], {
+        check: a.reason,
+        score: input.score,
+        elapsedMs,
+        rulesVersion: run[0].rules_version,
+      });
     }
     const level = input.summary ? 2 : 1;
     // quarantine top-N until review: would this score land in the top N among all accepted (not rejected) submissions?

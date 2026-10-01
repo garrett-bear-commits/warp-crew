@@ -54,12 +54,13 @@ export function registerIdentity(_app: FastifyInstance, ctx: AppContext): void {
     try {
       const now = new Date(exec.now);
       await ctx.db.sql`
-        INSERT INTO players (player_key, first_seen_at, last_seen_at, registered, last_build, seen_days, last_seen_day)
-        VALUES (${exec.playerKey}, ${now}, ${now}, ${exec.actor.registered}, ${exec.buildVersion ?? null}, 1, (${now} AT TIME ZONE 'UTC')::date)
+        INSERT INTO players (player_key, first_seen_at, last_seen_at, registered, last_build, first_build, seen_days, last_seen_day)
+        VALUES (${exec.playerKey}, ${now}, ${now}, ${exec.actor.registered}, ${exec.buildVersion ?? null}, ${exec.buildVersion ?? null}, 1, (${now} AT TIME ZONE 'UTC')::date)
         ON CONFLICT (player_key) DO UPDATE SET
           last_seen_at = EXCLUDED.last_seen_at,
           registered = players.registered OR EXCLUDED.registered,
           last_build = COALESCE(EXCLUDED.last_build, players.last_build),
+          -- first_build is set by the INSERT only: never backfilled or overwritten.
           seen_days = players.seen_days + CASE WHEN players.last_seen_day < EXCLUDED.last_seen_day THEN 1 ELSE 0 END,
           last_seen_day = GREATEST(players.last_seen_day, EXCLUDED.last_seen_day)`;
     } catch (e) {

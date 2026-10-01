@@ -23,8 +23,16 @@ export class AppError extends Error {
   readonly code: ErrorCode;
   readonly status: number;
   readonly details: unknown;
-  constructor(code: ErrorCode, message?: string, details?: unknown, status?: number) {
-    super(message ?? code);
+  /** `options.cause` keeps the error this one replaces (a pg error, a decode failure): Sentry
+   *  shows it as a linked exception and pino logs it under `err.cause`. */
+  constructor(
+    code: ErrorCode,
+    message?: string,
+    details?: unknown,
+    status?: number,
+    options?: { cause?: unknown },
+  ) {
+    super(message ?? code, options);
     this.code = code;
     this.status = status ?? STATUS[code];
     this.details = details;

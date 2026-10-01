@@ -10,6 +10,7 @@ import {
   type PlayerOverview,
   type TimelineResponse,
   type AdminActionsResponse,
+  type AdminSessionResponse,
   type OutboxDeadLettersResponse,
   type AdminRebuildProjectionResult,
   type SaveHistoryResponse,
@@ -147,6 +148,23 @@ export function registerAdmin(app: FastifyInstance, ctx: AppContext): void {
     typeof import('@foundation/contracts').AdminRebuildProjectionResult
   >(app, ctx, 'admin.rebuildProjection', async ({ body, exec }) =>
     bus.execute(RebuildProjection, { commandId: body.commandId, payload: body }, exec!),
+  );
+
+  // The inspector's sign-in: any valid key (no scope) learns its own id and scopes. A read, so
+  // not audited; a bad key is a 401 counted toward ip.authfail like every admin route.
+  route<undefined, typeof import('@foundation/contracts').AdminSessionResponse>(
+    app,
+    ctx,
+    'admin.session',
+    async ({ exec }) => {
+      const actor = exec?.actor;
+      if (actor?.kind !== 'admin') throw new AppError('forbidden', 'admin only');
+      const out: Omit<AdminSessionResponse, 'serverNow' | 'requestId'> = {
+        keyId: actor.keyId,
+        scopes: [...actor.scopes],
+      };
+      return out;
+    },
   );
 
   route<

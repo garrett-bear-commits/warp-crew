@@ -16,6 +16,7 @@ import {
   useState,
   useSyncExternalStore,
   type ContextType,
+  type ErrorInfo,
   type ReactNode,
 } from 'react';
 import type { Effect } from '../engine/contract.ts';
@@ -279,9 +280,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
     return { error };
   }
-  override componentDidCatch(error: unknown): void {
+  override componentDidCatch(error: unknown, info: ErrorInfo): void {
     try {
-      this.context?.reportError(error, { boundary: true });
+      // The component stack says where in the tree it broke; the error's own stack rarely does.
+      this.context?.reportError(error, {
+        boundary: true,
+        ...(info.componentStack ? { componentStack: info.componentStack } : {}),
+      });
     } catch {
       /* the boundary never throws */
     }

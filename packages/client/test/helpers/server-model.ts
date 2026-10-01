@@ -70,6 +70,8 @@ export class ServerTruth {
   generation = 0;
   generationKind = 'initial';
   erased = false;
+  /** Client lineage.restart business keys (restartId → opened generation). */
+  private readonly restartById = new Map<string, { generation: number; entitlement: number }>();
   /** Command replay store: commandId → {hash, result} (full row, 7 d retention on the server). */
   commands = new Map<string, { hash: string; result: SaveWriteResult }>();
   /** Idempotency tombstones (> 7 d): kept for as long as the snapshot exists; same replay shape. */
@@ -321,6 +323,50 @@ export class ServerTruth {
     return this.generation;
   }
 
+  /** Player POST /v1/lineage/restart: CAS on expectedGeneration, idempotent on restartId. */
+  openRestart(
+    expectedGeneration: number,
+    restartId: string,
+    entitlement = 0,
+  ): { status: 200; body: GenerationReceipt } | { status: 409; body: ErrorEnvelope } {
+    const existing = this.restartById.get(restartId);
+    if (existing)
+      return {
+        status: 200,
+        body: {
+          generation: existing.generation,
+          kind: 'restart',
+          entitlement: existing.entitlement,
+          duplicate: true,
+          requestId: 'model',
+          serverNow: this.o.now(),
+        },
+      };
+    if (expectedGeneration !== this.generation)
+      return {
+        status: 409,
+        body: {
+          error: 'stale_generation',
+          correlationId: 'model',
+          details: { generation: this.generation },
+        },
+      };
+    this.generation++;
+    this.generationKind = 'restart';
+    this.restartById.set(restartId, { generation: this.generation, entitlement });
+    return {
+      status: 200,
+      body: {
+        generation: this.generation,
+        kind: 'restart',
+        entitlement,
+        duplicate: false,
+        requestId: 'model',
+        serverNow: this.o.now(),
+      },
+    };
+  }
+
   /** Another device writes an anchored snapshot directly (deepest wins applies). */
   otherDeviceWrite(progress: number, blob: string, generation = this.generation): SaveWriteResult {
     const body: SaveWriteBody = {
@@ -487,6 +533,13 @@ export class ServerTruth {
       const m = /history\/(\d+)\/blob/.exec(call.url);
       const b = m ? g.model.blob(Number(m[1])) : null;
       return b ? json(200, b) : err(404, 'not_found');
+    });
+    ff.on('POST', '/v1/lineage/restart', (call) => {
+      const g = guard(call);
+      if (g instanceof Response) return g;
+      const b = call.body as { restartId: string; expectedGeneration: number };
+      const r = g.model.openRestart(b.expectedGeneration, b.restartId);
+      return json(r.status, r.body);
     });
     ff.on('POST', '/v1/lineage/restoreToSeq', (call) => {
       const g = guard(call);

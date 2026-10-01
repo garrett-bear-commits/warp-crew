@@ -1,12 +1,22 @@
 // createGameClient (Appendix, §5.2, §5.3): wires loop + storage + sync + boot + journal + restore
-// + leader election + identity switch + generation broadcast + integrity events into one
-// GameClient. Every external dependency (fetch, storage, timers, clock, locks, channel, reload,
+// + restartJourney + leader election + identity switch + generation broadcast + integrity events
+// into one GameClient. Every external dependency (fetch, storage, timers, clock, locks, channel, reload,
 // sendBeacon) is injectable so the whole adapter is deterministic under test; defaults probe the
 // browser. journal defaults to 'errors_only' (ADR-020); kvMirror defaults to 'mirror' (ADR-005).
-import type { IntegrityBatchBody, IntegrityEvent } from '@foundation/contracts';
+import type {
+  GenerationReceipt,
+  IntegrityBatchBody,
+  IntegrityEvent,
+  LineageRestartBody,
+} from '@foundation/contracts';
 import type { JournalMode, SaveReason } from '@foundation/contracts/enums';
 import { createApi, type Api, type ClientAuth } from './api.ts';
-import { createBootMachine, type BootMachine, type BootResult } from './boot/machine.ts';
+import {
+  createBootMachine,
+  type BootMachine,
+  type BootResult,
+  type DamagedSlotReport,
+} from './boot/machine.ts';
 import { createClock, type Clock } from './clock/index.ts';
 import {
   createEffectRing,
@@ -26,6 +36,7 @@ import { createRestoreGate, type RestoreGate } from './restore/gate.ts';
 import { createRestore, type Restore } from './restore/index.ts';
 import type { SaveCodec } from './storage/codec.ts';
 import {
+  backupDamagedSlot,
   createSlot,
   journalSpoolKey,
   slotKey,
@@ -72,10 +83,26 @@ export interface GameClientConfig<S, A, E extends Effect> {
     gzip?: boolean;
     autosaveMs?: number;
     pushMs?: number;
+    /** Routine saves (SyncClient.requestSave): local snapshot / push windows, push timeout. */
+    localSaveMs?: number;
+    routinePushMs?: number;
+    pushTimeoutMs?: number;
+    /** Boot waits this long on the re-push of the last unacked snapshot (default 3 s). */
+    bootRepushMs?: number;
+    /** Integrity event flush cadence; defaults to pushMs. An empty queue makes no request. */
+    integrityMs?: number;
     headCheckMs?: number;
     longHideMs?: number;
+    /** Reconcile a newer remote seq when progress is equal (for state beyond the progress ordinal). */
+    reconcileEqualProgress?: boolean;
+    /** Resume an offline gap at boot when both persisted device and server times are trustworthy. */
+    resumeOffline?: boolean;
   };
   seed?: number;
+  /** Also receives every reportError with the original error (e.g. an error tracker). Never blocks. */
+  onError?: (error: unknown, detail?: Record<string, string | number | boolean>) => void;
+  /** Headers for every API call (an error tracker's trace headers: the API joins its trace). */
+  traceHeaders?: () => Record<string, string>;
   // ── injectables (tests / non-browser hosts) ──
   fetch?: typeof fetch;
   localStorage?: StorageLike | null;
@@ -87,6 +114,20 @@ export interface GameClientConfig<S, A, E extends Effect> {
   sendBeacon?: ((url: string, body: string) => boolean) | null;
   spool?: Spool | null;
   requestPersist?: boolean;
+}
+
+export type RestartJourneyOutcome =
+  | { ok: true; generation: number; entitlement: number }
+  | {
+      ok: false;
+      reason: 'not_live' | 'stale_generation' | 'unreachable' | 'rejected' | 'no_token';
+      message?: string;
+      serverGeneration?: number;
+    };
+
+export interface RestartJourneyOpts<S> {
+  /** Mutate `next` (the fresh generation) from `previous`. Runs after startNew, before save. */
+  seed?: (args: { previous: S; next: S; entitlement: number }) => void;
 }
 
 export type ClientEvent<S> =
@@ -112,6 +153,11 @@ export interface GameClient<S, A, E extends Effect> {
   readonly journal: Journal;
   /** Restore flows for the current player (available after boot()). */
   readonly restore: Restore;
+  /**
+   * Open a new generation (POST /v1/lineage/restart). Paid entitlement (Σpaid − Σrefunded)
+   * is returned; the game seeds the fresh state. Old-generation writes are then stale.
+   */
+  restartJourney(opts?: RestartJourneyOpts<S>): Promise<RestartJourneyOutcome>;
   readonly leader: LeaderElection;
   readonly storage: StorageTier;
   readonly platform: PlatformAdapter;
@@ -171,11 +217,12 @@ export function createGameClient<S, A, E extends Effect>(
   const cleanups: Array<() => void> = [];
   /** Background work (rechecks, identity switches) tracked so tests can await quiescence. */
   const background = new Set<Promise<unknown>>();
-  const track = <T>(p: Promise<T>): Promise<T> => {
+  const track = <T>(p: Promise<T>, task: string): Promise<T> => {
     background.add(p);
-    // background work never surfaces as an unhandled rejection: failures are reported as game errors
+    // background work never surfaces as an unhandled rejection: failures are reported as game
+    // errors, named by task
     void p
-      .catch((e: unknown) => reportError(e, { background: true }))
+      .catch((e: unknown) => reportError(e, { background: true, operation: `background_${task}` }))
       .finally(() => background.delete(p));
     return p;
   };
@@ -195,6 +242,7 @@ export function createGameClient<S, A, E extends Effect>(
     auth: currentAuth,
     refreshAuth: async () => (await platform.identity.refreshCredential()) !== null,
     requestId: mintId,
+    ...(cfg.traceHeaders ? { traceHeaders: cfg.traceHeaders } : {}),
   });
 
   const newState = (playerId?: string): S =>
@@ -241,6 +289,8 @@ export function createGameClient<S, A, E extends Effect>(
       state,
       progress: engine.progressOf(state),
       savedAt: clock.now(),
+      deviceSavedAt: clock.deviceNow(),
+      savedAtServerAnchored: clock.anchored(),
       dirty: false,
       lastAckedSeq: 0,
       sessionId: mintId(),
@@ -292,7 +342,10 @@ export function createGameClient<S, A, E extends Effect>(
       kv: (cfg.kvMirror ?? 'mirror') === 'mirror' ? platform.kv : null,
       kvKey: slotKey(gameId, p.playerId),
       storageMode: () => storage.mode,
-      isLeader: () => leader.isLeader(),
+      // This is the sync client's shared writer gate (push, autosave, beacon, journal and slot/KV
+      // persistence). A prompt must block lifecycle/manual writers as well as scheduled ones.
+      isLeader: () =>
+        leader.isLeader() && !['prompt', 'blocked'].includes(bootMachine.state().phase),
       sendBeacon:
         cfg.sendBeacon === undefined
           ? (() => {
@@ -310,12 +363,18 @@ export function createGameClient<S, A, E extends Effect>(
         ...(cfg.sync?.autosaveMs !== undefined ? { autosaveMs: cfg.sync.autosaveMs } : {}),
         ...(cfg.sync?.pushMs !== undefined ? { pushMs: cfg.sync.pushMs } : {}),
         ...(cfg.sync?.headCheckMs !== undefined ? { headCheckMs: cfg.sync.headCheckMs } : {}),
+        ...(cfg.sync?.localSaveMs !== undefined ? { localSaveMs: cfg.sync.localSaveMs } : {}),
+        ...(cfg.sync?.routinePushMs !== undefined ? { routinePushMs: cfg.sync.routinePushMs } : {}),
+        ...(cfg.sync?.pushTimeoutMs !== undefined ? { pushTimeoutMs: cfg.sync.pushTimeoutMs } : {}),
       },
       onEvent: (e) => {
+        if (e.type === 'halted' && e.reason === 'update_required' && sc === sync)
+          bootMachine.requireUpdate();
         if ((e.type === 'generation_changed' || e.type === 'reloaded') && sc === sync)
           replaceState(e.state);
         // the server holds a deeper anchor (another device): reconcile now instead of at the next boot
-        if (e.type === 'server_deeper' && sc === sync && booted) void track(bootMachine.recheck());
+        if (e.type === 'server_deeper' && sc === sync && booted)
+          void track(bootMachine.recheck(), 'server_deeper_recheck');
         emit({ type: 'sync', event: e });
       },
     });
@@ -341,11 +400,32 @@ export function createGameClient<S, A, E extends Effect>(
     newEnvelope: freshEnvelope,
     ...(cfg.sync?.headCheckMs !== undefined ? { headCheckMs: cfg.sync.headCheckMs } : {}),
     ...(cfg.sync?.longHideMs !== undefined ? { longHideMs: cfg.sync.longHideMs } : {}),
+    ...(cfg.sync?.reconcileEqualProgress !== undefined
+      ? { reconcileEqualProgress: cfg.sync.reconcileEqualProgress }
+      : {}),
+    ...(cfg.sync?.bootRepushMs !== undefined ? { bootRepushMs: cfg.sync.bootRepushMs } : {}),
+    onDamagedSlot: (report) => reportDamagedSlot(report),
   });
+
+  // A live reconciliation prompt freezes all game mutations until the player chooses. Initial
+  // boot prompts happen before either writer has started, so these calls remain harmless there.
+  cleanups.push(
+    bootMachine.onChange((state) => {
+      if (!booted) return;
+      if (state.phase === 'prompt' || state.phase === 'blocked') {
+        loop.stop();
+        sync?.stop();
+      } else if (state.phase === 'live' && leader.isLeader()) {
+        loop.start();
+        sync?.start();
+      }
+    }),
+  );
 
   const flushIntegrity = async (): Promise<void> => {
     // followers hold their events (never lost) and ship once they lead (audit F9)
-    if (!sync || !leader.isLeader() || !currentAuth()) return;
+    if (!sync || !leader.isLeader() || bootMachine.state().phase === 'blocked' || !currentAuth())
+      return;
     if (!integrityInFlight) {
       if (integrityQueue.length === 0) return;
       integrityInFlight = { commandId: mintId(), events: integrityQueue.splice(0, 20) };
@@ -366,16 +446,33 @@ export function createGameClient<S, A, E extends Effect>(
     error: unknown,
     detail?: Record<string, string | number | boolean>,
   ): void => {
-    const message = (
-      error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-    ).slice(0, 512);
+    // The integrity event is bounded (contracts/telemetry.ts): its message names the error and
+    // up to three causes, and its detail is trimmed. The error sink gets the error and detail
+    // whole.
+    const describe = (e: unknown): string =>
+      e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+    let message = describe(error);
+    let cause = error instanceof Error ? error.cause : undefined;
+    for (let depth = 0; cause !== undefined && depth < 3; depth++) {
+      message += ` <- ${describe(cause)}`;
+      cause = cause instanceof Error ? cause.cause : undefined;
+    }
     const ev: IntegrityEvent = {
       kind: 'game_error',
       at: clock.now(),
-      message,
+      message: message.slice(0, 512),
       breadcrumbs: journal.breadcrumbs(),
       buildVersion,
-      ...(detail ? { detail } : {}),
+      ...(detail
+        ? {
+            detail: Object.fromEntries(
+              Object.entries(detail).map(([key, value]) => [
+                key.slice(0, 32),
+                typeof value === 'string' ? value.slice(0, 256) : value,
+              ]),
+            ),
+          }
+        : {}),
     };
     journal.markError();
     integrityQueue.push(ev);
@@ -385,8 +482,23 @@ export function createGameClient<S, A, E extends Effect>(
     } catch {
       /* the sink never blocks */
     }
+    try {
+      cfg.onError?.(error, detail);
+    } catch {
+      /* the sink never blocks */
+    }
     emit({ type: 'game_error', event: ev });
   };
+
+  /** An unreadable local slot was set aside (backed up) and play continues from the server copy. */
+  const reportDamagedSlot = (report: DamagedSlotReport): void =>
+    reportError(new Error(`local save unreadable: ${report.reason}`), {
+      operation: 'local_save_damaged',
+      reason: report.reason,
+      ...(report.message ? { message: report.message.slice(0, 200) } : {}),
+      chars: report.chars,
+      backedUp: report.backedUp,
+    });
 
   const buildRestore = (): void => {
     if (!sync || !slot) return;
@@ -403,6 +515,7 @@ export function createGameClient<S, A, E extends Effect>(
         cfg.reload ?? (() => (globalThis as { location?: { reload(): void } }).location?.reload()),
       kv: (cfg.kvMirror ?? 'mirror') === 'mirror' ? platform.kv : null,
       kvKey: player ? slotKey(gameId, player.playerId) : '',
+      canWrite: () => bootMachine.state().phase !== 'blocked',
       onIntegrity: (kind, d) => {
         integrityQueue.push({ kind, at: clock.now(), detail: d, buildVersion });
       },
@@ -427,20 +540,45 @@ export function createGameClient<S, A, E extends Effect>(
       playerId: next.playerId,
     });
     const read = s.read();
+    if (!read.ok && read.reason === 'incompatible') {
+      bootMachine.requireUpdate();
+      throw new Error('An update is required to read this account save. Your save is preserved.');
+    }
+    if (!read.ok && read.reason !== 'empty' && read.reason !== 'incompatible')
+      reportDamagedSlot({
+        reason: read.reason,
+        ...(read.message ? { message: read.message } : {}),
+        ...backupDamagedSlot(storage, gameId, next.playerId),
+      });
     const local = read.ok ? read.envelope : null;
     const sc = buildSync(next, local ?? freshEnvelope(next), s);
     bootMachine.rebind({ player: next, sync: sc, slot: s });
-    const head = await sc.fetchHead({ withBlob: false });
-    const remote = head.ok ? head.head : null;
+    const head = await sc.fetchHead({ withBlob: true });
+    const inspected = head.ok ? await sc.inspectRemote(head.head) : null;
+    if (inspected && !inspected.ok) {
+      if (inspected.reason === 'newer_schema') bootMachine.requireUpdate();
+      throw new Error(
+        inspected.reason === 'newer_schema'
+          ? 'An update is required to read this account save.'
+          : `Unable to verify the account save (${inspected.reason}).`,
+      );
+    }
+    const remote = inspected?.ok ? inspected.head : null;
     const decision = reconcile({
       local,
       remote,
       remoteUnreachable: !head.ok,
       returningIdentity: true,
+      // Identity switching has its own guest/account conflict prompt below. Equal-progress seq
+      // reconciliation is intentionally scoped to BootMachine boot/recheck for now.
     });
     if (decision.action === 'adopt_remote' && remote) {
       if (decision.pushLocalFirst && local) await sc.bootRepush();
       await sc.adoptRemote(remote, 'boot');
+      if (sc.halted() === 'update_required') {
+        bootMachine.requireUpdate();
+        throw new Error('An update is required to read this account save.');
+      }
     } else if (decision.action === 'start_new' && decision.reason !== 'erased') {
       sc.startNew(decision.generation, 'boot');
     }
@@ -482,6 +620,27 @@ export function createGameClient<S, A, E extends Effect>(
     );
     const result = await bootMachine.boot();
     const p = result.player;
+    if (cfg.sync?.resumeOffline === true) {
+      const anchor = result.offlineResumeAnchor;
+      const deviceSavedAt = anchor.deviceSavedAt;
+      // now() is equal to device time before its first server sample. Requiring an anchor avoids
+      // inventing a server elapsed time when the boot head check was unreachable.
+      if (
+        clock.anchored() &&
+        anchor.savedAtServerAnchored === true &&
+        typeof deviceSavedAt === 'number' &&
+        Number.isFinite(deviceSavedAt) &&
+        Number.isFinite(anchor.savedAt)
+      ) {
+        const resumed = loop.resumeGap({
+          deviceSec: (clock.deviceNow() - deviceSavedAt) / 1000,
+          serverSec: (clock.now() - anchor.savedAt) / 1000,
+        });
+        // The gap result includes idempotency ratchets owned by the game. Persist it before boot
+        // exposes live UI; autosave's existing writer gate keeps follower tabs read-only.
+        if (resumed) await result.sync.autosave();
+      }
+    }
     booted = true;
     // journal spool for this player (IndexedDB or memory), loaded before the loop starts
     journal.bindSpool(spool, journalSpoolKey(gameId, p.playerId));
@@ -498,7 +657,7 @@ export function createGameClient<S, A, E extends Effect>(
       platform.lifecycle.onVisibilityChange((visible) => {
         if (!visible) {
           hiddenMark = clock.mark();
-          if (sync && leader.isLeader()) {
+          if (sync && leader.isLeader() && bootMachine.state().phase !== 'blocked') {
             // teardown path: the beacon saves first (slot + pending), then sends that snapshot
             sync.beacon();
             void journal.persist();
@@ -506,7 +665,7 @@ export function createGameClient<S, A, E extends Effect>(
         } else {
           const hiddenMs = hiddenMark !== null ? clock.sinceMark(hiddenMark) : 0;
           hiddenMark = null;
-          void track(bootMachine.onVisible(hiddenMs));
+          void track(bootMachine.onVisible(hiddenMs), 'visible_recheck');
         }
       }),
     );
@@ -526,6 +685,7 @@ export function createGameClient<S, A, E extends Effect>(
             if (h.ok && s === sync) return s.adoptRemote(h.head, 'broadcast');
             return undefined;
           }),
+          'broadcast_adopt',
         );
       }),
     );
@@ -545,23 +705,89 @@ export function createGameClient<S, A, E extends Effect>(
           identitySwitch.onIdentityChanged(prev, next, guest).then((outcome) => {
             emit({ type: 'identity_switch', outcome });
           }),
+          'identity_switch',
         );
       }),
     );
     // integrity events ride the timer path (bounded, ≤ 20 per call)
     const integrityTimer = (): void => {
-      integrityHandle = timers.set(() => {
-        void flushIntegrity()
-          .catch(() => undefined)
-          .finally(() => {
-            if (booted) integrityTimer();
-          });
-      }, cfg.sync?.pushMs ?? 60_000);
+      integrityHandle = timers.set(
+        () => {
+          void flushIntegrity()
+            .catch(() => undefined)
+            .finally(() => {
+              if (booted) integrityTimer();
+            });
+        },
+        cfg.sync?.integrityMs ?? cfg.sync?.pushMs ?? 60_000,
+      );
     };
     integrityTimer();
-    return result;
+    return cfg.sync?.resumeOffline === true ? { ...result, state: loop.state() } : result;
   };
   let integrityHandle: unknown = null;
+  let pendingRestart: LineageRestartBody | null = null;
+
+  const restartJourney = async (opts?: RestartJourneyOpts<S>): Promise<RestartJourneyOutcome> => {
+    if (
+      !booted ||
+      !sync ||
+      !leader.isLeader() ||
+      gate.isRestoring() ||
+      bootMachine.state().phase !== 'live'
+    )
+      return { ok: false, reason: 'not_live' };
+    const previous = loop.state();
+    await sync.push('important', { fresh: true });
+    if (
+      !booted ||
+      !sync ||
+      !leader.isLeader() ||
+      gate.isRestoring() ||
+      bootMachine.state().phase !== 'live'
+    )
+      return { ok: false, reason: 'not_live' };
+    const expectedGeneration = sync.envelope().generation;
+    if (!pendingRestart || pendingRestart.expectedGeneration !== expectedGeneration) {
+      pendingRestart = {
+        commandId: mintId(),
+        restartId: mintId(),
+        expectedGeneration,
+      };
+    }
+    const res = await api.call<GenerationReceipt>('POST', '/v1/lineage/restart', pendingRestart);
+    if (!res.ok) {
+      if (res.status === 0) return { ok: false, reason: 'unreachable' };
+      if (res.status === 401) return { ok: false, reason: 'no_token' };
+      if (res.status === 409 && res.error?.error === 'stale_generation') {
+        pendingRestart = null;
+        const details = res.error.details as { generation?: number } | undefined;
+        return {
+          ok: false,
+          reason: 'stale_generation',
+          ...(typeof details?.generation === 'number'
+            ? { serverGeneration: details.generation }
+            : {}),
+        };
+      }
+      return {
+        ok: false,
+        reason: 'rejected',
+        message: res.error?.error ?? `http ${res.status}`,
+      };
+    }
+    const entitlement = Math.max(0, res.body.entitlement ?? 0);
+    const sc = sync;
+    await gate.hold(async () => {
+      const next = sc.startNew(res.body.generation, 'start_new');
+      opts?.seed?.({ previous, next, entitlement });
+    });
+    pendingRestart = null;
+    sc.markDirty();
+    await sc.autosave();
+    await sc.push('important', { fresh: true });
+    return { ok: true, generation: res.body.generation, entitlement };
+  };
 
   return {
     dispatch(action) {
@@ -569,6 +795,7 @@ export function createGameClient<S, A, E extends Effect>(
         emit({ type: 'follower_blocked' });
         return;
       }
+      if (['prompt', 'blocked'].includes(bootMachine.state().phase)) return;
       loop.dispatch(action);
     },
     state: () => loop.state(),
@@ -584,7 +811,7 @@ export function createGameClient<S, A, E extends Effect>(
     saveNow(reason) {
       const s = sync;
       if (!s) return;
-      void s.autosave().then(() => (s === sync ? s.push(reason) : undefined));
+      void s.autosave().then(() => (s === sync ? s.push(reason, { fresh: true }) : undefined));
     },
     get booted() {
       return booted;
@@ -595,6 +822,7 @@ export function createGameClient<S, A, E extends Effect>(
       if (!restore) throw new Error('boot() first');
       return restore;
     },
+    restartJourney,
     leader,
     storage,
     platform,
@@ -608,6 +836,7 @@ export function createGameClient<S, A, E extends Effect>(
       if (role !== 'leader' || !sync) return;
       // the previous leader may have written the slot: reload it before writing anything
       sync.reloadFromSlot();
+      if (sync.halted() || bootMachine.state().phase === 'blocked') return;
       const rs = sync.envelope().rngState;
       if (typeof rs === 'number') rng.restore(rs);
       loop.start();

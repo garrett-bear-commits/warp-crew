@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { LIMITS } from '@foundation/contracts/enums';
 import type { SaveBeaconBody, SaveWriteBody } from '@foundation/contracts';
 import { makeWorld } from '../helpers/world.ts';
 import { slotKey } from '../../src/storage/envelope.ts';
+import { memoryStorage } from '../../src/storage/tiers.ts';
 import type { SyncEvent } from '../../src/sync/client.ts';
 import type { CounterState } from '../helpers/fixtures.ts';
 
@@ -10,6 +11,10 @@ const putBodies = (w: ReturnType<typeof makeWorld>): SaveWriteBody[] =>
   w.ff.calls
     .filter((c) => c.method === 'PUT' && c.url.endsWith('/v1/saves'))
     .map((c) => c.body as SaveWriteBody);
+
+/** The counter value of every snapshot written to the KV mirror, in order. */
+const mirroredCounts = (set: { mock: { calls: [key: string, value: string][] } }): number[] =>
+  set.mock.calls.map(([, blob]) => (JSON.parse(blob) as { state: CounterState }).state.count);
 
 describe('sync client — push, verdicts, commandId reuse (§5.2 Sync)', () => {
   it('fresh player: boot → start_new → first push anchored (synced), envelope acked, status "Saved to cloud"', async () => {
@@ -342,8 +347,8 @@ describe('sync client — push, verdicts, commandId reuse (§5.2 Sync)', () => {
     expect((await client.sync.push('timer')).skipped).toBe('halted');
     client.sync.resume();
     w.server.forceStatus = null;
-    const ok = await client.sync.push('timer');
-    expect(!ok.skipped && ok.verdict).toBe('synced');
+    expect(client.sync.halted()).toBe('update_required');
+    expect((await client.sync.push('timer')).skipped).toBe('halted');
   });
 
   it('no token → no_token; sync disabled → disabled', async () => {
@@ -382,6 +387,73 @@ describe('sync client — push, verdicts, commandId reuse (§5.2 Sync)', () => {
     w.server.down = true;
     await client.sync.push('timer');
     expect(client.sync.statusText()).toBe('Cloud unavailable — not saving on this device');
+  });
+
+  it('an intent save and a same-tick autosave (a purchase persist) overlap without failing', async () => {
+    const w = makeWorld();
+    const { client } = w.newClient({ sync: { gzip: true } });
+    await client.boot();
+    await client.sync.push('important');
+    expect(client.sync.envelope().pending).toBeUndefined();
+    const autosaved: SyncEvent<CounterState>[] = [];
+    client.sync.onEvent((e) => {
+      if (e.type === 'autosaved') autosaved.push(e);
+    });
+
+    client.dispatch({ type: 'inc', n: 1 });
+    client.saveNow('important');
+    expect(await client.sync.autosave()).toBe(true);
+    await client.idle();
+    await client.sync.push('important');
+
+    expect(autosaved).toEqual([
+      { type: 'autosaved', ok: true },
+      { type: 'autosaved', ok: true },
+    ]);
+    expect(w.server.anchor()?.progress).toBe(1);
+  });
+
+  it('autosave reports a full or blocked local slot, and the snapshot still pushes', async () => {
+    const quota = (): never => {
+      const e = new Error('The quota has been exceeded.');
+      e.name = 'QuotaExceededError';
+      throw e;
+    };
+    const mem = memoryStorage();
+    let full = false;
+    const w = makeWorld({
+      localStorage: {
+        ...mem,
+        setItem: (k: string, v: string) => (full ? quota() : mem.setItem(k, v)),
+        get length() {
+          return mem.length;
+        },
+      },
+    });
+    const { client } = w.newClient();
+    await client.boot();
+    const autosaved: SyncEvent<CounterState>[] = [];
+    client.sync.onEvent((e) => {
+      if (e.type === 'autosaved') autosaved.push(e);
+    });
+
+    full = true;
+    client.dispatch({ type: 'inc', n: 2 });
+    expect(await client.sync.autosave()).toBe(true);
+    expect(autosaved).toEqual([{ type: 'autosaved', ok: false, reason: 'quota' }]);
+    const report = await client.sync.push('important');
+    expect(!report.skipped && report.verdict).toBe('synced');
+    expect(w.server.anchor()?.progress).toBe(2);
+
+    const blocked = makeWorld({ localStorage: null });
+    const second = blocked.newClient().client;
+    await second.boot();
+    second.sync.onEvent((e) => {
+      if (e.type === 'autosaved') autosaved.push(e);
+    });
+    second.dispatch({ type: 'inc', n: 1 });
+    expect(await second.sync.autosave()).toBe(true);
+    expect(autosaved.at(-1)).toEqual({ type: 'autosaved', ok: false, reason: 'blocked' });
   });
 
   it('timers: autosave every 10 s only when dirty; push on the 60 s state-driven timer only when there is something to push', async () => {
@@ -548,6 +620,76 @@ describe('sync client — push, verdicts, commandId reuse (§5.2 Sync)', () => {
     expect(platform.controls.kvStore.get(slotKey('game', 'guest-1'))).toContain('"progress":1');
   });
 
+  it('kv mirror: the first snapshot writes at once; autosaves inside the 60 s window trail as ONE write of the newest', async () => {
+    const w = makeWorld();
+    const { client, platform } = w.newClient();
+    const set = vi.spyOn(platform.kv, 'set');
+    await client.boot();
+    client.dispatch({ type: 'inc', n: 1 });
+    await w.timers.advance(10_000);
+    expect(mirroredCounts(set)).toEqual([1]);
+    for (let i = 0; i < 5; i++) {
+      client.dispatch({ type: 'inc', n: 1 });
+      await w.timers.advance(10_000);
+    }
+    // every 10 s autosave (and the 60 s push) still reached the local slot; none reached the KV
+    expect(JSON.parse(w.ls!.getItem(slotKey('game', 'guest-1'))!).progress).toBe(6);
+    expect(mirroredCounts(set)).toEqual([1]);
+    await w.timers.advance(10_000);
+    expect(mirroredCounts(set)).toEqual([1, 6]);
+    await w.timers.advance(120_000);
+    expect(mirroredCounts(set)).toEqual([1, 6]);
+    expect(platform.controls.kvStore.get(slotKey('game', 'guest-1'))).toContain('"count":6');
+  });
+
+  it('kv mirror: teardown writes the newest snapshot at once and cancels the trailing write', async () => {
+    const w = makeWorld();
+    const { client, platform } = w.newClient();
+    const set = vi.spyOn(platform.kv, 'set');
+    await client.boot();
+    client.dispatch({ type: 'inc', n: 1 });
+    await client.sync.autosave();
+    client.dispatch({ type: 'inc', n: 2 });
+    await client.sync.autosave();
+    expect(mirroredCounts(set)).toEqual([1]);
+    // nothing changed since the held autosave: teardown flushes that snapshot
+    platform.controls.setVisible(false);
+    expect(mirroredCounts(set)).toEqual([1, 3]);
+    platform.controls.setVisible(true);
+    // a change since the last snapshot: the teardown snapshot itself is mirrored, unthrottled
+    client.dispatch({ type: 'inc', n: 4 });
+    platform.controls.setVisible(false);
+    expect(mirroredCounts(set)).toEqual([1, 3, 7]);
+    expect(w.beacons.length).toBe(2);
+    await w.timers.advance(120_000);
+    expect(mirroredCounts(set)).toEqual([1, 3, 7]);
+  });
+
+  it('kv mirror: nothing is mirrored while restoring, and a stopped client drops its held snapshot', async () => {
+    const w = makeWorld();
+    const { client, platform } = w.newClient();
+    const set = vi.spyOn(platform.kv, 'set');
+    await client.boot();
+    client.dispatch({ type: 'inc', n: 1 });
+    await client.sync.autosave();
+    client.dispatch({ type: 'inc', n: 2 });
+    await client.sync.autosave();
+    await client.gate.hold(async () => {
+      // the trailing write falls due and the tab hides mid-restore
+      await w.timers.advance(60_000);
+      client.sync.beacon();
+    });
+    expect(mirroredCounts(set)).toEqual([1]);
+    client.dispatch({ type: 'inc', n: 4 });
+    await client.sync.autosave();
+    expect(mirroredCounts(set)).toEqual([1, 7]);
+    client.dispatch({ type: 'inc', n: 8 });
+    await client.sync.autosave();
+    client.sync.stop();
+    await w.timers.advance(120_000);
+    expect(mirroredCounts(set)).toEqual([1, 7]);
+  });
+
   it('journal: errors_only ships only after a game_error; ≤ 16 KiB; never at teardown', async () => {
     const w = makeWorld();
     const { client, platform } = w.newClient();
@@ -574,5 +716,39 @@ describe('sync client — push, verdicts, commandId reuse (§5.2 Sync)', () => {
       (integ!.body as { events: { kind: string; breadcrumbs: unknown[] }[] }).events[0]!.kind,
     ).toBe('game_error');
     expect(platform.controls.reported()[0]?.kind).toBe('game_error');
+  });
+
+  it('onError receives the original error and detail; a throwing sink still queues the event', async () => {
+    const w = makeWorld();
+    const seen: Array<[unknown, unknown]> = [];
+    const { client, platform } = w.newClient({
+      onError: (error, detail) => {
+        seen.push([error, detail]);
+        throw new Error('tracker down');
+      },
+    });
+    await client.boot();
+    const boom = new Error('boom');
+    client.reportError(boom, { operation: 'native_save' });
+    expect(seen).toEqual([[boom, { operation: 'native_save' }]]);
+    expect(platform.controls.reported()[0]?.kind).toBe('game_error');
+    await w.timers.advance(61_000);
+    expect(w.ff.calls.some((c) => c.url.endsWith('/v1/telemetry/integrity'))).toBe(true);
+  });
+
+  it('the integrity event names the causes and trims detail; the sink gets both whole', async () => {
+    const w = makeWorld();
+    const seen: Array<[unknown, unknown]> = [];
+    const { client, platform } = w.newClient({
+      onError: (error, detail) => seen.push([error, detail]),
+    });
+    await client.boot();
+    const error = new Error('save failed', { cause: new TypeError('quota exceeded') });
+    const stack = 'x'.repeat(400);
+    client.reportError(error, { operation: 'native_save', componentStack: stack });
+    expect(seen).toEqual([[error, { operation: 'native_save', componentStack: stack }]]);
+    const event = platform.controls.reported()[0]!;
+    expect(event.message).toBe('Error: save failed <- TypeError: quota exceeded');
+    expect(event.detail).toEqual({ operation: 'native_save', componentStack: 'x'.repeat(256) });
   });
 });

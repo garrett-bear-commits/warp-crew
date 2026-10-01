@@ -62,6 +62,29 @@ describe('route registry invariants', () => {
     }
   });
 
+  it("only the inspector's sign-in read takes any admin key ('any' never on a write)", () => {
+    const anyKey = ROUTES.filter((r) => r.adminScope === 'any');
+    expect(anyKey.map((r) => r.id)).toEqual(['admin.session']);
+    for (const r of anyKey) {
+      expect(isMutation(r), r.id).toBe(false);
+      expect(r.auth).toBe('admin');
+    }
+    expect(ROUTE_BY_ID.get('admin.session')).toMatchObject({
+      method: 'GET',
+      path: '/admin/v1/session',
+    });
+  });
+
+  it('the session response names the key and only known scopes', () => {
+    const response = ROUTE_BY_ID.get('admin.session')!.response;
+    const base = { keyId: 'k', requestId: 'req_1', serverNow: 1 };
+    expect(check(response, { ...base, scopes: ['read', 'restore'] })).toBe(true);
+    expect(check(response, { ...base, scopes: [] })).toBe(true);
+    expect(check(response, { ...base, scopes: ['root'] })).toBe(false);
+    expect(check(response, { ...base, keyId: '', scopes: ['read'] })).toBe(false);
+    expect(check(response, { requestId: 'req_1', serverNow: 1, scopes: ['read'] })).toBe(false);
+  });
+
   it('MutationBody base requires commandId as a uuid', () => {
     expect(check(MutationBody, { commandId: 'not-a-uuid' })).toBe(false);
     expect(check(MutationBody, { commandId: saveWriteBody.commandId })).toBe(true);

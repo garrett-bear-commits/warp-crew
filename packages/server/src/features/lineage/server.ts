@@ -136,7 +136,11 @@ export function registerLineage(app: FastifyInstance, ctx: AppContext): void {
     });
     const last = await repo.lastRow(tx, playerKey);
     const decoded = await decodeBlob('json', blob, ctx.game.blobLimits);
-    if (!decoded.ok) throw new AppError('internal', 'stored blob failed to decode');
+    if (!decoded.ok)
+      throw new AppError('internal', `stored blob failed to decode: ${decoded.reason}`, {
+        reason: decoded.reason,
+        detail: decoded.detail,
+      });
     await repo.insertSnapshot(tx, {
       playerKey,
       generation: gen.generation,

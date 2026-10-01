@@ -6,6 +6,7 @@ import type {
   AchievementsEvaluateResult,
   DailyClaimBody,
   DailyClaimResult,
+  DailyStatusResponse,
 } from '@foundation/contracts';
 export function achievementsClient(api: Api) {
   return {
@@ -14,5 +15,6 @@ export function achievementsClient(api: Api) {
       api.call<AchievementsEvaluateResult>('POST', '/v1/achievements/evaluate', body),
     claimDaily: (body: DailyClaimBody) =>
       api.call<DailyClaimResult>('POST', '/v1/daily/claim', body),
+    dailyStatus: () => api.call<DailyStatusResponse>('GET', '/v1/daily/status'),
   };
 }

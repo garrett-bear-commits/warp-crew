@@ -22,7 +22,7 @@ export const PurchaseRecord = Type.Object(
     sku: Type.String(),
     packKey: Type.Optional(Type.String()),
     classification: PurchaseClassificationSchema,
-    /** Premium value granted (0 unless classification=paid and minting enabled). */
+    /** Premium value granted (0 unless classification=paid/sandbox and that minting is enabled). */
     granted: NonNegInt,
     /** Grant key created for this purchase, when a grant was minted. */
     grantKey: Type.Optional(GrantReferenceKey),

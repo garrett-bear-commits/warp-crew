@@ -1,7 +1,8 @@
 // Standalone platform (§5.3 createStandalonePlatform): no SDK. Identity comes from a QA-minted
 // token passed in options (Lab `qa_` identities or a mock token for the dev server); no payments
 // (begin → error 'unsupported'); KV mirror in memory (break-glass reads it back); notifications
-// ineligible; share via navigator.share when present; lifecycle from the document.
+// ineligible; share via navigator.share when present; no screenshot requests; lifecycle from the
+// document.
 import {
   consoleErrorSink,
   documentLifecycle,
@@ -133,6 +134,7 @@ export function createStandalonePlatform(o: StandaloneOptions): PlatformAdapter 
         }
       },
     },
+    screenshots: { available: () => false, setProvider() {} },
     analytics: { track() {}, markFirstMilestone() {} },
     loading: {
       markLoaded() {

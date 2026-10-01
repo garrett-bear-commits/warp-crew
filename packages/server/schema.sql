@@ -345,6 +345,7 @@ col players.entry_payload jsonb YES
 col players.seen_days integer NO 1
 col players.last_seen_day date NO ((now() AT TIME ZONE 'UTC'::text))::date
 col players.erased_at timestamp with time zone YES 
+col players.first_build text YES 
 col purchase_adjustment_acks.adjustment_id bigint NO 
 col purchase_adjustment_acks.player_key text NO 
 col purchase_adjustment_acks.command_id uuid NO 
@@ -542,10 +543,10 @@ con purchase_adjustments.purchase_adjustments_kind_check CHECK ((kind = ANY (ARR
 con purchase_adjustments.purchase_adjustments_pkey PRIMARY KEY (id)
 con purchase_adjustments.purchase_adjustments_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES purchase_transactions(id)
 con purchase_transactions.purchase_transactions_base_amount_check CHECK ((base_amount >= 0))
-con purchase_transactions.purchase_transactions_check CHECK (((classification = 'paid'::text) OR (granted = 0)))
 con purchase_transactions.purchase_transactions_classification_check CHECK ((classification = ANY (ARRAY['paid'::text, 'sandbox'::text, 'unclassified'::text, 'unsupported'::text])))
 con purchase_transactions.purchase_transactions_grant_key_length CHECK (((grant_key IS NULL) OR (char_length(grant_key) <= 200)))
 con purchase_transactions.purchase_transactions_granted_check CHECK ((granted >= 0))
+con purchase_transactions.purchase_transactions_granted_classification CHECK (((classification = ANY (ARRAY['paid'::text, 'sandbox'::text])) OR (granted = 0)))
 con purchase_transactions.purchase_transactions_pkey PRIMARY KEY (id)
 con purchase_transactions.purchase_transactions_provider_token_key UNIQUE (provider_token)
 con purchase_transactions.purchase_transactions_sandbox_not_paid CHECK (((sandbox IS DISTINCT FROM true) OR (classification <> 'paid'::text)))
@@ -676,6 +677,7 @@ fn apply_retention secdef=true
 fn ensure_journal_partition secdef=true
 fn erase_player secdef=true
 fn fence_ledger secdef=false
+fn players_first_build secdef=false
 fn promote_snapshot secdef=true
 fn prune_refused_blobs secdef=true
 fn prune_save_blobs secdef=true
@@ -694,6 +696,7 @@ trg leaderboard_reviews.leaderboard_reviews_fence
 trg leaderboard_runs.leaderboard_runs_fence
 trg leaderboard_submissions.leaderboard_submissions_fence
 trg outbox.outbox_fence
+trg players.players_first_build
 trg player_strikes.player_strikes_fence
 trg purchase_adjustment_acks.purchase_adjustment_acks_fence
 trg purchase_adjustments.purchase_adjustments_fence

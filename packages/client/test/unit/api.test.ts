@@ -96,3 +96,45 @@ describe('client API credential step-up', () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('client API correlation', () => {
+  it('sends trace headers with every call and keeps the request id of a failed one', async () => {
+    const sent: Headers[] = [];
+    let fail: 'http' | 'network' = 'http';
+    const fetch = vi.fn<typeof globalThis.fetch>(async (_input, init) => {
+      sent.push(new Headers(init?.headers));
+      if (fail === 'network') throw new TypeError('Load failed');
+      return response(503, { error: 'retry_later', correlationId: 'req-a' });
+    });
+    let next = 0;
+    const api = createApi({
+      baseUrl: 'https://game.example',
+      fetch,
+      requestId: () => `req-${'ab'[next++]}`,
+      traceHeaders: () => ({
+        'sentry-trace': 'trace-1-span-1',
+        baggage: 'sentry-trace_id=trace-1',
+      }),
+    });
+
+    await expect(api.call('GET', '/v1/saves/current')).resolves.toMatchObject({
+      ok: false,
+      status: 503,
+      requestId: 'req-a',
+    });
+    fail = 'network';
+    // No envelope came back, but the id it sent still finds the request in the API's logs.
+    await expect(api.call('GET', '/v1/saves/current')).resolves.toMatchObject({
+      ok: false,
+      status: 0,
+      networkError: 'Load failed',
+      requestId: 'req-b',
+    });
+    expect(
+      sent.map((h) => [h.get('x-request-id'), h.get('sentry-trace'), h.get('baggage')]),
+    ).toEqual([
+      ['req-a', 'trace-1-span-1', 'sentry-trace_id=trace-1'],
+      ['req-b', 'trace-1-span-1', 'sentry-trace_id=trace-1'],
+    ]);
+  });
+});

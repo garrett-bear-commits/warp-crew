@@ -79,6 +79,20 @@ describe('preflightEnv', () => {
     expect(p).toMatch(/STATIC_DIR/);
   });
 
+  it('prod refuses a BUILD_VERSION that is not a release X.Y.Z, as the server does', () => {
+    for (const bad of ['dev', 'v0.22.0', '0.22.1-staging.9'])
+      expect(preflightEnv(baseEnv({ BUILD_VERSION: bad })).problems.join('\n'), bad).toMatch(
+        /prod: BUILD_VERSION is a release X.Y.Z/,
+      );
+    // With the deploy-written record the server reads the version from the file instead.
+    expect(
+      preflightEnv(
+        baseEnv({ BUILD_VERSION: '', BUILD_INFO_FILE: '/app/infra/railway/build-info.json' }),
+      ).problems,
+    ).toEqual([]);
+    expect(preflightEnv(baseEnv({ GAME_ENV: 'lab', BUILD_VERSION: 'dev' })).problems).toEqual([]);
+  });
+
   it('lab/dev allow memory + mock but still require secrets and admin keys', () => {
     const ok = preflightEnv(
       baseEnv({

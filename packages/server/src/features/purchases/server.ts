@@ -22,7 +22,7 @@ import { AppError } from '../../errors.ts';
 import { route } from '../../http/route.ts';
 import type { AppContext } from '../../http/context.ts';
 import type { Q, Tx } from '../../db/index.ts';
-import type { CatalogPack } from '../../game/config.ts';
+import type { CatalogPack, GameConfig } from '../../game/config.ts';
 import { mintGrant } from '../../rewards/mint.ts';
 import { actorLabel } from '../../cqrs/bus.ts';
 import { entitlementFor } from '../../game/facts.ts';
@@ -67,9 +67,14 @@ export function classifyReceipt(r: VerifiedReceipt, catalog: readonly CatalogPac
 export function grantedAmount(
   c: Classified,
   packPreviouslyPurchased: boolean,
-  mintPremium: 'on' | 'off',
+  purchases: GameConfig['purchases'],
 ): number {
-  if (c.kind !== 'paid' || mintPremium !== 'on') return 0;
+  if (c.kind === 'unsupported') return 0;
+  const mints =
+    c.kind === 'paid'
+      ? purchases.mintPremium === 'on'
+      : c.kind === 'sandbox' && purchases.mintSandbox === 'on';
+  if (!mints) return 0;
   return c.pack.baseAmount * (packPreviouslyPurchased ? 1 : (c.pack.firstPurchaseMultiplier ?? 1));
 }
 
@@ -234,10 +239,12 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
     let granted = 0;
     let grantKey: string | null = null;
     if (c.kind !== 'unsupported') {
+      // Minted sandbox and paid deliveries share one first-buy bonus per pack, matching the
+      // client's single first-purchase record.
       const prev = await t<
         { n: number }[]
-      >`SELECT count(*)::int AS n FROM purchase_transactions WHERE player_key = ${playerKey} AND pack_key = ${c.pack.packKey} AND classification = 'paid' AND grant_key IS NOT NULL`;
-      granted = grantedAmount(c, (prev[0]?.n ?? 0) > 0, game.purchases.mintPremium);
+      >`SELECT count(*)::int AS n FROM purchase_transactions WHERE player_key = ${playerKey} AND pack_key = ${c.pack.packKey} AND classification IN ('paid', 'sandbox') AND grant_key IS NOT NULL`;
+      granted = grantedAmount(c, (prev[0]?.n ?? 0) > 0, game.purchases);
     }
     if (granted > 0) {
       grantKey = `purchase:${sha256Hex(r.purchaseToken)}`;
@@ -286,12 +293,18 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
           'payments verifier has no secret; refusing to verify',
           { reason: v.reason },
         );
+      if (v.field) exec.diagnostics = { ...exec.diagnostics, receiptField: v.field };
       return { outcome: 'rejected', reason: v.reason, completion: 'withhold' };
     }
-    if (v.purchases.length !== 1)
+    if (v.purchases.length !== 1) {
+      exec.diagnostics = {
+        ...exec.diagnostics,
+        receiptField: `purchases (${v.purchases.length}, not 1)`,
+      };
       return { outcome: 'rejected', reason: 'malformed_purchase', completion: 'withhold' };
+    }
     const r = v.purchases[0]!;
-    if (r.playerId !== playerKey)
+    if (v.playerId !== playerKey || r.playerId !== playerKey)
       return { outcome: 'rejected', reason: 'sub_mismatch', completion: 'withhold' };
     return recordReceipt(t, playerKey, r, input.commandId, exec);
   });
@@ -307,18 +320,25 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
           'payments verifier has no secret; refusing to verify',
           { reason: v.reason },
         );
+      if (v.field) exec.diagnostics = { ...exec.diagnostics, receiptField: v.field };
       return { outcome: 'rejected', reason: v.reason, results: [] };
     }
     if (v.purchases.length > 50)
       return { outcome: 'rejected', reason: 'malformed_purchase', results: [] };
-    if (v.purchases.some((purchase) => purchase.playerId !== playerKey))
+    // An empty signed batch still belongs to a player; there may be no receipt to check below.
+    if (v.playerId !== playerKey || v.purchases.some((purchase) => purchase.playerId !== playerKey))
       return { outcome: 'rejected', reason: 'sub_mismatch', results: [] };
 
     const unique = new Map<string, VerifiedReceipt>();
     for (const purchase of v.purchases) {
       const prior = unique.get(purchase.purchaseToken);
-      if (prior && JSON.stringify(prior) !== JSON.stringify(purchase))
+      if (prior && JSON.stringify(prior) !== JSON.stringify(purchase)) {
+        exec.diagnostics = {
+          ...exec.diagnostics,
+          receiptField: 'purchases (one token, differing facts)',
+        };
         return { outcome: 'rejected', reason: 'malformed_purchase', results: [] };
+      }
       if (!prior) unique.set(purchase.purchaseToken, purchase);
     }
     for (const token of [...unique.keys()].sort())
@@ -392,15 +412,57 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
     app,
     ctx,
     'purchases.verify',
-    async ({ body, exec }) =>
-      bus.execute(PurchasesVerify, { commandId: body.commandId, payload: body }, exec!),
+    async ({ body, exec }) => {
+      const result = await bus.execute(
+        PurchasesVerify,
+        { commandId: body.commandId, payload: body },
+        exec!,
+      );
+      // A refused receipt may be a charged player without gems (the client reports it too):
+      // one issue per reason, findable by request id.
+      if (result.outcome === 'rejected') {
+        const reason = result.reason ?? 'unknown';
+        ctx.sentry.captureException(
+          new Error(`purchase verify rejected: ${reason}`),
+          { requestId: exec!.requestId, command: 'purchases.verify', reason, ...exec!.diagnostics },
+          { fingerprint: ['purchase-verify-rejected', reason] },
+        );
+      }
+      return result;
+    },
   );
   route<
     typeof PurchaseBatchVerifyBody,
     typeof import('@foundation/contracts').PurchaseBatchVerifyResult
-  >(app, ctx, 'purchases.verifyBatch', async ({ body, exec }) =>
-    bus.execute(PurchasesVerifyBatch, { commandId: body.commandId, payload: body }, exec!),
-  );
+  >(app, ctx, 'purchases.verifyBatch', async ({ body, exec }) => {
+    const result = await bus.execute(
+      PurchasesVerifyBatch,
+      { commandId: body.commandId, payload: body },
+      exec!,
+    );
+    // Recovery pages: a rejected page, or rejected receipts in it, may be charged players
+    // without gems. One issue per reason; `receipts` is how many it hit (0: the whole page).
+    const reasons = new Map<string, number>();
+    if (result.outcome === 'rejected') reasons.set(result.reason ?? 'unknown', 0);
+    for (const r of result.results ?? []) {
+      if (r.outcome !== 'rejected') continue;
+      const reason = r.reason ?? 'unknown';
+      reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
+    }
+    for (const [reason, receipts] of reasons)
+      ctx.sentry.captureException(
+        new Error(`purchase batch verify rejected: ${reason}`),
+        {
+          requestId: exec!.requestId,
+          command: 'purchases.verifyBatch',
+          reason,
+          receipts,
+          ...exec!.diagnostics,
+        },
+        { fingerprint: ['purchase-batch-rejected', reason] },
+      );
+    return result;
+  });
   route<typeof AdjustmentsAckBody, typeof import('@foundation/contracts').AdjustmentsAckResult>(
     app,
     ctx,

@@ -133,6 +133,97 @@ describe('reconcile (§5.2 boot decision)', () => {
         .action,
     ).toBe('prompt');
   });
+  it('a newer equal-progress anchor for the exact pending command is kept for boot replay', () => {
+    const local = env({
+      progress: 3,
+      dirty: true,
+      clientSeq: 4,
+      pending: {
+        commandId: 'same-command',
+        encodedBlob: '{}',
+        enc: 'json',
+        progress: 3,
+        savedAt: 0,
+        reason: 'teardown',
+        clientSeq: 4,
+        generation: 0,
+        schemaVersion: 1,
+      },
+    });
+    const decision = reconcile({
+      local,
+      remote: {
+        kind: 'snapshot',
+        generation: 0,
+        snapshot: {
+          seq: 7,
+          progress: 3,
+          generation: 0,
+          schemaVersion: 1,
+          commandId: 'same-command',
+          sessionId: 's',
+          clientSeq: 4,
+          savedAt: 0,
+        },
+      },
+      remoteUnreachable: false,
+      returningIdentity: true,
+      reconcileEqualProgress: true,
+    });
+    expect(decision).toMatchObject({ action: 'keep_local', reason: 'local_deeper_or_equal' });
+  });
+  it('a newer equal-progress anchor with a different command still prompts', () => {
+    const local = env({
+      progress: 3,
+      dirty: true,
+      clientSeq: 4,
+      pending: {
+        commandId: 'local-command',
+        encodedBlob: '{}',
+        enc: 'json',
+        progress: 3,
+        savedAt: 0,
+        reason: 'teardown',
+        clientSeq: 4,
+        generation: 0,
+        schemaVersion: 1,
+        ancestors: [
+          {
+            commandId: 'common-ancestor',
+            progress: 3,
+            savedAt: 0,
+            clientSeq: 2,
+            generation: 0,
+            schemaVersion: 1,
+          },
+        ],
+      },
+    });
+    const decision = reconcile({
+      local,
+      remote: {
+        kind: 'snapshot',
+        generation: 0,
+        snapshot: {
+          seq: 7,
+          progress: 3,
+          generation: 0,
+          schemaVersion: 1,
+          commandId: 'remote-command',
+          sessionId: 's',
+          clientSeq: 4,
+          savedAt: 0,
+        },
+      },
+      remoteUnreachable: false,
+      returningIdentity: true,
+      reconcileEqualProgress: true,
+    });
+    expect(decision).toMatchObject({
+      action: 'prompt',
+      reason: 'remote_equal_newer_local_dirty',
+    });
+  });
   it('local deeper or equal → keep_local (even when dirty)', () => {
     expect(
       reconcile({

@@ -12,7 +12,10 @@ const i = process.argv.indexOf('--against');
 let ref = i >= 0 ? process.argv[i + 1] : undefined;
 if (!ref) {
   try {
-    ref = execFileSync('git', ['describe', '--tags', '--abbrev=0'], { encoding: 'utf8' }).trim();
+    // The last production release (`vX.Y.Z` tags), not any tag.
+    ref = execFileSync('git', ['describe', '--tags', '--match', 'v[0-9]*', '--abbrev=0'], {
+      encoding: 'utf8',
+    }).trim();
   } catch {
     console.log(
       'openapi-diff: no released tag exists yet — nothing to diff against (unavailable, not passed)',

@@ -1,6 +1,7 @@
 // Health (§4.2, §8): /health liveness; /health/ready (SELECT 1, migrations at head, secrets
 // present with byte length, admin keys count); /health/ops snapshot from a 15-minute rollup with
-// two-tier ?assert=page|warn (503 on any page-tier issue).
+// two-tier ?assert=page|warn (503 on any page-tier issue). The API has no public ops route, so the
+// in-process `ops.alert` job forwards the same issues to Sentry (createOpsAlerter).
 import type { FastifyInstance } from 'fastify';
 import { CONTRACT_VERSION } from '@foundation/contracts/enums';
 import type { OpsSnapshotResponse, ReadyResponse } from '@foundation/contracts';
@@ -19,8 +20,17 @@ export interface OpsThresholds {
   outboxLagWarnSec: number;
   deadLettersPage: number;
   jobOverdueFactor: number;
+  /** Floor for the overdue window: a 2 s job is not paged for missing 6 s (deploys, slow drains). */
+  jobOverdueMinMs: number;
+  /** Uptime before this process pages for a job (capped by the job's own window): a job with
+   *  no job_runs row, or a deploy gap, does not page a replica that just booted. */
+  jobNeverRunGraceMs: number;
   pendingReviewsWarn: number;
   restoreVerifyMaxAgeDays: number;
+  /** Share of this instance's responses that are 401s: a few are expired tokens refreshing. */
+  unauthorizedWarn: number;
+  /** Share of this instance's responses that are 429s. */
+  rateLimitedWarn: number;
 }
 
 export const DEFAULT_OPS_THRESHOLDS: OpsThresholds = {
@@ -32,8 +42,12 @@ export const DEFAULT_OPS_THRESHOLDS: OpsThresholds = {
   outboxLagWarnSec: 60,
   deadLettersPage: 1,
   jobOverdueFactor: 3,
+  jobOverdueMinMs: 2 * 60_000,
+  jobNeverRunGraceMs: 15 * 60_000,
   pendingReviewsWarn: 50,
   restoreVerifyMaxAgeDays: 10,
+  unauthorizedWarn: 0.25,
+  rateLimitedWarn: 0.05,
 };
 
 /** Pure: derive issues from a snapshot (tested without a database). */
@@ -60,6 +74,37 @@ export function assessOps(
       value: errRate,
       threshold: t.errorRateWarn,
     });
+  // Failures that never become a command row: raw 500s, and 401s and 429s refused before one.
+  const http = s.http;
+  if (http && http.total >= 20) {
+    const serverErrorRate = http.serverErrors / http.total;
+    if (serverErrorRate >= t.errorRateWarn)
+      issues.push({
+        tier: serverErrorRate >= t.errorRatePage ? 'page' : 'warn',
+        code: 'http_5xx_rate',
+        message: 'share of API responses that are 5xx (this instance)',
+        value: serverErrorRate,
+        threshold: serverErrorRate >= t.errorRatePage ? t.errorRatePage : t.errorRateWarn,
+      });
+    const unauthorizedRate = http.unauthorized / http.total;
+    if (unauthorizedRate >= t.unauthorizedWarn)
+      issues.push({
+        tier: 'warn',
+        code: 'http_401_rate',
+        message: 'share of API responses that are 401 (this instance)',
+        value: unauthorizedRate,
+        threshold: t.unauthorizedWarn,
+      });
+    const rateLimitedRate = http.rateLimited / http.total;
+    if (rateLimitedRate >= t.rateLimitedWarn)
+      issues.push({
+        tier: 'warn',
+        code: 'http_429_rate',
+        message: 'share of API responses that are 429 (this instance)',
+        value: rateLimitedRate,
+        threshold: t.rateLimitedWarn,
+      });
+  }
   if (total >= 20 && s.commands.p95Ms >= t.p95PageMs)
     issues.push({
       tier: 'page',
@@ -106,6 +151,16 @@ export function assessOps(
     else if (j.lastOk === false)
       issues.push({ tier: 'warn', code: 'job_failed', message: `job ${j.name} last run failed` });
   }
+  // A verified receipt without a price cannot be told paid from sandbox: it grants nothing and
+  // needs a look (provider change, mapping gap).
+  if (s.purchases.unclassified > 0)
+    issues.push({
+      tier: 'warn',
+      code: 'purchases_unclassified',
+      message: 'unclassified purchases in the window',
+      value: s.purchases.unclassified,
+      threshold: 1,
+    });
   if (s.saves.pendingReviews >= t.pendingReviewsWarn)
     issues.push({
       tier: 'warn',
@@ -143,8 +198,10 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: AppContext): voi
       const st = await checkSchema(ctx.db.sql);
       migrationsAtHead = st.ok;
       schemaHead = st.head ?? undefined;
-    } catch {
+    } catch (err) {
       db = false;
+      // Why readiness failed (connection refused, timeout, schema query), not just that it did.
+      ctx.log.warn({ err }, 'readiness check failed');
     }
     const secretByteLengths =
       ctx.config.identityProvider === 'jest'
@@ -172,6 +229,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: AppContext): voi
       gameId: ctx.config.gameId,
       env: ctx.config.env,
       buildVersion: ctx.config.buildVersion,
+      ...(ctx.config.buildCommit ? { commit: ctx.config.buildCommit } : {}),
     };
     return reply.status(body.status === 'ready' ? 200 : 503).send(body);
   });
@@ -207,13 +265,16 @@ export async function opsSnapshot(ctx: AppContext): Promise<OpsSnapshotResponse>
   const ob = await ctx.outbox.stats(sql);
   const jobsRows = await sql<{ name: string; started_at: Date; ok: boolean | null }[]>`
     SELECT DISTINCT ON (name) name, started_at, ok FROM job_runs ORDER BY name, started_at DESC`;
+  const t = DEFAULT_OPS_THRESHOLDS;
   const jobs = ctx.jobs.map((j) => {
     const last = jobsRows.find((r) => r.name === j.name);
     const lastRunAt = last?.started_at.getTime();
-    const overdue =
-      lastRunAt !== undefined
-        ? now - lastRunAt > j.intervalMs * DEFAULT_OPS_THRESHOLDS.jobOverdueFactor
-        : false;
+    // Scheduled jobs catch up on boot, so a job with no heartbeat once this process has been up
+    // for its window (at most the grace period) is stuck: crashing before its heartbeat commits,
+    // or jobs disabled everywhere. A freshly booted replica does not page for a deploy gap.
+    const window = Math.max(j.intervalMs * t.jobOverdueFactor, t.jobOverdueMinMs);
+    const settled = now - ctx.bootedAt > Math.min(window, t.jobNeverRunGraceMs);
+    const overdue = settled && (lastRunAt === undefined || now - lastRunAt > window);
     return {
       name: j.name,
       ...(lastRunAt !== undefined ? { lastRunAt } : {}),
@@ -268,12 +329,64 @@ export async function opsSnapshot(ctx: AppContext): Promise<OpsSnapshotResponse>
       sandbox: purchases[0]?.sandbox ?? 0,
       unclassified: purchases[0]?.unclassified ?? 0,
     },
+    http: ctx.httpStats.snapshot(now),
     ...(typeof restoreVerifiedAt === 'number' ? { restoreVerifiedAt } : {}),
     ...(typeof liveIntegrityVerifiedAt === 'number' ? { liveIntegrityVerifiedAt } : {}),
   };
   const issues = assessOps(base);
   const status = issues.some((i) => i.tier === 'page') ? 'page' : issues.length ? 'warn' : 'ok';
   return { ...base, issues, status };
+}
+
+type OpsIssue = OpsSnapshotResponse['issues'][number];
+
+/** Warn-tier codes repeat to Sentry at most this often (they are reviewed daily, not paged). */
+export const OPS_WARN_REPEAT_MS = 6 * 3_600_000;
+
+/**
+ * Forward ops issues to Sentry, one message per tier and code with a stable fingerprint
+ * (`ops/<tier>/<code>`) so alert rules can page on the page tier. Page-tier codes are sent on
+ * every check while they last; warn-tier codes at most every OPS_WARN_REPEAT_MS. A healthy
+ * snapshot sends nothing.
+ */
+export function createOpsAlerter(
+  ctx: Pick<AppContext, 'sentry' | 'log' | 'clock'>,
+  o: { warnRepeatMs?: number } = {},
+): (snapshot: OpsSnapshotResponse) => { status: string; page: string[]; warn: string[] } {
+  const warnRepeatMs = o.warnRepeatMs ?? OPS_WARN_REPEAT_MS;
+  const lastWarn = new Map<string, number>();
+  return (snapshot) => {
+    const now = ctx.clock.now();
+    const groups = new Map<string, { tier: OpsIssue['tier']; code: string; issues: OpsIssue[] }>();
+    for (const i of snapshot.issues) {
+      const key = `${i.tier}:${i.code}`;
+      const g = groups.get(key) ?? { tier: i.tier, code: i.code, issues: [] };
+      g.issues.push(i);
+      groups.set(key, g);
+    }
+    const warnNow = new Set(
+      [...groups.values()].filter((g) => g.tier === 'warn').map((g) => g.code),
+    );
+    for (const code of [...lastWarn.keys()]) if (!warnNow.has(code)) lastWarn.delete(code);
+    const sent = { page: [] as string[], warn: [] as string[] };
+    for (const g of groups.values()) {
+      if (g.tier === 'warn') {
+        const last = lastWarn.get(g.code);
+        if (last !== undefined && now - last < warnRepeatMs) continue;
+        lastWarn.set(g.code, now);
+      } else {
+        ctx.log.error({ code: g.code, issues: g.issues }, 'ops page');
+      }
+      ctx.sentry.captureMessage(`ops ${g.tier}: ${g.code}`, {
+        level: g.tier === 'page' ? 'error' : 'warning',
+        fingerprint: ['ops', g.tier, g.code],
+        tags: { ops_tier: g.tier, ops_code: g.code },
+        context: { issues: g.issues },
+      });
+      sent[g.tier].push(g.code);
+    }
+    return { status: snapshot.status, ...sent };
+  };
 }
 
 export { AppError };

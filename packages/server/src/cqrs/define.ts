@@ -28,6 +28,9 @@ export interface ExecCtx {
   ip?: string;
   /** How the command arrived (the beacon route shares the command + hash with the normal route). */
   transport?: 'http' | 'beacon';
+  /** What a command learned about a failure, for its route's logs and Sentry: never sent to the
+   *  client, never part of the stored result (e.g. which receipt field was malformed). */
+  diagnostics?: Record<string, string | number>;
 }
 
 export interface ReplayHooks<R> {

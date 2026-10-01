@@ -148,7 +148,9 @@ describe('react shells (§5.3)', () => {
     expect(reported[0]?.kind).toBe('game_error');
     expect(reported[0]?.message).toContain('kaboom');
     expect(reported[0]?.breadcrumbs?.some((b) => b.name === 'inc')).toBe(true);
-    expect(reported[0]?.detail).toEqual({ boundary: true });
+    expect(reported[0]?.detail).toMatchObject({ boundary: true });
+    // Where in the tree it broke, trimmed to the integrity event's bound.
+    expect(reported[0]?.detail?.componentStack).toContain('Boom');
     explode = false;
     act(() => (m.el.querySelector('.reset') as HTMLButtonElement).click());
     expect(m.el.querySelector('.ok')).not.toBeNull();

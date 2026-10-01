@@ -14,7 +14,9 @@ import {
   authenticatePlayerFromParts,
   requireScope,
 } from '../auth/index.ts';
+import { CF_ACCESS_JWT_HEADER } from '../auth/cf-access.ts';
 import { compareBuildVersions } from './versions.ts';
+import { traceHeadersOf } from './trace.ts';
 
 export interface HandlerArgs<B, P, Q> {
   req: FastifyRequest;
@@ -113,13 +115,25 @@ async function buildExec(
       return withBuild({ ...base, actor: a.actor, playerKey: a.playerKey });
     }
     case 'admin': {
+      // Behind Cloudflare Access its token is checked first: a request that skipped
+      // Access (e.g. the service's own platform domain) never reaches the key check, and its
+      // failures count toward ip.authfail like a bad key.
+      if (ctx.cfAccess) {
+        try {
+          await ctx.cfAccess.verify(headerBag(req).get(CF_ACCESS_JWT_HEADER), now);
+        } catch (e) {
+          if (e instanceof AppError && e.code === 'forbidden') return authFail(e);
+          throw e;
+        }
+      }
       let actor;
       try {
         actor = authenticateAdmin(ctx.config.adminKeys, headerBag(req));
       } catch (e) {
         return authFail(e);
       }
-      if (route.adminScope) {
+      // 'any' (the inspector's sign-in read) needs a valid key and no scope.
+      if (route.adminScope && route.adminScope !== 'any') {
         try {
           requireScope(actor, route.adminScope);
         } catch (e) {
@@ -195,7 +209,12 @@ export function route<
         {
           name: `${def.method} ${def.path}`,
           op: 'http.server',
-          attributes: { 'http.request.method': def.method, 'http.route': def.path },
+          attributes: {
+            'http.request.method': def.method,
+            'http.route': def.path,
+            'foundation.request_id': req.requestId,
+          },
+          trace: traceHeadersOf(req),
         },
         async (setStatus) => {
           try {

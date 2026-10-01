@@ -117,6 +117,23 @@ function incompletePurchase(purchaseToken: string, productSku: string) {
 }
 
 describe('provider conformance — mock under every pathology', () => {
+  it.each(['Platform Hero', null, 42, { bad: true }])(
+    'treats username as optional cosmetic metadata: %j',
+    async (username) => {
+      const platform = createJestPlatform({
+        sdk: validJestSdk({
+          getPlayer: () => ({ playerId: 'p1', registered: true, username }),
+        }),
+      });
+      await platform.identity.ready();
+      expect(platform.identity.getPlayer()).toEqual({
+        playerId: 'p1',
+        registered: true,
+        ...(typeof username === 'string' ? { displayName: username } : {}),
+      });
+      expect(platform.identity.tokenFor('p1')).toBe('jws.p1');
+    },
+  );
   for (const [name, pathologies] of PATHOLOGY_SETS) {
     describe(`mock[${name}]`, () => {
       const clock = new FakeClock(1_000);
@@ -419,6 +436,71 @@ describe('jest platform — defensive SDK wrapper', () => {
     await Promise.resolve();
 
     expect(hideRegistrations).toBe(0);
+  });
+
+  it('registers the latest screenshot provider after init and turns failed captures into null', async () => {
+    let resolveInit!: () => void;
+    let initialized = false;
+    const registered: Array<(() => string | null | Promise<string | null>) | null> = [];
+    const sdk = validJestSdk({
+      init: () =>
+        new Promise<void>((resolve) => {
+          resolveInit = () => {
+            initialized = true;
+            resolve();
+          };
+        }),
+      social: {
+        setScreenshotProvider(provider) {
+          if (!initialized) throw new Error('screenshot provider registered before init');
+          registered.push(provider);
+        },
+      },
+    });
+    const reports: string[] = [];
+    const platform = createJestPlatform({
+      sdk,
+      errors: { report: (event) => reports.push(event.message ?? event.kind) },
+    });
+    let shot: string | null | Error = 'data:image/png;base64,first';
+
+    expect(platform.screenshots.available()).toBe(true);
+    platform.screenshots.setProvider(() => 'stale');
+    platform.screenshots.setProvider(async () => {
+      if (shot instanceof Error) throw shot;
+      return shot;
+    });
+    expect(registered).toEqual([]);
+    resolveInit();
+    await platform.identity.ready();
+    await Promise.resolve();
+
+    expect(reports).toEqual([]);
+    // Pre-init calls may each register once init lands, but only the latest source is ever used.
+    expect(registered.length).toBeGreaterThan(0);
+    for (const provider of registered)
+      expect(await provider!()).toBe('data:image/png;base64,first');
+    const capture = registered.at(-1)!;
+    shot = new Error('rasteriser failed');
+    expect(await capture()).toBeNull();
+    shot = '';
+    expect(await capture()).toBeNull();
+
+    platform.screenshots.setProvider(null);
+    expect(registered.at(-1)).toBeNull();
+  });
+
+  it('treats screenshots as optional when the SDK has no social provider hook', async () => {
+    const reports: string[] = [];
+    const platform = createJestPlatform({
+      sdk: validJestSdk(),
+      errors: { report: (event) => reports.push(event.message ?? event.kind) },
+    });
+    await platform.identity.ready();
+
+    expect(platform.screenshots.available()).toBe(false);
+    platform.screenshots.setProvider(() => 'shot');
+    expect(reports).toEqual([]);
   });
 
   it('login re-reads registration and credential while preserving the stable player id', async () => {
@@ -805,7 +887,7 @@ describe('jest platform — defensive SDK wrapper', () => {
 
   it('reports and rejects a failed notification unschedule so planners can observe it', async () => {
     const failure = new Error('moderation service unavailable');
-    const reported: string[] = [];
+    const reported: { message?: string; detail?: Record<string, unknown> }[] = [];
     const sdk = validJestSdk({
       notifications: {
         scheduleNotification: () => {},
@@ -816,12 +898,18 @@ describe('jest platform — defensive SDK wrapper', () => {
     });
     const platform = createJestPlatform({
       sdk,
-      errors: { report: (event) => reported.push(event.message ?? event.kind) },
+      errors: { report: (event) => reported.push(event) },
     });
     await platform.identity.ready();
 
     await expect(platform.notifications.unschedule('return-1')).rejects.toBe(failure);
-    expect(reported).toContain('Jest unscheduleNotification failed');
+    // The SDK's own error goes with the report.
+    expect(reported).toContainEqual(
+      expect.objectContaining({
+        message: 'Jest unscheduleNotification failed',
+        detail: { error: 'Error: moderation service unavailable' },
+      }),
+    );
   });
 
   it('recovers pages through signed batches and completes only tokens the batch verifier made durable', async () => {

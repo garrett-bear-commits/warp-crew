@@ -17,6 +17,7 @@ import {
   type PlatformKV,
   type Player,
   type PurchaseOutcome,
+  type ScreenshotSource,
 } from './types.ts';
 
 /**
@@ -107,6 +108,8 @@ export interface MockPlatformControls {
   analytics(): { name: string; props?: Record<string, string | number | boolean> }[];
   /** Whether previousToken() has been consumed already (one use). */
   previousTokenConsumed(): boolean;
+  /** Plays the platform's screenshot request against the registered provider. */
+  captureScreenshot(): Promise<string | null>;
 }
 
 export function createMockPlatform(
@@ -411,6 +414,7 @@ export function createMockPlatform(
   }
 
   const sink: ErrorSink = errors;
+  let screenshotSource: ScreenshotSource | null = null;
   return {
     name: 'mock',
     identity,
@@ -418,6 +422,12 @@ export function createMockPlatform(
     payments,
     notifications,
     share: { available: () => true, share: async () => true },
+    screenshots: {
+      available: () => true,
+      setProvider(source) {
+        screenshotSource = source;
+      },
+    },
     analytics: {
       track(name, props) {
         events.push(props ? { name, props } : { name });
@@ -454,6 +464,7 @@ export function createMockPlatform(
       loadedCount: () => loaded,
       analytics: () => [...events],
       previousTokenConsumed: () => prevConsumed,
+      captureScreenshot: async () => (screenshotSource ? await screenshotSource() : null),
     },
   };
 }

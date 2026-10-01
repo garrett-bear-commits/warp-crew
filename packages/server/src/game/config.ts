@@ -46,6 +46,8 @@ export interface FeatureFlagsConfig {
   purchases: boolean;
   grants: boolean;
   qa: boolean;
+  /** Daily reward claim + status without the achievements evaluator (on with `achievements`). */
+  daily?: boolean;
 }
 
 export interface GameConfig {
@@ -61,8 +63,8 @@ export interface GameConfig {
   journal: JournalMode;
   /** Schema versions this build knows; a write with a newer schema is quarantined (schema_unknown). */
   knownSchemaVersions: number[];
-  /** Real premium minting from receipts (ADR-024). */
-  purchases: { mintPremium: 'on' | 'off' };
+  /** Real premium minting from receipts (ADR-024). `mintSandbox` also mints signed sandbox receipts. */
+  purchases: { mintPremium: 'on' | 'off'; mintSandbox?: 'on' | 'off' };
   blobLimits: BlobLimits;
   maxTokenAgeSec: number;
   /** In-bundle content defaults (published documents override, ADR-012). */
@@ -93,6 +95,18 @@ export interface GamePolicy {
   summaryPlausible?(summary: Summary, progress: number): boolean;
   /** Maximum earnable premium for a progress ordinal (impossible-gem check). */
   maxEarnablePremium?(progress: number): number;
+  /**
+   * Summary keys the nightly economy anomaly job z-scores. Omitted: every
+   * numeric summary key. Declare it when the summary also carries analytics
+   * scalars (timestamps, lifetime counters) that are skewed by nature.
+   */
+  anomalyKeys?: readonly string[];
+  /**
+   * Why the game could not apply these grant rewards, or null when it can. Admin and cohort
+   * grants are refused at mint time with this reason (`validation_failed`), so a typo never
+   * mints a grant the game would refuse. Omitted: every reward the contract allows.
+   */
+  grantRewardProblem?(rewards: readonly GrantReward[]): string | null;
 }
 
 export const DEFAULT_RETENTION: RetentionConfig = {

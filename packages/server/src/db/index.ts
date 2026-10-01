@@ -84,7 +84,15 @@ export function mapPgError(e: unknown): unknown {
   const code = pgCode(e);
   // 55P03 lock_not_available, 57014 query_canceled (statement_timeout), 40P01 deadlock, 40001 serialization
   if (code === '55P03' || code === '57014' || code === '40P01' || code === '40001') {
-    return new AppError('retry_later', 'database contention; retry later', { pgCode: code });
+    return new AppError(
+      'retry_later',
+      'database contention; retry later',
+      { pgCode: code },
+      undefined,
+      {
+        cause: e,
+      },
+    );
   }
   return e;
 }

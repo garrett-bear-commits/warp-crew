@@ -23,6 +23,8 @@ export const ReadyResponse = Type.Object(
     gameId: Type.String(),
     env: Type.String(),
     buildVersion: Type.Optional(Type.String()),
+    /** Git commit this build was made from (the deploy records it in BUILD_INFO_FILE). */
+    commit: Type.Optional(Type.String()),
   },
   { $id: 'ReadyResponse' },
 );
@@ -71,6 +73,16 @@ export const OpsSnapshotResponse = Type.Object(
       pendingReviews: NonNegInt,
     }),
     purchases: Type.Object({ paid: NonNegInt, sandbox: NonNegInt, unclassified: NonNegInt }),
+    /** This instance's responses in the window (not the fleet): failures that never reach a
+     *  command row, such as raw 500s and the 401 and 429 refusals. Health checks excluded. */
+    http: Type.Optional(
+      Type.Object({
+        total: NonNegInt,
+        serverErrors: NonNegInt,
+        unauthorized: NonNegInt,
+        rateLimited: NonNegInt,
+      }),
+    ),
     /** Written only by an isolated-restore verification (dr). */
     restoreVerifiedAt: Type.Optional(EpochMs),
     /** Weekly self-check of the live database's newest anchored blobs. */
