@@ -23,6 +23,7 @@ export function renameTemplateSource(src: string, gameId: string): string {
   return src
     .replace(/\btemplateGame\b/g, `${camelCase(gameId)}Game`)
     .replace(/\btemplatePolicy\b/g, `${camelCase(gameId)}Policy`)
+    .replace(/\btemplateGrants\b/g, `${camelCase(gameId)}Grants`)
     .replace(/gameId: 'template'/g, `gameId: '${gameId}'`)
     .replace(/GAME_ID=template\b/g, `GAME_ID=${gameId}`)
     .replace(/\bTemplate game\b/g, `${pascalCase(gameId)} game`)
@@ -93,14 +94,15 @@ export function scaffoldGameServer(opts: {
 export function clientChecklist(gameId: string): string[] {
   return [
     `Half-day checklist for game "${gameId}" (§10):`,
-    `  1. Game id: GAME_ID=${gameId} in the service env; add the registry line to apps/server/src/games.ts.`,
+    `  1. Game id: GAME_ID=${gameId} in the service env (or GAME_ID=<platform audience> with GAME_CONFIG=${gameId}); add the registry line to apps/server/src/games.ts.`,
     `  2. Audience: confirm the platform token \`aud\` for ${gameId} and pin it in the game config / identity provider.`,
     `  3. Secrets: JEST_JWS_SECRETS (base64 ≥ 16 bytes, newest first), OPS_SECRET (≥ 16 chars), ADMIN_KEYS (sha256 hex + scopes) — run \`foundation preflight --env-file <path>\`.`,
     `  4. Database: one Postgres per game per env; enable PITR before first traffic; record the backup/sleep settings.`,
     `  5. Sentry: create the server project, set SENTRY_DSN, tag releases with BUILD_VERSION.`,
     `  6. Monitor: point the external uptime check at /health/ops?assert=page with the ops secret; one cron monitor reading job_runs.`,
     `  7. Host: pick the static host for the client (hashed assets + no-cache index.html via \`foundation deploy-static\`), set CLIENT_ORIGINS + PUBLIC_URL, add the entry to fleet.json.`,
-    `  8. Verify: \`foundation check-health --url <api> --assert page --ops-secret <s>\` green on Lab, then a canary write/read with a qa_ identity.`,
+    `  8. Grants: list the rewards the client applies in games/${gameId}/grants.ts and point the admin inspector and admin CLI at it.`,
+    `  9. Verify: \`foundation check-health --url <api> --assert page --ops-secret <s>\` green on Lab, then a canary write/read with a qa_ identity.`,
   ];
 }
 

@@ -92,6 +92,7 @@ describe('scaffoldGameServer', () => {
       '.env.example',
       'content',
       'game.config.ts',
+      'grants.ts',
       'policy.ts',
     ]);
   });

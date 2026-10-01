@@ -15,13 +15,15 @@ import {
   type ServerConfig,
   type Server,
   type Db,
+  type SentryHandle,
+  type CfAccessConfig,
 } from '@foundation/server';
-import pino from 'pino';
+import pino, { type Logger } from 'pino';
 import type { Sql } from 'postgres';
 import { randomUUID, createHash } from 'node:crypto';
 import { templateGame } from '../../games/template/game.config.ts';
 import { templatePolicy } from '../../games/template/policy.ts';
-import type { GameConfig } from '@foundation/server';
+import type { GameConfig, GamePolicy } from '@foundation/server';
 
 export const T0 = 1_786_924_800_000;
 export const ADMIN_SECRET = 'test-admin-secret-0123456789';
@@ -68,7 +70,18 @@ export interface Harness {
 }
 
 export async function setupHarness(
-  opts: { env?: 'dev' | 'lab' | 'prod'; game?: Partial<GameConfig>; prefix?: string } = {},
+  opts: {
+    env?: 'dev' | 'lab' | 'prod';
+    game?: Partial<GameConfig>;
+    policy?: GamePolicy;
+    prefix?: string;
+    typesafeApiKey?: string;
+    sentry?: SentryHandle;
+    /** Cloudflare Access in front of the admin API, and the fetch that serves its keys. */
+    cfAccess?: CfAccessConfig;
+    cfAccessFetch?: typeof fetch;
+    log?: Logger;
+  } = {},
 ): Promise<Harness> {
   const test = await createTestDatabase(opts.prefix ?? 'app');
   await migrateUp(test.url);
@@ -109,24 +122,31 @@ export async function setupHarness(
       },
     ],
     opsSecret: OPS_SECRET,
+    ...(opts.cfAccess ? { cfAccess: opts.cfAccess } : {}),
     rateLimitStore: 'memory',
     sentryDsn: '',
+    posthogLogsToken: '',
+    posthogLogsUrl: '',
     buildVersion: 'test',
+    buildCommit: 'test-commit',
     clientOrigins: ['http://localhost:5173'],
     publicUrl: '',
     logLevel: 'silent',
     staticDir: '',
     jobsEnabled: false,
+    typesafeApiKey: opts.typesafeApiKey ?? '',
   };
   validateConfig(config);
   const game: GameConfig = { ...templateGame, ...opts.game };
   const server = await createServer({
     config,
     game,
-    policy: templatePolicy,
+    policy: opts.policy ?? templatePolicy,
     clock,
-    log: pino({ level: 'silent' }),
+    log: opts.log ?? pino({ level: 'silent' }),
     db,
+    ...(opts.sentry ? { sentry: opts.sentry } : {}),
+    ...(opts.cfAccessFetch ? { cfAccessFetch: opts.cfAccessFetch } : {}),
   });
   await server.ready();
   return {

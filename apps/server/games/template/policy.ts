@@ -4,6 +4,8 @@
 // `state.v` — the field the migrations maintain — so a claim in the wire envelope never
 // outranks the blob itself.
 import type { GamePolicy, BlobPolicyResult } from '@foundation/server';
+import { grantProblem } from '../grant-vocabulary.ts';
+import { templateGrants } from './grants.ts';
 
 interface TemplateSave {
   v: number;
@@ -66,4 +68,5 @@ export const templatePolicy: GamePolicy = {
   maxEarnablePremium(progress) {
     return Math.floor(progress / 100) * 5;
   },
+  grantRewardProblem: (rewards) => grantProblem(templateGrants, rewards),
 };

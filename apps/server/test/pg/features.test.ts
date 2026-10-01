@@ -1,10 +1,17 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { setupHarness, saveBody, type Harness } from './harness.ts';
 import { ROUTES } from '@foundation/contracts/routes';
+import { recordingSentry } from './sentry-recorder.ts';
+
+const sentry = recordingSentry();
 
 let h: Harness;
 beforeAll(async () => {
-  h = await setupHarness({ prefix: 'feat', game: { purchases: { mintPremium: 'on' } } });
+  h = await setupHarness({
+    prefix: 'feat',
+    game: { purchases: { mintPremium: 'on' } },
+    sentry,
+  });
 });
 afterAll(async () => h?.close());
 
@@ -42,6 +49,8 @@ describe('route coverage + health', () => {
     expect(ready.json()).toMatchObject({
       status: 'ready',
       checks: { db: true, migrationsAtHead: true, secretsPresent: true, adminKeyCount: 2 },
+      buildVersion: 'test',
+      commit: 'test-commit',
     });
     const noOps = await h.inject({ method: 'GET', url: '/health/ops' });
     expect(noOps.statusCode).toBe(401);
@@ -113,6 +122,8 @@ describe('liveops: config publish without rebuild, flags at 50 %, schedules, seg
       maintenance: false,
     });
     expect(pub.json().flags).toBeUndefined();
+    expect(pub.json().firstBuildVersion).toBeUndefined();
+    expect(pub.json().firstSeenAt).toBeUndefined();
     const authed = await get('flaggy', '/v1/config');
     expect(authed.json().flags).toEqual({
       'sale.summer': false,
@@ -358,6 +369,62 @@ describe('liveops: config publish without rebuild, flags at 50 %, schedules, seg
       minBuildVersion: '0.0.0',
       reason: 'reset',
     });
+  });
+  it('minBuildVersion reads release, v-prefixed and staging builds by their X.Y.Z', async () => {
+    const setMin = (minBuildVersion: string) =>
+      admin('/admin/v1/liveops/min-build', {
+        commandId: h.uuid(),
+        minBuildVersion,
+        reason: 'build check',
+      });
+    const status = async (build: string) =>
+      (await get('vet', '/v1/saves/current', { build })).statusCode;
+    await setMin('0.20.0');
+    for (const build of ['1.0.0', 'v1.0.0', '0.22.1-staging.7+abc1234', '0.20.0'])
+      expect(await status(build), build).not.toBe(426);
+    expect(await status('0.19.9')).toBe(426);
+    // A staging build equals its release, and is older than the next one.
+    await setMin('0.23.0');
+    expect(await status('0.23.0-staging.4')).not.toBe(426);
+    expect(await status('0.22.1-staging.9')).toBe(426);
+    await setMin('0.0.0');
+  });
+  it('config reports the build a player first announced, set once and never overwritten', async () => {
+    const firstBuild = async (key: string) =>
+      (
+        await h.root<{ first_build: string | null; last_build: string | null }[]>`
+        SELECT first_build, last_build FROM players WHERE player_key = ${key}`
+      )[0];
+    // The first contact is the config call itself: its own build and time are the first.
+    const firstContactAt = h.clock.now();
+    const first = await get('newcomer', '/v1/config', { build: '0.22.1' });
+    expect(first.json().firstBuildVersion).toBe('0.22.1');
+    expect(first.json().firstSeenAt).toBe(firstContactAt);
+    await vi.waitFor(async () =>
+      expect(await firstBuild('newcomer')).toEqual({ first_build: '0.22.1', last_build: '0.22.1' }),
+    );
+    const [row] = await h.root<{ first_seen_at: Date }[]>`
+      SELECT first_seen_at FROM players WHERE player_key = 'newcomer'`;
+    h.clock.advance(61_000); // past the players-touch throttle
+    const later = await get('newcomer', '/v1/config', { build: '0.23.0' });
+    expect(later.json().firstBuildVersion).toBe('0.22.1');
+    // Later calls report the stored first-seen time, not their own (day_number's anchor).
+    expect(later.json().firstSeenAt).toBe(row!.first_seen_at.getTime());
+    await vi.waitFor(async () =>
+      expect(await firstBuild('newcomer')).toEqual({ first_build: '0.22.1', last_build: '0.23.0' }),
+    );
+    // The 0016 image (rollout overlap, image rollback) inserts players without first_build:
+    // the row still takes the build it arrived with.
+    await h.root`INSERT INTO players (player_key, last_build) VALUES ('old-image', '0.22.0')`;
+    expect(await firstBuild('old-image')).toEqual({ first_build: '0.22.0', last_build: '0.22.0' });
+    // Players seen before first_build existed stay unset instead of taking today's build.
+    await h.root`INSERT INTO players (player_key, last_build) VALUES ('veteran', '0.20.0')`;
+    await h.root`UPDATE players SET first_build = NULL WHERE player_key = 'veteran'`;
+    const veteran = await get('veteran', '/v1/config', { build: '0.23.0' });
+    expect(veteran.json().firstBuildVersion).toBeUndefined();
+    await vi.waitFor(async () =>
+      expect(await firstBuild('veteran')).toEqual({ first_build: null, last_build: '0.23.0' }),
+    );
   });
 });
 
@@ -610,6 +677,17 @@ describe('leaderboards L1–2: start/submit, quarantine top-N, review, close →
       summary: { clicks: 100 },
     });
     expect(bound.json().outcome).toBe('rejected_out_of_range');
+    // Both refusals answer 200; Sentry hears why.
+    expect(sentry.events.filter((e) => e.message.startsWith('Leaderboard run refused'))).toEqual([
+      expect.objectContaining({
+        message: 'Leaderboard run refused: rejected_unknown_run',
+        context: expect.objectContaining({ board: 'clicks', run: 'missing' }),
+      }),
+      expect.objectContaining({
+        message: 'Leaderboard run refused: rejected_out_of_range',
+        context: expect.objectContaining({ check: 'summary_bound', score: 500 }),
+      }),
+    ]);
     const s1 = await post('lb1', '/v1/leaderboards/clicks/submit', {
       commandId: h.uuid(),
       runId: runs.lb1,
@@ -876,6 +954,42 @@ describe('admin reads: overview, timeline (UNION view), history, blob, actions, 
       headers: { 'x-admin-key-id': 'full', 'x-admin-secret': 'wrong' },
     });
     expect(badCreds.statusCode).toBe(401);
+  });
+
+  it('session names the calling key and its scopes for any valid key, unaudited', async () => {
+    const audited = async () =>
+      (await h.root<{ n: number }[]>`SELECT count(*)::int AS n FROM admin_actions`)[0]!.n;
+    const before = await audited();
+    const session = (key?: string) =>
+      h.inject({
+        method: 'GET',
+        url: '/admin/v1/session',
+        headers: key ? h.adminHeaders(key) : {},
+      });
+    const reader = await session('reader');
+    expect(reader.statusCode).toBe(200);
+    expect(reader.json()).toMatchObject({ keyId: 'reader', scopes: ['read'] });
+    expect(typeof reader.json().serverNow).toBe('number');
+    const full = await session('full');
+    expect(full.json()).toMatchObject({
+      keyId: 'full',
+      scopes: ['read', 'support', 'grant', 'publish', 'restore', 'erase'],
+    });
+    expect((await session()).statusCode).toBe(401);
+    const wrong = await h.inject({
+      method: 'GET',
+      url: '/admin/v1/session',
+      headers: { 'x-admin-key-id': 'reader', 'x-admin-secret': 'wrong' },
+    });
+    expect(wrong.statusCode).toBe(401);
+    expect(wrong.json()).toMatchObject({ error: 'unauthorized' });
+    const unknown = await h.inject({
+      method: 'GET',
+      url: '/admin/v1/session',
+      headers: h.adminHeaders('nobody'),
+    });
+    expect(unknown.statusCode).toBe(401);
+    expect(await audited()).toBe(before);
   });
 });
 

@@ -283,6 +283,69 @@ describe('purchases: money is signed facts only (ADR-007, ADR-024)', () => {
       await h2.close();
     }
   });
+  it('accepts a valid empty signed recovery page without writing purchase or grant facts', async () => {
+    const playerKey = 'empty-recovery-buyer';
+    const recovered = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify-batch',
+      headers: h.playerHeaders(playerKey),
+      payload: {
+        commandId: h.uuid(),
+        purchasesSigned: h.receiptBatch({ playerKey, purchases: [] }),
+      },
+    });
+
+    expect(recovered.statusCode).toBe(200);
+    expect(recovered.json()).toMatchObject({ outcome: 'processed', results: [] });
+    const rows = await h.root`
+      SELECT
+        (SELECT count(*)::int FROM purchase_transactions WHERE player_key = ${playerKey}) AS purchases,
+        (SELECT count(*)::int FROM grants WHERE player_key = ${playerKey}) AS grants`;
+    expect(rows[0]).toEqual({ purchases: 0, grants: 0 });
+  });
+  it('binds an empty signed recovery page to its authenticated subject', async () => {
+    const signedFor = 'empty-recovery-owner';
+    const recovered = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify-batch',
+      headers: h.playerHeaders('empty-recovery-other'),
+      payload: {
+        commandId: h.uuid(),
+        purchasesSigned: h.receiptBatch({ playerKey: signedFor, purchases: [] }),
+      },
+    });
+
+    expect(recovered.statusCode).toBe(200);
+    expect(recovered.json()).toMatchObject({
+      outcome: 'rejected',
+      reason: 'sub_mismatch',
+      results: [],
+    });
+    const rows = await h.root`
+      SELECT
+        (SELECT count(*)::int FROM purchase_transactions WHERE player_key IN (${signedFor}, 'empty-recovery-other')) AS purchases,
+        (SELECT count(*)::int FROM grants WHERE player_key IN (${signedFor}, 'empty-recovery-other')) AS grants`;
+    expect(rows[0]).toEqual({ purchases: 0, grants: 0 });
+  });
+  it('rejects an empty signed batch on the single-purchase verification endpoint', async () => {
+    const playerKey = 'empty-direct-buyer';
+    const verified = await h.inject({
+      method: 'POST',
+      url: '/v1/purchases/verify',
+      headers: h.playerHeaders(playerKey),
+      payload: {
+        commandId: h.uuid(),
+        purchaseSigned: h.receiptBatch({ playerKey, purchases: [] }),
+      },
+    });
+
+    expect(verified.statusCode).toBe(200);
+    expect(verified.json()).toMatchObject({
+      outcome: 'rejected',
+      reason: 'malformed_purchase',
+      completion: 'withhold',
+    });
+  });
   it('leaves paid batch tokens unrecorded while still recording sandbox provenance under the owner gate', async () => {
     const playerKey = 'gated-batch-buyer';
     const recovered = await h.inject({
@@ -1002,7 +1065,7 @@ describe('grants: the one reward primitive (ADR-008)', () => {
       commandId: h.uuid(),
       playerKey: 'frozen',
       grantKey: 'g1',
-      rewards: [{ kind: 'cosmetic', cosmeticId: 'hat' }],
+      rewards: [{ kind: 'soft_currency', currency: 'gold', amount: 5 }],
       reason: 'r',
     });
     await admin('/admin/v1/players/flags', {
@@ -1030,7 +1093,7 @@ describe('grants: the one reward primitive (ADR-008)', () => {
         commandId: h.uuid(),
         playerKey: 'batch',
         grantKey: k,
-        rewards: [{ kind: 'item', itemId: 'potion', qty: 1 }],
+        rewards: [{ kind: 'premium_currency', amount: 1 }],
         reason: 'r',
       });
     const r = await post('batch', '/v1/grants/claim-batch', {
