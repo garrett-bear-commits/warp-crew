@@ -22,13 +22,16 @@
     "test:pg": "vitest run --project '*:pg' --maxWorkers 1",
     "test:model": "vitest run --project '*:model'",
     "test:e2e": "pnpm --filter @foundation/template-game run test:e2e",
+    "test:scripts": "node --test scripts/*.test.mjs",
     "guards": "node --experimental-strip-types packages/tooling/src/guards/run-all.ts",
     "openapi": "node --experimental-strip-types packages/contracts/scripts/generate-openapi.ts",
     "db:up": "docker compose -f infra/docker-compose.yml up -d postgres",
     "db:down": "docker compose -f infra/docker-compose.yml down -v",
     "migrate": "node --experimental-strip-types apps/server/src/cli/migrate.ts",
     "foundation": "node --experimental-strip-types packages/tooling/src/cli.ts",
-    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm build && pnpm guards && pnpm test"
+    "admin": "node scripts/admin.mjs",
+    "admin:keys": "node scripts/admin-keys.mjs",
+    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm build && pnpm guards && pnpm test && pnpm test:scripts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

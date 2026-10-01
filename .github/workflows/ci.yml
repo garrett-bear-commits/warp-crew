@@ -37,6 +37,7 @@ jobs:
       - run: pnpm test
       - run: pnpm test:pg
       - run: pnpm test:model
+      - run: pnpm test:scripts
       - name: OpenAPI breaking-change check vs the last released tag (reports 'unavailable' when no tag exists)
         run: git fetch --tags --quiet || true && pnpm -F @foundation/contracts openapi:diff
       - name: template game bundle size gate (§3)

@@ -70,6 +70,22 @@ export default tseslint.config(
     rules: { 'no-restricted-syntax': 'off' },
   },
   {
+    // Operator CLIs (scripts/*.mjs) run on Node: its globals. The k6 load tests declare theirs.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        AbortSignal: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly',
+        fetch: 'readonly',
+        process: 'readonly',
+        Response: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+      },
+    },
+  },
+  {
     // Browser-facing code must never pull node builtins, TypeBox runtime, or verifiers.
     files: [
       'packages/client/src/**',
