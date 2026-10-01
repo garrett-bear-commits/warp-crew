@@ -16,6 +16,8 @@ Each runbook is a checklist a second person can run. Commands assume the repo ro
 | [client-release-watch.md](client-release-watch.md) | watching a client release: minBuild, banner, 426 |
 | [outbox-dead-letter-replay.md](outbox-dead-letter-replay.md) | page-tier alert on dead letters |
 | [quarantine-review.md](quarantine-review.md) | promote / reject a quarantined save |
+| [admin-inspector.md](admin-inspector.md) | the admin origin, sign-in, admin keys, what each action does, Cloudflare Access in front |
 | [erasure.md](erasure.md) | player erasure request |
+| [reset-all-players.md](reset-all-players.md) | starting every player on a fresh save |
 | [new-game.md](new-game.md) | bringing a game to Lab in < 1 h |
 | [jest-launch.md](jest-launch.md) | Developer Console, self-hosted version, Simulator, sandbox, and launch evidence |

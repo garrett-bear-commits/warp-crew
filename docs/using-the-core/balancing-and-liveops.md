@@ -11,7 +11,9 @@ release. Engine constants do not become live merely because a flag with a simila
 | Catalog grant amounts and first-purchase multipliers | server `GameConfig` | server release |
 | Client catalog display and platform products | game client config | client release |
 | Board bounds, retention, plausibility, schema and security limits | server config/policy | server release |
-| Achievement and daily-reward definitions | versioned content | publish |
+| Grant vocabulary (rewards admin/cohort grants may carry) | `games/<id>/grants.ts` | server + inspector release |
+| Economy anomaly keys (`anomalyKeys`) | server policy | server release |
+| Achievement and daily-reward definitions (daily `cadence` `utc_day`/`rolling_24h`, `minProgress`) | versioned content | publish |
 | Typed flag values and rollouts | live-ops database | publish |
 | Schedules and segments | live-ops database | publish |
 | SKU/command kill switches and global minimum build | live-ops database | publish |

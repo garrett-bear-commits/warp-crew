@@ -9,9 +9,10 @@ way to publish a branch of play.
 
 1. Serve both the inspector and game over their normal HTTPS origins. `file:` pages are refused because they
    have no trustworthy origin.
-2. In **Setup**, connect the inspector and enter the absolute game client URL.
-3. Find the player and choose **Play incognito** beside a retained save. For an older sequence that is not in
-   the first history page, use the manual player/sequence launcher in **Save safety**.
+2. Sign in to the inspector. The game client URL comes from its build (`VITE_GAME_CLIENT_URL`; local builds
+   default to `http://localhost:5173`), never the inspector's own origin.
+3. Find the player and choose **Play incognito** on a retained save in the **Saves** tab. For an older
+   sequence that is not in the first history page, use **Load older saves** below the list.
 4. Confirm the persistent banner in the game window names the player, sequence, and generation.
 5. Reproduce the issue, then choose **Discard & close** or close the window.
 
@@ -55,6 +56,12 @@ Use the browser-safe helpers exported by `@foundation/client` before normal conf
 `apps/idle-civ/src/main.tsx` is the reference composition root. Keep this path covered by a test that mutates
 the disposable state and proves the source blob, normal local storage, network, beacon, and persistence APIs
 were untouched.
+
+A game whose own code reaches browser globals directly (an existing codebase, a platform SDK loaded by the page)
+can harden the branch further, as a production game on this core does: detect the fragment first, run the
+handshake and the banner in the popup, and run the game in a same-origin frame that never loads the platform SDK,
+after replacing that frame's storage, beacon, persistence, IndexedDB, broadcast-channel and lock globals and
+limiting `fetch`/XHR to static GETs (same origin outside the API path, or the asset host).
 
 ## Limits
 

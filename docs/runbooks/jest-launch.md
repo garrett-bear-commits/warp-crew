@@ -42,7 +42,15 @@ Official references reviewed 2026-08-20: [HTML5 SDK](https://docs.jest.com/sdk/h
       preserves the same guest `playerId`; `JestSDK.data` set/delete/flush works; lifecycle
       hide/show/exit listeners unsubscribe; entry payload attribution is recorded.
 - [ ] Confirm `setLoadingProgress` uses integer 0–100, `markGameLoaded()` is called once,
-      `captureEvent()` emits non-PII stable names, and `markFirstMilestone()` is called.
+      `captureEvent()` emits non-PII stable names, and `markFirstMilestone()` is called (once per
+      player, at a defined early milestone).
+- [ ] If the game shows player-typed names (heroes, pets, teams) in notification copy, screen
+      them with `POST /v1/names/check` before showing or sending them: Jest moderates every
+      notification with Jev and drops one that fails. Set `TYPESAFE_API_KEY` on the API; without
+      it the route answers `unchecked`. Decide what the game does with `unchecked`.
+- [ ] If the game answers Jest's footer screenshot button, register a capture with
+      `platform.screenshots.setProvider(source)` (a base64 PNG or null for the platform default)
+      and confirm it in the Simulator; `screenshots.available()` is false where the SDK lacks it.
 - [ ] Confirm registered users receive the planned notification schedule. Every notification has
       valid one-of `scheduledAt`/`scheduledInDays`, identifier, body, CTA, attribution payload,
       and an approved asset. Test stale-identifier replacement after a meaningful return, verify a
@@ -62,11 +70,17 @@ Official references reviewed 2026-08-20: [HTML5 SDK](https://docs.jest.com/sdk/h
 - [ ] Keep production `purchases.mintPremium=off` until paid payload validation and owner approval;
       the server must report `checkoutEnabled=false` and the UI must remain disabled. For a
       controlled sandbox-only Lab exercise, temporarily enable delivery on the isolated Lab server,
-      verify that signed `sandbox:true` still grants zero, then turn the gate back off.
-- [ ] Treat signed `sandbox: true` as authoritative before price. Current repository policy keeps
-      sandbox `granted = 0`; do not change that constraint without owner approval. Official Jest
-      guidance recommends delivering sandbox test items while excluding them from revenue and
-      spend-based rewards, so this is an explicit pending product/ledger decision.
+      verify that signed `sandbox:true` grants zero while `mintSandbox` is off, then turn the gate
+      back off.
+- [ ] Treat signed `sandbox: true` as authoritative before price. Sandbox delivery is the per-game
+      `purchases.mintSandbox` switch (migration `0016`, default off; ADR-024): with it on, signed
+      sandbox receipts grant like paid packs and share the pack's one first-purchase multiplier
+      with paid buys, but stay classified `sandbox` and never count toward paid totals or restart
+      entitlement. This follows official Jest guidance (deliver sandbox test items, exclude them
+      from revenue and spend-based rewards); do not enable it for a game without owner approval.
+- [ ] With `mintSandbox` on, exclude sandbox purchases from revenue in analytics
+      (`classification != 'sandbox'`). A sandbox test buy on production spends that test
+      account's first-purchase bonus for the pack.
 - [ ] Keep subscriptions out of this launch; the Jest subscription API is beta and deferred.
 
 ## Review submission and soak

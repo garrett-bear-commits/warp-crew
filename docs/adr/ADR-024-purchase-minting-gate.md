@@ -43,6 +43,20 @@ accepted). Claim endpoints resolve the alias; historical command results and out
 byte-for-byte audit evidence and the response contract explicitly permits those legacy replay
 references. An inconsistent row or hash collision aborts `0015` instead of guessing.
 
+## Amendment 2026-10-01: per-game sandbox minting
+
+Synced from a production game whose owner approved delivering sandbox test purchases. A game may
+set `purchases.mintSandbox: 'on'` (default off) next to `mintPremium`. Signed `sandbox: true`
+receipts then mint the catalog grant and complete like paid packs, and sandbox and paid deliveries
+share one first-purchase multiplier per pack. Sandbox rows keep `classification = 'sandbox'` and
+never count toward paid totals or restart entitlement. Migration `0016_sandbox_purchase_grants`
+replaced the `classification = 'paid' OR granted = 0` CHECK above with
+`classification IN ('paid', 'sandbox') OR granted = 0`; unclassified and unsupported receipts
+still grant 0, and sandbox purchases recorded before a game turned the switch on stay withheld.
+This follows the official Jest guidance (deliver sandbox test items, exclude them from revenue and
+spend-based rewards). The template and idle-civ keep both gates off; turning either on for a game
+still needs owner approval.
+
 ## Consequences
 No premium value can be minted from an unverified assumption about the provider. Turning minting
 on is a config publish plus a runbook step, not a code change; incomplete paid provider tokens can

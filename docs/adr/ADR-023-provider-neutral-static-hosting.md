@@ -33,3 +33,24 @@ framing behavior only. They do not prove the real Jest shell accepts the origin.
 verify the registered URL, `frame-ancestors`, CORS to the API, SDK bootstrap, storage partitioning,
 and mobile behavior in the hosted emulator/Simulator. Prefer one self-hosted origin for the game
 and `/v1` reverse proxying on that origin; a separate API origin remains an explicit external gate.
+
+## Amendment 2026-10-01: host-specific pieces synced from a production game
+
+Static hosting stays provider-neutral: `foundation deploy-static` and `foundation zip` are
+unchanged, and the server calls no host's API. Three optional, host-shaped pieces now exist:
+
+- `apps/server/src/cli/railway-migrate.ts`, a pre-deploy step for a managed host that gives each
+  game an isolated database. From `BOOTSTRAP_DATABASE_URL` it creates or updates the
+  `foundation_migrator` and `foundation_app` login roles (passwords from `MIGRATION_DATABASE_URL`
+  and `DATABASE_URL`, at least 24 characters, all three URLs on the same database), makes the
+  migrator the database owner, then runs `migrateUp` as the migrator. It is named for the host
+  that first used it but needs only those three URLs.
+- Cloudflare Access verification of admin requests (ADR-021 update), which reads the team's
+  public signing keys from `<team domain>/cdn-cgi/access/certs`. Off unless configured.
+- `scripts/admin-keys.mjs` (operator tooling, not the server) reads and writes the API's
+  `ADMIN_KEYS` through a logged-in Railway CLI, its one supported backend; another host needs its
+  own read/write functions. Keys can always be issued by hand
+  ([admin-inspector runbook](../runbooks/admin-inspector.md#keys)).
+
+A game may also load large art from a separate asset host chosen at build time; that is game
+client code, not a foundation dependency.

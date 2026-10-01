@@ -1,6 +1,6 @@
 # Implementation status — Game Foundation v1
 
-_Updated 2026-08-26 on branch `main`. Every current claim below names the command that produced it; nothing here is inferred._
+_Updated 2026-08-26 on branch `main`; the 2026-10-01 production-game sync is summarised below. Every current claim below names the command that produced it; nothing here is inferred._
 
 ## Summary
 
@@ -33,7 +33,7 @@ Branch `main`. The first reviewer-remediation set was committed as `f046d47` (`A
 | 1 | workspace, TypeBox contracts + OpenAPI + fixtures, CI guards (mutation commandId, bundle browser-safe, SQL no game_id/tenancy, feature shape, no secrets, no placeholders), ADR-020…028, docs skeleton | done |
 | 2 | server spine: bus, idempotency/tombstones, Postgres locks/migrations/roles, outbox DLQ+replay, jobs, limits, auth, health, Docker | done |
 | 3 | saves + lineage: append-only snapshots, dispositions, size/bomb guards, terminal quarantine reviews, generation-only rollback, restore/reattach/erasure/CAS, property + real-PG concurrency tests | done |
-| 4 | identity/purchases/grants: Jest + mock verifiers + conformance, fail-closed tokens, receipt ledgers, sandbox non-minting, real minting off (ADR-024), grants/codes/cohorts | done |
+| 4 | identity/purchases/grants: Jest + mock verifiers + conformance, fail-closed tokens, receipt ledgers, sandbox non-minting unless the game sets `mintSandbox` (0016), real minting per-game gated (ADR-024; off for template and idle-civ), grants/codes/cohorts | done |
 | 5 | client adapter (`packages/client`) incl. model-based sync tests (623 unit + 2 model tests, 0 counterexamples; audit fixes F1/F3/F8/F9) | done |
 | 6 | features: achievements, leaderboards L1–2, inbox, announcements, telemetry, journal, liveops (flags/schedules/segments/content/kill switches/minBuild), admin + static inspector (separate origin, strict CSP), Lab QA | done |
 | 7 | template game + Playwright (Chromium + WebKit) + migration/restore/outbox-crash/receipt-replay tests + runbooks + tooling | done |
@@ -42,6 +42,7 @@ Branch `main`. The first reviewer-remediation set was committed as `f046d47` (`A
 | 10 | reviewer closure: fresh click-time checkout preflight, recovery-wide terminal states, concurrent credential refresh, leader/mutex-owned retention mutation, legacy grant-key migration/aliases, and clean schema snapshot generation | done locally; real-platform gates remain |
 | 11 | last-pass follow-up: N-1 checker ships with the 15-file `c94bf5d` head (two-release; no extra migration), declared extras bound to one image head + checksums, prefix enforcement, retention fail-closed, official-shape per-purchase seq | unit/model/lint/typecheck/build/guards green; real-Postgres + Playwright not rerun (`shmget` EPERM) |
 | 12 | adopter guides, idle-civ integration, task-based admin redesign, and disposable retained-save sessions (memory-only, no-network, discard-only) | focused client/idle/inspector tests + typechecks + builds green; full check recorded below |
+| 13 | sync from a production game (2026-10-01): see the section below | done — 2026-10-01 on branch `sync/broken-mile-oct-2026`: `pnpm fmt:check`, `lint`, `typecheck`, `build`, `guards` pass; `pnpm test` passes in every workspace (client 712 + 2, server 120, contracts 40, jest-verify 68, tooling 42, testkit 3, app-server 69, template-game 67, idle-civ 12); `pnpm test:pg` 168, `test:model` 2, `test:scripts` 42; template-game Playwright 14/14 on Chromium and 14/14 on WebKit; `openapi:diff` unavailable (no release tag); bundle-size OK; `git archive HEAD \| docker build -f apps/server/Dockerfile -` builds. k6 load tests syntax-checked only (k6 not installed) |
 
 ## Commands and results
 
@@ -88,6 +89,38 @@ markers or placeholder text were accepted (guarded by `no-placeholders`).
   writes, and operator feedback. ADR-034 and `docs/using-the-core/disposable-save-sessions.md` define the adopter
   contract and the retained-blob/RNG limits.
 
+## Synced from a production game (2026-10-01)
+
+A game built on this core (forked at `3b323f9`) ran it in staging and production. Its foundation changes to
+`packages/*` and `apps/server` were ported back, written game-agnostically; `apps/template-game`,
+`apps/idle-civ` and `apps/server/games/idle-civ` stay here. What was added, with the docs that describe it:
+
+- Sentry: searchable request tags, error causes, process handlers (uncaught → flush + exit 1; unhandled rejection
+  → log, stay up), browser trace continuation, reports beyond 5xx (refused purchase verifications, unreadable
+  saves, contract refusals, foreign tokens, Jev outages, refused board runs, outbox retries and dead letters, job
+  and runner failures), Crons check-ins, and the `ops.alert` job ([slo](docs/slo.md),
+  [testing and releasing](docs/using-the-core/testing-and-release.md)).
+- PostHog log shipping over OTLP (`POSTHOG_LOGS_TOKEN`/`POSTHOG_LOGS_URL`).
+- Admin: the admin origin forwards `/admin/v1/*`; sign-in via `GET /admin/v1/session`; scope-aware inspector with
+  grant fields from `games/<id>/grants.ts` and purchase fixes; optional Cloudflare Access verification
+  (`CF_ACCESS_TEAM_DOMAIN`/`CF_ACCESS_AUD`); `scripts/admin.mjs` and `scripts/admin-keys.mjs`
+  ([runbook](docs/runbooks/admin-inspector.md), ADR-021).
+- Money: `purchases.mintSandbox` and migration `0016` (ADR-024); grant contents refused at mint time outside the
+  game's vocabulary (`GamePolicy.grantRewardProblem`).
+- Releases: `BUILD_INFO_FILE` build records, prod refuses non-`X.Y.Z` builds and placeholder or non-production
+  records, `/health/ready` version + commit, `players.first_build` (migration `0017`, N-1 compatible).
+- Server: `GAME_CONFIG`, `PG_POOL` default 20 in prod, slow jobs scheduled from `job_runs`, per-instance HTTP
+  outcome rates in `/health/ops`, live-ops refresh on every replica, deduplicated economy anomalies with
+  `anomalyKeys`, the `daily` feature flag, `POST /v1/names/check` (`TYPESAFE_API_KEY`).
+- Client: throttled routine saves, push timeout and jittered backoff, bounded boot re-push, boot on the server
+  save when the local slot is damaged, a sleeping loop, `PlatformAdapter.screenshots`, `onError`/`traceHeaders`.
+- Ops: [reset all players](docs/runbooks/reset-all-players.md), `apps/server/src/cli/railway-migrate.ts`, k6 load
+  tests under `scripts/load` ([capacity](docs/capacity.md)).
+
+Requirement → implementation → test rows: `docs/coverage-matrix.md` (new rows 4.2.11, 8.7–8.11; updated 1.7, 1.10,
+4.2.1, 4.2.7, 4.2.8, 4.3, 4.4, 5.1–5.3, 7.3, 7.6, 8.2, 9.6). The production game's evidence (staging load and
+race runs) is in `docs/capacity.md`; it is that game's, not a run from this repository.
+
 ## Last-pass findings (2026-08-21) — implemented
 
 | # | Finding | Fix | Evidence |
@@ -119,27 +152,27 @@ markers or placeholder text were accepted (guarded by `no-placeholders`).
 
 ## Coverage
 
-`docs/coverage-matrix.md` has 70 requirement rows: every locally runnable row is implemented with a named test; the rows carrying an external remainder are 1.7 (real minting switch and the owner-gated sandbox delivery decision, ADR-024), 1.16/8.4 (managed PITR/dumps), 6.3/9.4 (tag-based OpenAPI diff and per-release fixture recordings — no release exists), 8.2 (Sentry DSN + cron monitor), 9.6 (k6 on a deployed Lab), and 10.3 (self-hosted URL registration plus real shell/framing/CORS/storage verification). Last-pass PG/lock-window and official-shape UI checkout tests are in the tree; they were not re-executed against Postgres/Playwright in this environment. Nothing here claims those external gates passed.
+`docs/coverage-matrix.md` has 77 requirement rows (6 added by the 2026-10-01 sync): every locally runnable row is implemented with a named test; the rows carrying an external remainder are 1.7 (real minting switch and the owner-gated sandbox delivery decision, ADR-024), 1.16/8.4 (managed PITR/dumps), 6.3/9.4 (tag-based OpenAPI diff and per-release fixture recordings — no release exists), 8.2 (Sentry DSN + alert rules), 8.9 (a PostHog project token for log shipping), 9.6 (the k6 run at load on a deployed Lab), and 10.3 (self-hosted URL registration plus real shell/framing/CORS/storage verification). Last-pass PG/lock-window and official-shape UI checkout tests are in the tree; they were not re-executed against Postgres/Playwright in this environment. Nothing here claims those external gates passed.
 
 ## Gates (external; interface + mock + fail-closed + tests in place)
 
 | Gate | What is in the repo | What needs the outside world |
 | --- | --- | --- |
 | Jest self-hosted URL version and real shell (§14) | provider-neutral hashed static deploy + zip fallback (ADR-023), `frame-ancestors` documented, same-origin `/v1` preferred | register/preview/activate the URL; verify iframe framing, CORS, storage partitioning, SDK bootstrap, and mobile behavior in the hosted emulator/Simulator; obtain literal game id/aud |
-| Jest sandbox receipts and delivery policy (§14, ADR-024) | verifier/classification tracks signed `sandbox` before price; server-authored checkout readiness stays false while minting is off; disabled paid receipts remain provider-recoverable without ledger rows; current schema preserves sandbox `granted = 0`; local tests cover the invariant | run real sandbox purchase/recovery; owner must approve any future separation of test-item delivery from commercial accounting before schema/ledger changes |
+| Jest sandbox receipts and delivery policy (§14, ADR-024) | verifier/classification tracks signed `sandbox` before price; server-authored checkout readiness stays false while minting is off; disabled paid receipts remain provider-recoverable without ledger rows; sandbox `granted = 0` unless the game sets `mintSandbox` on (migration 0016; off for template and idle-civ); local tests cover the default-off invariant | run real sandbox purchase/recovery; owner must approve any future separation of test-item delivery from commercial accounting before schema/ledger changes |
 | Jest HS256 secret / player token | `createJestIdentityVerifier` (alg pinned, aud, iat, rotation) + conformance | `JEST_JWS_SECRETS` from the Developer Console |
 | Managed Postgres PITR + nightly dumps + restore drill | `live.integrity` job, `verifyIsolatedRestore`/`markRestoreVerified`, erasure export/replay (`apps/server/src/cli/dr.ts`), manifests, `manifest-check`, runbook | a managed database and a backup bucket (PITR/dump/R2 are external) |
-| Sentry (server) | real optional wiring (`observability/sentry.ts`: init, release/environment tags, request + command spans, send-time sampling, redaction; tested through an injected transport) | a DSN and a project; the per-game cron monitor |
-| k6 bench, physical-device storage matrix | `docs/capacity.md`, Playwright mobile emulation | a deployed Lab and devices |
+| Sentry (server) | real optional wiring (`observability/sentry.ts`: init, release/environment tags, request + command spans, send-time sampling, redaction, searchable tags, process handlers, Crons, `ops.alert`; tested through an injected transport); used in production by the game this was synced from | a DSN and a project per game; its alert rules (`docs/slo.md`) |
+| k6 bench, physical-device storage matrix | `scripts/load/*.js`, `docs/capacity.md`, Playwright mobile emulation | a deployed Lab and devices |
 | Docker image push / deploy | `apps/server/Dockerfile` (built locally from `git archive HEAD` and smoke-run) | a registry and a host — deployment is out of scope by instruction |
 
 ## Security assumptions
 
 - Provider tokens are HS256 with a symmetric secret held only on the server; the mock verifier is refused in prod by config validation.
 - The app database role cannot UPDATE/DELETE ledgers even through a code bug (grants + raise-trigger fence); destructive maintenance goes through SECURITY DEFINER functions.
-- Admin keys are sha256-hashed in config, compared timing-safe, scoped; every admin command is audited; the inspector runs on a separate origin with `default-src 'none'` CSP and renders with textContent only.
+- Admin keys are sha256-hashed in config, compared timing-safe, scoped; every admin command is audited; the inspector runs on a separate origin with `default-src 'none'` CSP and renders with textContent only; that origin forwards only `/admin/v1/*`, and with `CF_ACCESS_*` set the API also requires a verified Cloudflare Access token.
 - Client bundles carry no secrets, no node builtins, no TypeBox runtime (lint + build guard).
-- Money can only be minted from a verified signed receipt classified `paid`, and only when the game config enables minting (default off).
+- Money can only be minted from a verified signed receipt classified `paid` (or `sandbox`, when the game also sets `mintSandbox`), and only when the game config enables minting (default off).
 - Rate limits use Postgres in prod; the memory store is refused there.
 
 ## Start instructions

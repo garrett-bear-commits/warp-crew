@@ -12,8 +12,10 @@ operations invariants.
    and tests.
 4. [Balancing and live operations](balancing-and-liveops.md) — know which values require a release and which
    can change live.
-5. [Testing and releasing](testing-and-release.md) — prove a game integration before Lab and production.
-6. [Admin inspector](admin-inspector.md) — operate players and the supported live controls safely.
+5. [Testing and releasing](testing-and-release.md) — prove a game integration before Lab and production; release
+   versions, optional production variables, and what the API reports to Sentry and log shipping.
+6. [Admin inspector](admin-inspector.md) — operate players and the supported live controls safely (hosting, keys
+   and Cloudflare Access: [runbook](../runbooks/admin-inspector.md)).
 7. [Disposable save sessions](disposable-save-sessions.md) — reproduce a retained player state without writing
    to the player or operator.
 
