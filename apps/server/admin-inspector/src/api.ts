@@ -47,7 +47,10 @@ export function adminClient(conn: () => Connection | null, f: typeof fetch = fet
         method,
         headers,
         ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-        credentials: 'omit',
+        // Cookies only to this page's own origin: behind Cloudflare Access its CF_Authorization
+        // cookie must reach the edge, or the API call is sent to the login page.
+        // An API on another origin (local development) still gets none.
+        credentials: 'same-origin',
         cache: 'no-store',
       });
       const json = (await res.json().catch(() => null)) as unknown;

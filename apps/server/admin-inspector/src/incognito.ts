@@ -88,6 +88,8 @@ export function buildIncognitoTarget(
   try {
     const url = new URL(clientUrl);
     if (!isAllowedGameUrl(url)) return null;
+    // The game is never the inspector itself: that page has no game and drops the credentials.
+    if (url.origin === new URL(adminOrigin).origin) return null;
     // Replace, rather than merge with, an app-router fragment. This keeps the routing channel
     // unambiguous and guarantees it contains only the two non-sensitive handshake values.
     url.hash = new URLSearchParams({

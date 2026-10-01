@@ -85,12 +85,15 @@ export function table<T>(columns: Column<T>[], rows: T[]): HTMLTableElement {
     const tr = el('tr');
     for (const c of columns) {
       const v = c.cell(row);
-      const td = el('td', c.wrap ? { class: 'wrap' } : {}, Array.isArray(v) ? v : [v]);
+      // data-label lets narrow screens show each row as a labelled card (styles.css).
+      const attrs: Record<string, string> = { 'data-label': c.header };
+      if (c.wrap) attrs.class = 'wrap';
+      const td = el('td', attrs, Array.isArray(v) ? v : [v]);
       tr.appendChild(td);
     }
     tbody.appendChild(tr);
   }
-  return el('table', {}, [thead, tbody]);
+  return el('table', { class: 'data' }, [thead, tbody]);
 }
 
 export function keyValue(pairs: Array<[string, unknown]>): HTMLDListElement {
