@@ -232,6 +232,264 @@
       }
     }
   ],
+  "blockers": [
+    {
+      "id": "bridge-forward-console",
+      "room": "bridge",
+      "left": 41.0,
+      "top": 13.6,
+      "width": 18.0,
+      "height": 2.2
+    },
+    {
+      "id": "bridge-port-console",
+      "room": "bridge",
+      "left": 38.6,
+      "top": 15.0,
+      "width": 4.8,
+      "height": 3.0
+    },
+    {
+      "id": "bridge-starboard-console",
+      "room": "bridge",
+      "left": 56.6,
+      "top": 15.0,
+      "width": 4.8,
+      "height": 3.0
+    },
+    {
+      "id": "shields-generator-core",
+      "room": "shields",
+      "left": 27.4,
+      "top": 25.6,
+      "width": 7.4,
+      "height": 6.5
+    },
+    {
+      "id": "shields-port-console",
+      "room": "shields",
+      "left": 24.7,
+      "top": 25.8,
+      "width": 3.0,
+      "height": 3.1
+    },
+    {
+      "id": "shields-starboard-console",
+      "room": "shields",
+      "left": 39.1,
+      "top": 25.7,
+      "width": 1.9,
+      "height": 4.0
+    },
+    {
+      "id": "weapons-port-rack",
+      "room": "weapons",
+      "left": 58.7,
+      "top": 24.4,
+      "width": 3.2,
+      "height": 4.4
+    },
+    {
+      "id": "weapons-center-rack",
+      "room": "weapons",
+      "left": 64.1,
+      "top": 24.4,
+      "width": 4.1,
+      "height": 4.3
+    },
+    {
+      "id": "weapons-starboard-rack",
+      "room": "weapons",
+      "left": 69.9,
+      "top": 24.4,
+      "width": 4.0,
+      "height": 8.0
+    },
+    {
+      "id": "sensors-scanner-table",
+      "room": "sensors",
+      "left": 28.7,
+      "top": 38.9,
+      "width": 9.8,
+      "height": 4.1
+    },
+    {
+      "id": "sensors-port-console",
+      "room": "sensors",
+      "left": 23.9,
+      "top": 40.0,
+      "width": 3.1,
+      "height": 3.0
+    },
+    {
+      "id": "medbay-monitor-cabinet",
+      "room": "medbay",
+      "left": 58.6,
+      "top": 37.8,
+      "width": 3.7,
+      "height": 4.2
+    },
+    {
+      "id": "medbay-bed",
+      "room": "medbay",
+      "left": 63.2,
+      "top": 38.8,
+      "width": 6.1,
+      "height": 3.3
+    },
+    {
+      "id": "medbay-starboard-cabinets",
+      "room": "medbay",
+      "left": 72.0,
+      "top": 37.8,
+      "width": 4.2,
+      "height": 5.0
+    },
+    {
+      "id": "quarters-bunks",
+      "room": "quarters",
+      "left": 24.3,
+      "top": 49.2,
+      "width": 7.5,
+      "height": 10.0
+    },
+    {
+      "id": "quarters-overhead-locker",
+      "room": "quarters",
+      "left": 32.2,
+      "top": 49.0,
+      "width": 6.1,
+      "height": 3.3
+    },
+    {
+      "id": "quarters-starboard-cabinet",
+      "room": "quarters",
+      "left": 40.5,
+      "top": 49.0,
+      "width": 1.0,
+      "height": 3.5
+    },
+    {
+      "id": "mess-port-counter",
+      "room": "mess",
+      "left": 56.9,
+      "top": 49.0,
+      "width": 7.4,
+      "height": 3.0
+    },
+    {
+      "id": "mess-starboard-counter",
+      "room": "mess",
+      "left": 70.8,
+      "top": 48.9,
+      "width": 6.0,
+      "height": 10.4
+    },
+    {
+      "id": "mess-starboard-cabinet",
+      "room": "mess",
+      "left": 68.0,
+      "top": 49.0,
+      "width": 3.0,
+      "height": 3.9
+    },
+    {
+      "id": "cargo-port-crates-fore",
+      "room": "cargo",
+      "left": 23.8,
+      "top": 62.2,
+      "width": 7.0,
+      "height": 2.4
+    },
+    {
+      "id": "cargo-port-crates-aft",
+      "room": "cargo",
+      "left": 23.8,
+      "top": 69.0,
+      "width": 7.0,
+      "height": 3.3
+    },
+    {
+      "id": "cargo-overhead-crates",
+      "room": "cargo",
+      "left": 31.0,
+      "top": 62.2,
+      "width": 3.8,
+      "height": 3.0
+    },
+    {
+      "id": "cargo-port-lockers",
+      "room": "cargo",
+      "left": 23.5,
+      "top": 69.0,
+      "width": 3.1,
+      "height": 3.2
+    },
+    {
+      "id": "armory-port-rack",
+      "room": "armory",
+      "left": 58.7,
+      "top": 62.4,
+      "width": 7.6,
+      "height": 4.7
+    },
+    {
+      "id": "armory-starboard-rack",
+      "room": "armory",
+      "left": 69.8,
+      "top": 62.4,
+      "width": 3.2,
+      "height": 4.7
+    },
+    {
+      "id": "armory-starboard-lockers",
+      "room": "armory",
+      "left": 74.0,
+      "top": 62.4,
+      "width": 3.5,
+      "height": 9.0
+    },
+    {
+      "id": "armory-bench",
+      "room": "armory",
+      "left": 61.3,
+      "top": 69.7,
+      "width": 8.5,
+      "height": 2.2
+    },
+    {
+      "id": "engineering-port-reactor",
+      "room": "engineering",
+      "left": 24.0,
+      "top": 76.0,
+      "width": 10.2,
+      "height": 6.0
+    },
+    {
+      "id": "engineering-port-machinery",
+      "room": "engineering",
+      "left": 34.8,
+      "top": 76.0,
+      "width": 3.0,
+      "height": 9.5
+    },
+    {
+      "id": "engineering-starboard-machinery",
+      "room": "engineering",
+      "left": 55.1,
+      "top": 76.0,
+      "width": 10.0,
+      "height": 9.5
+    },
+    {
+      "id": "engineering-starboard-reactor",
+      "room": "engineering",
+      "left": 66.0,
+      "top": 76.0,
+      "width": 10.5,
+      "height": 6.0
+    }
+  ],
   "airlock": {
     "x": 11.4,
     "y": 66.8

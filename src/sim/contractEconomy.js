@@ -14,6 +14,9 @@ import { FUEL_REFILL, RALLY } from '../systems/gemSinks.js';
 import { STARTER_CAPTAINS } from '../data/crewRoster.js';
 import { hullRepairOffer, pay } from '../systems/economy.js';
 import { repairHull } from '../systems/passives.js';
+
+/** Guided captains patch the hull before a Siege-wall attempt when it is below this. */
+const WALL_REPAIR_BELOW = 60;
 import { NODES, STORY_BEATS } from '../data/sectors.js';
 import { eventCandidates, resolveTravelEvent, choiceStatus, eventReward, EVENT_KINDS, EVENT_VERSION } from '../systems/travelEvents.js';
 import { TRAVEL_EVENT_BY_ID } from '../data/events.js';
@@ -235,10 +238,12 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     // the away team. away-first keeps the baseline order, so the away party misses every fight that day.
     const awayFirst = !guided || sessionOrder === 'away-first';
     if (awayFirst) launchAway();
-    // The production repair-hull handler (main.js): 25-hull patches for credits. Guided captains patch
-    // only when the hull is critical, i.e. exactly when the next launch would be refused.
+    // The production repair-hull handler (main.js): 25-hull patches for credits. Hull carries over between
+    // FTL-lite fights, so like a real captain they patch up before a flagship (below 60 hull); for ordinary
+    // contracts they patch only when the hull is critical, i.e. exactly when the launch would be refused.
     const repair = reason => {
-      while (guided && (player.ship.hull ?? 100) <= HULL_CRITICAL) {
+      const floor = reason === 'wall' ? WALL_REPAIR_BELOW : HULL_CRITICAL + 1;
+      while (guided && (player.ship.hull ?? 100) < floor) {
         const offer = hullRepairOffer(player);
         if (!offer || (player.wallet.credits || 0) < offer.cost) { blocked('repair-hull', 'cannot_afford'); return; }
         const patched = repairHull({ ...player, wallet: pay(player.wallet, { credits: offer.cost }).wallet }, offer.amount);

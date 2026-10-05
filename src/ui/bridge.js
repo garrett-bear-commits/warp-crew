@@ -39,7 +39,7 @@ import { renderFtlEnemy, renderFtlShipMarkers } from './ftlView.js';
 import { morphInto } from './morph.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop, MILESTONES as DAILY_MILESTONES } from '../systems/dailyLoop.js';
-import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera.js';
+import { makeCamera, focusCamera, resizeCamera, zoomAt, pan, project } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue, wallPackState, packValue } from '../systems/offers.js';
@@ -130,6 +130,13 @@ function bindOnce(root, ctx) {
     const cameraButton = ev.target.closest('[data-camera]');
     if (cameraButton && root.contains(cameraButton)) {
       const action = cameraButton.dataset.camera;
+      if (action === 'ftl-focus') {
+        // Pan (without zooming) so an off-screen room under fire is in view.
+        const room = ROOMS.find(candidate => candidate.id === cameraButton.dataset.room);
+        if (room) root._wcSetCamera(focusCamera(root._wcCamera, roomWorldPoint(room), root._wcCamera.scale));
+        cameraButton.remove();
+        return;
+      }
       if (action === 'ftl-zoom') {
         root._wcFtlWhole = !root._wcFtlWhole;
         const stage = root.querySelector('.stage');
@@ -227,6 +234,26 @@ export function homeCamera(viewport) {
  * FTL-lite fights open zoomed in: the Sparrow fills the width (taller than the
  * view, drag to look around). `whole` fits the entire ship between the panels.
  */
+/**
+ * Zoomed in, some rooms are out of view. When an enemy gun is charging (50%+) at one of
+ * them, a chip at the top or bottom edge says where; tapping it pans there.
+ */
+export function renderOffscreenThreats(root, encounter) {
+  const camera = root?._wcCamera;
+  if (!camera || !encounter?.ftl || encounter.result || encounter.downed) return '';
+  const seen = new Set();
+  return encounter.enemy.weapons.filter(weapon => weapon.chargePct >= 50).map(weapon => {
+    const roomId = encounter.rooms[weapon.target]?.roomId;
+    const room = ROOMS.find(candidate => candidate.id === roomId);
+    if (!room || seen.has(room.id)) return '';
+    seen.add(room.id);
+    const y = project(camera, roomWorldPoint(room)).y;
+    const edge = y < 24 ? 'top' : y > camera.viewport.h - 24 ? 'bottom' : null;
+    if (!edge) return '';
+    return `<button type="button" class="ftl-offscreen is-${edge}" data-camera="ftl-focus" data-room="${escapeHtml(room.id)}" aria-label="Incoming fire at ${escapeHtml(room.label)}. Show it">${edge === 'top' ? '▲' : '▼'} Incoming · ${escapeHtml(room.label)}</button>`;
+  }).join('');
+}
+
 export function fightCamera(viewport, { whole = false } = {}) {
   const world = HULL_PX;
   const fit = Math.min(viewport.w / world.w, Math.max(80, viewport.h - 12) / world.h);
@@ -532,7 +559,12 @@ function patchShell(root, ctx) {
   morphInto(root.querySelector('[data-slot="fight-top"]'), ftlEnc ? renderFtlEnemy(ftlEnc) : '');
   morphInto(root.querySelector('[data-slot="fight-bottom"]'), ftlEnc ? renderShipEncounter(ftlFight, ftlUi) : '');
   morphInto(root.querySelector('[data-slot="ship-feedback"]'), renderShipFeedback(contractShipSignals(player)) + (ftlEnc ? renderFtlShipMarkers(ftlEnc, ftlUi) : ''));
-  setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, activeTravelView, cameraCueDismissed: root._wcCameraCueDismissed, captainCardOpen: root._wcCaptainCardOpen }));
+  // In FTL-lite fights the overlay (zoom toggle, incoming chips) re-renders every beat: patch it in place so taps land.
+  const overlaysEl = root.querySelector('[data-slot="overlays"]');
+  const ftlOverlay = player.activeEncounter?.version === 3 && isHome;
+  if (!ftlOverlay && overlaysEl) overlaysEl._wcMorphHtml = null;
+  (ftlOverlay ? (slot, html) => morphInto(overlaysEl, html) : (slot, html) => setSlot(root, slot, html))('overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, activeTravelView, cameraCueDismissed: root._wcCameraCueDismissed, captainCardOpen: root._wcCaptainCardOpen })
+    + (isHome && player.activeEncounter?.version === 3 ? renderOffscreenThreats(root, (player.activeContract ? activeContractView : activeTravelView)?.encounter) : ''));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting

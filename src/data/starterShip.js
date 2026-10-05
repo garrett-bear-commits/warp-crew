@@ -90,8 +90,8 @@ export const SPARROW_LAYOUT = {
     { id: 'spine', ...LAYOUT.spine },
     airlockPassage,
   ],
-  // The v4 art has no measured furniture blockers: floor rects and work anchors are the walkable truth.
-  blockers: [],
+  // Furniture crew walk around, measured against the v4 art (docs/art/qa/sparrow-v4-blockers.png).
+  blockers: (LAYOUT.blockers || []).map((blocker) => ({ ...blocker, shape: 'rect' })),
   effects: {
     thrusters: LAYOUT.thrusters.map((thruster) => ({ x: thruster.x, y: thruster.y, size: 1 })),
   },

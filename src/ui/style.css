@@ -3139,3 +3139,8 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 /* The tapped beacon's card stays in thumb reach while the map scrolls above it. */
 .beacon-card { position: sticky; bottom: 8px; z-index: 3; box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.55); }
 .contract-sheet.event-card { padding-top: 16px; }
+.ftl-offscreen { position: absolute; left: 50%; transform: translateX(-50%); z-index: 9; min-height: 34px; padding: 0 12px; border-color: rgba(255, 107, 107, 0.8); background: rgba(40, 8, 12, 0.88); color: #ffb3a7; font: 700 12px var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; animation: ftl-pulse-alert 1s ease-in-out infinite; }
+.ftl-offscreen.is-top { top: 52px; }
+.ftl-offscreen.is-bottom { bottom: 10px; }
+@keyframes ftl-pulse-alert { 50% { box-shadow: 0 0 14px rgba(255, 90, 90, 0.6); } }
+@media (prefers-reduced-motion: reduce) { .ftl-offscreen { animation: none; } }
