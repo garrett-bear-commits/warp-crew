@@ -5,6 +5,8 @@ import { addTrauma, hitstop, sfx, unlockSfx, applyShake } from './juice.js';
 import { setBattleStations } from './crewWalk.js';
 import { effectScreenPoint } from './worldProjection.js';
 import { makeCamera } from './shipCamera.js';
+import { ROOMS } from '../data/starterShip.js';
+import { STATIONS } from '../systems/stations.js';
 
 let canvas = null;
 let stageEl = null;
@@ -109,8 +111,133 @@ export function setEncounterSnapshot(encounter) {
   }
 }
 
+// --- FTL-lite (v3) fights -------------------------------------------------------
+// The enemy ship is DOM above the stage; shots leave the top of the stage toward
+// it and arrive from there. Each beat's events carry their time within the beat.
+let ftlShots = [];
+let ftlSparks = [];
+let ftlRipples = [];
+let ftlClock = 0;
+
+const roomWorld = stationId => {
+  const room = ROOMS.find(candidate => candidate.id === STATIONS[stationId]?.roomId);
+  return room ? { worldX: room.labelAnchor.x * 11.52, worldY: room.labelAnchor.y * 17.28 } : { worldX: 576, worldY: 400 };
+};
+
+function enemyRoomX(roomId) {
+  const el = document.querySelector(`[data-enemy-room="${roomId}"]`);
+  const box = canvas?.getBoundingClientRect();
+  if (!el || !box) return w * 0.5;
+  const r = el.getBoundingClientRect();
+  return r.left + r.width / 2 - box.left;
+}
+
+function flashEnemyRoom(roomId, outcome) {
+  const el = document.querySelector(`[data-enemy-room="${roomId}"]`);
+  const panel = document.querySelector('.ftl-enemy');
+  const cls = outcome === 'hit' ? 'is-hit' : outcome === 'shield' ? 'is-shield-hit' : 'is-miss';
+  const target = outcome === 'shield' ? panel : el;
+  if (!target) return;
+  target.classList.remove(cls);
+  void target.offsetWidth;
+  target.classList.add(cls);
+  setTimeout(() => target.classList.remove(cls), 450);
+}
+
+export function playFtlBeat(events = []) {
+  const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  for (const event of events) {
+    if (event.type !== 'shot') continue;
+    if (reduced) {
+      if (event.from === 'player') flashEnemyRoom(event.room, event.outcome);
+      continue;
+    }
+    ftlShots.push({ ...event, at: ftlClock + (event.t || 0) / 1000, travel: 0.32, done: false });
+  }
+  if (events.some(event => event.type === 'shot')) setTimeout(() => sfx('pew'), 40);
+  if (events.some(event => event.type === 'result' && event.result === 'win')) { sfx('boom'); addTrauma(0.6); setTimeout(() => sfx('win'), 300); }
+  if (events.some(event => event.type === 'fire_start' && event.side === 'player')) sfx('hit');
+}
+
+function drawFtl(g, camera, dt) {
+  const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  if (!reduced) ftlClock += dt;
+  const ship = room => effectScreenPoint(camera, roomWorld(room));
+  for (const shot of ftlShots) {
+    const progress = (ftlClock - shot.at) / shot.travel;
+    if (progress < 0) continue;
+    const ally = shot.from === 'player';
+    const from = ally ? ship('weapons') : { x: enemyRoomX('weapons'), y: -24 };
+    const to = ally ? { x: enemyRoomX(shot.room), y: -24 }
+      : shot.outcome === 'miss' ? { x: ship(shot.room).x + 70, y: h + 30 } : ship(shot.room);
+    if (progress >= 1) {
+      if (!shot.done) {
+        shot.done = true;
+        if (ally) {
+          flashEnemyRoom(shot.room, shot.outcome);
+          if (shot.outcome === 'hit') sfx('hit');
+        } else if (shot.outcome === 'shield') {
+          ftlRipples.push({ x: to.x, y: to.y, life: 0.45 });
+        } else if (shot.outcome === 'hit') {
+          addTrauma(0.32);
+          hitstop(0.04);
+          sfx('hit');
+          for (let i = 0; i < 16; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 60 + Math.random() * 170;
+            ftlSparks.push({ x: to.x, y: to.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 0.4 + Math.random() * 0.3, color: i % 3 ? '255,150,80' : '255,235,180' });
+          }
+        }
+      }
+      continue;
+    }
+    // Enemy shields stop player shots short of the panel edge; the panel flashes instead.
+    const x = from.x + (to.x - from.x) * progress;
+    const y = from.y + (to.y - from.y) * progress;
+    const len = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+    const ux = (to.x - from.x) / len;
+    const uy = (to.y - from.y) / len;
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.strokeStyle = ally ? 'rgba(120,230,255,0.95)' : 'rgba(255,120,100,0.95)';
+    g.shadowColor = ally ? '#5ce1ff' : '#ff6b6b';
+    g.shadowBlur = 14;
+    g.lineWidth = shot.weapon === 'heavy' ? 5 : 3;
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(x - ux * 30, y - uy * 30);
+    g.lineTo(x, y);
+    g.stroke();
+    g.restore();
+  }
+  ftlShots = ftlShots.filter(shot => !shot.done || ftlClock - shot.at < shot.travel + 0.05);
+  for (const ripple of ftlRipples) {
+    ripple.life -= dt;
+    const a = Math.max(0, ripple.life / 0.45);
+    g.save();
+    g.strokeStyle = `rgba(110,200,255,${a})`;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.arc(ripple.x, ripple.y, 26 + (1 - a) * 40, Math.PI * 1.05, Math.PI * 1.95);
+    g.stroke();
+    g.restore();
+  }
+  ftlRipples = ftlRipples.filter(ripple => ripple.life > 0);
+  for (const spark of ftlSparks) {
+    spark.life -= dt;
+    spark.x += spark.vx * dt;
+    spark.y += spark.vy * dt;
+    spark.vx *= 0.9;
+    spark.vy *= 0.9;
+    g.fillStyle = `rgba(${spark.color},${Math.max(0, spark.life / 0.7)})`;
+    g.fillRect(spark.x - 1.5, spark.y - 1.5, 3, 3);
+  }
+  ftlSparks = ftlSparks.filter(spark => spark.life > 0);
+}
+
 export function playEncounterBeat(events = []) {
   if (!crewEncounter) return;
+  if (crewEncounter.version === 3) { playFtlBeat(events); return; }
   const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const frame = encounterVisualFrame(crewEncounter, events);
   // Each shot event becomes a short staggered burst of travelling bolts.
@@ -193,7 +320,8 @@ function tick(sim, dt) {
   if (!battle || !ctx) {
     if (canvas && !battle && ctx) {
       ctx.clearRect(0, 0, w, h);
-      if (crewEncounter) drawCrewEncounter(ctx, getCamera?.() || { x: 0, y: 0, scale: 1 }, dt);
+      if (crewEncounter?.version === 3) drawFtl(ctx, getCamera?.() || { x: 0, y: 0, scale: 1 }, dt);
+      else if (crewEncounter) drawCrewEncounter(ctx, getCamera?.() || { x: 0, y: 0, scale: 1 }, dt);
       canvas.classList.toggle('is-live', Boolean(crewEncounter));
     }
     return;

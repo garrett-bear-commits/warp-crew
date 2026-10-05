@@ -251,7 +251,8 @@ test('offer beat ranges and resolution telemetry match committed route branches 
       if (player.activeContract.stage === 'confrontation') {
         if (player.activeEncounter) {
           let combatBeats = 0;
-          while (player.activeEncounter.result == null && combatBeats < 40) {
+          // FTL-lite fights run in one-second beats.
+          while (player.activeEncounter.result == null && combatBeats < 200) {
             const downed = player.activeEncounter.phase === 'downed';
             result = sessionAction(player, {}, downed ? 'encounter-order' : 'encounter-advance', {
               acceptanceId: player.activeEncounter.acceptanceId,

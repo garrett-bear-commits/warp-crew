@@ -1,5 +1,6 @@
 // Session orchestration: pure transitions, followed by one durable publication boundary.
 import { syncCommission } from './subscription.js';
+import { dockRepair } from './passives.js';
 import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, reviewContractOffer, contractRewardBand, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract } from './contracts.js';
 import { ensureDailyLoop, markDailyMilestone, dailyPlan } from './dailyLoop.js';
 import { isTutorialActive, isFeatureUnlocked, noteTutorialEvent, grantTutorialRecruit } from './tutorial.js';
@@ -9,7 +10,8 @@ import { chooseCaptain } from './captainFirstPlay.js';
 import { listCombatOrders, previewCombatOrder, encounterById, crewPower } from './combat.js';
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs, STATIONS } from './stations.js';
-import { applyEncounterAction, recoverEncounter } from './encounterState.js';
+import { applyEncounterAction, recoverEncounter, applyEncounterCommand } from './encounterState.js';
+import { FTL_VERSION, PLAYER_WEAPONS, weaponDef, playerChargePerBeat, enemyChargePerBeat, currentTarget, playerEvasion, enemyEvasion, playerShieldCap, enemyShieldCap, ftlTacticStatus, RULES as FTL_RULES, OVERCHARGE } from './ftlCombat.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
 import { nextUpgradeCost, upgradeSystem, completeShipBuild, skipShipBuild } from './hangar.js';
@@ -26,7 +28,7 @@ import { refuelWithGems, RALLY } from './gemSinks.js';
 import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
 import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
-import { beginTravelFight, applyTravelFightAction, claimTravelFight } from './travelFight.js';
+import { beginTravelFight, applyTravelFightAction, claimTravelFight, applyTravelFightCommand } from './travelFight.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -40,6 +42,7 @@ export function prepareSession(player, now = Date.now()) {
   if (!early) next = ensureWallOffer(next, now);
   if (!early) next = evaluateWallPackOffer(next, currentWall(next, now), now);
   next = completeShipBuild(next, now).player;
+  next = dockRepair(next, now);
   next = syncCommission(next, now);
   return evaluateStarterOffer(next, now);
 }
@@ -90,8 +93,84 @@ function combatModel(encounter, orders, guaranteed, extra = {}) {
     tell: encounter.tell, ...extra };
 }
 
+const pct = (value, max) => (max > 0 ? Math.max(0, Math.min(100, Math.round((value / max) * 100))) : 0);
+const ENEMY_ROOM_LABELS = { weapons: 'Weapons', shields: 'Shields', engines: 'Engines', helm: 'Helm' };
+
+/** Fight-screen model for an FTL-lite (v3) fight. */
+function ftlEncounterView(player, encounter, { settled, ui = {} }) {
+  const catalog = encounterById(encounter.encounterId);
+  const rallyCost = player.flags?.rallyFreeUsed ? RALLY.gems : 0;
+  const crewById = Object.fromEntries((player.crew || []).map(member => [member.instanceId, member]));
+  const room = (rooms, id, label) => ({ id, label, integrity: Math.round(rooms[id].integrity), fire: rooms[id].fire > 0,
+    offline: rooms[id].integrity <= 0, damaged: rooms[id].integrity < 50 });
+  return {
+    ftl: true,
+    acceptanceId: encounter.acceptanceId,
+    revision: encounter.revision,
+    version: encounter.version,
+    beat: encounter.beat,
+    kind: encounter.kind,
+    beatMs: beatDelayMs(encounter),
+    result: encounter.result,
+    settled,
+    retryBeat: !encounter.result && ui.guidedBeatSaveFailed?.acceptanceId === encounter.acceptanceId
+      && ui.guidedBeatSaveFailed?.revision === encounter.revision,
+    downed: encounter.phase === 'downed' ? { enemyHull: encounter.enemy.hull, free: rallyCost === 0, rallyCost,
+      canAfford: (player.wallet?.gems || 0) >= rallyCost } : null,
+    lossReason: encounter.lossReason,
+    enemyName: catalog.name,
+    tell: catalog.tell ? { label: catalog.tell.label, text: catalog.tell.text } : null,
+    threat: encounter.enemy.threat,
+    threatLabel: threatLabel(encounter.enemy.threat),
+    hull: encounter.hull,
+    hullMax: FTL_RULES.playerHullMax,
+    shields: { layers: encounter.shields.layers, max: playerShieldCap(encounter), full: encounter.shields.max,
+      rechargePct: pct(encounter.shields.rechargeMs, FTL_RULES.shieldRechargeMs) },
+    evasion: playerEvasion(encounter),
+    rooms: Object.fromEntries(Object.keys(encounter.rooms).map(id => [id, { ...room(encounter.rooms, id, STATIONS[id]?.label || id), roomId: STATIONS[id]?.roomId || id }])),
+    weapons: encounter.weapons.map(weapon => {
+      const def = weaponDef(weapon.id);
+      const live = !encounter.result && encounter.phase === 'combat';
+      return { id: weapon.id, name: def.name, shots: def.shots, damage: def.damage, chargePct: pct(weapon.chargeMs, def.chargeMs),
+        nextPct: live ? pct(Math.min(def.chargeMs, weapon.chargeMs + playerChargePerBeat(encounter)), def.chargeMs) : pct(weapon.chargeMs, def.chargeMs),
+        chargeMs: weapon.chargeMs, maxMs: def.chargeMs, ready: weapon.chargeMs >= def.chargeMs };
+    }),
+    hold: encounter.intent.hold,
+    target: currentTarget(encounter),
+    targetChosen: encounter.intent.target !== null,
+    crew: encounter.crew.map(member => ({ id: member.id, name: crewById[member.id]?.name || 'Crew', role: member.role,
+      portrait: crewById[member.id] ? portraitFor(crewById[member.id].templateId, crewById[member.id].role) : null,
+      room: encounter.intent.moves?.[member.id] || member.room, station: member.station,
+      moving: Boolean(encounter.intent.moves?.[member.id]), manual: member.manualUntil > encounter.beat })),
+    enemy: {
+      hull: encounter.enemy.hull,
+      hullMax: encounter.enemy.startHull ?? 42,
+      shields: { layers: encounter.enemy.shields.layers, max: enemyShieldCap(encounter), full: encounter.enemy.shields.max,
+        rechargePct: pct(encounter.enemy.shields.rechargeMs, FTL_RULES.enemyShieldRechargeMs) },
+      evasion: enemyEvasion(encounter),
+      rooms: Object.fromEntries(Object.keys(encounter.enemy.rooms).map(id => [id, room(encounter.enemy.rooms, id, ENEMY_ROOM_LABELS[id])])),
+      weapons: encounter.enemy.weapons.map(weapon => ({ id: weapon.id, shots: weapon.shots, damage: weapon.damage,
+        chargePct: pct(weapon.progressMs, weapon.chargeMs), progressMs: weapon.progressMs, maxMs: weapon.chargeMs,
+        nextPct: !encounter.result && encounter.phase === 'combat' ? pct(Math.min(weapon.chargeMs, weapon.progressMs + enemyChargePerBeat(encounter)), weapon.chargeMs) : pct(weapon.progressMs, weapon.chargeMs),
+        target: weapon.target, targetLabel: STATIONS[weapon.target]?.label || weapon.target })),
+    },
+    boarders: encounter.boarders && encounter.boarders.phase !== 'none' ? { phase: encounter.boarders.phase, room: encounter.boarders.room,
+      roomLabel: STATIONS[encounter.boarders.room]?.label || encounter.boarders.room,
+      strengthPct: pct(encounter.boarders.hp, FTL_RULES.boarderHp) } : null,
+    tactics: Object.keys(encounter.tactics || {}).map(id => {
+      const status = ftlTacticStatus(encounter, id);
+      const noFuel = id === 'burn' && (player.wallet?.fuel ?? 0) < OVERCHARGE.fuel;
+      return { id, available: status.available && !noFuel, reason: noFuel && status.available ? 'not_enough_fuel' : status.reason,
+        chance: status.chance ?? null, used: encounter.tactics[id].uses > 0,
+        success: id === 'board' ? encounter.tactics.board.success : null,
+        burning: id === 'burn' && encounter.tactics.burn.throughBeat >= encounter.beat && encounter.tactics.burn.uses > 0 };
+    }),
+  };
+}
+
 /** Ship-panel model for any live crew fight (contract or Explore jump). */
 function encounterView(player, encounter, { settled, ui = {}, now = Date.now() }) {
+  if (encounter.version === FTL_VERSION) return ftlEncounterView(player, encounter, { settled, ui });
   const options = encounter.orderWindow?.orderOptions || {};
   return {
     acceptanceId: encounter.acceptanceId,
@@ -398,6 +477,14 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     events.push(fromAnalytics({ ...res.analytics, traitMatch: traitMatch(player, player.activeContract.favoredTrait) }));
     tutorial('contract_accepted');
     Object.assign(nextUi, { reviewedOfferId: null, tab: 'missions', selectedRoom: null, missionView: player.tutorial.phase === 'away' ? 'away' : 'contracts' });
+  } else if (act === 'encounter-command') {
+    // Retarget, hold, or move crew: no time passes, so nothing else in the session changes.
+    const travel = Boolean(player.activeTravelFight && !player.activeContract);
+    const input = { acceptanceId: data.acceptanceId, revision: data.revision, command: data.command };
+    const result = travel ? applyTravelFightCommand(player, input) : applyEncounterCommand(player, input);
+    if (!result.ok) return result;
+    player = result.player;
+    effect = { kind: 'encounter-command', command: data.command };
   } else if (['encounter-advance', 'encounter-order', 'encounter-recover'].includes(act)) {
     const travel = Boolean(player.activeTravelFight && !player.activeContract);
     const beatInput = { acceptanceId: data.acceptanceId, revision: data.revision, order: act === 'encounter-order' ? data.order : null };

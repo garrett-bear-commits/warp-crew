@@ -10,8 +10,9 @@ import { fuelCostFor, combatBonuses } from './passives.js';
 import { applyStoryFlag } from './story.js';
 import { normalizeContractState as normalizeSavedContractState, validContractResult } from './contractState.js';
 import { CURRENCIES, readyContractCrew, normalizeCurrencyReward as normalizeRewards, resolveRoutePayout, resolveContractCombatPayout, formatRewardBand } from './contractRewards.js';
-import { beginContractEncounter, applyEncounterAction, normalizeEncounterState } from './encounterState.js';
+import { beginContractEncounter, applyEncounterAction, applyEncounterCommand, normalizeEncounterState } from './encounterState.js';
 import { tacticStatus, repelStatus } from './autoCombat.js';
+import { ftlPolicyStep, FTL_VERSION, MAX_FIGHT_BEATS } from './ftlCombat.js';
 import { recordSiege } from './walls.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
@@ -581,12 +582,22 @@ function enumerateRewardPaths(player, offer, now) {
     }
     if (current.activeEncounter) {
       // A payout is possible if hands-off crew or a simple defensive order policy can win.
-      for (const policy of ENCOUNTER_POLICIES) {
+      const ftl = current.activeEncounter.version === FTL_VERSION;
+      for (const policy of ftl ? ['idle', 'smart', 'initiative'] : ENCOUNTER_POLICIES) {
         let branch = current;
-        for (let beat = 0; beat < 40 && !branch.activeEncounter.result; beat += 1) {
+        for (let beat = 0; beat < (ftl ? MAX_FIGHT_BEATS : 40) && !branch.activeEncounter.result; beat += 1) {
           const { acceptanceId, revision } = branch.activeEncounter;
+          let order;
+          if (ftl) {
+            const step = ftlPolicyStep(branch.activeEncounter, policy);
+            for (const command of step.commands) {
+              const applied = applyEncounterCommand(branch, { acceptanceId, revision, command });
+              if (applied.ok) branch = applied.player;
+            }
+            order = step.order;
+          } else order = branch.activeEncounter.phase === 'downed' ? 'concede' : policy(branch.activeEncounter);
           // Bands never assume a paid Rally: a downed crew takes the salvage.
-          const order = branch.activeEncounter.phase === 'downed' ? 'concede' : policy(branch.activeEncounter);
+          if (branch.activeEncounter.phase === 'downed') order = 'concede';
           let advanced = applyEncounterAction(branch, { acceptanceId, revision, order }, now);
           if (!advanced.ok && order) advanced = applyEncounterAction(branch, { acceptanceId, revision, order: null }, now);
           if (!advanced.ok) break;

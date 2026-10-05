@@ -72,12 +72,12 @@ for (const flip of [false, true]) {
 const mid = profile.sourceCell.width / 2;
 assert.ok(Math.abs(profile.footAnchor.x - mid) <= 1, 'body centred so a flip does not jump');
 
-// Size: the figure (~34 of 56 cell px) must read on a phone; ~136 world px.
+// Size: the figure (~34 of 56 cell px) is about 45% of a room's height (~230 world px),
+// close to FTL's proportions, and still reads when the hull fills a phone's width.
 const figureWorld = 34 * profile.scale;
-assert.ok(figureWorld >= 120 && figureWorld <= 160, `figure ${figureWorld}px`);
-const wholeShipScale = Math.min(390 / (1152 * 1.55), 786 / (1728 * 1.55));
-assert.ok(figureWorld * wholeShipScale >= 29, 'about 30 CSS px at the whole-ship camera');
-assert.ok(figureWorld * (390 / 1152) >= 30, '30+ CSS px when the hull fills a 390px phone');
+assert.ok(figureWorld >= 90 && figureWorld <= 115, `figure ${figureWorld}px`);
+assert.ok(figureWorld / 230 <= 0.5, 'crew are about half a room tall, not a whole room');
+assert.ok(figureWorld * (390 / 1152) * 1.12 >= 30, '30+ CSS px in the zoomed-in fight view on a 390px phone');
 
 const actor = { x: 50, y: 40, face: 'right', frame: 0, state: 'walk' };
 for (const face of ['left', 'right']) {

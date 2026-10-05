@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { ensureContractBoard, acceptContract, previewContractAction, commitContractAction } from '../src/systems/contracts.js';
-import { applyEncounterAction, boardersUnlocked, pickDefender, BOARDERS_UNLOCK } from '../src/systems/encounterState.js';
+import { applyEncounterAction, applyEncounterCommand, boardersUnlocked, pickDefender, BOARDERS_UNLOCK } from '../src/systems/encounterState.js';
+import { RULES as FTL_RULES } from '../src/systems/ftlCombat.js';
+import { STATIONS } from '../src/systems/stations.js';
 import { startEncounter, advanceEncounter, BOARDERS } from '../src/systems/autoCombat.js';
 import { sessionModels } from '../src/systems/sessionLoop.js';
 import { renderShipEncounter } from '../src/ui/contractView.js';
@@ -79,18 +81,26 @@ function scrapperFight() {
     player = applyEncounterAction(player, { acceptanceId, revision, order: null }, now).player;
     assert.deepEqual(migratePlayer(clone(player)).activeEncounter, player.activeEncounter, 'every beat survives reload');
   };
-  step(); step();
-  let html = renderShipEncounter(sessionModels(player, {}, now).activeContractView);
-  assert.match(html, /Clamps on the airlock/);
-  assert.match(html, new RegExp(`data-order="repel"[^>]*>Repel boarders<span>${gunner.name} leaves Weapons`));
-  step();
-  assert.equal(player.activeEncounter.boarders.phase, 'aboard');
-  const { acceptanceId, revision } = player.activeEncounter;
-  player = applyEncounterAction(player, { acceptanceId, revision, order: 'repel' }, now).player;
-  html = renderShipEncounter(sessionModels(player, {}, now).activeContractView);
-  assert.match(html, new RegExp(`${gunner.name} threw the boarders out of`));
-  const target = crewTargetStates(player).find(t => t.crewInstanceId === gunner.instanceId);
-  assert.equal(target.mode, 'repel-boarders', 'the defender walks to the boarded room');
+  // FTL-lite: a warning, then a boarding party lands in a room; crew sent there fight it.
+  while (player.activeEncounter.beat < FTL_RULES.boarderWarnBeat && !player.activeEncounter.result) step();
+  if (!player.activeEncounter.result) {
+    let html = renderShipEncounter(sessionModels(player, {}, now).activeContractView);
+    assert.match(html, /Boarding clamps on the hull/);
+    while (player.activeEncounter.beat < FTL_RULES.boarderLandBeat && !player.activeEncounter.result) step();
+  }
+  if (!player.activeEncounter.result) {
+    assert.equal(player.activeEncounter.boarders.phase, 'aboard');
+    const room = player.activeEncounter.boarders.room;
+    let html = renderShipEncounter(sessionModels(player, {}, now).activeContractView);
+    assert.match(html, /Raiders in .* send crew to fight them/);
+    const { acceptanceId, revision } = player.activeEncounter;
+    player = applyEncounterCommand(player, { acceptanceId, revision, command: { type: 'move', crewId: gunner.instanceId, room } }).player;
+    step();
+    const target = crewTargetStates(player).find(t => t.crewInstanceId === gunner.instanceId);
+    assert.equal(target.roomId, STATIONS[room].roomId, 'the defender walks to the boarded room');
+    for (let i = 0; i < 12 && player.activeEncounter.boarders.phase === 'aboard' && !player.activeEncounter.result; i++) step();
+    assert.ok(player.activeEncounter.result || player.activeEncounter.boarders.phase === 'repelled', 'a gunner throws the boarders out');
+  }
   const finished = finishCrewFight(player, now);
   assert.ok(['win', 'loss'].includes(finished.activeEncounter.result));
   assert.equal(finished.activeContract.stage, 'return');

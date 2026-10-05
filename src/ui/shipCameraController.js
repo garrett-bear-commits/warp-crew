@@ -14,7 +14,8 @@ export function createCameraController({ surface, getCamera, setCamera, onTap, o
     const rect = surface.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
-  const ignored = event => event.target?.closest?.('.stage-hud, [data-slot="overlays"], [data-slot="ship-sequence"], .captain-marker');
+  // FTL-lite move targets are real buttons: their taps must reach the click handler.
+  const ignored = event => event.target?.closest?.('.stage-hud, [data-slot="overlays"], [data-slot="ship-sequence"], .captain-marker, .ftl-move-target');
 
   function pointerdown(event) {
     if (ignored(event) || (event.pointerType === 'mouse' && event.button !== 0)) return;

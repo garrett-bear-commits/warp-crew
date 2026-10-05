@@ -54,6 +54,20 @@ export function crewTargetStates(player, {
   const defending = boarders?.defenderId && (boarders.phase === 'aboard'
     || (boarders.phase === 'repelled' && player.activeEncounter.beat <= boarders.repelledBeat + 1));
   const repelRoom = defending ? STATIONS[boarders.target]?.roomId : null;
+  // FTL-lite fights: crew stand in whichever room the fight engine has them in.
+  const ftl = player?.activeEncounter?.version === 3 && !player.activeEncounter.result ? player.activeEncounter : null;
+  if (ftl) {
+    return onDuty.flatMap((member, index) => {
+      const fighter = ftl.crew.find(c => c.id === member.instanceId);
+      const roomId = STATIONS[ftl.intent?.moves?.[member.instanceId] || fighter?.room]?.roomId;
+      const room = ROOMS.find((candidate) => candidate.id === roomId);
+      if (!room) return [];
+      const sameRoom = ftl.crew.filter(c => c.room === fighter.room);
+      const slot = Math.max(0, sameRoom.findIndex(c => c.id === member.instanceId));
+      return { crewInstanceId: member.instanceId, mode: 'contract-station', roomId: room.id,
+        anchors: [{ x: room.workAnchor.x - slot * 3, y: room.workAnchor.y + (slot % 2 ? 2 : 0) }], immediate };
+    });
+  }
   return onDuty.flatMap((member) => {
     if (repelRoom && member.instanceId === boarders.defenderId) {
       const room = ROOMS.find((candidate) => candidate.id === repelRoom);
@@ -612,8 +626,9 @@ const RAIDER_LOOKS = ['merc_hex', 'merc_skarn', 'merc_vorn'];
 function syncHostiles(player, live) {
   const encounter = player?.activeEncounter;
   const boarders = encounter && !encounter.result ? encounter.boarders : null;
-  const count = boarders?.phase === 'aboard' ? boarders.strength : 0;
-  const roomId = count ? STATIONS[boarders.target]?.roomId : null;
+  // v1 boarders count raiders; v3 boarders are one party shown as three raiders while it holds.
+  const count = boarders?.phase === 'aboard' ? (encounter.version === 3 ? Math.max(1, Math.ceil(boarders.hp / 10)) : boarders.strength) : 0;
+  const roomId = count ? STATIONS[encounter.version === 3 ? boarders.room : boarders.target]?.roomId : null;
   const room = ROOMS.find((candidate) => candidate.id === roomId);
   for (let i = 0; i < count && room; i++) {
     const id = `hostile:${i}`;

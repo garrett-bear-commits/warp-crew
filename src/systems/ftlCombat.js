@@ -583,3 +583,41 @@ export function validFtlBody(e) {
   }
   return true;
 }
+
+// --- Scripted captains (reward previews, economy simulator, balance harness) --
+
+/** Longest a v3 fight can run in a scripted loop before giving up. */
+export const MAX_FIGHT_BEATS = 200;
+
+/**
+ * What a scripted captain does before the next beat.
+ * - idle: nothing (crew and auto-targeting only).
+ * - smart: hold volleys while the enemy has shields, break shields, then guns.
+ * - initiative: smart, plus Overcharge early and Board once it is open.
+ * Returns { commands, order }.
+ */
+export function ftlPolicyStep(state, policy = 'idle') {
+  if (state.phase === 'downed') return { commands: [], order: null };
+  if (policy === 'idle') return { commands: [], order: null };
+  const commands = [];
+  const shielded = state.enemy.shields.max > 0 && state.enemy.rooms.shields.integrity > 0;
+  if (state.intent.hold !== shielded) commands.push({ type: 'hold', hold: shielded });
+  const room = shielded ? 'shields' : 'weapons';
+  if (state.intent.target !== room) commands.push({ type: 'target', room });
+  let order = null;
+  if (policy === 'initiative') {
+    if (ftlTacticStatus(state, 'board').available) order = 'board';
+    else if (ftlTacticStatus(state, 'burn').available) order = 'burn';
+  }
+  return { commands, order };
+}
+
+/** Charge gained per beat (ms), for smooth bars between beats. */
+export function playerChargePerBeat(state) {
+  const overcharged = state.tactics?.burn?.throughBeat > state.beat;
+  return Math.round(BEAT_MS * manning(state, 'weapons') * integrityFactor(state.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1));
+}
+
+export function enemyChargePerBeat(state) {
+  return Math.round(BEAT_MS * integrityFactor(state.enemy.rooms.weapons.integrity) * (state.enemy.rooms.helm.integrity <= 0 ? 0.75 : 1));
+}

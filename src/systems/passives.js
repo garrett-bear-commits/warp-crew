@@ -87,6 +87,27 @@ export function repairHull(player, amount = 25) {
   return { player: { ...player, ship: { ...player.ship, hull } }, gained: hull - (player.ship?.hull ?? 100) };
 }
 
+/**
+ * Between fights the crew patch the hull on their own: 25 hull an hour, so a
+ * captain who comes back the next day has a whole ship. Damage still carries
+ * from fight to fight within a session (credits buy an instant patch).
+ */
+export const DOCK_REPAIR = Object.freeze({ hullPerHour: 25 });
+
+export function dockRepair(player, now = Date.now()) {
+  const ship = player?.ship;
+  if (!ship) return player;
+  const hull = ship.hull ?? 100;
+  // Untouched while whole or mid-fight; fight payouts stamp hullRepairAt when they take hull.
+  if (hull >= 100 || (player.activeEncounter && !player.activeEncounter.result)) return player;
+  if (!Number.isFinite(ship.hullRepairAt)) return { ...player, ship: { ...ship, hullRepairAt: now } };
+  const msPerPoint = 3_600_000 / DOCK_REPAIR.hullPerHour;
+  const points = Math.floor(Math.max(0, now - ship.hullRepairAt) / msPerPoint);
+  if (points <= 0) return player;
+  const next = Math.min(100, hull + points);
+  return { ...player, ship: { ...ship, hull: next, hullRepairAt: next >= 100 ? now : ship.hullRepairAt + points * msPerPoint } };
+}
+
 export function injuryMinutesFor(player, base = 20) {
   const med = Math.max(0, player?.ship?.systems?.medbay || 0);
   return Math.max(6, Math.round((base || 20) * (1 - med * 0.08)));

@@ -46,9 +46,16 @@ function contractFight(flags = {}, gems = 0) {
     const { acceptanceId, revision } = player.activeEncounter;
     player = applyEncounterAction(player, { acceptanceId, revision }, now).player;
   }
-  const e = player.activeEncounter;
-  // Push to the brink while keeping beat/revision history intact.
-  player = { ...player, activeEncounter: { ...e, hull: 2, shield: 0, enemy: { ...e.enemy, hull: 3 } } };
+  const e = clone(player.activeEncounter);
+  // Push to the brink while keeping beat/revision history intact: hull 2, no shield,
+  // the enemy one hit from breaking and its guns about to fire (v3 FTL-lite fight).
+  e.hull = 2;
+  e.shields.layers = 0;
+  e.enemy.hull = 3;
+  e.weapons.forEach(w => { w.chargeMs = 0; });
+  e.enemy.weapons.forEach(w => { w.progressMs = w.chargeMs - 10; });
+  e.crew.forEach(c => { c.room = null; c.station = null; });
+  player = { ...player, activeEncounter: e };
   const { acceptanceId, revision } = player.activeEncounter;
   return applyEncounterAction(player, { acceptanceId, revision }, now).player;
 }

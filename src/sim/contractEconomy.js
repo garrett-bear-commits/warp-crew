@@ -7,6 +7,7 @@ import { resolveExpedition, applyExpeditionResult, visiblePlanets } from '../sys
 import { nextUpgradeCost, upgradeSystem, buildSkipGems, SHIP_SYSTEMS } from '../systems/hangar.js';
 import { markDailyMilestone } from '../systems/dailyLoop.js';
 import { repelStatus } from '../systems/autoCombat.js';
+import { ftlPolicyStep, FTL_VERSION, MAX_FIGHT_BEATS } from '../systems/ftlCombat.js';
 import { reviewContractOffer } from '../systems/contracts.js';
 import { WALLS, siegeState } from '../systems/walls.js';
 import { FUEL_REFILL, RALLY } from '../systems/gemSinks.js';
@@ -136,7 +137,9 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     // label: ledger bucket (defaults to the action); guided wall attempts and gem sinks get their own buckets.
     const act = (action, fields = {}, label = action) => {
       const result = sessionAction(player, actionUi(player, ui, now), action, fields, { now, rng });
-      day.actions.push({ action, fields, ok: result.ok, ...(result.ok ? {} : { reason: result.reason }) });
+      // Real-time fights take one action per second: their beats and commands are counted, not listed.
+      if (['encounter-advance', 'encounter-command'].includes(action) && result.ok) day.fightSteps = (day.fightSteps || 0) + 1;
+      else day.actions.push({ action, fields, ok: result.ok, ...(result.ok ? {} : { reason: result.reason }) });
       if (!result.ok) { blocked(action, result.reason); return false; }
       const gemsBefore = player.wallet.gems || 0;
       const next = applyTransition(player, ui, result);
@@ -270,8 +273,16 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
           record.order = 'crew';
           if (wall) record.remainingBefore = player.activeEncounter.enemy.remainingBefore ?? null;
           let beats = 0;
-          while (player.activeEncounter && !player.activeEncounter.result && beats < 40) {
-            const encounter = player.activeEncounter;
+          const ftl = player.activeEncounter.version === FTL_VERSION;
+          while (player.activeEncounter && !player.activeEncounter.result && beats < (ftl ? MAX_FIGHT_BEATS : 40)) {
+            let encounter = player.activeEncounter;
+            // FTL-lite fights: every strategy plays a disciplined captain (hold volleys, shields then guns).
+            if (ftl && encounter.phase !== 'downed') {
+              for (const command of ftlPolicyStep(encounter, 'smart').commands) {
+                act('encounter-command', { acceptanceId: encounter.acceptanceId, revision: encounter.revision, command }, 'encounter-command');
+                encounter = player.activeEncounter;
+              }
+            }
             const open = encounter.orderWindow?.availableOrders || [];
             let order;
             if (encounter.phase === 'downed') {
@@ -283,7 +294,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
                 if (order === 'rally') record.rally = free ? 'free' : 'paid';
                 else record.rallyDeclined = (player.wallet.gems || 0) >= RALLY.gems ? 'policy' : 'not_enough_gems';
               }
-            } else order = repelStatus(encounter).available ? 'repel'
+            } else order = ftl ? null : repelStatus(encounter).available ? 'repel'
               : open.includes('target_weapons') ? 'target_weapons'
                 : open.includes('brace') ? 'brace'
                   : open.includes('repair') && encounter.hull <= 18 ? 'repair' : null;

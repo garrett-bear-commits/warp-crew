@@ -143,7 +143,8 @@ assert.equal(player.wallet.fuel, pendingFuel - player.activeTravelFight.fuelSpen
 model = sessionModels(player, ui);
 assert.equal(model.combatOrders, null);
 assert.equal(model.activeTravelView.encounter.enemyName, 'Pirate Scout');
-for (let i = 0; i < 40 && !player.activeEncounter.result; i++) {
+// FTL-lite fights run in one-second beats: allow a full fight.
+for (let i = 0; i < 200 && !player.activeEncounter.result; i++) {
   const order = player.activeEncounter.phase === 'downed' ? 'concede' : null;
   act(order ? 'encounter-order' : 'encounter-advance', { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision, order });
 }
@@ -178,7 +179,7 @@ act('contract-action', { action: 'push', ...identity() });
 assert.equal(player.activeEncounter?.kind, 'normal');
 assert.ok(player.activeEncounter.enemy.threat >= 0.6 && player.activeEncounter.enemy.threat <= 1.6);
 assert.equal(sessionModels(player, ui).activeContractView.combat, undefined, 'no pre-rolled order menu');
-for (let i = 0; i < 40 && !player.activeEncounter.result; i++) {
+for (let i = 0; i < 200 && !player.activeEncounter.result; i++) {
   const open = player.activeEncounter.orderWindow?.availableOrders || [];
   const order = player.activeEncounter.phase === 'downed' ? 'concede' : open.includes('brace') ? 'brace' : null;
   const ident = { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision };

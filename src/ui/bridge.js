@@ -35,6 +35,8 @@ import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
 import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence, roomStyle } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
+import { renderFtlEnemy, renderFtlShipMarkers } from './ftlView.js';
+import { morphInto } from './morph.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop, MILESTONES as DAILY_MILESTONES } from '../systems/dailyLoop.js';
 import { makeCamera, focusCamera, resizeCamera, zoomAt, pan } from './shipCamera.js';
@@ -62,7 +64,7 @@ export function renderApp(root, ctx) {
   const priorDialog = root.querySelector('[role="dialog"]');
   const priorFocus = root.ownerDocument.activeElement;
   root._wcHandlers = ctx.handlers;
-  if (!root.querySelector('.wc-shell') || !root.querySelector('[data-slot="coach"]')) {
+  if (!root.querySelector('.wc-shell') || !root.querySelector('[data-slot="coach"]') || !root.querySelector('[data-slot="fight-top"]')) {
     root._wcCameraController?.destroy();
     root._wcCameraResize?.disconnect();
     root._wcBound = false;
@@ -125,6 +127,13 @@ function bindOnce(root, ctx) {
     const cameraButton = ev.target.closest('[data-camera]');
     if (cameraButton && root.contains(cameraButton)) {
       const action = cameraButton.dataset.camera;
+      if (action === 'ftl-zoom') {
+        root._wcFtlWhole = !root._wcFtlWhole;
+        const stage = root.querySelector('.stage');
+        root._wcSetCamera(fightCamera({ w: stage.clientWidth, h: stage.clientHeight }, { whole: root._wcFtlWhole }));
+        root.querySelector('.wc-shell')?.classList.toggle('ftl-whole', root._wcFtlWhole);
+        return;
+      }
       if (action === 'toggle') {
         root._wcCameraOpen = !root._wcCameraOpen;
         root.querySelector('.camera-controls')?.classList.toggle('is-open', root._wcCameraOpen);
@@ -205,6 +214,18 @@ export function homeCamera(viewport) {
   return makeCamera(viewport, world, { x: world.w / 2, y: world.h / 2 - (top - bottom) / 2 / scale }, scale);
 }
 
+/**
+ * FTL-lite fights open zoomed in: the Sparrow fills the width (taller than the
+ * view, drag to look around). `whole` fits the entire ship between the panels.
+ */
+export function fightCamera(viewport, { whole = false } = {}) {
+  const world = { w: 1152, h: 1728 };
+  const fit = Math.min(viewport.w / world.w, Math.max(80, viewport.h - 12) / world.h);
+  const scale = whole ? fit : Math.max(fit, (viewport.w / world.w) * 1.12);
+  // Zoomed in, centre on the working decks (bridge to engineering sit at 10-85% of the hull).
+  return makeCamera(viewport, world, { x: world.w / 2, y: world.h * (whole ? 0.5 : 0.46) }, scale);
+}
+
 export function initialSessionCamera(viewport) {
   const camera = makeCamera(viewport, { w: 1152, h: 1728 });
   const bridge = ROOMS.find(room => room.id === 'bridge');
@@ -250,7 +271,8 @@ function bindCamera(root, ctx) {
     setCamera: root._wcSetCamera,
     onGesture: kind => markCameraPractice(root, kind),
     onTap: point => {
-      if (root._wcBattleActive) return;
+      // During an FTL-lite fight the ship view stays framed; rooms are move targets, not zoom targets.
+      if (root._wcBattleActive || root._wcFtlMode) return;
       const room = roomAt(point);
       if (!room) return;
       if (root._wcPlayer?.tutorial?.script === 5 && root._wcPlayer.tutorial.phase === 'assign') {
@@ -296,6 +318,7 @@ function buildShell() {
   return `
     <div class="wc-shell tab-home">
       <div class="hud-bar" data-slot="hud"></div>
+      <div class="ftl-top" data-slot="fight-top"></div>
       <div class="stage">
         <div class="space-stage" aria-hidden="true">
           <canvas class="space-canvas" data-slot="space"></canvas>
@@ -314,6 +337,7 @@ function buildShell() {
         <canvas class="combat-canvas" data-slot="combat"></canvas>
         <div data-slot="overlays"></div>
       </div>
+      <div class="ftl-bottom" data-slot="fight-bottom"></div>
       <div class="detail-scroll" data-slot="detail"></div>
       <nav class="bottom-nav" data-slot="nav"></nav>
       <div data-slot="toast"></div>
@@ -456,7 +480,26 @@ function patchShell(root, ctx) {
   setSlot(root, 'hotspots', v5Session && phase === 'assign' ? renderV5AssignmentHotspot(player)
     : firstSession || v5Session ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'captain-marker', v5Session && phase === 'assign' ? renderCaptainMarker(player) : '');
-  setSlot(root, 'ship-feedback', renderShipFeedback(contractShipSignals(player)));
+  // FTL-lite fights: enemy ship above the ship view, controls below, markers on the Sparrow's rooms.
+  const ftlFight = isHome && player.activeEncounter?.version === 3 ? (player.activeContract ? activeContractView : activeTravelView) : null;
+  const ftlEnc = ftlFight?.encounter?.ftl ? ftlFight.encounter : null;
+  const ftlUi = { selectedCrewId: ctx.ftlSelectedCrewId || null, paused: Boolean(ctx.ftlPaused) };
+  root.querySelector('.wc-shell')?.classList.toggle('ftl-fight', Boolean(ftlEnc));
+  // The stage changes size when the fight panels appear or go: refit once layout has settled.
+  if (Boolean(ftlEnc) !== Boolean(root._wcFtlMode) && root._wcSetCamera) {
+    root._wcFtlMode = Boolean(ftlEnc);
+    root._wcFtlWhole = false;
+    root.querySelector('.wc-shell')?.classList.remove('ftl-whole');
+    setTimeout(() => {
+      const stage = root.querySelector('.stage');
+      const viewport = { w: stage?.clientWidth || 390, h: stage?.clientHeight || 620 };
+      root._wcSetCamera(root._wcFtlMode ? fightCamera(viewport) : homeCamera(viewport));
+    }, 60);
+  }
+  // Patched in place: these re-render every second and must not drop a tap mid-render.
+  morphInto(root.querySelector('[data-slot="fight-top"]'), ftlEnc ? renderFtlEnemy(ftlEnc) : '');
+  morphInto(root.querySelector('[data-slot="fight-bottom"]'), ftlEnc ? renderShipEncounter(ftlFight, ftlUi) : '');
+  morphInto(root.querySelector('[data-slot="ship-feedback"]'), renderShipFeedback(contractShipSignals(player)) + (ftlEnc ? renderFtlShipMarkers(ftlEnc, ftlUi) : ''));
   setSlot(root, 'overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, activeTravelView, cameraCueDismissed: root._wcCameraCueDismissed, captainCardOpen: root._wcCaptainCardOpen }));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
@@ -577,6 +620,8 @@ function renderV5AssignmentHotspot(player) {
 export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, activeTravelView = null, cameraCueDismissed = false, captainCardOpen = false }) {
   // Contract confrontations and Explore jumps share one ship fight panel.
   const fightView = player.activeContract ? activeContractView : activeTravelView;
+  // FTL-lite fights: only the zoom toggle sits over the ship view (drag and pinch also work).
+  if (isHome && player.activeEncounter?.version === 3) return '<button type="button" class="ftl-zoom" data-camera="ftl-zoom"><span class="when-zoomed">Whole ship</span><span class="when-whole">Zoom in</span></button>';
   if (isHome && player.activeEncounter) return renderShipEncounter({ ...fightView,
     encounter: { ...fightView?.encounter, version: player.activeEncounter.version,
       weaponDisabled: player.activeEncounter.orders?.targetWeapons?.used === true

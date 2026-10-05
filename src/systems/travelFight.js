@@ -12,15 +12,15 @@
  */
 import { NODES } from '../data/sectors.js';
 import { ENCOUNTERS_V1, encounterById } from './combat.js';
-import { startEncounter } from './autoCombat.js';
-import { normalizeAssignments, stationOutputs } from './stations.js';
 import { spendFuel } from './fuel.js';
 import { grant } from './economy.js';
 import { resolveSimulatedCombatPayout, CURRENCIES } from './contractRewards.js';
-import { contractThreat, unlockedTactics, boardersUnlocked, validEncounterBody, stepEncounter } from './encounterState.js';
+import { contractThreat, validEncounterBody, stepEncounter, startCrewFight, fightHullLoss } from './encounterState.js';
+import { applyFtlCommand, FTL_VERSION } from './ftlCombat.js';
 
 export const TRAVEL_FIGHT_VERSION = 1;
-const MAX_HULL = 30;
+// Older fights ran on a 30-point hull; v3 fights on the ship's 100-point hull.
+const MAX_HULL = 100;
 const record = value => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
 function fightSeed(text) {
@@ -59,14 +59,14 @@ export function validTravelFight(player) {
     || !Number.isFinite(fight.fuelSpent) || fight.fuelSpent < 0
     || !record(encounter) || encounter.acceptanceId !== fight.fightId
     || encounter.encounterId !== fight.encounterId || encounter.kind !== 'normal'
-    || encounter.version !== (rulesetFor(fight.encounterId) === 'v2' ? 2 : 1)
+    || ![FTL_VERSION, rulesetFor(fight.encounterId) === 'v2' ? 2 : 1].includes(encounter.version)
     || encounter.seed !== fight.seed || fight.revision !== encounter.beat
     || !Number.isFinite(encounter.enemy?.threat) || Object.hasOwn(encounter.enemy, 'startHull')
     || !validEncounterBody(encounter)) return false;
   if (fight.stage === 'return') {
     return validResult(fight.result)
       && ((encounter.result === 'win' && fight.result.success === true) || (encounter.result === 'loss' && fight.result.success === false))
-      && fight.result.hullLoss === MAX_HULL - encounter.hull;
+      && fight.result.hullLoss === fightHullLoss(encounter);
   }
   return fight.stage === 'fight' && fight.result === null && encounter.result === null;
 }
@@ -97,18 +97,7 @@ export function beginTravelFight(player, preview, now = Date.now()) {
   const seed = fightSeed(`${paid.createdAt || 0}:${jump}:${preview.node.id}:${encounterId}`);
   const fightId = `travel:${preview.node.id}:${jump}:${seed}`;
   const threat = contractThreat(paid, { encounterId }, now);
-  const encounter = startEncounter({
-    acceptanceId: fightId,
-    encounterId,
-    kind: 'normal',
-    ruleset: rulesetFor(encounterId),
-    seed,
-    assignments: normalizeAssignments(paid),
-    outputs: stationOutputs(paid, now),
-    threat,
-    tactics: unlockedTactics(paid),
-    boarders: boardersUnlocked(paid),
-  });
+  const encounter = startCrewFight(paid, { acceptanceId: fightId, encounterId, seed, threat }, now);
   const fight = {
     version: TRAVEL_FIGHT_VERSION,
     fightId,
@@ -150,6 +139,17 @@ export function applyTravelFightAction(player, { acceptanceId, revision, order =
   nextPlayer = { ...nextPlayer, activeTravelFight: nextFight };
   return { ok: true, player: nextPlayer, events: step.events,
     analytics: { event: 'encounter_beat', acceptanceId, beat: step.state.beat, order, result: step.state.result, source: 'travel' } };
+}
+
+/** Retarget, hold, or move crew in an Explore fight. No time passes. */
+export function applyTravelFightCommand(player, { acceptanceId, revision, command } = {}) {
+  const fight = player?.activeTravelFight;
+  const encounter = player?.activeEncounter;
+  if (player?.activeContract || !validTravelFight(player)) return { ok: false, reason: 'invalid_encounter_state', player };
+  if (fight.fightId !== acceptanceId || encounter.revision !== Number(revision)) return { ok: false, reason: 'stale_encounter_action', player };
+  const applied = applyFtlCommand(encounter, command || {});
+  if (!applied.ok) return { ok: false, reason: applied.reason, player };
+  return { ok: true, player: { ...player, activeEncounter: applied.state } };
 }
 
 /** Bring the prize (or salvage) aboard and finish the jump. */

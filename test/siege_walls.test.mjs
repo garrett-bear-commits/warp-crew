@@ -28,7 +28,9 @@ function attempt(player, now) {
   assert.deepEqual(migratePlayer(clone(p)).activeContract, p.activeContract, 'settled wall attempt survives reload');
   const claimed = claimContractReward(p, now);
   assert.equal(claimed.ok, true, claimed.reason);
-  return { fightStart, settled: p, player: prepareSession({ ...claimed.player, wallet: { ...claimed.player.wallet, fuel: 10 } }, now) };
+  // Fuel topped up and hull patched between attempts: FTL-lite fights carry hull damage over.
+  return { fightStart, settled: p, player: prepareSession({ ...claimed.player, wallet: { ...claimed.player.wallet, fuel: 10 },
+    ship: { ...claimed.player.ship, hull: 100 } }, now) };
 }
 
 // The first wall arrives on career day 3 and hides the Veil gate until it falls.

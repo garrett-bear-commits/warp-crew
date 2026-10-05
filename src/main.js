@@ -77,6 +77,9 @@ let selectedCrewId = null;
 let confirmRestartSave = false;
 /** Cancel-save sheet for the Captain's Commission subscription. */
 let commissionWinback = false;
+/** FTL-lite fight screen: crew picked for a move, and the tap-to-pause state. */
+let ftlSelectedCrewId = null;
+let ftlPaused = false;
 let cinematic = null;
 let platformStatus = 'booting';
 let shopProducts = null;
@@ -484,6 +487,8 @@ function render() {
     selectedCrewId,
     confirmRestartSave,
     commissionWinback,
+    ftlSelectedCrewId,
+    ftlPaused,
     cinematic,
     platformStatus,
     jestLive: isReal(),
@@ -553,8 +558,8 @@ const guidedBeatScheduler = createGuidedBeatScheduler({
   getPlayer: () => app ? player : null,
   advance: data => handleAction('encounter-advance', data),
   isBattlePlaying,
-  // Fights hold while the app is hidden or the player is off the ship.
-  isPaused: () => document.hidden || tab !== 'ship',
+  // Fights hold while the app is hidden, the player is off the ship, or the captain paused.
+  isPaused: () => document.hidden || tab !== 'ship' || ftlPaused,
   onSaveFailure: failedIdentity => {
     sessionUi.guidedBeatSaveFailed = failedIdentity;
     render();
@@ -663,6 +668,24 @@ async function handleAction(act, data = {}) {
     if (phase === 'return') { tab = 'ship'; selectedRoom = 'cargo'; render(); return; }
     return handleAction('goto-contracts');
   }
+  if (act === 'ftl-select-crew') {
+    ftlSelectedCrewId = ftlSelectedCrewId === data.crewId ? null : data.crewId || null;
+    render();
+    return;
+  }
+  if (act === 'ftl-pause') {
+    ftlPaused = !ftlPaused;
+    render();
+    if (!ftlPaused) scheduleGuidedBeat();
+    return;
+  }
+  if (act === 'encounter-command' && !data.command) {
+    const type = data.commandType;
+    data = { ...data, command: type === 'hold' ? { type, hold: data.hold === 'true' }
+      : type === 'move' ? { type, crewId: data.crewId, room: data.room } : { type, room: data.room } };
+    if (type === 'move') ftlSelectedCrewId = null;
+  }
+  if (!player.activeEncounter || player.activeEncounter.result) { ftlSelectedCrewId = null; ftlPaused = false; }
   const transition = sessionAction(player, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId }, act, data, { now: trustedNow() });
   if (transition) {
     const departure = transition.effect?.kind === 'expedition';
@@ -726,7 +749,9 @@ async function handleAction(act, data = {}) {
       pushLog(message);
       showToast({ title: message });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
-    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-advance', 'encounter-order', 'encounter-recover', 'combat-order', 'travel-claim', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip'].includes(act)) {
+    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-order', 'encounter-recover', 'combat-order', 'travel-claim', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip'].includes(act)
+      // Beats come every second in real-time fights: refresh notifications only when one ends.
+      || (act === 'encounter-advance' && (!player.activeEncounter || player.activeEncounter.result))) {
       await refreshNotifs();
     }
     render();
@@ -757,6 +782,9 @@ async function handleAction(act, data = {}) {
       showToast({ title: `+${claimed.gained} fuel` });
     } else if (!resolved) pushLog('Nothing new to claim yet.');
     await refreshNotifs();
+  } else if (act === 'goto-ship') {
+    tab = 'ship';
+    selectedRoom = null;
   } else if (act === 'goto-missions') {
     if (!isTabUnlocked(player, 'missions')) return;
     tab = 'missions';

@@ -3,6 +3,7 @@ import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { generateContractBoard, acceptContract, previewContractAction, commitContractAction, claimContractReward, contractRewardBand } from '../src/systems/contracts.js';
 import { applyEncounterAction, unlockedTactics, TACTIC_UNLOCKS } from '../src/systems/encounterState.js';
 import { startEncounter, advanceEncounter, boardChance, BOARD } from '../src/systems/autoCombat.js';
+import { RULES as FTL_RULES } from '../src/systems/ftlCombat.js';
 import { sessionModels } from '../src/systems/sessionLoop.js';
 import { renderShipEncounter } from '../src/ui/contractView.js';
 
@@ -34,26 +35,21 @@ assert.deepEqual(unlockedTactics({ tutorial: { script: 3, completed: true }, sta
 assert.equal(Object.hasOwn(fight({ contractsCompleted: 1 }).activeEncounter, 'tactics'), false);
 assert.equal(act(fight({ contractsCompleted: 1 }), 'burn').reason, 'order_unavailable');
 
-// Burn: costs 1 fuel, adds +3 weapon damage for three beats, once per fight.
+// Overcharge (the 'burn' order): costs 1 fuel, weapons charge 50% faster for eight beats, once per fight.
 {
   const start = fight();
+  assert.equal(start.activeEncounter.version, 3, 'contract fights are FTL-lite fights');
   assert.deepEqual(Object.keys(start.activeEncounter.tactics), ['burn', 'board']);
   assert.equal(act({ ...start, wallet: { ...start.wallet, fuel: 0 } }, 'burn').reason, 'not_enough_fuel');
   const burned = act(start, 'burn');
   assert.equal(burned.ok, true, burned.reason);
   assert.equal(burned.player.wallet.fuel, start.wallet.fuel - 1);
-  let player = burned.player;
-  let burnHits = burned.events.filter(event => event.type === 'weapon_damage' && event.burn).length;
-  for (let i = 0; i < 3 && !player.activeEncounter.result; i++) {
-    const step = act(player);
-    burnHits += step.events.filter(event => event.type === 'weapon_damage' && event.burn).length;
-    player = step.player;
-  }
-  assert.equal(burnHits, 3, 'burn lasts exactly three beats');
-  assert.equal(act(player, 'burn').reason, 'used');
-  const plain = act(act(act(start).player).player).player;
-  assert.ok(act(act(burned.player).player).player.activeEncounter.enemy.hull < plain.activeEncounter.enemy.hull, 'burn kills faster');
-  assert.deepEqual(migratePlayer(clone(burned.player)).activeEncounter, burned.player.activeEncounter, 'burn state survives reload');
+  assert.equal(burned.player.activeEncounter.tactics.burn.throughBeat, burned.player.activeEncounter.beat + FTL_RULES.overchargeBeats - 1);
+  const plain = act(start).player.activeEncounter;
+  const fast = burned.player.activeEncounter;
+  assert.ok(fast.weapons[0].chargeMs > plain.weapons[0].chargeMs, 'overcharged weapons charge faster');
+  assert.equal(act(burned.player, 'burn').reason, 'used');
+  assert.deepEqual(migratePlayer(clone(burned.player)).activeEncounter, burned.player.activeEncounter, 'overcharge survives reload');
 }
 
 // Board: only below half enemy hull; seeded outcome; success ends the fight and pays +25%.
@@ -108,10 +104,7 @@ assert.equal(act(fight({ contractsCompleted: 1 }), 'burn').reason, 'order_unavai
   assert.ok(boardedWin, 'found a boarding success');
   const plainWin = (() => {
     let current = player;
-    for (let i = 0; i < 40 && !current.activeEncounter.result; i++) {
-      const open = current.activeEncounter.orderWindow?.availableOrders || [];
-      current = act(current, open.includes('brace') ? 'brace' : null).player;
-    }
+    for (let i = 0; i < 200 && !current.activeEncounter.result; i++) current = act(current).player;
     return current;
   })();
   if (plainWin.activeEncounter.result === 'win') {
@@ -126,7 +119,7 @@ assert.equal(act(fight({ contractsCompleted: 1 }), 'burn').reason, 'order_unavai
   const player = fight();
   const view = sessionModels(player, {}, now).activeContractView;
   const html = renderShipEncounter(view);
-  assert.match(html, /data-order="burn"[^>]*>Burn · 1F<span>\+3 damage for 3 beats/);
+  assert.match(html, /data-order="burn"[^>]*>Overcharge · 1F/);
   assert.match(html, /data-order="board"[^>]*disabled[^>]*>Board/);
   assert.match(html, /Enemy above half hull/);
   const offer = player.contractBoard.offers.find(candidate => candidate.id === player.activeContract.offerId);

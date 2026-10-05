@@ -1,3 +1,4 @@
+import { renderFtlControls } from './ftlView.js';
 import { SPACE_ART, NODE_ART } from '../data/portraits.js';
 
 /** Pure presentation. Callers supply costs, availability, previews and selected crew.
@@ -68,7 +69,8 @@ export function renderActiveContract(model = {}) {
     <p>${e(model.title)}</p><h2>${e(model.encounter ? model.encounter.result === 'win' ? 'Victory' : model.encounter.result === 'loss' ? 'Ship damaged' : 'Pirate attack' : model.stageLabel || model.stage)}</h2>${reason(model.description)}
     ${model.crewLabel ? `<p>Crew: ${e(model.crewLabel)}</p>` : ''}${trait(model.favoredTrait)}
     ${model.result ? `<p class="contract-consequence">${e(model.result.summary)}</p><p>${e(model.result.rewardLabel)}</p>` : ''}
-    ${model.encounter ? renderEncounter(model.encounter) : ''}
+    ${model.encounter?.ftl ? `<p class="ftl-elsewhere" role="status">${model.encounter.result ? '' : `Fighting ${e(model.encounter.enemyName)} · hull ${e(model.encounter.hull)}. `}The fight plays out on the ship.</p><button type="button" class="primary" data-act="goto-ship">Go to the ship</button>`
+      : model.encounter ? renderEncounter(model.encounter) : ''}
     ${model.combat ? renderCombatOrders(model.combat) : ''}
     ${(model.actions || []).map((action) => `<div class="route-action">${reason(action.consequence)}${reason(action.reason)}<button type="button" class="${action.primary ? 'primary' : ''}" data-act="contract-action" data-action="${e(action.id)}" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}" ${action.enabled ? '' : 'disabled'}>${e(action.label)}</button></div>`).join('')}
     ${model.abandon ? `<button type="button" class="ghost" data-act="contract-abandon" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}" ${model.abandon.enabled ? '' : 'disabled'}>${e(model.abandon.label)}</button>${reason(model.abandon.consequence)}` : ''}
@@ -76,8 +78,11 @@ export function renderActiveContract(model = {}) {
 }
 
 /** Compact fight controls that sit over the visible, pannable ship. */
-export function renderShipEncounter(model = {}) {
+export function renderShipEncounter(model = {}, ui = {}) {
   if (!model.encounter) return '';
+  // FTL-lite fights render as the controls strip under the ship view.
+  if (model.encounter.ftl) return renderFtlControls(model.encounter, { ...ui, claimAct: model.claimAct || 'contract-claim',
+    claimRevision: model.revision, claimAcceptanceId: model.acceptanceId });
   const salvage = model.encounter.result === 'loss' && model.encounter.settled;
   const claim = model.encounter.result === 'win' || salvage
     ? `<button type="button" class="primary" data-act="${e(model.claimAct || 'contract-claim')}" data-revision="${e(model.revision)}" data-acceptance-id="${e(model.acceptanceId)}">${salvage ? 'Collect salvage' : 'Bring cargo aboard'}</button>`

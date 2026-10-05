@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { advanceEncounter, startEncounter } from '../src/systems/autoCombat.js';
 import { createCrewInstance } from '../src/data/crewRoster.js';
 import { createNewPlayer } from '../src/systems/player.js';
-import { stationOutputs } from '../src/systems/stations.js';
+import { stationOutputs, normalizeAssignments } from '../src/systems/stations.js';
+import { contractThreat, unlockedTactics } from '../src/systems/encounterState.js';
 import { acceptContract, commitContractAction, generateContractBoard, previewContractAction } from '../src/systems/contracts.js';
 
 const baseArgs = {
@@ -53,11 +54,13 @@ function reliablePushEncounter({ staffWeapons = false } = {}) {
     assert.equal(preview.ok, true, preview.reason);
     player = commitContractAction(player, preview, { now, rng: () => 0.5 }).player;
   }
-  assert.deepEqual(
-    Object.fromEntries(Object.entries(stationOutputs(player, now)).map(([station, output]) => [station, output.total])),
-    player.activeEncounter.outputs,
-  );
-  return player.activeEncounter;
+  // New contract fights are FTL-lite (v3). This file tests the v1/v2 beat engine that saved
+  // pre-FTL fights still finish on, so build that snapshot from the same contract.
+  assert.equal(player.activeEncounter.version, 3);
+  const c = player.activeContract;
+  const outputs = Object.fromEntries(Object.entries(stationOutputs(player, now)).map(([station, output]) => [station, output.total]));
+  return startEncounter({ acceptanceId: c.acceptanceId, encounterId: c.encounterId, kind: 'normal', ruleset: 'v2', seed: c.routeSeed,
+    assignments: normalizeAssignments(player), outputs, threat: contractThreat(player, c, now), tactics: unlockedTactics(player) });
 }
 
 // Mutation caught: reading hidden process randomness or unsaved mutable RNG state.

@@ -8,6 +8,8 @@
 export const FIGHT_BEAT_MS = Object.freeze({ guided: 4000, normal: 6000 });
 
 export function beatDelayMs(encounter) {
+  // FTL-lite fights run in real time: one beat is one second of fight.
+  if (encounter?.version === 3) return 1000;
   return encounter?.kind === 'normal' ? FIGHT_BEAT_MS.normal : FIGHT_BEAT_MS.guided;
 }
 

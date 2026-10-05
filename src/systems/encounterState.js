@@ -7,6 +7,7 @@ import { combatBonuses } from './passives.js';
 import { wallEncounterSetup } from './walls.js';
 import { RALLY } from './gemSinks.js';
 import { isCanonicalGuidedContract } from './contractState.js';
+import { startFtlEncounter, advanceFtlEncounter, applyFtlCommand, validFtlBody, FTL_VERSION, OVERCHARGE } from './ftlCombat.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
 const numberIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
@@ -132,13 +133,45 @@ export function contractThreat(player, contract, now = Date.now(), { excludeIds 
   return Math.max(THREAT_RANGE[0], Math.min(THREAT_RANGE[1], Math.round((enemyPower / playerPower) * 100) / 100));
 }
 
+/** The crew who fight, at their stations (null station = free crew who go where needed). */
+export function fightingCrew(player, now = Date.now()) {
+  const assignments = normalizeAssignments(player);
+  return readyContractCrew(player, now).map(member => ({ id: member.instanceId, role: member.role || '', station: assignments[member.instanceId] || null }));
+}
+
+/** Every new normal fight (contract, wall, Explore jump) is an FTL-lite v3 fight. */
+export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null }, now = Date.now()) {
+  return startFtlEncounter({
+    acceptanceId,
+    encounterId,
+    seed,
+    threat,
+    crew: fightingCrew(player, now),
+    hull: Math.max(1, Math.min(100, Math.round(player.ship?.hull ?? 100))),
+    enemyHull,
+    remainingBefore,
+    tactics: unlockedTactics(player),
+    boarders: boardersUnlocked(player) && BOARDING_ENEMIES.includes(String(encounterId)),
+  });
+}
+
+/** Hull a settled fight took off the ship (v3 fights use the ship's own hull). */
+export const fightHullLoss = encounter => (encounter.version === FTL_VERSION ? encounter.startHull - encounter.hull : 30 - encounter.hull);
+
 /** Called only by the action that freshly enters confrontation. */
 export function beginContractEncounter(player, now = Date.now()) {
   const contract = player?.activeContract;
   if (player?.activeEncounter || !eligibleContract(player, contract)) return player;
   const kind = contract.profile === 'distress' ? 'guided' : 'normal';
   const wall = contract.wall ? wallEncounterSetup(player, contract, contractThreat(player, contract, now), now) : null;
-  const encounter = startEncounter({
+  const encounter = kind === 'normal' ? startCrewFight(player, {
+    acceptanceId: contract.acceptanceId,
+    encounterId: contract.encounterId,
+    seed: contract.routeSeed,
+    threat: wall ? wall.threat : contractThreat(player, contract, now),
+    enemyHull: wall ? wall.enemyHull : null,
+    remainingBefore: wall ? wall.remainingBefore : null,
+  }, now) : startEncounter({
     acceptanceId: contract.acceptanceId,
     encounterId: contract.encounterId,
     kind,
@@ -166,6 +199,7 @@ export function beginContractEncounter(player, now = Date.now()) {
 
 /** Shape and rule checks for any saved crew-fight snapshot, independent of what it is bound to. */
 export function validEncounterBody(encounter) {
+  if (encounter?.version === FTL_VERSION) return validFtlBody(encounter);
   if (!encounter || ![1, 2].includes(encounter.version) || !['guided', 'normal'].includes(encounter.kind)
     || !Number.isInteger(encounter.seed)
     || !Number.isInteger(encounter.beat) || encounter.beat < 0
@@ -222,7 +256,7 @@ function validSnapshot(encounter, contract, tutorial) {
   if (contract.stage === 'return') {
     const settled = (encounter.result === 'win' && contract.result?.success === true)
       || (encounter.result === 'loss' && contract.profile !== 'distress' && contract.result?.success === false);
-    return settled && contract.result.hullLoss === 30 - encounter.hull;
+    return settled && contract.result.hullLoss === fightHullLoss(encounter);
   }
   return contract.stage === 'confrontation' && encounter.result !== 'win';
 }
@@ -266,6 +300,18 @@ export function stepEncounter(player, encounter, order = null, now = Date.now())
   const rallyCost = order === 'rally' ? (player.flags?.rallyFreeUsed ? RALLY.gems : 0) : 0;
   if ((player.wallet?.gems ?? 0) < rallyCost) return { ok: false, reason: 'not_enough_gems' };
 
+  if (encounter.version === FTL_VERSION) {
+    if (order === 'burn' && (player.wallet?.fuel ?? 0) < OVERCHARGE.fuel) return { ok: false, reason: 'not_enough_fuel' };
+    const advanced = advanceFtlEncounter(encounter, order);
+    if (advanced.ok === false) return { ok: false, reason: advanced.reason };
+    let nextPlayer = { ...player, activeEncounter: advanced.state };
+    if (order === 'burn') nextPlayer = { ...nextPlayer, wallet: { ...nextPlayer.wallet, fuel: nextPlayer.wallet.fuel - OVERCHARGE.fuel } };
+    if (order === 'rally') {
+      nextPlayer = { ...nextPlayer, wallet: { ...nextPlayer.wallet, gems: nextPlayer.wallet.gems - rallyCost },
+        flags: { ...(nextPlayer.flags || {}), rallyFreeUsed: true } };
+    }
+    return { ok: true, player: nextPlayer, state: advanced.state, events: advanced.events };
+  }
   const outputs = stationOutputs(player, now);
   const input = {
     ...encounter,
@@ -308,6 +354,21 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
     analytics: { event: 'encounter_beat', acceptanceId, beat: step.state.beat, order, result: step.state.result } };
 }
 
+/** Retarget, hold, or move crew in a contract fight. No time passes, so the revision does not change. */
+export function applyEncounterCommand(player, { acceptanceId, revision, command } = {}) {
+  const contract = player?.activeContract;
+  const encounter = player?.activeEncounter;
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
+    return { ok: false, reason: 'invalid_encounter_state', player };
+  }
+  if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
+    return { ok: false, reason: 'stale_encounter_action', player };
+  }
+  const applied = applyFtlCommand(encounter, command || {});
+  if (!applied.ok) return { ok: false, reason: applied.reason, player };
+  return { ok: true, player: { ...player, activeEncounter: applied.state } };
+}
+
 export function recoverEncounter(player, { acceptanceId, revision } = {}) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
@@ -324,7 +385,8 @@ export function recoverEncounter(player, { acceptanceId, revision } = {}) {
       ...player,
       activeContract: null,
       activeEncounter: null,
-      ship: { ...player.ship, hull: Math.max(1, Math.min(player.ship?.hull ?? 100, encounter.hull)) },
+      ship: { ...player.ship, hull: encounter.version === FTL_VERSION ? Math.max(1, encounter.hull)
+        : Math.max(1, Math.min(player.ship?.hull ?? 100, encounter.hull)) },
     },
     analytics: { event: 'encounter_recovered', acceptanceId, reason: encounter.lossReason },
   };

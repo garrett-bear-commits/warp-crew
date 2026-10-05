@@ -9,6 +9,11 @@ import { hireFirstCrew } from '../src/systems/tutorialV5.js';
 import { sessionAction, sessionModels, persistSessionTransition } from '../src/systems/sessionLoop.js';
 import { renderActiveContract, renderShipEncounter } from '../src/ui/contractView.js';
 import { encounterVisualFrame } from '../src/ui/combatView.js';
+import { startEncounter } from '../src/systems/autoCombat.js';
+import { stationOutputs, normalizeAssignments } from '../src/systems/stations.js';
+import { contractThreat, unlockedTactics } from '../src/systems/encounterState.js';
+import { manning } from '../src/systems/ftlCombat.js';
+import { fightHullLoss } from '../src/systems/encounterState.js';
 import { renderOverlays } from '../src/ui/bridge.js';
 
 const now = Date.UTC(2030, 8, 22, 12);
@@ -43,6 +48,15 @@ const normal = ({ staffWeapons = false } = {}) => {
     };
   }
   return action(player, 'push');
+};
+/** A save from before FTL-lite: the same contract fight, saved as a v1/v2 beat fight. */
+const legacyNormal = (options = {}) => {
+  const player = normal(options);
+  const c = player.activeContract;
+  const outputs = Object.fromEntries(Object.entries(stationOutputs(player, now)).map(([id, o]) => [id, o.total]));
+  return { ...player, activeEncounter: startEncounter({ acceptanceId: c.acceptanceId, encounterId: c.encounterId, kind: 'normal',
+    ruleset: c.encounterId === 'pirate_scout' ? 'v2' : 'v1', seed: c.routeSeed, assignments: normalizeAssignments(player), outputs,
+    threat: contractThreat(player, c, now), tactics: unlockedTactics(player) }) };
 };
 const captainGuided = templateId => {
   let player = createNewPlayer({ now, rng: () => 0.1 });
@@ -99,21 +113,20 @@ test('each beat has an acceptance and revision guard, and reload preserves its n
 test('the next committed beat uses crew availability and never spends route fuel again', () => {
   let player = normal();
   const fuel = player.wallet.fuel;
-  const bolt = player.crew.find(member => member.templateId === 'merc_bolt');
-  player = { ...player, stationAssignments: { ...player.stationAssignments, [bolt.instanceId]: 'shields' } };
+  // FTL-lite: the fighting crew stand at their stations; a manned room works better than an empty one.
+  assert.equal(player.activeEncounter.version, 3);
   const staffed = beat(player);
-  assert.equal(staffed.activeEncounter.outputs.shields, 110);
-  const away = { ...staffed, crew: staffed.crew.map(member => member.instanceId === bolt.instanceId ? { ...member, status: 'expedition' } : member) };
-  const unstaffed = beat(away);
-  assert.equal(unstaffed.activeEncounter.outputs.shields, 100);
-  assert.equal(unstaffed.stationAssignments[bolt.instanceId], 'shields');
-  assert.equal(unstaffed.wallet.fuel, fuel);
+  const helm = staffed.activeEncounter.crew.find(member => member.station === 'helm');
+  assert.ok(helm, 'the captain fights from the helm');
+  assert.ok(manning(staffed.activeEncounter, 'helm') > 1, 'a manned station is faster');
+  assert.equal(manning(staffed.activeEncounter, 'engineering'), 1, 'an empty station runs at baseline');
+  assert.equal(beat(staffed).wallet.fuel, fuel, 'beats never spend route fuel again');
 });
 
 test('a saved win claims its route reward once, after the final beat', () => {
   let player = normal({ staffWeapons: true });
   const initial = clone(player.wallet);
-  for (let i = 0; i < 30 && !player.activeEncounter.result; i++) player = beat(player);
+  for (let i = 0; i < 200 && !player.activeEncounter.result; i++) player = beat(player);
   assert.equal(player.activeEncounter.result, 'win');
   assert.equal(player.activeContract.stage, 'return');
   assert.equal(player.activeContract.result.success, true);
@@ -133,13 +146,17 @@ test('a saved win claims its route reward once, after the final beat', () => {
 
 test('a lost normal fight settles to salvage once, and a legacy saved loss still recovers', () => {
   let player = normal();
-  player = { ...player, activeEncounter: { ...player.activeEncounter, systems: { ...player.activeEncounter.systems, weapons: 0 } } };
+  // Weapons room wrecked and nobody aboard to repair it: the crew cannot win.
+  const wrecked = clone(player.activeEncounter);
+  wrecked.rooms.weapons.integrity = 0;
+  wrecked.crew = [];
+  player = { ...player, activeEncounter: wrecked };
   const initial = clone(player.wallet);
-  for (let i = 0; i < 40 && !player.activeEncounter.result; i++) player = beat(player);
+  for (let i = 0; i < 300 && !player.activeEncounter.result; i++) player = beat(player);
   assert.equal(player.activeEncounter.result, 'loss');
   assert.equal(player.activeContract.stage, 'return', 'a crew loss resolves to the salvage payout');
   assert.equal(player.activeContract.result.success, false);
-  assert.equal(player.activeContract.result.hullLoss, 30 - player.activeEncounter.hull);
+  assert.equal(player.activeContract.result.hullLoss, fightHullLoss(player.activeEncounter));
   assert.ok(player.activeContract.result.rewards.credits >= 8);
   assert.deepEqual(player.wallet, initial, 'salvage is paid only on claim');
   const loaded = migratePlayer(clone(player));
@@ -233,11 +250,11 @@ test('a saved script-4 distress fight cannot adopt v2 target weapons on reload o
 });
 
 test('a malformed v2 target option cannot fall through to a legacy claim', () => {
-  const downgraded = normal();
+  const downgraded = legacyNormal();
   downgraded.activeEncounter = { ...downgraded.activeEncounter, version: 1 };
   assert.equal(migratePlayer(clone(downgraded)).activeContract, null,
     'a v2 snapshot with its version changed cannot become a payable v1 fight');
-  const opened = beat(normal());
+  const opened = beat(legacyNormal());
   assert.equal(opened.activeEncounter.version, 2);
   const malformed = { ...clone(opened), activeEncounter: { ...clone(opened.activeEncounter),
     orderWindow: { ...clone(opened.activeEncounter.orderWindow),
@@ -260,7 +277,12 @@ test('a malformed v2 target option cannot fall through to a legacy claim', () =>
 });
 
 test('mismatched or corrupt encounter snapshots cannot pay rewards', () => {
-  const player = normal({ staffWeapons: true });
+  const player = legacyNormal({ staffWeapons: true });
+  // The same identity rules guard new FTL-lite saves.
+  const ftl = normal({ staffWeapons: true });
+  assert.equal(migratePlayer({ ...clone(ftl), activeEncounter: { ...clone(ftl.activeEncounter), acceptanceId: 'different' } }).activeContract, null);
+  assert.equal(migratePlayer({ ...clone(ftl), activeEncounter: { ...clone(ftl.activeEncounter), seed: ftl.activeEncounter.seed + 1 } }).activeContract, null);
+  assert.equal(migratePlayer({ ...clone(ftl), activeEncounter: { ...clone(ftl.activeEncounter), hull: 250 } }).activeContract, null);
   const mismatched = migratePlayer({ ...clone(player), activeEncounter: { ...clone(player.activeEncounter), acceptanceId: 'different' } });
   assert.equal(mismatched.activeEncounter, null);
   assert.equal(mismatched.activeContract, null, 'a broken crew fight cannot fall back to old combat');
@@ -307,34 +329,26 @@ test('mismatched or corrupt encounter snapshots cannot pay rewards', () => {
 
 test('the active UI exposes truthful costs and runs normal fights on a real-time beat', () => {
   const player = normal();
-  const beforeTell = sessionModels(player, {}, now).activeContractView;
-  let html = renderActiveContract(beforeTell);
+  // Missions tab: the fight is on the ship, with a way there.
+  let html = renderActiveContract(sessionModels(player, {}, now).activeContractView);
+  assert.match(html, /The fight plays out on the ship/);
+  assert.match(html, /data-act="goto-ship"/);
   assert.doesNotMatch(html, /data-act="encounter-advance"/, 'normal fights advance on their own');
-  assert.match(html, /class="beat-timer"/);
-  assert.match(html, /Crew engaging · orders are optional/);
-  assert.doesNotMatch(html, /Choose Burn/);
+  // Ship tab: the controls strip, with weapons, Hold and crew, and no manual advance.
   const told = beat(player);
-  html = renderActiveContract(sessionModels(told, {}, now).activeContractView);
-  assert.match(html, /Brace/);
-  assert.match(html, /2 shield/);
-  assert.match(html, /data-act="encounter-order"/);
+  const view = sessionModels(told, {}, now).activeContractView;
+  html = renderShipEncounter(view);
+  assert.match(html, /class="ftl-controls"/);
+  assert.match(html, /Burst Laser/);
+  assert.match(html, /data-command-type="hold"/);
+  assert.match(html, /data-act="ftl-select-crew"/);
   assert.doesNotMatch(html, /data-act="encounter-advance"/);
-  assert.match(html, /Incoming fire at [a-z]+ · 2 beats · ~12s/);
-  assert.match(html, /Blocks the next hit/);
-  assert.match(html, /3-beat cooldown/);
-  assert.match(html, /Restore up to 8 hull/);
-  const afterOrder = beat(told, 'brace');
-  const countdown = sessionModels(afterOrder, {}, now).activeContractView.encounter;
-  assert.equal(countdown.beatsToImpact, 1, 'the threat stays visible after the order window closes');
-  assert.match(renderActiveContract(sessionModels(afterOrder, {}, now).activeContractView), /Incoming fire at hull · 1 beat/);
-  assert.doesNotMatch(renderActiveContract(sessionModels(afterOrder, {}, now).activeContractView), /1 beats/);
-  assert.match(renderShipEncounter(sessionModels(told, {}, now).activeContractView), /data-act="encounter-order"/);
-  assert.doesNotMatch(renderShipEncounter(sessionModels(told, {}, now).activeContractView), /data-act="encounter-advance"/);
+  assert.equal(view.encounter.beatMs, 1000, 'one beat per second');
   const failed = { guidedBeatSaveFailed: { acceptanceId: told.activeEncounter.acceptanceId, revision: told.activeEncounter.revision } };
   assert.match(renderShipEncounter(sessionModels(told, failed, now).activeContractView), /data-act="encounter-advance"[^>]*>Retry fight progress/, 'a failed save offers a retry');
-  const shipOverlay = renderOverlays(told, { isHome: true, selectedRoom: null, activeContractView: sessionModels(told, {}, now).activeContractView });
-  assert.match(shipOverlay, /class="ship-encounter"/);
-  assert.match(shipOverlay, /class="beat-timer"/);
+  // Over the ship view: only the zoom toggle; the enemy and controls have their own slots.
+  const shipOverlay = renderOverlays(told, { isHome: true, selectedRoom: null, activeContractView: view });
+  assert.match(shipOverlay, /data-camera="ftl-zoom"/);
 });
 
 test('entering a new fight keeps controls with the visible ship', () => {

@@ -3,8 +3,11 @@ import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { prepareSession, sessionAction, sessionModels } from '../src/systems/sessionLoop.js';
 import { assignStation } from '../src/systems/stations.js';
-import { contractThreat, unlockedTactics } from '../src/systems/encounterState.js';
-import { enemyVolleyDamage, BURN } from '../src/systems/autoCombat.js';
+import { contractThreat, unlockedTactics, fightHullLoss } from '../src/systems/encounterState.js';
+import { BURN } from '../src/systems/autoCombat.js';
+import { enemyLoadout, RULES as FTL_RULES } from '../src/systems/ftlCombat.js';
+import { renderShipEncounter } from '../src/ui/contractView.js';
+import { renderFtlEnemy } from '../src/ui/ftlView.js';
 import { encounterById } from '../src/systems/combat.js';
 import { scaleSitePayout } from '../src/systems/economy.js';
 import { resolveSimulatedCombatPayout, normalizeCurrencyReward } from '../src/systems/contractRewards.js';
@@ -37,7 +40,7 @@ function jump(player, { node, rng } = LANE_A_SCOUT) {
 /** Hands-off to the end (conceding a downed crew), checking every beat survives a reload unchanged. */
 function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) {
   let beats = 0;
-  while (player.activeTravelFight.stage === 'fight' && beats < 60) {
+  while (player.activeTravelFight.stage === 'fight' && beats < 200) {
     if (reloadEachBeat) {
       const restored = reload(player);
       assert.deepEqual(restored.activeTravelFight, player.activeTravelFight, `binding survives reload at beat ${beats}`);
@@ -68,25 +71,27 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   assert.deepEqual(player.stats, before.stats, 'no visit or jump recorded mid-fight');
   const encounter = player.activeEncounter;
   assert.equal(encounter.kind, 'normal');
+  assert.equal(encounter.version, 3, 'Explore jumps fight as FTL-lite fights');
   assert.equal(encounter.acceptanceId, fight.fightId);
   // Threat and damage come from the contract power model.
   assert.equal(encounter.enemy.threat, contractThreat(before, { encounterId: 'pirate_scout' }, now));
-  assert.equal(encounter.enemy.damage, enemyVolleyDamage(encounter.enemy.threat));
+  assert.deepEqual(encounter.enemy.weapons.map(w => w.damage), enemyLoadout(encounter.enemy.threat).weapons.map(w => w.damage));
+  assert.equal(encounter.hull, before.ship.hull, 'the fight runs on the ship\'s own hull');
   assert.deepEqual(Object.keys(encounter.tactics), unlockedTactics(before));
   assert.equal(validTravelFight(player), true);
   assert.equal(shouldAutoAdvanceFight(player), true);
-  assert.equal(beatDelayMs(encounter), FIGHT_BEAT_MS.normal);
+  assert.equal(beatDelayMs(encounter), 1000, 'real time: one beat per second');
   assert.ok(started.events.some(e => e.event === 'travel_fight_started'));
 
-  // Same fight panel as contracts: enemy, threat, tell, beat timer, orders, tactics.
+  // Same fight screen as contracts: the enemy ship with targetable rooms, and the controls strip.
   const models = sessionModels(player, {}, now);
   assert.equal(models.combatOrders, null);
-  const html = renderOverlays(player, { isHome: true, activeContractView: models.activeContractView, activeTravelView: models.activeTravelView, now });
-  assert.match(html, /class="ship-encounter"/);
-  assert.match(html, /Pirate Scout/);
-  assert.match(html, new RegExp(models.activeTravelView.encounter.threatLabel));
-  assert.match(html, new RegExp(encounterById('pirate_scout').tell.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(html, /class="beat-timer"/);
+  const enemy = renderFtlEnemy(models.activeTravelView.encounter);
+  assert.match(enemy, /Pirate Scout/);
+  assert.match(enemy, new RegExp(models.activeTravelView.encounter.threatLabel));
+  assert.match(enemy, /data-command-type="target" data-room="weapons"/);
+  const html = renderShipEncounter(models.activeTravelView);
+  assert.match(html, /class="ftl-controls"/);
   assert.match(html, /data-order="burn"/);
   assert.doesNotMatch(html, /combat-orders|Choose Brace/);
   // Explore map is locked while the crew fights; contracts wait too.
@@ -110,15 +115,15 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   const a = playOut(jump(winner).player);
   const b = playOut(jump(winner).player, { reloadEachBeat: false });
   assert.deepEqual(a.player.activeEncounter, b.player.activeEncounter, 'same inputs, same fight');
-  assert.ok(a.beats * FIGHT_BEAT_MS.normal >= 30000 && a.beats * FIGHT_BEAT_MS.normal <= 60000, `fight ${a.beats} beats outside 30-60 s`);
+  assert.ok(a.beats >= 15 && a.beats <= 70, `fight ${a.beats} s outside 15-70 s`);
   let player = a.player;
   const fight = player.activeTravelFight;
   assert.equal(player.activeEncounter.result, 'win');
   assert.equal(fight.stage, 'return');
   const visitsBefore = winner.stats.visits.lane_a || 0;
   assert.deepEqual(fight.result.rewards, normalizeCurrencyReward(scaleSitePayout(encounterById('pirate_scout').rewards, winner, { kind: 'combat', visits: visitsBefore })));
-  assert.equal(fight.result.hullLoss, 30 - player.activeEncounter.hull);
-  assert.equal(player.ship.hull, Math.max(1, winner.ship.hull - fight.result.hullLoss));
+  assert.equal(fight.result.hullLoss, fightHullLoss(player.activeEncounter));
+  assert.equal(player.ship.hull, player.activeEncounter.hull, 'the ship keeps the hull the fight left it');
   assert.equal(player.stats.combatsWon, (winner.stats.combatsWon || 0) + 1);
   const participant = player.crew.find(c => fight.participantIds.includes(c.instanceId));
   assert.ok(participant.xp > winner.crew.find(c => c.instanceId === participant.instanceId).xp || participant.level > winner.crew.find(c => c.instanceId === participant.instanceId).level, 'crew XP granted');
@@ -126,7 +131,7 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   player = reload(player);
   assert.equal(player.activeTravelFight.stage, 'return');
   const models = sessionModels(player, {}, now);
-  assert.match(renderOverlays(player, { isHome: true, activeTravelView: models.activeTravelView, now }), /data-act="travel-claim"[^>]*>Bring cargo aboard/);
+  assert.match(renderShipEncounter(models.activeTravelView), /data-act="travel-claim"[^>]*>Bring cargo aboard/);
   assert.equal(act(player, 'encounter-advance', ident(player)).reason, 'encounter_finished');
   assert.equal(act(player, 'travel-claim', { acceptanceId: 'travel:other', revision: fight.revision }).reason, 'stale_encounter_action');
   const walletBefore = player.wallet;
@@ -165,7 +170,7 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   assert.deepEqual(player.activeTravelFight.result.rewards, asContract.result.rewards);
   assert.ok(player.activeTravelFight.result.rewards.credits > 0, "salvage pays something");
   const models = sessionModels(player, {}, now);
-  assert.match(renderOverlays(player, { isHome: true, activeTravelView: models.activeTravelView, now }), /Collect salvage/);
+  assert.match(renderShipEncounter(models.activeTravelView), /Collect salvage/);
   const claimed = act(player, 'travel-claim', { acceptanceId: player.activeTravelFight.fightId, revision: player.activeTravelFight.revision }).player;
   assert.equal(claimed.location, 'lane_a');
   assert.equal(claimed.activeTravelFight, null);
@@ -179,26 +184,33 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   assert.equal(player.wallet.fuel, fuel - BURN.fuel);
   assert.equal(player.activeEncounter.tactics.burn.uses, 1);
   assert.equal(act({ ...player, wallet: { ...player.wallet, fuel: 0 } }, 'encounter-order', { ...ident(player), order: 'burn' }).ok, false);
-  // Scrapper Gang docks boarders and Repel sends a defender.
+  // Scrapper Gang docks boarders; sending crew to the boarded room is a move command.
   let scrap = jump(staffed, { node: 'scrapyard', rng: () => 0.95 }).player;
   assert.equal(scrap.activeTravelFight.encounterId, 'scrapper_gang');
   assert.ok(scrap.activeEncounter.boarders, 'boarders armed');
-  while (!['incoming', 'aboard'].includes(scrap.activeEncounter.boarders.phase) && !scrap.activeEncounter.result) {
+  while (scrap.activeEncounter.boarders.phase !== 'aboard' && !scrap.activeEncounter.result) {
     scrap = act(scrap, 'encounter-advance', ident(scrap)).player;
   }
-  const repelled = act(scrap, 'encounter-order', { ...ident(scrap), order: 'repel' });
-  assert.equal(repelled.ok, true, repelled.reason);
-  assert.ok(repelled.player.activeEncounter.boarders.defenderId);
-  assert.equal(validTravelFight(reload(repelled.player)), true);
+  if (!scrap.activeEncounter.result) {
+    const room = scrap.activeEncounter.boarders.room;
+    const sent = act(scrap, 'encounter-command', { ...ident(scrap), command: { type: 'move', crewId: gunner.instanceId, room } });
+    assert.equal(sent.ok, true, sent.reason);
+    assert.equal(sent.player.activeEncounter.intent.moves[gunner.instanceId], room);
+    assert.equal(sent.player.activeEncounter.revision, scrap.activeEncounter.revision, 'commands do not advance time');
+    assert.equal(validTravelFight(reload(sent.player)), true);
+    const moved = act(sent.player, 'encounter-advance', ident(sent.player)).player;
+    assert.equal(moved.activeEncounter.crew.find(c => c.id === gunner.instanceId).room, room);
+  }
 }
 
 // 5. Downed near-misses offer Rally; the first is free, as in contracts.
 {
   let downed = null;
-  const weak = veteran; // no gunner on Weapons: close fights
+  // No gunner on Weapons and a battered hull (damage carries over in v3): close fights.
+  const weak = { ...veteran, ship: { ...veteran.ship, hull: 30 } };
   for (let jumps = 0; jumps < 300 && !downed; jumps += 1) {
     let player = jump({ ...weak, stats: { ...weak.stats, jumps } }).player;
-    for (let i = 0; i < 40 && player.activeTravelFight.stage === 'fight' && player.activeEncounter.phase !== 'downed'; i += 1) {
+    for (let i = 0; i < 200 && player.activeTravelFight.stage === 'fight' && player.activeEncounter.phase !== 'downed'; i += 1) {
       player = act(player, 'encounter-advance', ident(player)).player;
     }
     if (player.activeEncounter.phase === 'downed') downed = player;
@@ -207,7 +219,7 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   assert.equal(reload(downed).activeEncounter.phase, 'downed');
   const view = sessionModels(downed, {}, now).activeTravelView.encounter;
   assert.equal(view.downed.free, true);
-  assert.match(renderOverlays(downed, { isHome: true, activeTravelView: sessionModels(downed, {}, now).activeTravelView, now }), /data-order="rally"/);
+  assert.match(renderShipEncounter(sessionModels(downed, {}, now).activeTravelView), /data-order="rally"/);
   const rallied = act(downed, 'encounter-order', { ...ident(downed), order: 'rally' });
   assert.equal(rallied.ok, true, rallied.reason);
   assert.equal(rallied.player.flags.rallyFreeUsed, true);
@@ -228,7 +240,7 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
     { ...player, activeTravelFight: { ...player.activeTravelFight, revision: 3 } },
     { ...player, activeTravelFight: { ...player.activeTravelFight, nodeId: 'nowhere' } },
     { ...player, activeTravelFight: { ...player.activeTravelFight, stage: 'return' } },
-    { ...player, activeEncounter: { ...player.activeEncounter, enemy: { ...player.activeEncounter.enemy, damage: 45 } } },
+    { ...player, activeEncounter: { ...player.activeEncounter, enemy: { ...player.activeEncounter.enemy, weapons: player.activeEncounter.enemy.weapons.map(w => ({ ...w, damage: 1 })) } } },
     { ...player, activeEncounter: null },
   ];
   for (const bad of tampered) {
@@ -280,14 +292,14 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
     clearTimer: () => {},
   });
   assert.equal(scheduler.schedule(), true);
-  assert.equal(timers.at(-1).ms, FIGHT_BEAT_MS.normal);
+  assert.equal(timers.at(-1).ms, 1000);
   await timers.at(-1).callback();
   assert.equal(player.activeEncounter.beat, 0, 'paused fights do not advance');
   paused = false;
   await timers.at(-1).callback();
   await timers.at(-1).callback();
   assert.equal(player.activeEncounter.beat, 1, 'resumed fight advances one beat per tick');
-  for (let i = 0; i < 60 && player.activeTravelFight.stage === 'fight' && player.activeEncounter.phase !== 'downed'; i += 1) await timers.at(-1).callback();
+  for (let i = 0; i < 200 && player.activeTravelFight.stage === 'fight' && player.activeEncounter.phase !== 'downed'; i += 1) await timers.at(-1).callback();
   // A downed crew waits for the captain's Rally-or-salvage choice instead of auto-advancing.
   if (player.activeEncounter.phase === 'downed') {
     assert.equal(shouldAutoAdvanceFight(player), false);

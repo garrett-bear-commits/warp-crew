@@ -166,14 +166,18 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
   const rewards = contract.profile === 'distress'
     ? normalizeCurrencyReward(rawRewards)
     : normalizeCurrencyReward(scaleSitePayout(rawRewards, player, { kind: 'combat', visits }));
-  const hullLoss = Math.max(0, 30 - encounter.hull);
+  // v3 fights run on the ship's own hull; older fights ran on a 30-point fight hull.
+  const ftl = encounter.version === 3;
+  const hullLoss = Math.max(0, ftl ? encounter.startHull - encounter.hull : 30 - encounter.hull);
   let nextPlayer = {
     ...player,
-    ship: { ...player.ship, hull: Math.max(1, (player.ship?.hull ?? 100) - hullLoss) },
+    // The dock-repair clock starts when the fight ends.
+    ship: { ...player.ship, hull: ftl ? Math.max(1, encounter.hull) : Math.max(1, (player.ship?.hull ?? 100) - hullLoss), hullRepairAt: now },
   };
   let injuredCrewId = null;
   // A failed boarding party always comes home hurt; otherwise only unbraced losses injure.
-  if (encounter.tactics?.board?.success === false || (lost && !encounter.orders?.brace?.uses)) {
+  // v3 fights cost the ship's hull instead; only a failed boarding party injures there.
+  if (encounter.tactics?.board?.success === false || (lost && encounter.version !== 3 && !encounter.orders?.brace?.uses)) {
     // Bracing during the fight keeps the crew safe, as Brace did before.
     const participants = (contract.participantIds || []).filter(id => nextPlayer.crew?.some(member => member.instanceId === id));
     injuredCrewId = participants.length ? participants[Math.abs(encounter.seed) % participants.length] : null;
