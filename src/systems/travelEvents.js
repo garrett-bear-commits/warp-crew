@@ -169,6 +169,12 @@ export function choiceStatus(player, choice, now = Date.now()) {
   return { available: true, reason: null, doer: doer.member };
 }
 
+/**
+ * Explore events pay this share of the beacon's old instant payout in credits. Trimmed so the
+ * map adds to contracts instead of replacing them (medals, reputation and story rewards are untouched).
+ */
+export const EVENT_CREDIT_SHARE = 0.6;
+
 /** What `pay` of this event's base is worth to this captain right now. */
 export function eventReward(player, ev, pay) {
   const fraction = Math.max(0, Math.min(1, pay || 0));
@@ -178,7 +184,7 @@ export function eventReward(player, ev, pay) {
     const beat = STORY_BEATS[ev.base.flag];
     return Object.fromEntries(CURRENCY_KEYS.map(key => [key, Math.floor((beat?.rewards?.[key] || 0) * fraction)]));
   }
-  const raw = Object.fromEntries(CURRENCY_KEYS.map(key => [key, Math.floor((ev.base[key] || 0) * fraction)]));
+  const raw = Object.fromEntries(CURRENCY_KEYS.map(key => [key, Math.floor((ev.base[key] || 0) * fraction * (key === 'credits' ? EVENT_CREDIT_SHARE : 1))]));
   let reward = scaleSitePayout(raw, player, { kind: ev.base.kind, visits });
   if (ev.base.kind === 'trade' || ev.base.kind === 'delivery') reward = { ...reward, credits: tradePayout(reward.credits, fightingCrew(player)) };
   return Object.fromEntries(CURRENCY_KEYS.map(key => [key, reward[key] || 0]));

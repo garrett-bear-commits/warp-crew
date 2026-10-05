@@ -8,7 +8,7 @@ import { NODES, visibleNodes, careerDay } from '../data/sectors.js';
 import { encounterById } from './combat.js';
 
 export const WALLS = Object.freeze([
-  { id: 'spur', encounterId: 'corsair_king', destinationId: 'pirate_nest', pool: 130, opens: 'veil_gate', minDay: 3 },
+  { id: 'spur', encounterId: 'corsair_king', destinationId: 'pirate_nest', pool: 100, opens: 'veil_gate', minDay: 3 },
   { id: 'veil', encounterId: 'swarm_frigate', destinationId: 'swarm_scar', pool: 130, opens: 'ember_gate' },
   { id: 'ember', encounterId: 'ember_raider', destinationId: 'kiln_reach', pool: 160, opens: 'hollow_mouth' },
   { id: 'hollow', encounterId: 'hollow_shade', destinationId: 'dark_well', pool: 190, opens: 'halo_approach' },
