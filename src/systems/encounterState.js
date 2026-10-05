@@ -165,6 +165,10 @@ export function guidedTargetDone(encounter) {
     : encounter?.orders?.targetWeapons?.used === true;
 }
 
+export function fightCrewLaunched(encounter, participantIds) {
+  return Array.isArray(participantIds) && encounter.crew.every(member => participantIds.includes(member.id));
+}
+
 /** Hull a settled fight took off the ship (v3 fights use the ship's own hull). */
 export const fightHullLoss = encounter => (encounter.version === FTL_VERSION ? encounter.startHull - encounter.hull : 30 - encounter.hull);
 
@@ -270,7 +274,9 @@ function validSnapshot(encounter, contract, tutorial) {
     || (contract.profile === 'distress' ? !(encounter.kind === 'guided' || encounter.guided === true) : encounter.kind !== 'normal' || encounter.guided === true)
     || encounter.seed !== contract.routeSeed
     || contract.revision !== entryRevision + encounter.beat
-    || !validEncounterBody(encounter)) return false;
+    || !validEncounterBody(encounter)
+    // v3 fights carry their crew: only crew who launched with the contract can be in it.
+    || (encounter.version === FTL_VERSION && !fightCrewLaunched(encounter, contract.participantIds))) return false;
   if (contract.stage === 'return') {
     const settled = (encounter.result === 'win' && contract.result?.success === true)
       || (encounter.result === 'loss' && contract.profile !== 'distress' && contract.result?.success === false);

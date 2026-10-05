@@ -1,5 +1,6 @@
 // @ts-nocheck
 /** Shared production payout and combat mutations; preview callers use disposable players. */
+import { WALL_BY_ID, siegeState } from './walls.js';
 import { encounterById, resolveCombatOrder, crewPower, rubberBandPower } from './combat.js';
 import { scaleSitePayout } from './economy.js';
 import { combatBonuses, hullAfterCombat, injuryMinutesFor, tradePayout } from './passives.js';
@@ -133,6 +134,11 @@ export function resolveContractCombatPayout(player, contract, orderId, { rng = M
   };
 }
 
+function wallRemaining(player, contract, now) {
+  const wall = WALL_BY_ID[contract.wall?.id];
+  return wall ? siegeState(player, wall, now).remaining : Infinity;
+}
+
 /** Construct a prize from a saved crew-run victory without rolling combat again. */
 export function resolveSimulatedCombatPayout(player, contract, encounter, now = Date.now()) {
   const catalog = encounterById(contract.encounterId);
@@ -143,7 +149,8 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
     id: contract.wall.id,
     segment: wallSegment,
     dealt: wallSegment - Math.max(0, encounter.enemy.hull),
-    defeated: !lost && encounter.enemy.remainingBefore != null && encounter.enemy.remainingBefore <= wallSegment,
+    // Whether the flagship falls comes from the save's siege record, not from the fight snapshot.
+    defeated: !lost && wallRemaining(player, contract, now) <= wallSegment,
   } : null;
   const flagshipDown = wallOutcome?.defeated === true;
   const winRewards = contract.profile === 'distress'

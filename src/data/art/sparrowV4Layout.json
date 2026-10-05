@@ -1,0 +1,19 @@
+{
+  "image": "art/ships/v4/sparrow-v4.png",
+  "sourceSize": { "width": 1536, "height": 2560 },
+  "spine": { "left": 45, "top": 17, "width": 10, "height": 70 },
+  "rooms": [
+    { "id": "bridge", "label": "Bridge", "left": 29, "top": 8, "width": 42, "height": 14, "workAnchor": { "x": 50, "y": 16 }, "door": { "room": { "x": 50, "y": 22 }, "spine": { "x": 50, "y": 24 } } },
+    { "id": "shields", "label": "Shields", "left": 18, "top": 23, "width": 27, "height": 14, "workAnchor": { "x": 31, "y": 30 }, "door": { "room": { "x": 45, "y": 30 }, "spine": { "x": 45, "y": 30 } } },
+    { "id": "weapons", "label": "Weapons", "left": 55, "top": 23, "width": 27, "height": 14, "workAnchor": { "x": 68, "y": 30 }, "door": { "room": { "x": 55, "y": 30 }, "spine": { "x": 55, "y": 30 } } },
+    { "id": "sensors", "label": "Sensors", "left": 18, "top": 39, "width": 27, "height": 14, "workAnchor": { "x": 31, "y": 46 }, "door": { "room": { "x": 45, "y": 46 }, "spine": { "x": 45, "y": 46 } } },
+    { "id": "medbay", "label": "Medbay", "left": 55, "top": 39, "width": 27, "height": 14, "workAnchor": { "x": 68, "y": 46 }, "door": { "room": { "x": 55, "y": 46 }, "spine": { "x": 55, "y": 46 } } },
+    { "id": "quarters", "label": "Quarters", "left": 18, "top": 55, "width": 27, "height": 14, "workAnchor": { "x": 31, "y": 62 }, "door": { "room": { "x": 45, "y": 62 }, "spine": { "x": 45, "y": 62 } } },
+    { "id": "mess", "label": "Mess", "left": 55, "top": 55, "width": 27, "height": 14, "workAnchor": { "x": 68, "y": 62 }, "door": { "room": { "x": 55, "y": 62 }, "spine": { "x": 55, "y": 62 } } },
+    { "id": "cargo", "label": "Cargo", "left": 18, "top": 71, "width": 27, "height": 14, "workAnchor": { "x": 31, "y": 78 }, "door": { "room": { "x": 45, "y": 78 }, "spine": { "x": 45, "y": 78 } } },
+    { "id": "armory", "label": "Armory", "left": 55, "top": 71, "width": 27, "height": 14, "workAnchor": { "x": 68, "y": 78 }, "door": { "room": { "x": 55, "y": 78 }, "spine": { "x": 55, "y": 78 } } },
+    { "id": "engineering", "label": "Engineering", "left": 28, "top": 86, "width": 44, "height": 9, "workAnchor": { "x": 50, "y": 90 }, "door": { "room": { "x": 50, "y": 86 }, "spine": { "x": 50, "y": 84 } } }
+  ],
+  "airlock": { "x": 9, "y": 76 },
+  "thrusters": [ { "x": 30, "y": 97 }, { "x": 43, "y": 97 }, { "x": 57, "y": 97 }, { "x": 70, "y": 97 } ]
+}

@@ -95,6 +95,12 @@ export function pirateDrawSize(naturalWidth, naturalHeight, scale) {
 }
 
 export function setEncounterSnapshot(encounter) {
+  // A new fight never inherits the last one's shots in flight.
+  if (encounter?.acceptanceId !== crewEncounter?.acceptanceId) {
+    ftlShots = [];
+    ftlSparks = [];
+    ftlRipples = [];
+  }
   const entering = !crewEncounter && Boolean(encounter);
   const leaving = Boolean(crewEncounter) && !encounter;
   crewEncounter = encounter || null;

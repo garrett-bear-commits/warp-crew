@@ -230,12 +230,24 @@ function encounterView(player, encounter, { settled, ui = {}, now = Date.now() }
   };
 }
 
+// Reward bands simulate whole fights per offer, so they are cached: the key is the
+// save minus what changes every fight beat, plus the minute (injury and day timers).
+let bandCache = { key: null, bands: null };
+function boardRewardBands(player, now) {
+  const { activeEncounter, activeContract, fuelClaimAt, ...rest } = player;
+  const key = JSON.stringify([rest, activeContract ? { ...activeContract, revision: 0 } : null, Math.floor(now / 60000)]);
+  if (bandCache.key !== key) {
+    bandCache = { key, bands: Object.fromEntries(player.contractBoard.offers.map(offer => [offer.id, contractRewardBand(player, offer, { now })])) };
+  }
+  return bandCache.bands;
+}
+
 export function sessionModels(player, ui = {}, now = Date.now()) {
   const contract = player.activeContract;
   const stations = stationOutputs(player, now);
   const models = { missionView: ui.missionView || 'contracts', dailyPlan: dailyPlan(player, now),
-    contractBoard: player.contractBoard ? { ...player.contractBoard, offers: player.contractBoard.offers.map(offer => {
-      const rewardBand = contractRewardBand(player, offer, { now });
+    contractBoard: player.contractBoard ? { ...player.contractBoard, offers: player.contractBoard.offers.map((offer, _, __, bands = boardRewardBands(player, now)) => {
+      const rewardBand = bands[offer.id];
       return { ...offer, rewardBand, primaryReward: rewardBand.label, enabled: rewardBand.available && !player.contractBoard.completedOfferIds.includes(offer.id) };
     }) } : null, activeContractView: null, activeTravelView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {} };
   if (ui.reviewedOfferId) {
