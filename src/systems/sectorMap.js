@@ -36,6 +36,8 @@ export function laneCheck(player, nodeId, now = Date.now()) {
   const here = player?.location || HOME;
   if (!NODES[nodeId]) return { ok: false, reason: 'unknown_node' };
   if (nodeId === here) return { ok: false, reason: 'already_here' };
+  // An unbroken Siege wall always holds its gate shut (even with an old sector flag).
+  if (gateBlockedByWall(player, nodeId)) return { ok: false, reason: 'siege_wall' };
   const visible = visibleSet(player, now);
   if (!visible.has(nodeId)) return { ok: false, reason: 'locked_node' };
   if (hasLane(here, nodeId)) return { ok: true, via: 'lane' };

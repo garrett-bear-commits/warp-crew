@@ -158,6 +158,7 @@ const SESSION_ERROR_COPY = {
   no_lane: 'No lane from here. Jump along the lanes.',
   already_here: 'You are already here.',
   locked_node: 'That beacon is not on your charts yet.',
+  siege_wall: 'A flagship holds this gate. Break its Siege wall first.',
   event_active: 'Deal with the event first.',
   stale_event: 'That event is over. Check the log.',
   no_active_event: 'That event is over. Check the log.',

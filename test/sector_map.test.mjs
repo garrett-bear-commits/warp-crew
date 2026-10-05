@@ -122,7 +122,7 @@ const guided = { ...vet, tutorial: { script: 5, completed: true, phase: 'done' }
 const walled = sectorMapModel(guided, { selectedMapNode: 'veil_gate' }, now).beacons.find(b => b.id === 'veil_gate');
 assert.equal(walled.wallLocked, true);
 assert.equal(walled.reachable, false);
-assert.equal(sessionAction(guided, {}, 'travel-to', { node: 'veil_gate' }, { now }).reason, 'locked_node');
+assert.equal(sessionAction(guided, {}, 'travel-to', { node: 'veil_gate' }, { now }).reason, 'siege_wall');
 const open = sectorMapModel({ ...guided, flags: { ...guided.flags, wall_spur: true } }, {}, now).beacons.find(b => b.id === 'veil_gate');
 assert.equal(open.wallLocked, false);
 assert.equal(open.reachable, true);
@@ -147,4 +147,11 @@ assert.equal(sessionAction(vet, {}, 'map-select', { node: '<bad>' }, { now }).ui
 assert.equal(sessionAction(vet, {}, 'map-sector', { sector: 'veil' }, { now }).ui.mapSector, 'veil');
 assert.equal(sessionModels(vet, { missionView: 'explore', selectedMapNode: 'lane_a' }, now).sectorMap.card.id, 'lane_a');
 
+// An unbroken Siege wall always holds its gate, even for a save that carries an old sector flag.
+{
+  const { laneCheck } = await import('../src/systems/sectorMap.js');
+  const walled = { tutorial: { script: 5, completed: true, phase: 'done' }, flags: { veil_opened: true }, story: {}, stats: {}, location: 'ice_spur', ship: { hull: 100 } };
+  assert.equal(laneCheck(walled, 'veil_gate').ok, false);
+  assert.equal(laneCheck(walled, 'veil_gate').reason, 'siege_wall');
+}
 console.log('sector_map.test.mjs OK');
