@@ -12,7 +12,7 @@ pnpm test:model
 
 ```bash
 pnpm db:up
-DATABASE_URL_TEST=postgres://postgres:postgres@localhost:55432/foundation_test pnpm test:pg
+DATABASE_URL_TEST=postgres://postgres:postgres@localhost:55442/foundation_test pnpm test:pg
 pnpm test:e2e
 git diff --check
 git archive HEAD | docker build -f apps/server/Dockerfile -
