@@ -16,6 +16,22 @@
         "--strictPort"
       ],
       "port": 5174
+    },
+    {
+      "name": "warp-crew-stage3",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": [
+        "pnpm",
+        "-F",
+        "@warpcrew/client",
+        "exec",
+        "vite",
+        "--host",
+        "--port",
+        "5186",
+        "--strictPort"
+      ],
+      "port": 5186
     }
   ]
 }
