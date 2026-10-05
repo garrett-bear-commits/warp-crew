@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Admin inspector (ADR-021, §7): source hygiene, textContent-only rendering, images by magic
 // bytes, and the built index.html shape (no inline script/style, relative asset URLs only).
-import { beforeAll, describe, it, expect } from 'vitest';
+import { beforeAll, describe, it, expect, vi } from 'vitest';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +47,12 @@ import {
   isIncognitoLoaded,
   isIncognitoReady,
 } from '../../admin-inspector/src/incognito.ts';
+
+// These tests exercise the inspector against the template game's vocabulary (gems, gold); the
+// shipped pointer (game-grants.ts) names this repository's game.
+vi.mock('../../admin-inspector/src/game-grants.ts', async () => ({
+  grantVocabulary: (await import('../../games/template/grants.ts')).templateGrants,
+}));
 
 const here = dirname(fileURLToPath(import.meta.url));
 const inspectorDir = resolve(here, '..', '..', 'admin-inspector');

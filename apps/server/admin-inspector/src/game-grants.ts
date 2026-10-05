@@ -3,4 +3,4 @@
 // read rewards with it, and Fix purchase names the premium currency after it. A game points this
 // at its own games/<id>/grants.ts, the vocabulary its policy enforces at mint, so the inspector
 // never confirms a grant the server would refuse. Nothing else in the inspector names a game.
-export { templateGrants as grantVocabulary } from '../../games/template/grants.ts';
+export { warpcrewGrants as grantVocabulary } from '../../games/warpcrew/grants.ts';

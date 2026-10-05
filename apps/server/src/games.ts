@@ -5,10 +5,13 @@ import { idleCivGame } from '../games/idle-civ/game.config.ts';
 import { idleCivPolicy } from '../games/idle-civ/policy.ts';
 import { templateGame } from '../games/template/game.config.ts';
 import { templatePolicy } from '../games/template/policy.ts';
+import { warpcrewGame } from '../games/warpcrew/game.config.ts';
+import { warpcrewPolicy } from '../games/warpcrew/policy.ts';
 
 export const GAMES: Record<string, { game: GameConfig; policy: GamePolicy }> = {
   template: { game: templateGame, policy: templatePolicy },
   'idle-civ': { game: idleCivGame, policy: idleCivPolicy },
+  warpcrew: { game: warpcrewGame, policy: warpcrewPolicy },
 };
 
 /**
