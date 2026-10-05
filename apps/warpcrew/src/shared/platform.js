@@ -78,7 +78,15 @@ export function getMockLog() {
   return [...mockLog];
 }
 
-export async function init(options = {}) {
+let initPromise = null;
+
+/** Initialise the Jest SDK once; every later call (the core's Jest provider included) shares it. */
+export function init(options = {}) {
+  if (!initPromise) initPromise = initSdk(options);
+  return initPromise;
+}
+
+async function initSdk(options = {}) {
   // Wait briefly for async CDN inject from index.html
   if (typeof window !== 'undefined' && window.__jestSdkReady) {
     try {
@@ -151,21 +159,6 @@ export function getPlayer() {
   return mockPlayer;
 }
 
-/** Jest's signed player token for server calls; null outside Jest (mock has none). */
-export async function getPlayerSigned() {
-  const sdk = globalJest();
-  if (ready && typeof sdk?.getPlayerSigned === 'function') {
-    try {
-      const result = await sdk.getPlayerSigned();
-      const playerId = result?.player?.playerId;
-      if (playerId && typeof result.playerSigned === 'string') return { playerId, token: result.playerSigned };
-    } catch (e) {
-      console.warn('[platform] getPlayerSigned', e);
-    }
-  }
-  return null;
-}
-
 export function getEntryPayload() {
   const sdk = globalJest();
   if (ready && sdk?.getEntryPayload) {
@@ -231,37 +224,6 @@ export function captureEvent(name, props = {}) {
   mockLog.push({ type: 'event', name, props });
 }
 
-export const cloudData = {
-  get(key) {
-    const sdk = globalJest();
-    if (ready && sdk?.data?.get) return sdk.data.get(key);
-    try {
-      const raw = localStorage.getItem('warpcrew.cloud.' + key);
-      return raw == null ? undefined : JSON.parse(raw);
-    } catch {
-      return undefined;
-    }
-  },
-  set(keyOrObj, value) {
-    const sdk = globalJest();
-    if (ready && sdk?.data?.set) {
-      if (typeof keyOrObj === 'object') return sdk.data.set(keyOrObj);
-      return sdk.data.set({ [keyOrObj]: value });
-    }
-    if (typeof keyOrObj === 'object') {
-      for (const [k, v] of Object.entries(keyOrObj)) {
-        localStorage.setItem('warpcrew.cloud.' + k, JSON.stringify(v));
-      }
-      return;
-    }
-    localStorage.setItem('warpcrew.cloud.' + keyOrObj, JSON.stringify(value));
-  },
-  async flush() {
-    const sdk = globalJest();
-    if (ready && sdk?.data?.flush) return sdk.data.flush();
-  },
-};
-
 export async function scheduleNotification(options) {
   const sdk = globalJest();
   if (ready && sdk?.notifications?.scheduleNotification) {
@@ -290,73 +252,27 @@ export function getMockScheduled() {
   return [...mockScheduled.entries()].map(([id, v]) => ({ id, ...v }));
 }
 
+/** The local mock's catalog (Jest reports prices in minor units, cents; the mock matches). */
+export const MOCK_PRODUCTS = Object.freeze([
+  { sku: 'wc_gems_s', name: 'Gem Pouch', price: 199, currency: 'USD' },
+  { sku: 'wc_gems_m', name: 'Gem Pack', price: 499, currency: 'USD' },
+  { sku: 'wc_gems_l', name: 'Gem Crate', price: 999, currency: 'USD' },
+  { sku: 'wc_gems_xl', name: 'Gem Vault', price: 1999, currency: 'USD' },
+  { sku: 'wc_gems_xxl', name: 'Gem Hoard', price: 4999, currency: 'USD' },
+  { sku: 'wc_starter_kit', name: "New Captain's Kit", price: 499, currency: 'USD' },
+  { sku: 'wc_wall_spur', name: 'Corsair Breaker Pack', price: 499, currency: 'USD' },
+  { sku: 'wc_wall_veil', name: 'Frigate Breaker Pack', price: 799, currency: 'USD' },
+  { sku: 'wc_wall_ember', name: 'Raider Breaker Pack', price: 999, currency: 'USD' },
+  { sku: 'wc_wall_hollow', name: 'Shade Breaker Pack', price: 1299, currency: 'USD' },
+  { sku: 'wc_wall_crown', name: 'Throne Breaker Pack', price: 1499, currency: 'USD' },
+]);
+
 export async function getProducts() {
   const sdk = globalJest();
   if (ready && sdk?.payments?.getProducts) {
     return sdk.payments.getProducts();
   }
-  return [
-    // Jest reports prices in minor units (cents); the local mock matches.
-    { sku: 'wc_gems_s', name: 'Gem Pouch', price: 199, currency: 'USD' },
-    { sku: 'wc_gems_m', name: 'Gem Pack', price: 499, currency: 'USD' },
-    { sku: 'wc_gems_l', name: 'Gem Crate', price: 999, currency: 'USD' },
-    { sku: 'wc_gems_xl', name: 'Gem Vault', price: 1999, currency: 'USD' },
-    { sku: 'wc_gems_xxl', name: 'Gem Hoard', price: 4999, currency: 'USD' },
-    { sku: 'wc_starter_kit', name: "New Captain's Kit", price: 499, currency: 'USD' },
-    { sku: 'wc_wall_spur', name: 'Corsair Breaker Pack', price: 499, currency: 'USD' },
-    { sku: 'wc_wall_veil', name: 'Frigate Breaker Pack', price: 799, currency: 'USD' },
-    { sku: 'wc_wall_ember', name: 'Raider Breaker Pack', price: 999, currency: 'USD' },
-    { sku: 'wc_wall_hollow', name: 'Shade Breaker Pack', price: 1299, currency: 'USD' },
-    { sku: 'wc_wall_crown', name: 'Throne Breaker Pack', price: 1499, currency: 'USD' },
-  ];
-}
-
-export async function purchaseProduct(productSku) {
-  const sdk = globalJest();
-  if (ready && sdk?.payments?.beginPurchase) {
-    const begin = await sdk.payments.beginPurchase({ productSku });
-    if (begin.result === 'cancel') return { ok: false, cancelled: true };
-    if (begin.result === 'error')
-      return { ok: false, error: begin.error || 'error' };
-    return {
-      ok: true,
-      purchase: begin.purchase,
-      purchaseSigned: begin.purchaseSigned,
-      productSku: begin.purchase?.productSku || productSku,
-    };
-  }
-  mockLog.push({ type: 'purchase', productSku });
-  return {
-    ok: true,
-    purchase: {
-      purchaseToken: 'local_' + productSku + '_' + Date.now(),
-      productSku,
-      createdAt: Date.now(),
-      completedAt: null,
-      price: 0,
-      currency: 'USD',
-      sandbox: true,
-    },
-    productSku,
-    mock: true,
-  };
-}
-
-export async function completePurchase(purchaseToken) {
-  const sdk = globalJest();
-  if (ready && sdk?.payments?.completePurchase) {
-    return sdk.payments.completePurchase({ purchaseToken });
-  }
-  mockLog.push({ type: 'completePurchase', purchaseToken });
-  return { result: 'success' };
-}
-
-export async function getIncompletePurchases() {
-  const sdk = globalJest();
-  if (ready && sdk?.payments?.getIncompletePurchases) {
-    return sdk.payments.getIncompletePurchases();
-  }
-  return { hasMore: false, purchases: [], purchasesSigned: '' };
+  return MOCK_PRODUCTS.map((p) => ({ ...p }));
 }
 
 // --- Subscriptions (https://docs.jest.com/sdk/subscriptions) -------------

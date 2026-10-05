@@ -1,0 +1,93 @@
+{
+ "version": 3,
+ "captainName": "Vex",
+ "createdAt": 1791217033199,
+ "wallet": {
+  "credits": 250,
+  "fuel": 8,
+  "gems": 40,
+  "medals": 25,
+  "reputation": 0
+ },
+ "fuelMax": 10,
+ "fuelRatePerHour": 1,
+ "fuelClaimAt": 1791217033199,
+ "ship": {
+  "shipId": "sparrow",
+  "systems": {
+   "engines": 1,
+   "shields": 1,
+   "cargo": 1,
+   "weapons": 1,
+   "quarters": 0
+  },
+  "cosmetics": {},
+  "ownedHulls": [
+   "sparrow"
+  ]
+ },
+ "crewSlots": 2,
+ "crew": [
+  {
+   "instanceId": "merc_rex_txlqhlt",
+   "templateId": "merc_rex",
+   "name": "Rex Vale",
+   "role": "pilot",
+   "rarity": "common",
+   "species": "human",
+   "passive": {
+    "fuelCostReduce": 0
+   },
+   "level": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0,
+   "blurb": "Ex-hauler pilot. Steady hands."
+  },
+  {
+   "instanceId": "merc_bolt_5w09yr1",
+   "templateId": "merc_bolt",
+   "name": "Bolt",
+   "role": "engineer",
+   "rarity": "common",
+   "species": "droid",
+   "passive": {
+    "repairBonus": 0.05
+   },
+   "level": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0,
+   "blurb": "Refurbished yard droid."
+  }
+ ],
+ "reserve": [],
+ "activeExpedition": null,
+ "location": "station_home",
+ "flags": {},
+ "loginStreak": 0,
+ "lastLoginDay": null,
+ "dailyPullAvailable": true,
+ "stats": {
+  "jumps": 3,
+  "combatsWon": 2,
+  "expeditions": 1
+ },
+ "story": {
+  "chapter": 0,
+  "eclipseIntro": false
+ },
+ "tutorial": {
+  "stepIndex": 0,
+  "completed": false,
+  "dismissed": false,
+  "firstTravel": false,
+  "firstCombat": false,
+  "firstExpedition": false,
+  "hiredThird": false,
+  "slot3Unlocked": false,
+  "slot4Unlocked": false
+ }
+}

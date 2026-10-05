@@ -1,28 +1,40 @@
-import { PRODUCT_DEFS, applyGrant, buyProduct } from '../src/systems/iap.js';
+import assert from 'node:assert/strict';
+import { PRODUCT_DEFS } from '../src/systems/iap.js';
 import { createNewPlayer } from '../src/systems/player.js';
 import { NOTIF_IDS, syncFuelFullNotification } from '../src/systems/notifications.js';
-import { getMockLog, getMockScheduled, init } from '../src/shared/platform.js';
+import { getMockLog, getMockScheduled, init, getProducts } from '../src/shared/platform.js';
+import { applyGrantRewards, rewardsFromTable } from '../src/core/grants.js';
+import { nodeWarpcrew } from './helpers/coreClient.mjs';
 
 await init();
 const p0 = createNewPlayer();
-const granted = applyGrant(p0, PRODUCT_DEFS.wc_gems_s.grant);
-if (granted.wallet.gems < p0.wallet.gems + 100) throw new Error('gem grant');
+// The single grant path: a products.js grant as core rewards.
+const granted = applyGrantRewards(p0, rewardsFromTable(PRODUCT_DEFS.wc_gems_s.grant)).player;
+assert.equal(granted.wallet.gems, p0.wallet.gems + 100, 'gem grant');
 
-const buy = await buyProduct(p0, 'wc_starter_kit');
-if (!buy.ok) throw new Error('buy mock failed');
-if (buy.player.wallet.fuel < p0.wallet.fuel) throw new Error('fuel not granted');
+// No server (the Pages QA build): the core's local mock checkout delivers on the device.
+const { wc } = nodeWarpcrew({ playerId: 'iap-offline' });
+await wc.boot();
+const before = wc.state();
+const buy = await wc.purchases.buy('wc_starter_kit');
+assert.equal(buy.ok, true, 'local mock purchase');
+assert.ok(wc.state().wallet.fuel >= before.wallet.fuel, 'fuel granted (clamped to the tank)');
+assert.equal(wc.state().wallet.gems, before.wallet.gems + 250);
 // One-time packs cannot be bought twice; the drydock token grant lands outside the wallet.
-if (!buy.player.oneTimePurchases?.includes('wc_starter_kit')) throw new Error('one-time purchase not recorded');
-if ((await buyProduct(buy.player, 'wc_starter_kit')).reason !== 'already_owned') throw new Error('one-time pack sold twice');
-const wall = await buyProduct(p0, 'wc_wall_spur');
-if (wall.player.drydockFinishes !== 1) throw new Error('drydock finish token missing');
-if (Object.hasOwn(wall.player.wallet, 'drydockFinishes')) throw new Error('token leaked into wallet');
+assert.ok(wc.state().oneTimePurchases.includes('wc_starter_kit'), 'one-time purchase recorded');
+assert.equal((await wc.purchases.buy('wc_starter_kit')).reason, 'already_owned', 'one-time pack sold twice');
+assert.equal((await wc.purchases.buy('wc_wall_spur')).ok, true);
+assert.equal(wc.state().drydockFinishes, 1, 'drydock finish token');
+assert.ok(!Object.hasOwn(wc.state().wallet, 'drydockFinishes'), 'token leaked into wallet');
+assert.equal((await wc.purchases.buy('nope')).reason, 'unknown_sku');
+assert.ok(wc.platform.payments, 'core payments provider');
+wc.client.destroy();
+
 // No product below the $1.99 floor.
-const { getProducts } = await import('../src/shared/platform.js');
-if ((await getProducts()).some((product) => product.price < 199)) throw new Error('product below $1.99');
+assert.ok(!(await getProducts()).some((product) => product.price < 199), 'product below $1.99');
 
 // Drain some fuel so fuel-full schedules
-let p = { ...buy.player, wallet: { ...buy.player.wallet, fuel: 2 }, fuelClaimAt: Date.now() };
+const p = { ...granted, wallet: { ...granted.wallet, fuel: 2 }, fuelClaimAt: Date.now() };
 await syncFuelFullNotification(p);
 const scheduled = getMockScheduled();
 if (!scheduled.some((s) => s.id === NOTIF_IDS.fuelFull || s.identifier === NOTIF_IDS.fuelFull)) {

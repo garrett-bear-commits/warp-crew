@@ -1,0 +1,84 @@
+{
+ "version": 9,
+ "captainName": "Vex",
+ "captainInstanceId": null,
+ "createdAt": 1791217033944,
+ "wallet": {
+  "credits": 80,
+  "fuel": 8,
+  "gems": 40,
+  "medals": 0,
+  "reputation": 0
+ },
+ "fuelMax": 10,
+ "fuelRatePerHour": 1,
+ "fuelClaimAt": 1791217033944,
+ "ship": {
+  "shipId": "sparrow",
+  "name": "Sparrow",
+  "systems": {
+   "engines": 1,
+   "shields": 1,
+   "cargo": 1,
+   "weapons": 1,
+   "quarters": 0,
+   "sensors": 0,
+   "medbay": 0
+  },
+  "cosmetics": {},
+  "ownedHulls": [
+   "sparrow"
+  ],
+  "hull": 100
+ },
+ "crewSlots": 2,
+ "crew": [],
+ "stationAssignments": {},
+ "reserve": [],
+ "iapFulfilled": [],
+ "activeExpedition": null,
+ "contractBoard": null,
+ "activeContract": null,
+ "activeEncounter": null,
+ "dailyLoop": {
+  "dayKey": null,
+  "contract": false,
+  "improve": false,
+  "away": false
+ },
+ "location": "station_home",
+ "flags": {},
+ "gacha": {
+  "pityRare": 0,
+  "pityLegend": 0,
+  "luck": 0,
+  "pulls": 0,
+  "lastRarity": null,
+  "history": []
+ },
+ "loginStreak": 0,
+ "lastLoginDay": null,
+ "dailyPullAvailable": true,
+ "stats": {
+  "jumps": 3,
+  "combatsWon": 2,
+  "expeditions": 1,
+  "visits": {},
+  "planetRuns": {},
+  "contractsCompleted": 4,
+  "contractsByProfile": {
+   "reliable": 0,
+   "risky": 0,
+   "strange": 0
+  }
+ },
+ "story": {
+  "chapter": 0,
+  "eclipseIntro": false
+ },
+ "tutorial": {
+  "script": 5,
+  "phase": "board",
+  "completed": false
+ }
+}

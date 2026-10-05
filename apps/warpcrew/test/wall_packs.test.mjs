@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { evaluateWallPackOffer, wallPackState, markWallPackSeen, packValue, WALL_PACK_STUCK_MS } from '../src/systems/offers.js';
 import { WALLS, recordSiege } from '../src/systems/walls.js';
-import { applyGrant, PRODUCT_DEFS } from '../src/systems/iap.js';
+import { PRODUCT_DEFS } from '../src/systems/iap.js';
+import { applyGrantRewards, rewardsFromTable } from '../src/core/grants.js';
 import { renderWallPack } from '../src/ui/bridge.js';
 
 const now = Date.UTC(2030, 8, 22, 12);
@@ -29,7 +30,7 @@ let state = wallPackState(offered, spur);
 assert.equal(state.active, true);
 assert.equal(state.showModal, true);
 assert.equal(wallPackState(markWallPackSeen(offered, 'spur'), spur).showModal, false);
-const bought = applyGrant(offered, PRODUCT_DEFS.wc_wall_spur.grant, 'tok', 'wc_wall_spur');
+const bought = applyGrantRewards(offered, rewardsFromTable(PRODUCT_DEFS.wc_wall_spur.grant), { oneTimeSku: 'wc_wall_spur' }).player;
 assert.equal(wallPackState(bought, spur).active, false, 'bought once');
 assert.equal(bought.drydockFinishes, 1);
 const reoffer = { ...bought, offers: {} };

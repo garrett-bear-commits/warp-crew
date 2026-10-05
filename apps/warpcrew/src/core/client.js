@@ -1,0 +1,282 @@
+// Warp Crew on @foundation/client: the composition root for saves, identity, purchases and
+// subscriptions. The plain-JS UI (src/main.js) calls this; nothing here touches the DOM, so tests
+// and the end-to-end check (apps/server/test/pg/warpcrew-client.test.ts) run it in node against a
+// real core server.
+//
+// What the core owns: the device slot and its envelope, boot reconciliation (deepest save wins,
+// generations, the keep-local/use-cloud prompt), the cloud sync and its retry/backoff/beacon, the
+// restore gate, the multi-tab leader (only the leader writes; others offer "Play here"), the
+// identity token on every call, and the server-anchored clock.
+//
+// Saves: ordinary changes ask for `requestSave('routine')` (the device slot at most every
+// LOCAL_SAVE_MS, the cloud at most every 12 s, leading and trailing); purchases, grants, restores,
+// milestones and wall breaks ask for 'immediate' (saved and pushed now).
+import { createClock, createGameClient, createSlot, createStorage, readLastKnownPlayerId, slotKey } from '@foundation/client';
+import { warpcrewEngine, describeAction } from './engine.js';
+import { warpcrewCodec } from './codec.js';
+import { createWarpcrewPlatform } from './platform.js';
+import { createWarpcrewApi } from './api.js';
+import { createPurchases } from './purchases.js';
+import { markOwned } from './grants.js';
+import { progressOf } from './progress.js';
+import { readLegacySave, retireLegacySave, shouldImportLegacy, clearLocalSaves } from './legacy.js';
+
+/**
+ * The last player this device saved, read only, for the first paint before boot (the core's
+ * lastKnownPlayerId slot). Null when there is none or it cannot be read.
+ */
+export function readPreview(localStorage, gameId) {
+  try {
+    const tier = createStorage({ localStorage });
+    const playerId = readLastKnownPlayerId(tier, gameId);
+    if (!playerId) return null;
+    const read = createSlot(tier, slotKey(gameId, playerId), warpcrewCodec, { gameId, playerId }).read();
+    return read.ok ? read.envelope.state : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Device slot cadence for routine saves. The legacy game wrote every action; 1 s keeps that close. */
+export const LOCAL_SAVE_MS = 1_000;
+
+const wallsBroken = (p) => Object.keys(p?.flags || {}).filter((k) => k.startsWith('wall_') && p.flags[k] === true).length;
+
+/**
+ * 'immediate' for a change a player must never lose: a milestone (a contract claimed, a story
+ * chapter, a wall broken, the intro finished), a purchase or a grant; 'routine' otherwise.
+ */
+export function savePriorityFor(before, after) {
+  if (!before || !after || before === after) return 'routine';
+  const s0 = before.stats || {};
+  const s1 = after.stats || {};
+  if ((s1.contractsCompleted || 0) > (s0.contractsCompleted || 0)) return 'immediate';
+  if ((after.story?.chapter || 0) > (before.story?.chapter || 0)) return 'immediate';
+  if (wallsBroken(after) > wallsBroken(before)) return 'immediate';
+  if (after.tutorial?.completed && !before.tutorial?.completed) return 'immediate';
+  if ((after.oneTimePurchases || []).length > (before.oneTimePurchases || []).length) return 'immediate';
+  if ((after.wallet?.gems || 0) > (before.wallet?.gems || 0) + 200) return 'immediate';
+  return 'routine';
+}
+
+/**
+ * @param {{
+ *   config: ReturnType<typeof import('./config.js').readConfig>,
+ *   platformKind?: 'jest' | 'mock',
+ *   sdk?: object | null, sdkInit?: () => Promise<unknown>,
+ *   clock?: import('@foundation/client').Clock,
+ *   localStorage?: Storage | null, fetch?: typeof fetch, timers?: any, locks?: any, channel?: any,
+ *   spool?: any, lifecycle?: any, sendBeacon?: any, reload?: () => void, scheduler?: any,
+ *   requestPersist?: boolean, onError?: (e: unknown, detail?: object) => void,
+ *   sync?: Record<string, number>,
+ * }} o
+ */
+export function createWarpcrew(o) {
+  const cfg = o.config;
+  const online = Boolean(cfg.serverUrl);
+  const clock = o.clock ?? createClock();
+  const storage = o.localStorage === undefined ? globalThis.localStorage ?? null : o.localStorage;
+  const platform = createWarpcrewPlatform({
+    kind: online && o.platformKind === 'jest' ? 'jest' : 'mock',
+    gameId: cfg.gameId,
+    playerId: cfg.mockPlayerId,
+    now: () => clock.now(),
+    sdk: o.sdk ?? null,
+    ...(o.sdkInit ? { sdkInit: o.sdkInit } : {}),
+    ...(o.lifecycle ? { lifecycle: o.lifecycle } : {}),
+  });
+  const inject = (key) => (o[key] === undefined ? {} : { [key]: o[key] });
+  const client = createGameClient({
+    engine: warpcrewEngine,
+    codec: warpcrewCodec,
+    platform,
+    serverUrl: cfg.serverUrl ?? '',
+    gameId: cfg.gameId,
+    buildVersion: cfg.buildVersion,
+    journal: 'errors_only',
+    clock,
+    // No step: the core loop only applies dispatched actions (see engine.js on scheduling).
+    loop: { tps: 1, ...(o.scheduler ? { scheduler: o.scheduler } : {}) },
+    sync: { enabled: online, localSaveMs: LOCAL_SAVE_MS, ...(o.sync || {}) },
+    describeAction,
+    ...(o.localStorage !== undefined ? { localStorage: o.localStorage } : {}),
+    ...inject('fetch'),
+    ...inject('timers'),
+    ...inject('locks'),
+    ...inject('channel'),
+    ...inject('spool'),
+    ...inject('sendBeacon'),
+    ...inject('reload'),
+    ...inject('requestPersist'),
+    ...(o.onError ? { onError: o.onError } : {}),
+  });
+
+  const api = online
+    ? createWarpcrewApi({
+        baseUrl: cfg.serverUrl,
+        clock,
+        ...inject('fetch'),
+        auth: () => {
+          const p = client.player;
+          const token = p ? platform.identity.tokenFor(p.playerId) : null;
+          return p && token ? { playerKey: p.playerId, token, buildVersion: cfg.buildVersion } : null;
+        },
+        refreshAuth: async () => (await platform.identity.refreshCredential()) !== null,
+      })
+    : null;
+
+  const reportError = (message, detail) => client.reportError(new Error(message), detail);
+
+  /** Ask for a save; never throws (a follower or a halted sync simply does not write). */
+  function save(priority = 'routine') {
+    if (!client.booted) return Promise.resolve();
+    return client.sync.requestSave(priority).catch((e) => reportError('save failed', { message: String(e?.message || e).slice(0, 200) }));
+  }
+
+  /** Dispatch one engine action; false when this tab may not write (follower, prompt, blocked). */
+  function dispatch(action) {
+    const rev = client.rev();
+    client.dispatch(action);
+    return client.rev() !== rev;
+  }
+
+  /**
+   * Run one session action through the engine (sessionAction). Returns the transition (null when
+   * the act is not a session action) and whether the engine committed it.
+   */
+  function session(act, data, ui) {
+    const before = client.state();
+    client.effects.drain(['session']);
+    if (!dispatch({ type: 'session', act, data, ui })) return { result: { ok: false, reason: 'not_leader', player: before }, committed: false };
+    const fx = client.effects.drain(['session']);
+    const result = fx.length ? fx[fx.length - 1].payload : null;
+    const committed = Boolean(result?.ok) && client.state() === result.player;
+    if (committed) void save(savePriorityFor(before, result.player));
+    return { result, committed };
+  }
+
+  /** Adopt a player computed by a direct UI handler. False when refused (shape, depth, follower). */
+  function commit(next, reason = 'ui', priority) {
+    const before = client.state();
+    if (next === before) return true;
+    client.effects.drain(['refused']);
+    if (!dispatch({ type: 'set', reason, player: next })) return false;
+    if (client.effects.drain(['refused']).length) {
+      reportError('player change refused', { reason: String(reason).slice(0, 40) });
+      return false;
+    }
+    void save(priority ?? savePriorityFor(before, next));
+    return true;
+  }
+
+  /** tickCrewStatus + prepareSession at the trusted now; saved routinely when anything changed. */
+  function prepare() {
+    const before = client.state();
+    if (!dispatch({ type: 'prepare' })) return false;
+    if (client.state() !== before) void save('routine');
+    return true;
+  }
+
+  /** The single grant-application path: engine `grant`, then an immediate save. */
+  function applyGrant(grant, oneTimeSku = null) {
+    client.effects.drain(['granted']);
+    if (!dispatch({ type: 'grant', rewards: grant.rewards || [], ref: grant.grantKey, oneTimeSku })) {
+      reportError('grant not applied (not the leader tab)');
+      return false;
+    }
+    const fx = client.effects.drain(['granted']);
+    const unknown = fx.flatMap((e) => e.payload?.unknown || []);
+    if (unknown.length) reportError('grant reward outside the vocabulary', { kinds: unknown.join(',').slice(0, 200) });
+    void save('immediate');
+    return true;
+  }
+
+  const purchases = createPurchases({
+    api,
+    payments: platform.payments,
+    player: () => client.state(),
+    applyGrant,
+    markOwned: (skus) => {
+      const next = markOwned(client.state(), skus);
+      if (next !== client.state()) commit(next, 'owned', 'immediate');
+    },
+    onError: reportError,
+  });
+
+  /** subscription.js `verify` dependency: Jest's signed list → the core's verified entitlements. */
+  async function verifySubscriptions(signed) {
+    if (!api) return { ok: false, reason: 'no_server' };
+    if (typeof signed !== 'string' || !signed) return { ok: false, reason: 'unsigned' };
+    const r = await api.subscriptions.verify(signed);
+    if (!r.ok) return { ok: false, reason: r.status === 0 ? 'network' : `http_${r.status}` };
+    if (r.body.outcome !== 'verified') return { ok: false, reason: r.body.reason || 'rejected' };
+    return { ok: true, data: { subscriptions: r.body.subscriptions, issuedAt: r.body.issuedAt ?? null } };
+  }
+
+  /**
+   * Boot: identity, the device slot and the server head, reconciled by the core. `fresh` (QA
+   * `?fresh=1`) clears this device first and, online, opens a new generation so the server copy is
+   * not adopted straight back. The legacy `warpcrew.save.v2` save is imported once.
+   * @param {{ fresh?: boolean, onBootState?: (s: any) => void }} [opts]
+   */
+  async function boot(opts = {}) {
+    if (opts.fresh && storage) clearLocalSaves(storage, cfg.gameId);
+    const off = client.bootMachine.onChange((st) => {
+      // No server: there is no cloud to wait for; play on this device.
+      if (st.phase === 'cloudUnreachable' && !online) client.bootMachine.startNew();
+      opts.onBootState?.(st);
+    });
+    let result;
+    try {
+      result = await client.boot();
+    } finally {
+      off();
+    }
+    let restarted = false;
+    if (opts.fresh && online) {
+      const r = await client.restartJourney();
+      restarted = r.ok;
+      if (!r.ok) reportError('fresh start: restart refused', { reason: r.reason });
+    }
+    let importedLegacy = false;
+    const legacy = storage ? readLegacySave(storage) : null;
+    if (legacy && !opts.fresh && shouldImportLegacy(client.state(), legacy)) {
+      importedLegacy = dispatch({ type: 'set', reason: 'legacy_import', player: legacy }) && client.state() === legacy;
+      if (importedLegacy) await save('immediate');
+    }
+    if (storage && (legacy || opts.fresh)) retireLegacySave(storage);
+    return { decision: result.decision, importedLegacy, restarted };
+  }
+
+  /** Start over. Online: a new server generation. Offline: clear this device. Then reload. */
+  async function restart() {
+    if (online) {
+      const r = await client.restartJourney();
+      return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+    }
+    // Stop every writer first so nothing re-saves the old player before the reload.
+    client.destroy();
+    if (storage) clearLocalSaves(storage, cfg.gameId);
+    return { ok: true, reload: true };
+  }
+
+  return {
+    client,
+    platform,
+    api,
+    clock,
+    online,
+    purchases,
+    boot,
+    restart,
+    session,
+    commit,
+    prepare,
+    applyGrant,
+    save,
+    verifySubscriptions,
+    state: () => client.state(),
+    progress: () => progressOf(client.state()),
+    slotKey: (playerId) => slotKey(cfg.gameId, playerId),
+  };
+}

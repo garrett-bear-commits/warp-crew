@@ -1,0 +1,144 @@
+{
+ "version": 8,
+ "captainName": "Vex",
+ "createdAt": 1791217033810,
+ "wallet": {
+  "credits": 80,
+  "fuel": 8,
+  "gems": 40,
+  "medals": 0,
+  "reputation": 0
+ },
+ "fuelMax": 10,
+ "fuelRatePerHour": 1,
+ "fuelClaimAt": 1791217033810,
+ "ship": {
+  "shipId": "sparrow",
+  "name": "Sparrow",
+  "systems": {
+   "engines": 1,
+   "shields": 1,
+   "cargo": 1,
+   "weapons": 1,
+   "quarters": 0,
+   "sensors": 0,
+   "medbay": 0
+  },
+  "cosmetics": {},
+  "ownedHulls": [
+   "sparrow"
+  ],
+  "hull": 100
+ },
+ "crewSlots": 2,
+ "crew": [
+  {
+   "instanceId": "merc_rex_2sww7vd",
+   "templateId": "merc_rex",
+   "name": "Rex Vale",
+   "role": "pilot",
+   "rarity": "common",
+   "species": "human",
+   "faction": "haulers",
+   "origin": "Spur Anchor",
+   "quote": "Lane’s dirty. Hands aren’t.",
+   "history": "Rex flew meal-packs for a Spur co-op until a Swarm probe tagged his convoy. He kept the Sparrow airborne and never went back to scheduled runs.",
+   "passive": {
+    "fuelCostReduce": 0
+   },
+   "level": 1,
+   "stars": 1,
+   "rank": 1,
+   "copies": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0,
+   "blurb": "Ex-hauler pilot. Steady hands."
+  },
+  {
+   "instanceId": "merc_bolt_rsqhg1w",
+   "templateId": "merc_bolt",
+   "name": "Bolt",
+   "role": "engineer",
+   "rarity": "common",
+   "species": "droid",
+   "faction": "yard",
+   "origin": "Null Scrapyard",
+   "quote": "If it rattles, I named it.",
+   "history": "A scrap-yard chassis with three owners and one personality core that refuses a factory reset. Bolts talk while they weld. The welds hold.",
+   "passive": {
+    "repairBonus": 0.05
+   },
+   "level": 1,
+   "stars": 1,
+   "rank": 1,
+   "copies": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0,
+   "blurb": "Refurbished yard droid."
+  }
+ ],
+ "stationAssignments": {
+  "merc_rex_2sww7vd": "helm",
+  "merc_bolt_rsqhg1w": null
+ },
+ "reserve": [],
+ "iapFulfilled": [],
+ "activeExpedition": null,
+ "contractBoard": null,
+ "activeContract": null,
+ "activeEncounter": null,
+ "dailyLoop": {
+  "dayKey": null,
+  "contract": false,
+  "improve": false,
+  "away": false
+ },
+ "location": "station_home",
+ "flags": {},
+ "gacha": {
+  "pityRare": 0,
+  "pityLegend": 0,
+  "luck": 0,
+  "pulls": 0,
+  "lastRarity": null,
+  "history": []
+ },
+ "loginStreak": 0,
+ "lastLoginDay": null,
+ "dailyPullAvailable": true,
+ "stats": {
+  "jumps": 3,
+  "combatsWon": 2,
+  "expeditions": 1,
+  "visits": {},
+  "planetRuns": {},
+  "contractsCompleted": 4,
+  "contractsByProfile": {
+   "reliable": 0,
+   "risky": 0,
+   "strange": 0
+  }
+ },
+ "story": {
+  "chapter": 0,
+  "eclipseIntro": false
+ },
+ "tutorial": {
+  "script": 4,
+  "phase": "board",
+  "completed": false,
+  "firstWin": false,
+  "firstClaim": false,
+  "named": false,
+  "welcomePulled": false,
+  "welcomeInstanceId": null,
+  "suggestedStation": null,
+  "suggestedRole": null,
+  "jestPrompted": false,
+  "registered": false
+ }
+}

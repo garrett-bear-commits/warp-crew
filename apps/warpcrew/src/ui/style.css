@@ -3213,3 +3213,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .event-hint { margin: 6px 0 0; padding: 6px 8px; border-left: 3px solid #6fd3ff; background: rgba(111, 211, 255, 0.08); font-size: 13px; color: #cfeeff; }
 @keyframes explore-coach-in { from { opacity: 0; transform: translate(-50%, 6px); } }
 @media (prefers-reduced-motion: reduce) { .explore-coach { animation: none; } }
+
+/* Core client sheets (src/ui/coreOverlay.js): above every game modal. */
+.wc-core-overlay .core-backdrop { z-index: 300; align-items: center; }
+.core-sheet button { display: block; width: 100%; margin-top: 10px; }

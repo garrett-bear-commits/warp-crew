@@ -1,0 +1,77 @@
+{
+ "version": 1,
+ "captainName": "Vex",
+ "createdAt": 1791217032920,
+ "wallet": {
+  "credits": 200,
+  "fuel": 8,
+  "gems": 40,
+  "medals": 20,
+  "reputation": 0
+ },
+ "fuelMax": 10,
+ "fuelRatePerHour": 1,
+ "fuelClaimAt": 1791217032920,
+ "ship": {
+  "shipId": "sparrow",
+  "systems": {
+   "engines": 1,
+   "shields": 1,
+   "cargo": 1,
+   "weapons": 1,
+   "quarters": 0
+  },
+  "cosmetics": {}
+ },
+ "crewSlots": 2,
+ "crew": [
+  {
+   "instanceId": "merc_rex_zxdr2ye",
+   "templateId": "merc_rex",
+   "name": "Rex Vale",
+   "role": "pilot",
+   "rarity": "common",
+   "species": "human",
+   "passive": {
+    "fuelCostReduce": 0
+   },
+   "level": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0
+  },
+  {
+   "instanceId": "merc_bolt_c6vzvde",
+   "templateId": "merc_bolt",
+   "name": "Bolt",
+   "role": "engineer",
+   "rarity": "common",
+   "species": "droid",
+   "passive": {
+    "repairBonus": 0.05
+   },
+   "level": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0
+  }
+ ],
+ "reserve": [],
+ "activeExpedition": null,
+ "location": "station_home",
+ "flags": {},
+ "loginStreak": 0,
+ "lastLoginDay": null,
+ "dailyPullAvailable": true,
+ "stats": {
+  "jumps": 3,
+  "combatsWon": 2,
+  "expeditions": 1
+ },
+ "story": {
+  "chapter": 0,
+  "eclipseIntro": false
+ }
+}

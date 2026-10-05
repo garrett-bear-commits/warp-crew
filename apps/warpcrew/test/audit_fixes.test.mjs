@@ -17,53 +17,59 @@ assert.equal(player.siege.spur.nearMiss, true);
 player = recordSiege(player, attempt(5), now);
 assert.equal(player.siege.spur.nearMiss, true, 'a later bad loss does not erase the near miss');
 
-// No real checkout opens without a verifier (real Jest is simulated here).
-globalThis.window = { JestSDK: { getPlayer: () => ({ playerId: 'real-player-1' }), payments: { beginPurchase: () => { throw new Error('checkout must not open'); } } } };
-const platform = await import('../src/shared/platform.js');
-assert.equal(platform.isReal(), true, 'the simulated Jest SDK counts as real');
-const { buyProduct } = await import('../src/systems/iap.js');
-const res = await buyProduct({ wallet: {}, oneTimePurchases: [] }, 'wc_gems_s');
-assert.equal(res.reason, 'store_unavailable');
-delete globalThis.window;
+// No real checkout opens without a server: the Jest platform (real payments) is selected only
+// when a server is configured; without one the core's local mock is used, which no money backs.
+const { createWarpcrew } = await import('../src/core/client.js');
+const { memoryStorage, memorySpool, manualScheduler } = await import('@foundation/client');
+const jestSdkUsed = [];
+const fakeSdk = new Proxy({}, { get: (_t, key) => { jestSdkUsed.push(String(key)); return () => { throw new Error('the Jest SDK must not be used'); }; } });
+const offline = createWarpcrew({
+  config: { serverUrl: null, gameId: 'warpcrew', buildVersion: 't', mockPlayerId: 'audit', dev: false },
+  platformKind: 'jest', sdk: fakeSdk, localStorage: memoryStorage(), locks: null, channel: null,
+  spool: memorySpool(), requestPersist: false, scheduler: manualScheduler(), sendBeacon: null,
+});
+assert.equal(offline.platform.name, 'mock', 'no server, no Jest payments');
+assert.deepEqual(jestSdkUsed, []);
+offline.client.destroy();
 
-// Final audit: a save from before cloud save existed is never silently dropped.
-const { chooseSave, carryPurchases, withPurchaseSkus } = await import('../src/systems/cloudSync.js');
-const cloudBlob = (player, seq = 3) => ({ seq, savedAt: 1, blob: JSON.stringify({ player, savedAt: 1 }) });
-const tutorialLocal = { wallet: { gems: 0 }, crew: [{}, {}], tutorial: { completed: false }, stats: {}, lastSavedAt: 5 };
-const oneCrewCloud = { wallet: { gems: 0 }, crew: [{}], tutorial: { completed: false }, stats: {} };
-const kept = chooseSave(tutorialLocal, cloudBlob(oneCrewCloud));
-assert.equal(kept.source, 'local', 'more progress on a never-synced device wins');
-assert.ok(kept.archived, 'the other side is archived');
-const deferred = chooseSave({ ...oneCrewCloud, lastSavedAt: 99 }, cloudBlob(oneCrewCloud));
-assert.equal(deferred.source, 'cloud', 'on a tie a never-synced device defers to the cloud');
-assert.ok(deferred.archived, 'and its save is archived, not dropped');
+// One-time packs: the server is asked before any checkout opens. No answer, no checkout.
+const { createPurchases } = await import('../src/core/purchases.js');
+let begins = 0;
+const payments = { begin: async () => { begins++; return { kind: 'cancel' }; }, complete: async () => ({ kind: 'success' }) };
+let me = { wallet: {}, oneTimePurchases: [] };
+const purchasesWith = (owned) => createPurchases({
+  api: { purchases: { owned } },
+  payments,
+  player: () => me,
+  applyGrant: () => true,
+  markOwned: (skus) => { me = { ...me, oneTimePurchases: [...new Set([...me.oneTimePurchases, ...skus])] }; },
+});
+assert.equal((await purchasesWith(async () => ({ ok: false, status: 0 })).buy('wc_starter_kit')).reason, 'store_unavailable', 'no ownership answer, no checkout');
+assert.equal(begins, 0);
+assert.equal((await purchasesWith(async () => ({ ok: true, body: { oneTime: ['wc_starter_kit'] } })).buy('wc_starter_kit')).reason, 'already_owned');
+assert.deepEqual(me.oneTimePurchases, ['wc_starter_kit'], 'and the pack is hidden on this device');
+assert.equal(begins, 0);
+me = { wallet: {}, oneTimePurchases: [] };
+await purchasesWith(async () => ({ ok: true, body: { oneTime: [] } })).buy('wc_starter_kit');
+assert.equal(begins, 1, 'checkout opens only once the server confirms it is not owned');
+// A gem pack (not one time) needs no ownership answer.
+await purchasesWith(async () => { throw new Error('not asked'); }).buy('wc_gems_s');
+assert.equal(begins, 2);
 
-// Legacy grants (no token→SKU record in the save) are re-granted from the server's provenance.
-const legacyLoser = { wallet: { gems: 280 }, iapFulfilled: ['legacy-paid-token'], crew: [], stats: {} };
-const winner = { wallet: { gems: 0 }, iapFulfilled: [], crew: [], stats: {} };
-const merged = carryPurchases(winner, legacyLoser, { 'legacy-paid-token': 'wc_gems_m' });
-assert.equal(merged.wallet.gems, 280);
-assert.deepEqual(merged.iapFulfilled, ['legacy-paid-token']);
-const unmapped = carryPurchases(winner, legacyLoser, {});
-assert.deepEqual(unmapped.iapFulfilled, [], 'an unmapped token is never marked as carried');
-assert.equal(carryPurchases(winner, { ...legacyLoser, iapFulfilled: ['local_wc_gems_s_123'] }).wallet.gems, 100, 'mock tokens name their SKU');
-assert.equal(withPurchaseSkus({ iapFulfilled: ['a'] }, { a: 'wc_gems_s', b: 'wc_gems_m' }).purchaseSkus.a, 'wc_gems_s');
-
-// One-time packs: the server is asked before any checkout opens.
-const checkouts = () => platform.getMockLog().filter(e => e.type === 'purchase' && e.productSku === 'wc_starter_kit').length;
-globalThis.window = { JestSDK: { getPlayer: () => ({ playerId: 'real-player-1' }), payments: {} } };
-const verifyReceipt = async () => ({ ok: false });
-const owned = await buyProduct({ wallet: {}, oneTimePurchases: [] }, 'wc_starter_kit', { verifyReceipt, checkOwned: async () => ({ ok: true, data: { oneTime: ['wc_starter_kit'] } }) });
-assert.equal(owned.reason, 'already_owned');
-assert.deepEqual(owned.player.oneTimePurchases, ['wc_starter_kit'], 'and the pack is hidden on this device');
-assert.equal((await buyProduct({ wallet: {} }, 'wc_starter_kit', { verifyReceipt, checkOwned: async () => ({ ok: false }) })).reason, 'store_unavailable', 'no ownership answer, no checkout');
-assert.equal(checkouts(), 0);
-await buyProduct({ wallet: {} }, 'wc_starter_kit', { verifyReceipt, checkOwned: async () => ({ ok: true, data: { oneTime: [] } }) });
-assert.equal(checkouts(), 1, 'checkout opens only once the server confirms it is not owned');
-delete globalThis.window;
-
-// No build flag re-enables the ?server= override outside development.
+// No build flag re-enables the ?server= override outside development, and a remembered one is cleared.
+const { readConfig } = await import('../src/core/config.js');
+const store = memoryStorage();
+store.setItem('wc.server', 'https://evil.example');
+const prod = readConfig({ env: { VITE_WARPCREW_SERVER: 'https://api.example' }, search: '?server=https://evil.example', storage: store, dev: false });
+assert.equal(prod.serverUrl, 'https://api.example');
+assert.equal(store.getItem('wc.server'), null);
+const pages = readConfig({ env: {}, search: '?server=https://evil.example', storage: store, dev: false });
+assert.equal(pages.serverUrl, null, 'the Pages QA build has no server and plays offline');
+const dev = readConfig({ env: {}, search: '?server=http://localhost:8080&player=qa_1', storage: store, dev: true });
+assert.equal(dev.serverUrl, 'http://localhost:8080');
+assert.equal(dev.mockPlayerId, 'qa_1');
+assert.equal(readConfig({ env: {}, search: '?server=http://evil.example', storage: memoryStorage(), dev: true }).serverUrl, null, 'plain http only on loopback');
 const { readFileSync } = await import('node:fs');
-assert.ok(!readFileSync(new URL('../src/shared/cloud.js', import.meta.url), 'utf8').includes('VITE_ALLOW_SERVER_OVERRIDE'));
+assert.ok(!readFileSync(new URL('../src/core/config.js', import.meta.url), 'utf8').includes('VITE_ALLOW_SERVER_OVERRIDE'));
 
 console.log('audit_fixes.test.mjs OK');

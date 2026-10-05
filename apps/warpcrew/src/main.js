@@ -1,9 +1,8 @@
 // @ts-nocheck
 import { createNewPlayer, migratePlayer, tickCrewStatus } from './systems/player.js';
-import { loadSave, writeSave, clearSave } from './systems/save.js';
 import { consumeFreshStart } from './systems/qaFreshStart.js';
 import { claimFuelRegen } from './systems/fuel.js';
-import { prepareSession, sessionModels, sessionAction, persistSessionTransition } from './systems/sessionLoop.js';
+import { prepareSession, sessionModels, persistSessionTransition } from './systems/sessionLoop.js';
 import { pullOnce, pullTen, buyLuck, contractHire, callUpReserve, sellReserve, benchCrew, LUCK_CAP } from './systems/gacha.js';
 import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, clampFuel } from './systems/economy.js';
 import {
@@ -15,12 +14,7 @@ import {
 } from './systems/expedition.js';
 import { applyDailyLogin } from './systems/daily.js';
 import { syncAllNotifications } from './systems/notifications.js';
-import {
-  listShopProducts,
-  buyProduct,
-  fulfillIncompletePurchases,
-  retryPendingReceipts,
-} from './systems/iap.js';
+import { listShopProducts } from './systems/iap.js';
 import { repairHull } from './systems/passives.js';
 import {
   init as platformInit,
@@ -60,10 +54,13 @@ import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreloa
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
 import { artUrl } from './shared/artUrl.js';
 import { STARTER_OFFER, starterOfferState, markStarterOffer, markWallPackSeen, wallPackState } from './systems/offers.js';
-import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt, verifySubscriptions, fetchOwnedOneTime, trustedNow } from './shared/cloud.js';
+import { trustedNow, useClock } from './shared/time.js';
 import { refreshCommission, subscribeCommission, cancelCommission, acceptRetention, claimCommissionDaily, syncCommission, usableTerms } from './systems/subscription.js';
-import { chooseSave, applyLedger, withPurchaseSkus } from './systems/cloudSync.js';
 import { currentWall } from './systems/walls.js';
+import { createWarpcrew, readPreview } from './core/client.js';
+import { readConfig } from './core/config.js';
+import { readLegacySave } from './core/legacy.js';
+import { renderCoreOverlay } from './ui/coreOverlay.js';
 import { applyResolvedSlicePortraits, SPACE_ART } from './data/portraits.js';
 import { canonicalRoomId } from './data/starterShip.js';
 
@@ -94,6 +91,12 @@ let shipSequence = null;
 let essentialProgress = 0;
 let essentialReady = false;
 let essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
+/** The game on @foundation/client (src/core/client.js); null until boot creates it. */
+let wc = null;
+/** Core boot phase (prompt / cloud unreachable / blocked) and this tab's leader role, for the overlay. */
+let coreBoot = null;
+let coreFollower = false;
+let coreLive = false;
 
 /** Preserve the saved tutorial script. migratePlayer owns script selection. */
 export function restoreTutorialPlayer(savedPlayer) {
@@ -155,6 +158,7 @@ const SESSION_ERROR_COPY = {
   ship_name_unavailable: 'Name the ship after the first job.',
   invalid_ship_name: 'Use a ship name up to 24 characters.',
   welcome_unavailable: 'The welcome recruit is no longer available.',
+  not_leader: 'Warp Crew is open in another tab. Tap Play here to fly from this one.',
   registration_unavailable: 'Finish meeting your new crew first.',
   registration_unconfirmed: 'Jest sign-in did not finish. You can skip it.',
   stale_encounter_action: 'The fight moved on. Choose again.',
@@ -180,58 +184,27 @@ export function sessionFailureMessage(reason, currentPlayer = null) {
   return SESSION_ERROR_COPY[reason] || 'That action is unavailable right now.';
 }
 
-function persist() {
-  return saveLocal(player);
-}
-
-// ─── Cloud save and purchase verification (only when a server is configured) ───
-let cloudPushTimer = null;
-let cloudPushInFlight = false;
-
-/** Every local save also schedules a debounced upload of the latest state. */
-function saveLocal(candidate) {
-  // Mark unsynced progress so a newer cloud save cannot silently replace it.
-  const marked = cloudEnabled() ? { ...candidate, cloudDirty: true, lastSavedAt: Date.now() } : candidate;
-  if (marked !== candidate && candidate === player) player = marked;
-  const ok = writeSave(marked);
-  if (ok) scheduleCloudPush();
+/**
+ * Hand the live player to the core client (engine `set`), which saves it. A follower tab, a boot
+ * prompt or a refused change leaves the core's player in place; the live copy follows it.
+ */
+function persist(reason = 'ui', priority) {
+  if (!wc || !coreLive) return false;
+  const ok = wc.commit(player, reason, priority);
+  if (!ok) player = wc.state();
   return ok;
 }
 
-function scheduleCloudPush(delay = 3000) {
-  if (!cloudEnabled()) return;
-  clearTimeout(cloudPushTimer);
-  cloudPushTimer = setTimeout(pushCloudNow, delay);
-}
-
-async function pushCloudNow({ keepalive = false } = {}) {
-  if (!cloudEnabled() || !player || cloudPushInFlight) return;
-  cloudPushInFlight = true;
-  const startedAt = Date.now();
-  try {
-    const result = await pushCloudSave(player, { keepalive });
-    if (result.ok && result.data.conflict && player) {
-      // Another device saved first. Reconcile before this device's changes can count as synced.
-      await reconcileCloud(result.data.current, result.data.purchases, result.data.purchaseSkus);
-    } else if (result.ok && result.data.accepted && player) {
-      // Record the server sequence locally without scheduling another upload.
-      // Anything saved while the upload was in flight stays dirty for the next one.
-      const changedSince = (player.lastSavedAt || 0) > startedAt;
-      player = { ...player, cloudSeq: result.data.seq, cloudDirty: changedSince };
-      writeSave(player);
-      if (changedSince) scheduleCloudPush();
-    } else if (!result.ok) {
-      console.warn('[cloud] save upload failed', result.reason);
-    }
-  } finally {
-    cloudPushInFlight = false;
-  }
+/** True when this tab may change the game (the core's leader tab, live, no prompt open). */
+function canWrite() {
+  return Boolean(wc && coreLive && !coreFollower && wc.client.leader.isLeader());
 }
 
 const subscriptionDeps = () => ({
   sdk: { getSubscriptions, beginSubscription, cancelSubscription, claimRetentionOffer },
   real: isReal(),
-  verify: cloudEnabled() ? verifySubscriptions : null,
+  // Real Jest answers are trusted only once the core server verified Jest's signature.
+  verify: wc?.online ? wc.verifySubscriptions : null,
   now: trustedNow,
 });
 
@@ -244,53 +217,18 @@ function claimCommissionPerks() {
   showToast({ title: "Commission daily", rewards: { gems: daily.granted.gems } });
 }
 
-const purchaseOptions = () => (cloudEnabled()
-  ? { verifyReceipt, checkOwned: fetchOwnedOneTime, persist: next => { player = next; writeSave(next); } }
-  : {});
-
-async function syncCloudOnBoot() {
-  if (!cloudEnabled()) return;
-  const cloud = await fetchCloudSave();
-  if (!cloud.ok) {
-    console.warn('[cloud] load failed', cloud.reason);
-    return;
+/** Online boot work: incomplete purchases, waiting grants (any device), one-time ownership. */
+async function syncServerOnBoot() {
+  if (!wc?.online) return;
+  const before = player?.wallet?.gems || 0;
+  const recovered = await wc.purchases.recover();
+  const pending = await wc.purchases.claimPending();
+  await wc.purchases.refreshOwned();
+  player = wc.state();
+  if (pending.claimed.length || recovered.completed) {
+    pushLog(`Purchases delivered: ${pending.claimed.map(g => g.reason.replace(/^purchase /, '')).join(', ') || `${recovered.completed} restored`}.`);
+    if ((player.wallet?.gems || 0) > before) showToast({ title: 'Purchase delivered', rewards: { gems: player.wallet.gems - before } });
   }
-  await reconcileCloud(cloud.data.save, cloud.data.purchases, cloud.data.purchaseSkus);
-  const retried = await retryPendingReceipts(player, purchaseOptions());
-  player = retried.player;
-  writeSave(player);
-}
-
-/** Merge a server save and undelivered purchases into the live player. */
-async function reconcileCloud(save, purchases, purchaseSkus = {}) {
-  const chosen = chooseSave(player, save, purchaseSkus);
-  if (chosen.archived) {
-    // Keep the losing side of a two-device conflict recoverable on the server.
-    // This device's save is replaced only once the server has confirmed its archive copy.
-    const archived = await pushCloudSave(chosen.archived, { archive: true });
-    if (chosen.source === 'cloud' && archived.data?.rejectReason !== 'archived_conflict') {
-      console.warn('[cloud] archive failed; keeping this device\'s save until the next sync', archived.reason);
-      return;
-    }
-    pushLog('Two devices had different progress; the furthest-along save was kept.');
-  }
-  if (chosen.source === 'cloud') {
-    player = prepareSession(restoreTutorialPlayer(chosen.player), trustedNow());
-    pushLog('Cloud save restored from another device.');
-  } else player = chosen.player;
-  const ledger = applyLedger(withPurchaseSkus(player, purchaseSkus), purchases);
-  player = ledger.player;
-  if (ledger.applied.length) pushLog(`Purchases restored: ${ledger.applied.join(', ')}`);
-  // The winner is uploaded next, based on the newest server seq, so the devices converge.
-  player = { ...player, cloudDirty: true };
-  writeSave(player);
-  scheduleCloudPush(500);
-}
-
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') pushCloudNow({ keepalive: true });
-  });
 }
 
 async function refreshNotifs() {
@@ -327,26 +265,30 @@ function tryResolveExpedition({ force = false } = {}) {
   return true;
 }
 
-function hydratePlayer() {
-  const jestPlayer = getJestPlayer();
-
+/**
+ * What the screen shows before the core has booted: this device's last save (read only), the
+ * legacy save on the first boot after the port, or a new captain. Input waits for boot.
+ */
+function provisionalPlayer() {
   try {
-    if (consumeFreshStart({ location, history, clearSave })) {
-      pushLog('QA fresh start (?fresh=1).');
-    }
-  } catch { /* ignore */ }
+    const cfg = readConfig();
+    const local = readPreview(globalThis.localStorage, cfg.gameId) || readLegacySave(globalThis.localStorage);
+    if (local) return restoreTutorialPlayer(local);
+  } catch { /* storage blocked */ }
+  return createNewPlayer({ captainName: getJestPlayer()?.username || 'Captain' });
+}
 
-  const saved = loadSave();
-  if (saved?.player) {
-    player = restoreTutorialPlayer(saved.player);
-    pushLog('Welcome back, Captain.');
-  } else {
-    player = createNewPlayer({
-      captainName: jestPlayer?.username || 'Captain',
-    });
+/** After boot: the welcome, daily login, offline fuel, finished expeditions and the session board. */
+function hydratePlayer({ fresh, newCaptain }) {
+  const jestPlayer = getJestPlayer();
+  player = restoreTutorialPlayer(wc.state());
+  if (fresh) pushLog('QA fresh start (?fresh=1).');
+  if (!newCaptain) pushLog('Welcome back, Captain.');
+  else {
     pushLog('Career start aboard Sparrow.');
     pushLog(freshBootCrewMessage(player));
   }
+  if (player.captainName === 'Captain' && jestPlayer?.username) player = { ...player, captainName: jestPlayer.username };
 
   player = {
     ...player,
@@ -380,9 +322,63 @@ function hydratePlayer() {
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
   player = prepareSession(player, trustedNow());
+  persist('hydrate');
   if (player.activeContract?.stage === 'return') { tab = 'ship'; selectedRoom = 'cargo'; }
   else if (player.activeTravelFight) { tab = 'ship'; selectedRoom = null; }
   else if (player.tutorial?.phase === 'away') sessionUi.missionView = 'away';
+}
+
+/** Build the core client and boot it: identity, this device's slot, the server head, reconcile. */
+async function bootCore(initResult) {
+  const config = readConfig();
+  const jest = isReal() && initResult.mode === 'jest';
+  wc = createWarpcrew({
+    config,
+    platformKind: jest ? 'jest' : 'mock',
+    sdkInit: () => platformInit(),
+    onError: (error, detail) => console.warn('[warp-crew]', error, detail || ''),
+  });
+  useClock(wc.clock);
+  // QA's fresh-save link clears this device once (and, online, opens a new server generation).
+  let fresh = false;
+  try { fresh = consumeFreshStart({ location, history, clearSave: () => {} }); } catch { /* no location */ }
+  const booted = await wc.boot({
+    fresh,
+    onBootState: (st) => {
+      coreBoot = ['prompt', 'cloudUnreachable', 'blocked'].includes(st.phase) ? st : null;
+      render();
+    },
+  });
+  coreBoot = null;
+  coreLive = true;
+  const newCaptain = fresh || (booted.decision?.action === 'start_new' && !booted.importedLegacy);
+  if (booted.importedLegacy) pushLog('Save moved to the new save system.');
+  if (booted.decision?.action === 'adopt_remote') pushLog('Cloud save restored from another device.');
+  // The core may replace the player (a deeper save from another device, a restore, a new
+  // generation): the live copy follows it.
+  wc.client.subscribe((published) => {
+    if (published.state === player) return;
+    player = published.state;
+    scheduleRender();
+  });
+  wc.client.onEvent((event) => {
+    if (event.type === 'leader') {
+      coreFollower = event.role === 'follower';
+      if (!coreFollower) { player = wc.state(); scheduleGuidedBeat(); }
+      render();
+    } else if (event.type === 'follower_blocked') {
+      coreFollower = true;
+      render();
+    }
+  });
+  coreFollower = !wc.client.leader.isLeader();
+  if (!wc.online && typeof document !== 'undefined') {
+    // No server, no teardown beacon: write this device's slot when the page hides.
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') wc?.save('immediate'); });
+    globalThis.addEventListener?.('pagehide', () => wc?.save('immediate'));
+  }
+  platformStatus = `${jest ? `jest (${initResult.mode})` : `local mock (${initResult.mode})`} · ${wc.online ? 'cloud save' : 'saved on this device'}`;
+  return { fresh, newCaptain };
 }
 
 async function boot() {
@@ -391,11 +387,11 @@ async function boot() {
   essentialReady = false;
   essentialScene = artUrl(ART_VERTICAL_SLICE.splash.path);
   try {
-    hydratePlayer();
+    player = provisionalPlayer();
     artReady = hasCrewArt();
     render();
   } catch (e) {
-    console.warn('hydrate', e);
+    console.warn('preview', e);
   }
 
   const sliceKeys = ['splash', 'rex', 'bolt', 'kira', 'tink', 'nemi'];
@@ -419,10 +415,8 @@ async function boot() {
     : `local mock (${initResult.mode})`;
   setLoadingProgress(essentialProgress);
 
-  const jestPlayer = getJestPlayer();
-  if (player && jestPlayer?.username && player.captainName === 'Captain') {
-    player = { ...player, captainName: jestPlayer.username };
-  }
+  hydratePlayer(await bootCore(initResult));
+  render();
 
   const entry = getEntryPayload();
   if (entry?.notification_type) {
@@ -439,25 +433,16 @@ async function boot() {
     .catch((e) => console.warn('crew art', e));
 
   try {
-    await syncCloudOnBoot();
+    await syncServerOnBoot();
   } catch (e) {
-    console.warn('cloud sync', e);
-  }
-
-  try {
-    const incomplete = await fulfillIncompletePurchases(player, purchaseOptions());
-    player = incomplete.player;
-    if (incomplete.granted?.length) {
-      pushLog(`Restored incomplete purchases: ${incomplete.granted.join(', ')}`);
-    }
-  } catch (e) {
-    console.warn('iap restore', e);
+    console.warn('purchase sync', e);
   }
 
   try {
     const sub = await refreshCommission(player, subscriptionDeps());
     player = sub.player;
     claimCommissionPerks();
+    persist('commission', 'immediate');
   } catch (e) {
     console.warn('subscription refresh', e);
   }
@@ -469,7 +454,7 @@ async function boot() {
   }
 
   await Promise.all([essentialP, crewArtP, refreshNotifs().catch((e) => console.warn('notif sync', e))]);
-  persist();
+  persist('boot');
   setLoadingProgress(essentialProgress);
   markGameLoaded();
   captureEvent('session_start', {
@@ -480,15 +465,22 @@ async function boot() {
   scheduleGuidedBeat();
 }
 
+let renderQueued = false;
+/** Render once after the current call stack (core publications arrive mid-dispatch). */
+function scheduleRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  queueMicrotask(() => { renderQueued = false; render(); });
+}
+
 function render() {
   if (!app || !player) return;
-  const ticked = tickCrewStatus(player);
-  if (ticked !== player) {
-    player = ticked;
-    persist();
+  // Timed systems settle when read (injuries heal, builds finish, boards refresh): the engine's
+  // `prepare` commits them at the trusted now, only when something changed.
+  if (canWrite()) {
+    const now = trustedNow();
+    if (prepareSession(tickCrewStatus(player, now), now) !== player && wc.prepare()) player = wc.state();
   }
-  const prepared = prepareSession(player, trustedNow());
-  if (prepared !== player && saveLocal(prepared)) player = prepared;
   const renderNow = trustedNow();
   const models = sessionModels(player, { ...sessionUi, pendingCombat }, renderNow);
   sessionUi.contractPreviews = models.contractPreviews;
@@ -533,6 +525,19 @@ function render() {
       onAction: userAction,
     },
   });
+  // The core's own screens: keep-this-device / use-cloud prompt, cloud unreachable, update
+  // required, and "Play here" for a second tab. They sit above the game shell.
+  let overlay = app.querySelector(':scope > .wc-core-overlay');
+  const html = renderCoreOverlay({ boot: coreBoot, follower: coreFollower && coreLive });
+  if (!html) overlay?.remove();
+  else {
+    if (!overlay) {
+      overlay = app.ownerDocument.createElement('div');
+      overlay.className = 'wc-core-overlay';
+      app.appendChild(overlay);
+    }
+    if (overlay.innerHTML !== html) overlay.innerHTML = html;
+  }
 }
 
 async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
@@ -551,7 +556,9 @@ async function handleJoinJest({ reason = 'shop_prompt' } = {}) {
       onClose: () => {},
     });
     try {
-      await login({ entryPayload: { reason } });
+      // In Jest the core's identity signs in (and re-reads the player and its token).
+      if (wc?.platform.name === 'jest') await wc.platform.identity.login({ reason });
+      else await login({ entryPayload: { reason } });
       const after = getJestPlayer();
       if (after?.registered) {
         pushLog('Signed in to Jest.');
@@ -576,8 +583,9 @@ const guidedBeatScheduler = createGuidedBeatScheduler({
   getPlayer: () => app ? player : null,
   advance: data => handleAction('encounter-advance', data),
   isBattlePlaying,
-  // Fights hold while the app is hidden, the player is off the ship, or the captain paused.
-  isPaused: () => document.hidden || tab !== 'ship' || ftlPaused,
+  // Fights hold while the app is hidden, the player is off the ship, the captain paused, or
+  // another tab is playing (only the leader tab writes).
+  isPaused: () => document.hidden || tab !== 'ship' || ftlPaused || !canWrite(),
   onSaveFailure: failedIdentity => {
     sessionUi.guidedBeatSaveFailed = failedIdentity;
     render();
@@ -677,7 +685,25 @@ function effectSound(act, effect) {
   }
 }
 
+/** The core's boot prompt, cloud-unreachable sheet, update reload and "Play here". */
+async function handleCoreAction(act) {
+  const machine = wc?.client.bootMachine;
+  if (act === 'core-adopt-cloud') machine?.resolvePrompt('adopt_remote');
+  else if (act === 'core-keep-local') machine?.resolvePrompt('keep_local');
+  else if (act === 'core-retry') machine?.retry();
+  else if (act === 'core-start-new') machine?.startNew();
+  else if (act === 'core-reload') window.location.reload();
+  else if (act === 'core-play-here' && wc) {
+    await wc.client.playHere();
+    coreFollower = !wc.client.leader.isLeader();
+    player = wc.state();
+    if (!coreFollower) scheduleGuidedBeat();
+  }
+  render();
+}
+
 async function handleAction(act, data = {}) {
+  if (act.startsWith('core-')) return handleCoreAction(act);
   if (isBattlePlaying()) return;
   if (act === 'sfx-toggle') {
     const muted = toggleSfxMuted();
@@ -685,6 +711,9 @@ async function handleAction(act, data = {}) {
     render();
     return;
   }
+  // Input waits for the core to boot; afterwards the live copy starts from the core's player.
+  if (!coreLive) return;
+  player = wc.state();
   if (act === 'restart-save') {
     if (tab !== 'log' || isTutorialActive(player)) return;
     confirmRestartSave = true;
@@ -698,11 +727,10 @@ async function handleAction(act, data = {}) {
   }
   if (act === 'restart-save-confirm') {
     if (!confirmRestartSave) return;
-    const jestPlayer = getJestPlayer();
-    const fresh = prepareSession(createNewPlayer({ captainName: jestPlayer?.username || 'Captain' }));
-    fresh._jestRegistered = Boolean(jestPlayer?.registered);
-    fresh._jestPlayerId = jestPlayer?.playerId || null;
-    if (!saveLocal(fresh)) {
+    // Online: a new save generation on the server (the old one stays restorable by support).
+    // Offline: this device's save is cleared. Either way the page reloads into a new captain.
+    const restarted = await wc.restart();
+    if (!restarted.ok) {
       confirmRestartSave = false;
       showToast({ title: 'Could not restart save. Try again.' });
       render();
@@ -740,7 +768,9 @@ async function handleAction(act, data = {}) {
     if (type === 'move') ftlSelectedCrewId = null;
   }
   if (!player.activeEncounter || player.activeEncounter.result) { ftlSelectedCrewId = null; ftlPaused = false; }
-  const transition = sessionAction(player, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId }, act, data, { now: trustedNow() });
+  // The engine runs sessionAction and commits its player; the core saves it.
+  const ran = wc.session(act, data, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId });
+  const transition = ran.result;
   if (transition) {
     const departure = transition.effect?.kind === 'expedition';
     let startedDepartureId = null;
@@ -755,7 +785,7 @@ async function handleAction(act, data = {}) {
       render();
     };
     const committed = persistSessionTransition(transition, {
-      save: saveLocal,
+      save: () => ran.committed,
       publish: (result) => {
         if (departure) {
           startedDepartureId = ++departureRunId;
@@ -1034,17 +1064,21 @@ async function handleAction(act, data = {}) {
       return;
     }
     pushLog(`Purchasing ${sku}…`);
-    const res = await buyProduct(player, sku, purchaseOptions());
+    // The core server verifies the receipt and mints the pack as a grant; the grant is claimed
+    // and applied (src/core/purchases.js), then the Jest purchase is completed.
+    const res = await wc.purchases.buy(sku);
+    player = wc.state();
     if (!res.ok && res.reason === 'pending_verification') {
-      player = res.player;
       pushLog('Purchase received. Confirming with the server; it will apply automatically.');
       showToast({ title: 'Purchase received — confirming' });
     } else if (!res.ok && res.reason === 'already_owned') {
-      player = res.player;
       pushLog('You already own this pack.');
-    } else if (!res.ok) pushLog(`Purchase failed: ${res.reason}`);
-    else {
-      player = res.player;
+    } else if (!res.ok && res.reason === 'cancelled') {
+      pushLog('Purchase cancelled.');
+    } else if (!res.ok) {
+      pushLog(`Purchase failed: ${res.reason}`);
+      if (res.reason === 'store_unavailable') showToast({ title: 'Store unavailable. Try again later.' });
+    } else {
       if (sku === STARTER_OFFER.sku) player = markStarterOffer(player, { purchased: true, seen: true });
       if (sku.startsWith('wc_wall_')) player = markWallPackSeen(player, sku.slice('wc_wall_'.length));
       pushLog(`Purchased ${sku}. Rewards applied.`);

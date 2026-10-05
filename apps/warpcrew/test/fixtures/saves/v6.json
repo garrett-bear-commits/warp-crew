@@ -1,0 +1,123 @@
+{
+ "version": 6,
+ "captainName": "Vex",
+ "createdAt": 1791217033546,
+ "wallet": {
+  "credits": 80,
+  "fuel": 8,
+  "gems": 40,
+  "medals": 0,
+  "reputation": 0
+ },
+ "fuelMax": 10,
+ "fuelRatePerHour": 1,
+ "fuelClaimAt": 1791217033546,
+ "ship": {
+  "shipId": "sparrow",
+  "systems": {
+   "engines": 1,
+   "shields": 1,
+   "cargo": 1,
+   "weapons": 1,
+   "quarters": 0,
+   "sensors": 0,
+   "medbay": 0
+  },
+  "cosmetics": {},
+  "ownedHulls": [
+   "sparrow"
+  ],
+  "hull": 100
+ },
+ "crewSlots": 2,
+ "crew": [
+  {
+   "instanceId": "merc_rex_ppya7ha",
+   "templateId": "merc_rex",
+   "name": "Rex Vale",
+   "role": "pilot",
+   "rarity": "common",
+   "species": "human",
+   "faction": "haulers",
+   "origin": "Spur Anchor",
+   "quote": "Lane’s dirty. Hands aren’t.",
+   "history": "Rex flew meal-packs for a Spur co-op until a Swarm probe tagged his convoy. He kept the Sparrow airborne and never went back to scheduled runs.",
+   "passive": {
+    "fuelCostReduce": 0
+   },
+   "level": 1,
+   "stars": 1,
+   "rank": 1,
+   "copies": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0,
+   "blurb": "Ex-hauler pilot. Steady hands."
+  },
+  {
+   "instanceId": "merc_bolt_qoldgyu",
+   "templateId": "merc_bolt",
+   "name": "Bolt",
+   "role": "engineer",
+   "rarity": "common",
+   "species": "droid",
+   "faction": "yard",
+   "origin": "Null Scrapyard",
+   "quote": "If it rattles, I named it.",
+   "history": "A scrap-yard chassis with three owners and one personality core that refuses a factory reset. Bolts talk while they weld. The welds hold.",
+   "passive": {
+    "repairBonus": 0.05
+   },
+   "level": 1,
+   "stars": 1,
+   "rank": 1,
+   "copies": 1,
+   "xp": 0,
+   "power": 10,
+   "status": "ready",
+   "injuredUntil": 0,
+   "blurb": "Refurbished yard droid."
+  }
+ ],
+ "reserve": [],
+ "activeExpedition": null,
+ "location": "station_home",
+ "flags": {},
+ "gacha": {
+  "pityRare": 0,
+  "pityLegend": 0,
+  "luck": 0,
+  "pulls": 0,
+  "lastRarity": null
+ },
+ "loginStreak": 0,
+ "lastLoginDay": null,
+ "dailyPullAvailable": true,
+ "stats": {
+  "jumps": 3,
+  "combatsWon": 2,
+  "expeditions": 1,
+  "visits": {}
+ },
+ "story": {
+  "chapter": 0,
+  "eclipseIntro": false
+ },
+ "tutorial": {
+  "script": 2,
+  "phase": "meet",
+  "completed": false,
+  "dismissed": false,
+  "firstTravel": false,
+  "firstCombat": false,
+  "firstExpedition": false,
+  "hiredThird": false,
+  "slot3Unlocked": false,
+  "slot4Unlocked": false,
+  "jestPrompted": false,
+  "lastRewards": null,
+  "recruit": null,
+  "ordersBeat": null
+ }
+}

@@ -51,7 +51,7 @@ import { COMMISSION, commissionActive, priceCents, usableTerms } from '../system
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
-import { trustedNow } from '../shared/cloud.js';
+import { trustedNow } from '../shared/time.js';
 import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
 import { renderSectorMap } from './sectorMapView.js';
 import { renderEventCard, renderEventResult, renderRouteEvent } from './eventView.js';

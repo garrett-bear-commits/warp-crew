@@ -14,7 +14,8 @@ import { pullOnce, pullTen, defaultGacha, PITY, tickPity, rarityWeights, buyLuck
 import { galaxyUnlocked } from '../src/data/galaxies.js';
 import { INTEL_TRACKS, ECONOMY_BEATS } from '../src/data/intel.js';
 import { fuelCostFor } from '../src/systems/passives.js';
-import { applyGrant } from '../src/systems/iap.js';
+import { createPurchases } from '../src/core/purchases.js';
+import { applyGrantRewards } from '../src/core/grants.js';
 
 let player = completeTutorial(createNewPlayer({ captainName: 'QA' }), { registered: false });
 player = { ...player, wallet: { ...player.wallet, credits: 5000, fuel: 10, medals: 40, reputation: 0 } };
@@ -211,7 +212,25 @@ if (lateChance > 0.85) throw new Error('late combat still a stomp ' + lateChance
 const cut = fuelCostFor({ crew: [], ship: { systems: { engines: 12 } } }, 5);
 if (cut < 2) throw new Error('fuel floor missing ' + cut);
 
-const twice = applyGrant(applyGrant(createNewPlayer(), { gems: 100 }, 'tokA'), { gems: 100 }, 'tokA');
+// A purchase grant applies once: the core server claims each grant once (already_claimed after).
+let claimedOnce = false;
+let twice = createNewPlayer();
+const claimOnce = createPurchases({
+  api: {
+    grants: {
+      pending: async () => ({ ok: true, body: { grants: [{ grantKey: 'purchase:tokA' }] } }),
+      claim: async () => (claimedOnce
+        ? { ok: true, body: { outcome: 'already_claimed', duplicate: true } }
+        : (claimedOnce = true, { ok: true, body: { outcome: 'claimed', duplicate: false, grant: { grantKey: 'purchase:tokA', reason: 'purchase wc_gems_s', rewards: [{ kind: 'premium_currency', amount: 100 }] } } })),
+    },
+  },
+  payments: {},
+  player: () => twice,
+  applyGrant: (grant) => { twice = applyGrantRewards(twice, grant.rewards).player; return true; },
+  markOwned: () => {},
+});
+await claimOnce.claimPending();
+await claimOnce.claimPending();
 if (twice.wallet.gems !== 100) throw new Error('iap double grant ' + twice.wallet.gems);
 
 const goals = weekGoals({ ...createNewPlayer(), flags: { splashSeen: true }, stats: { jumps: 0, combatsWon: 0, expeditions: 0 }, wallet: { reputation: 0 }, crew: [1, 2], crewSlots: 2, ship: { ownedHulls: ['sparrow'] }, story: { chapter: 0 }, createdAt: Date.now() });

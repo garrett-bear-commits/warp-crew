@@ -182,6 +182,9 @@ importers:
 
   apps/warpcrew:
     dependencies:
+      '@foundation/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       fastify:
         specifier: ^5.12.5
         version: 5.12.5
