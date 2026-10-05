@@ -2940,6 +2940,24 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-enemy-room .fire { position: absolute; right: 3px; top: 3px; color: #ff9a3c; filter: drop-shadow(0 0 4px rgba(255, 140, 40, 0.9)); }
 .ftl-enemy-room.is-hit { animation: ftl-hit 420ms ease-out; }
 .ftl-enemy-room.is-miss { animation: ftl-miss 420ms ease-out; }
+/* Enemy crew: one pixel figure per room, tinted by faction. Presentational; taps go to the room button. */
+.ftl-enemy { --enemy-crew: #e0705f; }
+.ftl-enemy.family-scrapper { --enemy-crew: #d9a441; }
+.ftl-enemy.family-swarm { --enemy-crew: #9fd35a; }
+.ftl-enemy.family-ice { --enemy-crew: #8fd0ff; }
+.ftl-enemy.family-shade { --enemy-crew: #b48cff; }
+.ftl-enemy.family-crown { --enemy-crew: #ffd166; }
+.ftl-enemy-crew {
+  position: absolute; left: 50%; bottom: 8px; width: 10px; height: 16px; margin-left: -5px; pointer-events: none;
+  color: var(--enemy-crew); filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 3px rgba(0, 0, 0, 0.6));
+  animation: ftl-crew-idle 2.4s ease-in-out infinite; transition: opacity var(--motion-fast);
+}
+.ftl-enemy-crew svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.ftl-enemy-crew.is-repairing { left: auto; right: 6px; margin-left: 0; animation: ftl-crew-repair 0.5s steps(2) infinite; }
+.ftl-enemy-spark { position: absolute; left: -4px; top: 6px; width: 3px; height: 3px; background: #ffe08a; box-shadow: 0 0 4px #ffcf4a; animation: ftl-flicker 0.25s steps(2) infinite alternate; }
+.ftl-enemy.is-destroyed .ftl-enemy-crew { opacity: 0; }
+@keyframes ftl-crew-idle { 50% { transform: translateX(-3px); } }
+@keyframes ftl-crew-repair { 50% { transform: translateY(1px) rotate(-8deg); } }
 .ftl-enemy.is-destroyed .ftl-enemy-ship img { filter: grayscale(0.8) brightness(0.45); transform: rotate(-6deg) translateY(6px); }
 .ftl-enemy-guns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 4px; font-size: 12px; }
 .ftl-enemy-gun { display: grid; gap: 2px; }
@@ -2966,6 +2984,19 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-move-target span { position: absolute; left: var(--label-x); top: var(--label-y); transform: translate(-50%, -50%); font: 700 calc(12px / var(--camera-scale, 1)) var(--font-display); text-transform: uppercase; }
 /* While move targets name the rooms, the ship's own room tags would say it twice. */
 .ship-fit:has(.ftl-move-target) .room-tag { opacity: 0; }
+/* Drag a crew member onto a room: the ghost follows the finger, valid rooms light, the one under it glows. */
+.ftl-move-target.is-drop-target { background: rgba(111, 211, 255, 0.2); }
+.ftl-move-target.is-drop-hover { background: rgba(111, 211, 255, 0.38); box-shadow: inset 0 0 0 calc(5px / var(--camera-scale, 1)) #bdf0ff; animation: none; }
+.ftl-crew-chip { touch-action: pan-x; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.ftl-crew-chip img { -webkit-user-drag: none; }
+.ftl-drag-ghost {
+  position: fixed; left: 0; top: 0; z-index: 60; display: flex; align-items: center; gap: 6px; margin: -74px 0 0 -34px;
+  padding: 4px 10px 4px 4px; border: 2px solid #6fd3ff; border-radius: 10px; background: rgba(10, 16, 26, 0.92);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55); pointer-events: none; font: 700 12px var(--font-display); color: #dff6ff; will-change: transform;
+}
+.ftl-drag-ghost img { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; image-rendering: pixelated; }
+.ftl-drag-ghost.is-over-room { border-color: #bdf0ff; background: rgba(20, 60, 84, 0.95); }
+.wc-shell.ftl-crew-dragging, .wc-shell.ftl-crew-dragging * { cursor: grabbing; }
 
 /* Controls strip */
 .ftl-controls {
@@ -3014,6 +3045,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 @media (prefers-reduced-motion: reduce) {
   .ftl-bar > span { transition: none; }
   .ftl-enemy-room .reticle, .ftl-room-marker .incoming, .ftl-room-marker .fire, .ftl-move-target { animation: none; }
+  .ftl-enemy-crew, .ftl-enemy-spark { animation: none; }
 }
 .ftl-bar > span.is-filling { transition: none; animation: ftl-fill-a 1s linear; }
 /* Two identical keyframes: switching name each beat restarts the fill on a patched element. */
@@ -3156,3 +3188,28 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-weapon[data-weapon-kind="missile"] b { color: #ffb36b; }
 .ftl-weapon[data-weapon-kind="beam"] b { color: #ff7d9a; }
 .ftl-weapon.is-empty { opacity: 0.45; }
+/* New captains: one-time pointers to the sector map (never modal). */
+.bottom-nav { position: relative; }
+.explore-coach {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); z-index: 25; transform: translateX(-50%);
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; width: min(340px, calc(100vw - 32px));
+  padding: 8px 8px 8px 12px; border: 1px solid #6fd3ff; border-radius: 12px; background: rgba(10, 18, 30, 0.96);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), 0 0 14px rgba(111, 211, 255, 0.25); animation: explore-coach-in 320ms ease-out;
+}
+.explore-coach::after { content: ''; position: absolute; left: 50%; top: 100%; margin-left: -7px; border: 7px solid transparent; border-top-color: #6fd3ff; }
+.explore-coach p { margin: 0; font-size: 13px; line-height: 1.3; text-align: left; }
+.explore-coach p b { display: block; font: 700 12px var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; color: #6fd3ff; }
+.explore-coach .primary { min-height: 40px; padding: 0 12px; font-size: 13px; border-radius: 10px; }
+.explore-coach-close { min-width: 40px; min-height: 40px; padding: 0; background: transparent; border: 0; color: var(--muted); font-size: 20px; }
+.mission-switcher button.is-new { position: relative; border-color: #6fd3ff; }
+.mission-switcher button.is-new .nav-badge { top: 4px; right: 8px; background: #6fd3ff; }
+.explore-intro {
+  display: grid; gap: 4px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid rgba(111, 211, 255, 0.55); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(20, 50, 72, 0.6), rgba(10, 18, 30, 0.8));
+}
+.explore-intro b { font: 700 14px var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; color: #bdf0ff; }
+.explore-intro p { margin: 0; font-size: 14px; line-height: 1.4; }
+.explore-intro button { justify-self: end; min-height: 40px; padding: 0 14px; }
+.event-hint { margin: 6px 0 0; padding: 6px 8px; border-left: 3px solid #6fd3ff; background: rgba(111, 211, 255, 0.08); font-size: 13px; color: #cfeeff; }
+@keyframes explore-coach-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+@media (prefers-reduced-motion: reduce) { .explore-coach { animation: none; } }

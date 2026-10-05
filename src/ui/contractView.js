@@ -18,8 +18,8 @@ const rewardLabel = (offer) => offer.rewardBand?.label || offer.primaryReward ||
 const trait = (value) => value ? `<p class="contract-consequence contract-favored"><b>Favored: ${e(value.label)}</b>${value.why ? `<span> · ${e(value.why)}</span>` : ''}</p>` : '';
 const reason = (value) => value ? `<p class="contract-consequence">${e(value)}</p>` : '';
 
-export function renderMissionSwitcher(view = 'contracts', views = ['contracts', 'away', 'explore']) {
-  return `<nav class="mission-switcher" style="--views:${views.length}" aria-label="Mission views">${[['contracts', 'Contracts'], ['away', 'Away'], ['explore', 'Explore']].filter(([id]) => views.includes(id)).map(([id, label]) => `<button type="button" data-act="mission-view" data-view="${id}" aria-pressed="${id === view}">${label}</button>`).join('')}</nav>`;
+export function renderMissionSwitcher(view = 'contracts', views = ['contracts', 'away', 'explore'], { fresh = [] } = {}) {
+  return `<nav class="mission-switcher" style="--views:${views.length}" aria-label="Mission views">${[['contracts', 'Contracts'], ['away', 'Away'], ['explore', 'Explore']].filter(([id]) => views.includes(id)).map(([id, label]) => `<button type="button" data-act="mission-view" data-view="${id}" aria-pressed="${id === view}"${fresh.includes(id) ? ' class="is-new"' : ''}>${label}${fresh.includes(id) ? '<i class="nav-badge" aria-label="new"></i>' : ''}</button>`).join('')}</nav>`;
 }
 
 function renderSiegeMeter(wall) {

@@ -649,6 +649,23 @@ function syncHostiles(player, live) {
   }
 }
 
+/**
+ * The crew member drawn under a ship-world point (hull pixels), for pressing a sprite to drag it.
+ * `pad` widens each sprite's box (world pixels) so small, zoomed-out sprites stay pressable.
+ * Front-most (lowest on screen) wins; hostile boarders are never returned.
+ */
+export function crewAgentAt(point, pad = 0) {
+  let best = null;
+  for (const a of agents.values()) {
+    if (a.hostile || a.assignment?.startsWith('expedition-departure')) continue;
+    const { destination } = crewPoseForActor(a, HULL_PX.w, HULL_PX.h, walkAssetFor(a.templateId, a.role).profile, { animate: false });
+    const inside = point.x >= destination.x - pad && point.x <= destination.x + destination.width + pad
+      && point.y >= destination.y - pad && point.y <= destination.y + destination.height + pad;
+    if (inside && (!best || a.y > best.y)) best = a;
+  }
+  return best?.id || null;
+}
+
 export function syncCrewLayer(el, player) {
   if (!el) return;
   if (el.tagName === 'CANVAS') {

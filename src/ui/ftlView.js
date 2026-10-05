@@ -27,6 +27,24 @@ const chargeBar = (from, to, cls = '', beat = 0) => `<span class="ftl-bar ${cls}
 const pips = (layers, max, full) => Array.from({ length: Math.max(full, max) }, (_, i) => `<i class="ftl-pip${i < layers ? ' on' : ''}${i >= max ? ' broken' : ''}"></i>`).join('');
 const live = view => !view.result && !view.downed;
 
+// A 7x11 pixel crew silhouette (head, shoulders, body, legs), tinted by the enemy family in CSS.
+const ENEMY_CREW_PIXELS = '<rect x="2" y="0" width="3" height="3"/><rect x="1" y="3" width="5" height="1"/><rect x="0" y="4" width="7" height="3"/><rect x="1" y="7" width="5" height="1"/><rect x="1" y="8" width="2" height="3"/><rect x="4" y="8" width="2" height="3"/>';
+
+/**
+ * The enemy crew member stationed in a room, from the room's state only (presentation, no rules):
+ * at their post when the room is whole, repairing when it is damaged, gone while it burns or is offline.
+ */
+export function enemyCrewState(room) {
+  if (!room || room.offline || room.fire) return 'gone';
+  return room.integrity < 100 || room.damaged ? 'repairing' : 'manning';
+}
+
+function enemyCrewFigure(id, room) {
+  const state = enemyCrewState(room);
+  if (state === 'gone') return '';
+  return `<span class="ftl-enemy-crew is-${state}" data-enemy-crew="${id}" aria-hidden="true"><svg viewBox="0 0 7 11" shape-rendering="crispEdges">${ENEMY_CREW_PIXELS}</svg>${state === 'repairing' ? '<i class="ftl-enemy-spark"></i>' : ''}</span>`;
+}
+
 /** Enemy ship: its cutaway art with four targetable rooms over their real positions, hull, shields and guns. */
 export function renderFtlEnemy(view) {
   if (!view?.ftl) return '';
@@ -45,7 +63,7 @@ export function renderFtlEnemy(view) {
       style="left:${box.left}%;top:${box.top}%;width:${box.width}%;height:${box.height}%"
       data-enemy-room="${id}" data-act="encounter-command" data-command-type="target" data-room="${id}" ${identity(view)} ${enabled ? '' : 'disabled'}${spotlight ? ' data-primary-pulse data-spotlight-target' : ''}
       aria-pressed="${targeted}" aria-label="Target their ${e(room.label)}${room.offline ? ', offline' : ''}">
-      <span class="ftl-room-tag">${icon(id)}<b>${e(room.label)}</b></span>${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
+      ${enemyCrewFigure(id, room)}<span class="ftl-room-tag">${icon(id)}<b>${e(room.label)}</b></span>${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
     </button>`;
   }).join('');
   const guns = enemy.weapons.map(w => `<div class="ftl-enemy-gun${w.chargePct >= 70 ? ' is-hot' : ''}">
@@ -66,8 +84,8 @@ export function renderFtlEnemy(view) {
   </section>`;
 }
 
-/** Markers on the Sparrow's rooms: damage, fire, boarders, incoming fire, and move targets for the selected crew. */
-export function renderFtlShipMarkers(view, { selectedCrewId = null } = {}) {
+/** Markers on the Sparrow's rooms: damage, fire, boarders, incoming fire, and move targets for the selected (or dragged) crew. */
+export function renderFtlShipMarkers(view, { selectedCrewId = null, dragging = false } = {}) {
   if (!view?.ftl) return '';
   const incoming = new Set(view.enemy.weapons.filter(w => w.chargePct >= 50).map(w => w.target));
   const selected = selectedCrewId && live(view) ? view.crew.find(member => member.id === selectedCrewId) : null;
@@ -77,7 +95,7 @@ export function renderFtlShipMarkers(view, { selectedCrewId = null } = {}) {
     const boarded = view.boarders?.phase === 'aboard' && view.boarders.room === room.id;
     const status = `${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${boarded ? icon('boarders', 'boarders') : ''}${incoming.has(room.id) && live(view) ? icon('reticle', 'incoming') : ''}`;
     const marker = `<div class="ftl-room-marker${room.offline ? ' is-offline' : room.damaged ? ' is-damaged' : ''}${room.fire ? ' is-burning' : ''}" style="left:${shipRoom.labelAnchor.x}%;top:${shipRoom.labelAnchor.y}%" aria-hidden="true">${status}</div>`;
-    const move = selected ? `<button type="button" class="ftl-move-target" style="${roomStyle(shipRoom)}" data-act="encounter-command" data-command-type="move" data-crew-id="${e(selected.id)}" data-room="${e(room.id)}" ${identity(view)} aria-label="Send ${e(selected.name)} to ${e(shipRoom.label)}"><span>${e(shipRoom.label)}</span></button>` : '';
+    const move = selected ? `<button type="button" class="ftl-move-target${dragging ? ' is-drop-target' : ''}" style="${roomStyle(shipRoom)}" data-act="encounter-command" data-command-type="move" data-crew-id="${e(selected.id)}" data-room="${e(room.id)}" ${identity(view)} aria-label="Send ${e(selected.name)} to ${e(shipRoom.label)}"><span>${e(shipRoom.label)}</span></button>` : '';
     return marker + move;
   }).join('');
 }
@@ -143,7 +161,7 @@ export function renderFtlControls(view, { selectedCrewId = null, paused = false,
     </div>
     ${boarders}
     <div class="ftl-crew" role="group" aria-label="Crew">${crew}</div>
-    <p class="ftl-hint">${selected ? `Tap a room on the ship to send ${e(selected.name.split(' ')[0])}.` : 'Tap crew, then a room, to send them to fight fires or repair.'}</p>
+    <p class="ftl-hint">${selected ? `Tap a room on the ship to send ${e(selected.name.split(' ')[0])}.` : 'Drag crew onto a room (or tap crew, then a room) to fight fires or repair.'}</p>
     ${view.tactics?.length ? `<div class="ftl-tactics">${renderTactics(view)}</div>` : ''}
     ${view.retryBeat ? `<p role="alert">Fight progress was not saved.</p><button type="button" class="primary" data-act="encounter-advance" ${identity(view)}>Retry fight progress</button>` : ''}
   </section>`;
