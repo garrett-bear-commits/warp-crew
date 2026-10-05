@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** Deterministic, saved daily Contract Board. Route mutations belong elsewhere. */
 
+import { trustedNow } from '../shared/time.js';
 import { visibleNodes, NODES, STORY_BEATS, gateBlockedByWall } from '../data/sectors.js';
 import { CONTRACT_PROFILES, combatWeight, qualifiesForProfile, storySalvageWeight } from '../data/contracts.js';
 import { encounterById, previewCombatOrder, crewPower, rubberBandPower } from './combat.js';
@@ -17,7 +18,7 @@ import { recordSiege } from './walls.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
-export function contractDayKey(now = Date.now()) {
+export function contractDayKey(now = trustedNow()) {
   const d = new Date(now);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -118,7 +119,7 @@ function withRouteSnapshot(offer) {
   };
 }
 
-export function generateContractBoard(player, now = Date.now()) {
+export function generateContractBoard(player, now = trustedNow()) {
   const boardDay = contractDayKey(now);
   const shipId = player?.ship?.shipId || 'sparrow';
   const rng = xorshift(hashSeed(`${boardDay}:${careerBand(player)}:${shipId}`));
@@ -141,7 +142,7 @@ export function generateContractBoard(player, now = Date.now()) {
   return { dayKey: boardDay, offers, completedOfferIds: [...new Set(player?.contractBoard?.completedOfferIds || [])] };
 }
 
-export function ensureContractBoard(player, now = Date.now()) {
+export function ensureContractBoard(player, now = trustedNow()) {
   const boardDay = contractDayKey(now);
   const saved = player?.contractBoard;
   if (saved && (saved.dayKey === boardDay || player?.activeContract)) {
@@ -255,7 +256,7 @@ function analyticsEvent(event, fields) {
   return { event, ...fields };
 }
 
-function contractDecisionKey(player, contract, action, now = Date.now()) {
+function contractDecisionKey(player, contract, action, now = trustedNow()) {
   const crew = readyContractCrew(player, now).map((member) => ({
     instanceId: member.instanceId,
     power: Number(member.power) || 0,
@@ -317,7 +318,7 @@ function validOfferContent(offer) {
     && validRewardContent(offer.routeContent, offer.destinationId));
 }
 
-export function acceptContract(player, offerId, now = Date.now()) {
+export function acceptContract(player, offerId, now = trustedNow()) {
   if (player?.activeContract) return { ok: false, reason: 'contract_already_active', player };
   const board = player?.contractBoard;
   const offer = (board?.offers || []).find((candidate) => candidate.id === offerId);
@@ -382,7 +383,7 @@ export function acceptContract(player, offerId, now = Date.now()) {
   };
 }
 
-function actionPreview(player, contract, action, now = Date.now()) {
+function actionPreview(player, contract, action, now = trustedNow()) {
   if (contract.stage === 'briefing' && action?.id === 'launch') {
     if ((player?.ship?.hull ?? 100) <= 8) return { ok: false, reason: 'hull_critical' };
     if (!readyContractCrew(player, now).length) return { ok: false, reason: 'no_ready_crew' };
@@ -450,7 +451,7 @@ function actionPreview(player, contract, action, now = Date.now()) {
   return { ok: false, reason: 'wrong_contract_stage' };
 }
 
-export function previewContractAction(player, action, now = Date.now()) {
+export function previewContractAction(player, action, now = trustedNow()) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'no_active_contract' };
   const preview = actionPreview(player, contract, action, now);
@@ -470,7 +471,7 @@ export function previewContractAction(player, action, now = Date.now()) {
   return { ...base, ok: true };
 }
 
-export function commitContractAction(player, preview, { rng = Math.random, now = Date.now() } = {}) {
+export function commitContractAction(player, preview, { rng = Math.random, now = trustedNow() } = {}) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'no_active_contract', player };
   if (
@@ -628,7 +629,7 @@ function enumerateRewardPaths(player, offer, now) {
   return terminals;
 }
 
-export function contractRewardBand(player, offer, { now = Date.now() } = {}) {
+export function contractRewardBand(player, offer, { now = trustedNow() } = {}) {
   const terminals = enumerateRewardPaths(player, offer, now);
   if (!terminals.length) return { available: false, label: 'Reward unavailable', currencies: {}, paths: [] };
   const paths = [...new Map(terminals.map(result => [JSON.stringify(result.rewards), result.rewards])).values()];
@@ -642,7 +643,7 @@ export function contractRewardBand(player, offer, { now = Date.now() } = {}) {
   return { ...band, label: formatRewardBand(band) };
 }
 
-export function claimContractReward(player, now = Date.now()) {
+export function claimContractReward(player, now = trustedNow()) {
   const contract = player?.activeContract;
   if (!contract) return { ok: false, reason: 'already_claimed', player };
   if (contract.stage !== 'return' || !contract.result) {

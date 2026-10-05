@@ -1,7 +1,8 @@
 // @ts-nocheck
 /** Calendar-day helpers for login streak + daily free gacha reset */
 
-export function dayKey(now = Date.now()) {
+import { trustedNow } from '../shared/time.js';
+export function dayKey(now = trustedNow()) {
   const d = new Date(now);
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
@@ -9,7 +10,7 @@ export function dayKey(now = Date.now()) {
   return `${y}-${m}-${day}`;
 }
 
-export function yesterdayKey(now = Date.now()) {
+export function yesterdayKey(now = trustedNow()) {
   return dayKey(now - 86400000);
 }
 
@@ -17,7 +18,7 @@ export function yesterdayKey(now = Date.now()) {
  * Apply daily login + free pull reset.
  * Call once on boot after load.
  */
-export function applyDailyLogin(player, now = Date.now()) {
+export function applyDailyLogin(player, now = trustedNow()) {
   const today = dayKey(now);
   const last = player.lastLoginDay;
   let loginStreak = player.loginStreak || 0;

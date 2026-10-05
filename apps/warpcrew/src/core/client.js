@@ -11,7 +11,7 @@
 // Saves: ordinary changes ask for `requestSave('routine')` (the device slot at most every
 // LOCAL_SAVE_MS, the cloud at most every 12 s, leading and trailing); purchases, grants, restores,
 // milestones and wall breaks ask for 'immediate' (saved and pushed now).
-import { createClock, createGameClient, createSlot, createStorage, readLastKnownPlayerId, slotKey } from '@foundation/client';
+import { ACKED_VERDICTS, createClock, createGameClient, createSlot, createStorage, readLastKnownPlayerId, slotKey } from '@foundation/client';
 import { warpcrewEngine, describeAction } from './engine.js';
 import { warpcrewCodec } from './codec.js';
 import { createWarpcrewPlatform } from './platform.js';
@@ -63,6 +63,7 @@ export function savePriorityFor(before, after) {
  * @param {{
  *   config: ReturnType<typeof import('./config.js').readConfig>,
  *   platformKind?: 'jest' | 'mock',
+ *   jestShell?: boolean,
  *   sdk?: object | null, sdkInit?: () => Promise<unknown>,
  *   clock?: import('@foundation/client').Clock,
  *   localStorage?: Storage | null, fetch?: typeof fetch, timers?: any, locks?: any, channel?: any,
@@ -177,8 +178,51 @@ export function createWarpcrew(o) {
     return true;
   }
 
-  /** The single grant-application path: engine `grant`, then an immediate save. */
-  function applyGrant(grant, oneTimeSku = null) {
+  /** This tab may change the player now: booted, the leader, live (no prompt), no restore running. */
+  function canApply() {
+    return client.booted && client.leader.isLeader() && client.bootMachine.state().phase === 'live' && !client.gate.isRestoring();
+  }
+
+  /**
+   * An immediate save that resolves true only once the current player is durable. Durable means
+   * the device slot holds a snapshot taken after this call (with its pending push, whose
+   * commandId the core replays verbatim at the next boot), and nothing replaced the state meanwhile
+   * (no adopt, reload or new generation). When the device tier is memory only (storage blocked),
+   * the slot does not survive the page, so the server must also have acknowledged the push.
+   */
+  async function saveDurably() {
+    if (!client.booted) return false;
+    const s = client.sync;
+    let wrote = null;
+    let swapped = false;
+    let acked = false;
+    const off = s.onEvent((e) => {
+      if (e.type === 'autosaved') wrote = e.ok; // the last snapshot of the run is this one
+      else if (e.type === 'generation_changed' || e.type === 'reloaded') swapped = true;
+      else if (e.type === 'verdict' && !e.report.skipped && ACKED_VERDICTS.has(e.report.verdict)) acked = true;
+    });
+    try {
+      await s.requestSave('immediate');
+    } catch (e) {
+      reportError('save failed', { message: String(e?.message || e).slice(0, 200) });
+      return false;
+    } finally {
+      off();
+    }
+    if (swapped || wrote !== true) return false;
+    return client.storage.mode === 'memory' ? acked : true;
+  }
+
+  /**
+   * The single grant-application path: engine `grant`, then a durable save. Resolves true only
+   * when the grant is in the player and saved (see saveDurably); purchases.js completes a Jest
+   * purchase only then.
+   */
+  async function applyGrant(grant, oneTimeSku = null) {
+    if (!canApply()) {
+      reportError('grant not applied (this tab may not write)');
+      return false;
+    }
     client.effects.drain(['granted']);
     if (!dispatch({ type: 'grant', rewards: grant.rewards || [], ref: grant.grantKey, oneTimeSku })) {
       reportError('grant not applied (not the leader tab)');
@@ -187,20 +231,53 @@ export function createWarpcrew(o) {
     const fx = client.effects.drain(['granted']);
     const unknown = fx.flatMap((e) => e.payload?.unknown || []);
     if (unknown.length) reportError('grant reward outside the vocabulary', { kinds: unknown.join(',').slice(0, 200) });
-    void save('immediate');
-    return true;
+    return saveDurably();
   }
 
   const purchases = createPurchases({
     api,
     payments: platform.payments,
     player: () => client.state(),
+    canApply,
     applyGrant,
+    // Inside the real Jest shell with no server nothing can verify a receipt: no purchases, and
+    // never a local mock grant. The mock checkout is for QA outside Jest only.
+    enabled: online || !o.jestShell,
     markOwned: (skus) => {
       const next = markOwned(client.state(), skus);
       if (next !== client.state()) commit(next, 'owned', 'immediate');
     },
     onError: reportError,
+  });
+
+  /**
+   * Online boot work: recover incomplete purchases, claim waiting grants (any device), refresh
+   * one-time ownership. Only the leader tab does it; a follower defers and runs it as soon as it
+   * leads ("Play here", or the other tab closing). `whenServerSynced()` resolves after a run.
+   */
+  let serverWork = null;
+  let serverWorkWanted = false;
+  let serverSynced = Promise.resolve(null);
+  async function runServerWork() {
+    const recovered = await purchases.recover();
+    const pending = await purchases.claimPending();
+    const owned = await purchases.refreshOwned();
+    if (recovered.deferred || pending.deferred) return { deferred: true, recovered, pending, owned };
+    serverWorkWanted = false;
+    return { deferred: false, recovered, pending, owned };
+  }
+  function serverSync() {
+    if (!online) return Promise.resolve({ deferred: false, offline: true });
+    serverWorkWanted = true;
+    if (!canApply()) return Promise.resolve({ deferred: true });
+    if (!serverWork) {
+      serverWork = runServerWork().finally(() => { serverWork = null; });
+      serverSynced = serverWork;
+    }
+    return serverWork;
+  }
+  client.leader.onChange((role) => {
+    if (role === 'leader' && serverWorkWanted && client.booted) void serverSync();
   });
 
   /** subscription.js `verify` dependency: Jest's signed list → the core's verified entitlements. */
@@ -240,7 +317,10 @@ export function createWarpcrew(o) {
     }
     let importedLegacy = false;
     const legacy = storage ? readLegacySave(storage) : null;
-    if (legacy && !opts.fresh && shouldImportLegacy(client.state(), legacy)) {
+    // The core had no save for this player when the boot found nothing anywhere (both empty, or no
+    // cloud and no device slot); otherwise only a strictly deeper legacy player is imported.
+    const noCoreSave = result.decision?.action === 'start_new' && ['both_empty', 'unreachable_new_identity'].includes(result.decision.reason);
+    if (legacy && !opts.fresh && shouldImportLegacy(client.state(), legacy, { noCoreSave })) {
       importedLegacy = dispatch({ type: 'set', reason: 'legacy_import', player: legacy }) && client.state() === legacy;
       if (importedLegacy) await save('immediate');
     }
@@ -273,6 +353,9 @@ export function createWarpcrew(o) {
     commit,
     prepare,
     applyGrant,
+    canApply,
+    serverSync,
+    whenServerSynced: () => serverSynced,
     save,
     verifySubscriptions,
     state: () => client.state(),

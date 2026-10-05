@@ -4,6 +4,7 @@
  * guided-flow captains. Each attempt fights up to 42 hull of the flagship;
  * damage holds until the local daily reset, so coming back wears the wall down.
  */
+import { trustedNow } from '../shared/time.js';
 import { NODES, visibleNodes, careerDay } from '../data/sectors.js';
 import { encounterById } from './combat.js';
 
@@ -42,7 +43,7 @@ export function wallBeaten(player, id) {
 }
 
 
-export function currentWall(player, now = Date.now()) {
+export function currentWall(player, now = trustedNow()) {
   if (!wallsApply(player)) return null;
   const visible = new Set(visibleNodes(player, now).map(node => node.id));
   for (const wall of WALLS) {
@@ -53,7 +54,7 @@ export function currentWall(player, now = Date.now()) {
   return null;
 }
 
-export function siegeState(player, wall, now = Date.now()) {
+export function siegeState(player, wall, now = trustedNow()) {
   const record = player?.siege?.[wall.id];
   const today = dayKey(now);
   const damage = record?.dayKey === today ? Math.min(wall.pool, record.damage || 0) : 0;
@@ -62,7 +63,7 @@ export function siegeState(player, wall, now = Date.now()) {
   return { pool: wall.pool, damage, remaining: wall.pool - damage, attempts: record?.attempts || 0, resetsInMs: tomorrow.getTime() - now };
 }
 
-export function wallOffer(player, wall, now = Date.now()) {
+export function wallOffer(player, wall, now = trustedNow()) {
   const siege = siegeState(player, wall, now);
   const encounter = encounterById(wall.encounterId);
   const node = NODES[wall.destinationId];
@@ -95,7 +96,7 @@ export function wallOffer(player, wall, now = Date.now()) {
 }
 
 /** Keep exactly the current wall's attempt on the board, alongside the daily offers. */
-export function ensureWallOffer(player, now = Date.now()) {
+export function ensureWallOffer(player, now = trustedNow()) {
   const board = player?.contractBoard;
   if (!board?.offers) return player;
   const wall = currentWall(player, now);
@@ -110,7 +111,7 @@ export function ensureWallOffer(player, now = Date.now()) {
 }
 
 /** Encounter setup for a wall attempt: this segment's hull and the threat floor. */
-export function wallEncounterSetup(player, contract, threat, now = Date.now()) {
+export function wallEncounterSetup(player, contract, threat, now = trustedNow()) {
   const wall = WALL_BY_ID[contract?.wall?.id];
   if (!wall) return null;
   const siege = siegeState(player, wall, now);
@@ -122,7 +123,7 @@ export function wallEncounterSetup(player, contract, threat, now = Date.now()) {
 }
 
 /** Settle an attempt at claim: record damage for today and open the gate when the pool is spent. */
-export function recordSiege(player, contract, now = Date.now()) {
+export function recordSiege(player, contract, now = trustedNow()) {
   const wall = WALL_BY_ID[contract?.wall?.id];
   const outcome = contract?.result?.wall;
   if (!wall || !outcome) return player;

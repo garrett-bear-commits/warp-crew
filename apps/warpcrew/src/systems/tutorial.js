@@ -2,6 +2,7 @@
 /**
  * First-session script (v3). Beats follow committed contract and away actions.
  */
+import { trustedNow } from '../shared/time.js';
 import { createCrewInstance } from '../data/crewRoster.js';
 
 export const TUTORIAL_SCRIPT = 3;
@@ -374,7 +375,7 @@ export function beginJoinPrompt(player) {
 /** Soft 7-day goals for test week — hidden until the intro is done */
 export function weekGoals(player) {
   const s = player.stats || {};
-  const day = 1 + Math.floor((Date.now() - (player.createdAt || Date.now())) / 86400000);
+  const day = 1 + Math.floor((trustedNow() - (player.createdAt || trustedNow())) / 86400000);
   return {
     careerDay: day,
     goals: [
@@ -417,6 +418,6 @@ export function ordersStep(player) {
 }
 
 /** Compact home chip after the day-loop lesson. */
-export function sessionHint(player, { fuel, now = Date.now() } = {}) {
+export function sessionHint(player, { fuel, now = trustedNow() } = {}) {
   return null;
 }

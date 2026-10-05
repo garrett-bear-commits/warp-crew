@@ -1,5 +1,6 @@
 // First-slice station output units are provisional display indices. Combat and
 // economy continue to use their existing selectors until separately balanced.
+import { trustedNow } from '../shared/time.js';
 export const STATIONS = Object.freeze({
   helm: { label: 'Helm', roomId: 'bridge', role: 'pilot' },
   shields: { label: 'Shields', roomId: 'shields', role: 'engineer' },
@@ -23,7 +24,7 @@ export function normalizeAssignments(player) {
   return assignments;
 }
 
-export function assignStation(player, crewId, stationId, now = Date.now()) {
+export function assignStation(player, crewId, stationId, now = trustedNow()) {
   const member = player?.crew?.find(c => c.instanceId === crewId);
   if (!member) return { ok: false, reason: 'unknown_crew' };
   if (member.status === 'expedition' || member.status === 'reserve' || (member.injuredUntil || 0) > now) {
@@ -40,7 +41,7 @@ export function assignStation(player, crewId, stationId, now = Date.now()) {
   return { ok: true, player: { ...player, stationAssignments } };
 }
 
-export function stationOutputs(player, now = Date.now()) {
+export function stationOutputs(player, now = trustedNow()) {
   const assignments = normalizeAssignments(player);
   const output = {};
   for (const [stationId, station] of Object.entries(STATIONS)) {
@@ -59,7 +60,7 @@ export function stationOutputs(player, now = Date.now()) {
   return output;
 }
 
-export function previewStationAssignment(player, crewId, stationId, now = Date.now()) {
+export function previewStationAssignment(player, crewId, stationId, now = trustedNow()) {
   if (!isStation(stationId)) return { ok: false, reason: 'unknown_station' };
   const proposal = assignStation(player, crewId, stationId, now);
   if (!proposal.ok) return { ok: false, reason: proposal.reason };

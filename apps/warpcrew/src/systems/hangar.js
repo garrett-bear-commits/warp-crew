@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { trustedNow } from '../shared/time.js';
 import { SHIPS, getShipDef, SHIP_SYSTEMS } from '../data/ships.js';
 import { canAfford, pay, upgradeCost, grant, sellContract, clampFuel } from './economy.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
@@ -196,7 +197,7 @@ function applyLevel(player, system) {
   return applyHullStats({ ...player, ship: { ...player.ship, systems }, crewSlots }, def);
 }
 
-export function upgradeSystem(player, system, now = Date.now()) {
+export function upgradeSystem(player, system, now = trustedNow()) {
   const def = getShipDef(player.ship.shipId);
   const costs = def.upgradeCosts || SHIPS.sparrow.upgradeCosts;
   if (!costs?.[system]) return { ok: false, reason: 'no_upgrade' };
@@ -220,14 +221,14 @@ export function upgradeSystem(player, system, now = Date.now()) {
 }
 
 /** Finish a build whose timer has run out; idempotent otherwise. */
-export function completeShipBuild(player, now = Date.now()) {
+export function completeShipBuild(player, now = trustedNow()) {
   const build = player?.shipBuild;
   if (!build || build.endAt > now) return { player, completed: null };
   const done = applyLevel({ ...player, shipBuild: null }, build.system);
   return { player: done, completed: build };
 }
 
-export function skipShipBuild(player, now = Date.now()) {
+export function skipShipBuild(player, now = trustedNow()) {
   const build = player?.shipBuild;
   if (!build) return { ok: false, reason: 'no_build' };
   // Drydock finish tokens (from wall packs) are spent before gems.

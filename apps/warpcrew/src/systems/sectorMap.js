@@ -1,5 +1,6 @@
 // @ts-nocheck
 /** Sector map rules: which beacons you can jump to, and what the map tells you about them. */
+import { trustedNow } from '../shared/time.js';
 import { NODES, visibleNodes, nodeMeta, GATE_WALLS, gateBlockedByWall } from '../data/sectors.js';
 import { SECTOR_MAPS, SECTOR_ORDER, LANES, laneNeighbors, hasLane, MAP_WIDTH, MAP_HEIGHT } from '../data/sectorMaps.js';
 import { galaxyUnlocked } from '../data/galaxies.js';
@@ -32,7 +33,7 @@ function visibleSet(player, now) {
 }
 
 /** Whether a jump from the current location to `nodeId` follows the lanes. */
-export function laneCheck(player, nodeId, now = Date.now()) {
+export function laneCheck(player, nodeId, now = trustedNow()) {
   const here = player?.location || HOME;
   if (!NODES[nodeId]) return { ok: false, reason: 'unknown_node' };
   if (nodeId === here) return { ok: false, reason: 'already_here' };
@@ -51,7 +52,7 @@ export function laneCheck(player, nodeId, now = Date.now()) {
 }
 
 /** Honest risk read: who fights here, how hard against the crew aboard now, and how often. */
-export function riskRead(player, node, now = Date.now()) {
+export function riskRead(player, node, now = trustedNow()) {
   const outcomes = node?.outcomes || [];
   const total = outcomes.reduce((sum, outcome) => sum + outcome.w, 0) || 1;
   const fights = outcomes.filter(outcome => outcome.kind === 'combat');
@@ -77,7 +78,7 @@ export function arrivalMix(node) {
 }
 
 /** Sectors the captain can open on the map (their own plus unlocked ones). */
-export function mapSectors(player, now = Date.now()) {
+export function mapSectors(player, now = trustedNow()) {
   const visible = visibleSet(player, now);
   const here = sectorOf(player?.location || HOME);
   return SECTOR_ORDER.filter(id => id === here || id === 'spur'
@@ -85,7 +86,7 @@ export function mapSectors(player, now = Date.now()) {
 }
 
 /** Full map model for one sector. */
-export function sectorMapModel(player, ui = {}, now = Date.now()) {
+export function sectorMapModel(player, ui = {}, now = trustedNow()) {
   const here = player?.location || HOME;
   const sectors = mapSectors(player, now);
   const sectorId = sectors.includes(ui.mapSector) ? ui.mapSector : sectorOf(here);

@@ -4,13 +4,14 @@
  * footing (third post-tutorial contract) or after their first lost fight,
  * never before the Shop is unlocked, and stays for a real 48-hour window.
  */
+import { trustedNow } from '../shared/time.js';
 import { isTabUnlocked } from './tutorial.js';
 import { PRODUCT_DEFS, GEM_LADDER, ownsOneTime } from './iap.js';
 import { FUEL_REFILL } from './gemSinks.js';
 
 export const STARTER_OFFER = Object.freeze({ sku: 'wc_starter_kit', windowMs: 48 * 3600 * 1000, contractsTrigger: 4 });
 
-export function evaluateStarterOffer(player, now = Date.now()) {
+export function evaluateStarterOffer(player, now = trustedNow()) {
   if (!player || player.offers?.starter) return player;
   if (!isTabUnlocked(player, 'shop')) return player;
   const lost = (player.stats?.contractsLost || 0) > 0;
@@ -19,7 +20,7 @@ export function evaluateStarterOffer(player, now = Date.now()) {
   return { ...player, offers: { ...(player.offers || {}), starter: { triggeredAt: now, reason: lost ? 'first_loss' : 'settled_in', seen: false, purchased: false } } };
 }
 
-export function starterOfferState(player, now = Date.now()) {
+export function starterOfferState(player, now = trustedNow()) {
   const offer = player?.offers?.starter;
   if (!offer) return { active: false };
   const endsAt = offer.triggeredAt + STARTER_OFFER.windowMs;
@@ -62,7 +63,7 @@ export function starterValue(products = []) {
 export const WALL_PACK_STUCK_MS = 2 * 86400 * 1000;
 export const wallPackSku = wallId => `wc_wall_${wallId}`;
 
-export function evaluateWallPackOffer(player, wall, now = Date.now()) {
+export function evaluateWallPackOffer(player, wall, now = trustedNow()) {
   if (!player || !wall) return player;
   const sku = wallPackSku(wall.id);
   if (player.offers?.walls?.[wall.id] || ownsOneTime(player, sku) || !PRODUCT_DEFS[sku]) return player;

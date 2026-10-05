@@ -10,6 +10,7 @@
  * with the contract crew-fight payout (salvage share on loss); claiming it performs the
  * arrival the old one-shot travel resolution did: visit, location, jump count, wallet.
  */
+import { trustedNow } from '../shared/time.js';
 import { NODES, gateBlockedByWall } from '../data/sectors.js';
 import { ENCOUNTERS_V1, encounterById } from './combat.js';
 import { spendFuel } from './fuel.js';
@@ -84,7 +85,7 @@ export function normalizeTravelFightState(player) {
 }
 
 /** Spend the jump fuel and open the crew fight. Location, visits and prize wait for the claim. */
-export function beginTravelFight(player, preview, now = Date.now()) {
+export function beginTravelFight(player, preview, now = trustedNow()) {
   if (!preview?.ok || preview.outcome?.kind !== 'combat' || !preview.node) return { ok: false, reason: 'bad_preview', player };
   if (gateBlockedByWall(player, preview.node.id)) return { ok: false, reason: 'siege_wall', player };
   if (player.activeContract) return { ok: false, reason: 'active_contract', player };
@@ -121,7 +122,7 @@ export function beginTravelFight(player, preview, now = Date.now()) {
   };
 }
 
-export function applyTravelFightAction(player, { acceptanceId, revision, order = null } = {}, now = Date.now()) {
+export function applyTravelFightAction(player, { acceptanceId, revision, order = null } = {}, now = trustedNow()) {
   const fight = player?.activeTravelFight;
   const encounter = player?.activeEncounter;
   if (player?.activeContract || !validTravelFight(player)) return { ok: false, reason: 'invalid_encounter_state', player };

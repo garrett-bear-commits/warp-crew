@@ -1,4 +1,5 @@
 // Session orchestration: pure transitions, followed by one durable publication boundary.
+import { trustedNow } from '../shared/time.js';
 import { syncCommission } from './subscription.js';
 import { dockRepair } from './passives.js';
 import { ensureContractBoard, generateContractBoard, tutorialDistressOffer, reviewContractOffer, contractRewardBand, acceptContract, previewContractAction, commitContractAction, claimContractReward, abandonContract } from './contracts.js';
@@ -35,7 +36,7 @@ import { laneCheck, sectorMapModel } from './sectorMap.js';
 import { resolveRoutePayout } from './contractRewards.js';
 import { markExploreNudge, noteMapJump } from './exploreNudge.js';
 
-export function prepareSession(player, now = Date.now()) {
+export function prepareSession(player, now = trustedNow()) {
   let next = ensureDailyLoop(player, now);
   const early = isTutorialActive(next) && ([4, 5].includes(next.tutorial.script)
     || ['distress', 'launch', 'order', 'return', 'recruit'].includes(next.tutorial.phase));
@@ -177,7 +178,7 @@ function ftlEncounterView(player, encounter, { settled, ui = {} }) {
 }
 
 /** Ship-panel model for any live crew fight (contract or Explore jump). */
-function encounterView(player, encounter, { settled, ui = {}, now = Date.now() }) {
+function encounterView(player, encounter, { settled, ui = {}, now = trustedNow() }) {
   if (encounter.version === FTL_VERSION) return ftlEncounterView(player, encounter, { settled, ui });
   const options = encounter.orderWindow?.orderOptions || {};
   return {
@@ -271,7 +272,7 @@ function routeEventModel(player, contract, previews, now) {
     }) };
 }
 
-export function sessionModels(player, ui = {}, now = Date.now()) {
+export function sessionModels(player, ui = {}, now = trustedNow()) {
   const contract = player.activeContract;
   const stations = stationOutputs(player, now);
   const models = { missionView: ui.missionView || 'contracts', dailyPlan: dailyPlan(player, now),
@@ -372,7 +373,7 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
   return models;
 }
 
-export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rng = Math.random } = {}) {
+export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), rng = Math.random } = {}) {
   const before = player;
   const events = [];
   const nextUi = {};
@@ -799,7 +800,7 @@ export function persistSessionTransition(result, { save, publish, capture, anima
 }
 
 /** What the ship can still fight with after an away team leaves. */
-export function shipReadiness(player, awayIds = [], now = Date.now()) {
+export function shipReadiness(player, awayIds = [], now = trustedNow()) {
   const ready = readyContractCrew(player, now);
   const staying = ready.filter(member => !awayIds.includes(member.instanceId));
   const assignments = player.stationAssignments || {};

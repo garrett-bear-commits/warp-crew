@@ -50,7 +50,7 @@ assert.equal(noServer.reason, 'store_unavailable');
 assert.deepEqual(calls, []);
 // Real Jest: only the server's verified answer unlocks, never the plain object.
 const verified = [];
-const verify = async (signed) => { verified.push(signed); return { ok: true, data: { subscriptions: [{ sku: 'wc_sub_commission', active: true, trialEligible: false, retentionOffer: { price: 599, durationPeriods: 2 } }] } }; };
+const verify = async (signed) => { verified.push(signed); return { ok: true, data: { issuedAt: NOW, subscriptions: [{ sku: 'wc_sub_commission', active: true, trialEligible: false, retentionOffer: { price: 599, durationPeriods: 2 } }] } }; };
 const sub = await subscribeCommission(base, { sdk, real: true, verify, now });
 assert.equal(sub.ok, true);
 assert.deepEqual(verified, ['SIGNED-ONE']);
@@ -63,7 +63,7 @@ assert.equal(commissionActive(down.player, NOW), false);
 const booted = await refreshCommission(down.player, { sdk, real: true, verify, now });
 assert.equal(commissionActive(booted.player, NOW), true);
 // A verifier that says inactive wins over a plain "active" (spoofed) object.
-const spoof = await refreshCommission(sub.player, { sdk, real: true, verify: async () => ({ ok: true, data: { subscriptions: [{ sku: 'wc_sub_commission', active: false }] } }), now });
+const spoof = await refreshCommission(sub.player, { sdk, real: true, verify: async () => ({ ok: true, data: { issuedAt: NOW, subscriptions: [{ sku: 'wc_sub_commission', active: false }] } }), now });
 assert.equal(commissionActive(spoof.player, NOW), false);
 // Already subscribed: no second checkout.
 calls.length = 0;
@@ -113,7 +113,7 @@ assert.equal(expired.commission.active, false);
 assert.equal(expired.fuelMax, baseFuelMax);
 // A checkout proof that cannot be verified falls back to a fresh signed list.
 const fallback = await subscribeCommission(base, { sdk, real: true, now, verify: async (signed) => signed === 'SIGNED-LIST'
-  ? { ok: true, data: { subscriptions: [{ sku: 'wc_sub_commission', active: true }] } } : { ok: false, reason: 'no_iat' } });
+  ? { ok: true, data: { issuedAt: NOW, subscriptions: [{ sku: 'wc_sub_commission', active: true }] } } : { ok: false, reason: 'no_iat' } });
 assert.equal(fallback.ok, true);
 
 // Grace runs from when Jest signed the proof, and an older proof never overrides a newer one.

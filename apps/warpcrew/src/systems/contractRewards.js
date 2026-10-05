@@ -1,5 +1,6 @@
 // @ts-nocheck
 /** Shared production payout and combat mutations; preview callers use disposable players. */
+import { trustedNow } from '../shared/time.js';
 import { WALL_BY_ID, siegeState } from './walls.js';
 import { encounterById, resolveCombatOrder, crewPower, rubberBandPower } from './combat.js';
 import { scaleSitePayout } from './economy.js';
@@ -24,7 +25,7 @@ export function normalizeCurrencyReward(rewards = {}) {
 }
 
 
-export function readyContractCrew(player, now = Date.now()) {
+export function readyContractCrew(player, now = trustedNow()) {
   const ready = (player?.crew || []).filter((crew) => {
     if (crew.status === 'expedition') return false;
     return crew.status !== 'injured' || (crew.injuredUntil || 0) <= now;
@@ -34,7 +35,7 @@ export function readyContractCrew(player, now = Date.now()) {
 }
 
 
-export function resolveRoutePayout(player, contract, selectedOutcome = contract.routeOutcome, now = Date.now()) {
+export function resolveRoutePayout(player, contract, selectedOutcome = contract.routeOutcome, now = trustedNow()) {
   const outcome = selectedOutcome || {};
   const visits = player?.stats?.visits?.[contract.destinationId] || 0;
   let rawRewards = outcome;
@@ -61,7 +62,7 @@ export function resolveRoutePayout(player, contract, selectedOutcome = contract.
   };
 }
 
-export function resolveContractCombatPayout(player, contract, orderId, { rng = Math.random, now = Date.now() } = {}) {
+export function resolveContractCombatPayout(player, contract, orderId, { rng = Math.random, now = trustedNow() } = {}) {
   const encounter = encounterById(contract.encounterId);
   const crew = readyContractCrew(player, now);
   const bonus = combatBonuses(player, encounter);
@@ -140,7 +141,7 @@ function wallRemaining(player, contract, now) {
 }
 
 /** Construct a prize from a saved crew-run victory without rolling combat again. */
-export function resolveSimulatedCombatPayout(player, contract, encounter, now = Date.now()) {
+export function resolveSimulatedCombatPayout(player, contract, encounter, now = trustedNow()) {
   const catalog = encounterById(contract.encounterId);
   const lost = encounter.result === 'loss' && contract.profile !== 'distress';
   // Wall attempts: the flagship falls only when this attempt spends its last hull.

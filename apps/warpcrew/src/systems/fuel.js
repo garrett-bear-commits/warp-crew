@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { trustedNow } from '../shared/time.js';
 import { regenAmount, MS_PER_HOUR } from '../shared/timer.js';
 import { clampFuel } from './economy.js';
 
@@ -12,7 +13,7 @@ export const DEFAULT_FUEL_CONFIG = {
  * Claim offline fuel regen into wallet.
  * Mutates conceptually: returns new wallet + fuelState.
  */
-export function claimFuelRegen(player, now = Date.now()) {
+export function claimFuelRegen(player, now = trustedNow()) {
   const max = player.fuelMax ?? DEFAULT_FUEL_CONFIG.startingMax;
   const current = player.wallet?.fuel ?? 0;
   const last = player.fuelClaimAt ?? now;
@@ -56,7 +57,7 @@ export function spendFuel(player, amount = 1) {
   return { ok: true, player: { ...player, wallet } };
 }
 
-export function fuelStatus(player, now = Date.now()) {
+export function fuelStatus(player, now = trustedNow()) {
   const max = player.fuelMax ?? DEFAULT_FUEL_CONFIG.startingMax;
   const current = player.wallet?.fuel ?? 0;
   const rate = player.fuelRatePerHour ?? DEFAULT_FUEL_CONFIG.ratePerHour;

@@ -469,7 +469,7 @@ function patchShell(root, ctx) {
     shopProducts = null,
     toast = null,
     departureInFlight = false,
-    now = Date.now(),
+    now = trustedNow(),
   } = ctx;
   // Room ids from the v3 hull (operations, workshop, stores) still resolve.
   const selectedRoom = canonicalRoomId(requestedRoom);
@@ -798,7 +798,7 @@ function renderCoach(step) {
     </div>`;
 }
 
-export function renderSessionGuidance(player, now = Date.now()) {
+export function renderSessionGuidance(player, now = trustedNow()) {
   if (player.tutorial?.script === 5 && !player.tutorial.completed) {
     const phase = player.tutorial.phase;
     if (phase === 'assign') {
@@ -1397,7 +1397,7 @@ function crewPortrait(c) {
   return `<img class="portrait" src="${portraitFor(c.templateId, c.role)}" alt="" width="64" height="64" />`;
 }
 
-export function renderCrew(player, now = Date.now()) {
+export function renderCrew(player, now = trustedNow()) {
   const canHire = isFeatureUnlocked(player, 'gacha');
   const free = player.dailyPullAvailable;
   const open = Math.max(0, player.crewSlots - player.crew.length);
@@ -1569,7 +1569,7 @@ export function renderWallPack(state, value, { modal = false } = {}) {
 const dollars = cents => `$${(cents / 100).toFixed(2)}`;
 
 /** Captain's Commission: one subscription, trial and cancel-save handled by Jest. */
-export function renderCommissionCard(player, now = Date.now()) {
+export function renderCommissionCard(player, now = trustedNow()) {
   const c = player.commission || {};
   const { perks } = COMMISSION;
   const perkList = `<ul class="kit-contents">
@@ -1648,7 +1648,7 @@ function renderStarterCard(state, value) {
   </section>`;
 }
 
-function renderShop(player, shopProducts, now = Date.now()) {
+function renderShop(player, shopProducts, now = trustedNow()) {
   const SKU_COPY = {
     wc_gems_s: { name: 'Gem Pouch', blurb: '100 gems' },
     wc_gems_m: { name: 'Gem Pack', blurb: '280 gems · +12%' },

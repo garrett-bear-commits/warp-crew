@@ -3,9 +3,10 @@
 // Until stage 3 the game kept one save at localStorage `warpcrew.save.v2` ({player, savedAt}, see
 // git history for src/systems/save.js). The core keeps saves in its own envelope at
 // `foundation:<gameId>:slot:<playerId>`. On the first boot after the port the legacy player is
-// read once, migrated, and handed to the engine (a deeper or equal player is adopted; a shallower
-// one never replaces deeper core progress), then the legacy key is moved aside to
-// `warpcrew.save.v2.imported` so it is never imported twice but stays recoverable by hand.
+// read once, migrated, and handed to the engine when the core has no save for this player, or when
+// it is strictly deeper than the core's (an equal or shallower one never replaces a core save).
+// Then the legacy key is moved aside to `warpcrew.save.v2.imported` so it is never imported twice
+// but stays recoverable by hand.
 import { decodePlayer } from './codec.js';
 import { progressOf } from './progress.js';
 
@@ -45,11 +46,13 @@ export function retireLegacySave(storage) {
 }
 
 /**
- * Decide whether the legacy player should replace the core's current one: only when it is at
- * least as deep (a QA player who already played on the core keeps that progress).
+ * Decide whether the legacy player should replace the core's current one: when the core has no
+ * save for this player at all, or when the legacy player is strictly deeper. An equal-depth legacy
+ * save never replaces an existing core save, which may be newer at the same depth.
  */
-export function shouldImportLegacy(current, legacy) {
-  return Boolean(legacy) && progressOf(legacy) >= progressOf(current);
+export function shouldImportLegacy(current, legacy, { noCoreSave = false } = {}) {
+  if (!legacy) return false;
+  return noCoreSave || progressOf(legacy) > progressOf(current);
 }
 
 /**

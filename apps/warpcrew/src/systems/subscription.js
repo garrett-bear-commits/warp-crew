@@ -6,6 +6,7 @@
  * the wallet's entitlement (verified by our server from Jest's signed list) and
  * pays the daily perks while it is active.
  */
+import { trustedNow } from '../shared/time.js';
 import { SUBSCRIPTION_DEFS } from '../data/products.js';
 import { dayKey } from './daily.js';
 import { fuelMaxFor } from './hangar.js';
@@ -15,13 +16,13 @@ export const COMMISSION = SUBSCRIPTION_DEFS[COMMISSION_SKU];
 /** Offline, a verified entitlement keeps paying perks for this long. */
 export const ENTITLEMENT_GRACE_MS = 72 * 60 * 60 * 1000;
 
-export function commissionActive(player, now = Date.now()) {
+export function commissionActive(player, now = trustedNow()) {
   const c = player?.commission;
   return Boolean(c?.active && Number.isFinite(c.verifiedAt) && now - c.verifiedAt < ENTITLEMENT_GRACE_MS);
 }
 
 /** The SDK's plain objects, used only by the local mock (no money involved). */
-export function fromPlain(list = [], now = Date.now()) {
+export function fromPlain(list = [], now = trustedNow()) {
   return list.filter(s => SUBSCRIPTION_DEFS[s?.sku]).map(s => ({
     sku: s.sku,
     active: s.status === 'active',
@@ -51,7 +52,7 @@ export function priceCents(price) {
  * already above the normal cap stays, and the cap shrinks as it is spent, so
  * regeneration never refills past the normal cap.
  */
-export function syncCommission(player, now = Date.now()) {
+export function syncCommission(player, now = trustedNow()) {
   let c = player?.commission;
   if (!c) return player;
   const bonus = COMMISSION.perks.fuelMaxBonus;
@@ -83,7 +84,7 @@ function verifiedTerms(entry) {
   return cents && period && currency ? { priceCents: cents, currency, billingPeriod: period } : null;
 }
 
-export function applyEntitlements(player, subscriptions, now = Date.now(), { issuedAt: listIssuedAt = null } = {}) {
+export function applyEntitlements(player, subscriptions, now = trustedNow(), { issuedAt: listIssuedAt = null } = {}) {
   if (!Array.isArray(subscriptions)) return player;
   // Missing from a verified list means not entitled (unless never subscribed),
   // as of when that list was signed.
@@ -91,8 +92,12 @@ export function applyEntitlements(player, subscriptions, now = Date.now(), { iss
     || (player.commission ? { sku: COMMISSION_SKU, active: false, trialEligible: false, retentionOffer: null, issuedAt: listIssuedAt } : null);
   if (!entry || typeof entry !== 'object') return player;
   const prev = player.commission || {};
-  // A proof older than one already applied never overrides it (replay of a pre-cancel list).
-  const issuedAt = Number.isFinite(entry.issuedAt) ? Math.min(entry.issuedAt, now) : now;
+  // When the proof was signed: the verified list's issuedAt (the core server returns it once, for
+  // the whole list), else the entry's own (the local mock's plain objects). The offline grace runs
+  // from it, and a proof older than one already applied never overrides it (a replay of a
+  // pre-cancel list). `now` is trusted time.
+  const signedAt = Number.isFinite(listIssuedAt) ? listIssuedAt : entry.issuedAt;
+  const issuedAt = Number.isFinite(signedAt) ? Math.min(signedAt, now) : now;
   if (Number.isFinite(prev.verifiedAt) && issuedAt < prev.verifiedAt) return player;
   const commission = {
     ...prev,
@@ -112,7 +117,7 @@ export function applyEntitlements(player, subscriptions, now = Date.now(), { iss
 }
 
 /** Once per UTC day while active: gems and a drydock finish. */
-export function claimCommissionDaily(player, now = Date.now()) {
+export function claimCommissionDaily(player, now = trustedNow()) {
   if (!commissionActive(player, now)) return { player, granted: null };
   const today = dayKey(now);
   if (player.commission.lastClaimDay === today) return { player, granted: null };
@@ -136,7 +141,10 @@ async function entitlementsFrom(plainList, signed, { real, verify, now }) {
   if (!real) return { ok: true, subscriptions: fromPlain(plainList, now()), issuedAt: now() };
   if (!verify) return { ok: false, reason: 'store_unavailable' };
   const res = await verify(signed);
-  return res.ok ? { ok: true, subscriptions: res.data.subscriptions, issuedAt: res.data.issuedAt } : { ok: false, reason: res.reason || 'unverified' };
+  if (!res.ok) return { ok: false, reason: res.reason || 'unverified' };
+  // A verified proof without its signing time cannot be ordered or aged: not trusted.
+  if (!Number.isFinite(res.data?.issuedAt)) return { ok: false, reason: 'no_issued_at' };
+  return { ok: true, subscriptions: res.data.subscriptions, issuedAt: res.data.issuedAt };
 }
 
 /** Boot / return-to-app: re-read the wallet's entitlement (catches renewals and lapses). */

@@ -221,9 +221,10 @@ function claimCommissionPerks() {
 async function syncServerOnBoot() {
   if (!wc?.online) return;
   const before = player?.wallet?.gems || 0;
-  const recovered = await wc.purchases.recover();
-  const pending = await wc.purchases.claimPending();
-  await wc.purchases.refreshOwned();
+  // Leader only: a follower tab defers this until it leads (src/core/client.js serverSync).
+  const work = await wc.serverSync();
+  if (work.deferred) return;
+  const { recovered, pending } = work;
   player = wc.state();
   if (pending.claimed.length || recovered.completed) {
     pushLog(`Purchases delivered: ${pending.claimed.map(g => g.reason.replace(/^purchase /, '')).join(', ') || `${recovered.completed} restored`}.`);
@@ -233,14 +234,14 @@ async function syncServerOnBoot() {
 
 async function refreshNotifs() {
   try {
-    await syncAllNotifications(player);
+    await syncAllNotifications(player, trustedNow());
   } catch (e) {
     console.warn('notif sync', e);
   }
 }
 
 function finishExpeditionResult(res) {
-  const transition = applyExpeditionResult(player, res);
+  const transition = applyExpeditionResult(player, res, { now: trustedNow() });
   if (!transition.ok) return;
   player = transition.player;
   const skipNote = res.skipped ? ' (skipped)' : res.aborted ? ' (extract)' : '';
@@ -259,7 +260,7 @@ function finishExpeditionResult(res) {
 
 function tryResolveExpedition({ force = false } = {}) {
   if (!player.activeExpedition) return false;
-  const res = resolveExpedition(player.activeExpedition, { forceComplete: force, player });
+  const res = resolveExpedition(player.activeExpedition, { forceComplete: force, player, now: trustedNow() });
   if (!res.ready) return false;
   finishExpeditionResult(res);
   return true;
@@ -300,7 +301,7 @@ function hydratePlayer({ fresh, newCaptain }) {
     tab = [4, 5].includes(player.tutorial.script) ? 'ship' : preferredTab(player, tab);
   }
 
-  const daily = applyDailyLogin(player);
+  const daily = applyDailyLogin(player, trustedNow());
   if (!isTutorialActive(player) || player.tutorial?.phase === 'done') {
     player = daily.player;
     if (daily.isNewDay) {
@@ -317,8 +318,8 @@ function hydratePlayer({ fresh, newCaptain }) {
     };
   }
 
-  const claimed = claimFuelRegen(syncCommission(player, trustedNow()));
-  player = tickCrewStatus(claimed.player);
+  const claimed = claimFuelRegen(syncCommission(player, trustedNow()), trustedNow());
+  player = tickCrewStatus(claimed.player, trustedNow());
   if (claimed.gained > 0) pushLog(`Offline fuel +${claimed.gained}.`);
   tryResolveExpedition();
   player = prepareSession(player, trustedNow());
@@ -335,6 +336,8 @@ async function bootCore(initResult) {
   wc = createWarpcrew({
     config,
     platformKind: jest ? 'jest' : 'mock',
+    // Inside the real Jest shell a missing server disables purchasing (no local mock grants).
+    jestShell: isReal(),
     sdkInit: () => platformInit(),
     onError: (error, detail) => console.warn('[warp-crew]', error, detail || ''),
   });
@@ -862,7 +865,7 @@ async function handleAction(act, data = {}) {
     return;
   }
   if (act === 'claim' || act === 'exp-claim') {
-    const claimed = claimFuelRegen(syncCommission(player, trustedNow()));
+    const claimed = claimFuelRegen(syncCommission(player, trustedNow()), trustedNow());
     player = claimed.player;
     const resolved = tryResolveExpedition();
     if (claimed.gained) {
@@ -931,7 +934,7 @@ async function handleAction(act, data = {}) {
     player = {
       ...player,
       wallet: pay(player.wallet, cost).wallet,
-      activeExpedition: skipExpeditionJob(player.activeExpedition),
+      activeExpedition: skipExpeditionJob(player.activeExpedition, trustedNow()),
     };
     tryResolveExpedition({ force: true });
     pushLog(`Spent ${EXPEDITION_SKIP_GEMS} gems to finish expedition.`);
@@ -940,10 +943,10 @@ async function handleAction(act, data = {}) {
   } else if (act === 'exp-abort') {
     if (!player.activeExpedition) return;
     const job = player.activeExpedition;
-    const frac = abortPayoutFrac(job);
+    const frac = abortPayoutFrac(job, trustedNow());
     const ids = job.payload.crewInstanceIds || [];
     if (frac > 0) {
-      const res = resolveExpedition(job, { forceComplete: true, player, abortFrac: frac, rng: () => 1 });
+      const res = resolveExpedition(job, { forceComplete: true, player, abortFrac: frac, rng: () => 1, now: trustedNow() });
       finishExpeditionResult(res);
     } else {
       player = {
@@ -1075,6 +1078,11 @@ async function handleAction(act, data = {}) {
       showToast({ title: 'Purchase received — confirming' });
     } else if (!res.ok && res.reason === 'already_owned') {
       pushLog('You already own this pack.');
+    } else if (!res.ok && res.reason === 'pending_delivery') {
+      pushLog('Purchase received. Delivery will finish automatically on the next launch.');
+      showToast({ title: 'Purchase received — delivering' });
+    } else if (!res.ok && res.reason === 'not_leader') {
+      pushLog(SESSION_ERROR_COPY.not_leader);
     } else if (!res.ok && res.reason === 'cancelled') {
       pushLog('Purchase cancelled.');
     } else if (!res.ok) {

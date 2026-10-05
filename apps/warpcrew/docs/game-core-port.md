@@ -234,6 +234,36 @@ owned and the card disappears, and a reload keeps it; Sound toggles; Log tab sho
 second tab shows "Play here"; no console errors on three consecutive loads. Screenshots:
 `docs/qa/mockups/stage3-0*.jpg`.
 
+### Luna audit of stage 3, fixed (2026-10-05)
+
+Regression tests: `apps/warpcrew/test/luna_audit_stage3.test.mjs` (each failed before its fix).
+
+1. Only the leader tab claims grants or recovers purchases (`canApply`: booted, leader, live, no
+   restore); a follower defers and `serverSync` runs the work when the tab leads. A recovered
+   purchase is completed only when its grant was applied and saved, or the server answered
+   `already_claimed`.
+2. `applyGrant` resolves only once the change is durable, and `buy`/`recover` complete the Jest
+   purchase only after that. Durable = the device slot holds a snapshot taken after the grant,
+   with its pending push (the core replays that commandId verbatim at the next boot), and no
+   adopt/reload/new generation replaced the state meanwhile. We do not wait for the server ack
+   when the slot is real storage: the claim is already recorded server-side, the pending push is
+   persisted, and a slow or offline server must not leave the Jest purchase hanging. When the device
+   tier is memory only (storage blocked), the slot does not survive the page, so the server's ack is
+   required too.
+3. An ownership answer without a `oneTime` array of strings is unknown: no checkout.
+4. Subscription proofs use the response-level `issuedAt` for every entry; the grace runs from it,
+   an older proof never overrides a newer one, and a verified proof without `issuedAt` is refused.
+5. Inside the real Jest shell with no server, purchasing is disabled (no local mock grants).
+6. Every game-rule `now = Date.now()` default in `src/systems`, `src/data`, `src/shared/timer.js`,
+   `src/ui/bridge.js` and `src/ui/hudView.js` (90-odd sites in 24 files, including two inline reads
+   in `tutorial.js` and `expedition.js`) is now `trustedNow()`, and `main.js` passes trusted time to
+   `applyDailyLogin`, `claimFuelRegen`, `tickCrewStatus`, `resolveExpedition`,
+   `applyExpeditionResult`, `skipExpeditionJob`, `abortPayoutFrac` and `syncAllNotifications`.
+   Left on the device clock on purpose: UI click suppression (`ftlCrewDrag.js`), the mock SDK's
+   tokens and schedules (`shared/platform.js`), and the dev player id (`core/config.js`).
+7. The legacy save is imported only when the core has no save for this player or it is strictly
+   deeper; an equal-depth legacy save never replaces a core save.
+
 ### Left for stage 4, and decisions for a human
 
 - **Minting.** With minting off, a purchase against the core server is recorded and `withheld`

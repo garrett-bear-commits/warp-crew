@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { trustedNow } from '../shared/time.js';
 import { createCrewInstance, recomputeCrew } from '../data/crewRoster.js';
 import { starterShip, getShipDef } from '../data/ships.js';
 import { DEFAULT_FUEL_CONFIG } from './fuel.js';
@@ -44,7 +45,7 @@ function ensureShip(ship) {
   return next;
 }
 
-export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, now = Date.now(), rng = Math.random } = {}) {
+export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, now = trustedNow(), rng = Math.random } = {}) {
   const legacy = tutorialScript === 4;
   const crew = legacy ? [
     createCrewInstance('merc_rex', { rng }),
@@ -152,7 +153,7 @@ export function assignedCrew(player) {
   return player.crew.filter((c) => c.status === 'ready' || c.status === 'injured');
 }
 
-export function readyCrew(player, now = Date.now()) {
+export function readyCrew(player, now = trustedNow()) {
   return player.crew.filter((c) => {
     if (c.status === 'expedition') return false;
     if (c.status === 'injured' && (c.injuredUntil || 0) > now) return false;
@@ -161,13 +162,13 @@ export function readyCrew(player, now = Date.now()) {
 }
 
 /** Combat / jump squad: top N ready mercs, N = berths. Overflow in reserve does not fight. */
-export function fightingCrew(player, now = Date.now()) {
+export function fightingCrew(player, now = trustedNow()) {
   const ready = readyCrew(player, now);
   const slots = Math.max(1, player.crewSlots || 2);
   return [...ready].sort((a, b) => (b.power || 0) - (a.power || 0)).slice(0, slots);
 }
 
-export function tickCrewStatus(player, now = Date.now()) {
+export function tickCrewStatus(player, now = trustedNow()) {
   let changed = false;
   const crew = (player.crew || []).map((c) => {
     if (c.status === 'injured' && (c.injuredUntil || 0) <= now) {
@@ -179,7 +180,7 @@ export function tickCrewStatus(player, now = Date.now()) {
   return changed ? { ...player, crew } : player;
 }
 
-export function applyCrewInjury(player, instanceIds = [], minutes = 20, now = Date.now()) {
+export function applyCrewInjury(player, instanceIds = [], minutes = 20, now = trustedNow()) {
   if (!instanceIds.length || minutes <= 0) return player;
   const until = now + Math.round(minutes) * 60000;
   const set = new Set(instanceIds);

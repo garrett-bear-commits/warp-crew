@@ -1,4 +1,5 @@
 // Saved bridge between a contract and the deterministic crew-run fight.
+import { trustedNow } from '../shared/time.js';
 import { startEncounter, advanceEncounter, enemyVolleyDamage, TACTICS, BURN, BOARDERS, BOARDING_ENEMIES } from './autoCombat.js';
 import { normalizeAssignments, stationOutputs } from './stations.js';
 import { resolveSimulatedCombatPayout, readyContractCrew } from './contractRewards.js';
@@ -104,7 +105,7 @@ export function boardersUnlocked(player) {
 }
 
 /** Security first, then gunners, then the strongest non-captain; the captain only as a last resort. */
-export function pickDefender(player, now = Date.now()) {
+export function pickDefender(player, now = trustedNow()) {
   const ready = readyContractCrew(player, now);
   const rank = member => (member.role === 'security' ? 300 : member.role === 'gunner' ? 200 : 100)
     + (member.instanceId === player.captainInstanceId ? -150 : 0) + (member.power || 10);
@@ -125,7 +126,7 @@ export function threatLabel(threat) {
 }
 
 /** Same power model the order-based fights used, expressed as enemy/crew threat. */
-export function contractThreat(player, contract, now = Date.now(), { excludeIds = [] } = {}) {
+export function contractThreat(player, contract, now = trustedNow(), { excludeIds = [] } = {}) {
   const encounter = encounterById(contract.encounterId);
   const crew = readyContractCrew(player, now).filter(member => !excludeIds.includes(member.instanceId));
   const bonus = combatBonuses(player, encounter);
@@ -135,7 +136,7 @@ export function contractThreat(player, contract, now = Date.now(), { excludeIds 
 }
 
 /** The crew who fight, at their stations (null station = free crew who go where needed). */
-export function fightingCrew(player, now = Date.now()) {
+export function fightingCrew(player, now = trustedNow()) {
   const assignments = normalizeAssignments(player);
   return readyContractCrew(player, now).map(member => ({ id: member.instanceId, role: member.role || '', station: assignments[member.instanceId] || null }));
 }
@@ -147,7 +148,7 @@ export function enemyTierFor(encounterId) {
   return power >= 52 ? 2 : power >= 38 ? 1 : 0;
 }
 
-export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null, guided = false, flagship = 0 }, now = Date.now()) {
+export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null, guided = false, flagship = 0 }, now = trustedNow()) {
   const systems = player.ship?.systems || {};
   return startFtlEncounter({
     // The ship as fitted at the drydock: levels shape shields, charge, evasion and aim; the loadout is its guns.
@@ -186,7 +187,7 @@ export function fightCrewLaunched(encounter, participantIds) {
 export const fightHullLoss = encounter => (encounter.version === FTL_VERSION ? encounter.startHull - encounter.hull : 30 - encounter.hull);
 
 /** Called only by the action that freshly enters confrontation. */
-export function beginContractEncounter(player, now = Date.now()) {
+export function beginContractEncounter(player, now = trustedNow()) {
   const contract = player?.activeContract;
   if (player?.activeEncounter || !eligibleContract(player, contract)) return player;
   const kind = contract.profile === 'distress' ? 'guided' : 'normal';
@@ -333,7 +334,7 @@ export function normalizeEncounterState(player) {
 }
 
 /** One committed beat for any saved crew fight: order costs, current station outputs, deterministic advance. */
-export function stepEncounter(player, encounter, order = null, now = Date.now()) {
+export function stepEncounter(player, encounter, order = null, now = trustedNow()) {
   if (encounter.result) return { ok: false, reason: 'encounter_finished' };
   if (order === 'burn' && (player.wallet?.fuel ?? 0) < BURN.fuel) return { ok: false, reason: 'not_enough_fuel' };
   const rallyCost = order === 'rally' ? (player.flags?.rallyFreeUsed ? RALLY.gems : 0) : 0;
@@ -370,7 +371,7 @@ export function stepEncounter(player, encounter, order = null, now = Date.now())
   return { ok: true, player: nextPlayer, state: advanced.state, events: advanced.events };
 }
 
-export function applyEncounterAction(player, { acceptanceId, revision, order = null } = {}, now = Date.now()) {
+export function applyEncounterAction(player, { acceptanceId, revision, order = null } = {}, now = trustedNow()) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
   if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {

@@ -8,6 +8,7 @@
  * opens a fight) and clears the event in one state change, so it can only pay once. The roll
  * is a hash of the event seed and the choice, so reloading never re-rolls a choice.
  */
+import { trustedNow } from '../shared/time.js';
 import { NODES, STORY_BEATS, gateBlockedByWall } from '../data/sectors.js';
 import { TRAVEL_EVENTS, TRAVEL_EVENT_BY_ID, ROUTE_EVENTS, ROUTE_EVENT_BY_ID } from '../data/events.js';
 import { catalogById, createCrewInstance } from '../data/crewRoster.js';
@@ -72,7 +73,7 @@ export function eventEncounterFor(node) {
 }
 
 /** Spend the jump fuel and open the event card. */
-export function openTravelEvent(player, preview, now = Date.now()) {
+export function openTravelEvent(player, preview, now = trustedNow()) {
   if (!preview?.ok || !preview.node || !arrivalOpensEvent(player, preview.node, preview.outcome)) return { ok: false, reason: 'bad_preview', player };
   if (gateBlockedByWall(player, preview.node.id)) return { ok: false, reason: 'siege_wall', player };
   if (player.activeContract) return { ok: false, reason: 'active_contract', player };
@@ -153,7 +154,7 @@ function doerFor(player, need, now) {
 }
 
 /** Whether a choice can be taken now, who does it, and why not. */
-export function choiceStatus(player, choice, now = Date.now()) {
+export function choiceStatus(player, choice, now = trustedNow()) {
   const doer = doerFor(player, choice.need, now);
   if (!doer.ok) return { available: false, reason: doer.reason, doer: null };
   const fuel = choice.cost?.fuel || 0;
@@ -191,7 +192,7 @@ export function eventReward(player, ev, pay) {
 }
 
 /** Plain-language stakes for one outcome, with the real numbers it would pay now. */
-export function outcomeSummary(player, ev, outcome, now = Date.now()) {
+export function outcomeSummary(player, ev, outcome, now = trustedNow()) {
   const bits = [];
   if (outcome.story) {
     const beat = STORY_BEATS[ev.base.flag];
@@ -218,7 +219,7 @@ function crewText(text, member) {
 }
 
 /** Card model for the open event. */
-export function eventView(player, now = Date.now()) {
+export function eventView(player, now = trustedNow()) {
   if (!validTravelEvent(player)) return null;
   const ev = player.activeEvent;
   const template = TRAVEL_EVENT_BY_ID[ev.templateId];
@@ -264,7 +265,7 @@ export function rollOutcome(ev, choice) {
 }
 
 /** Resolve the open event with one choice. Pays once and clears the event, or opens a fight. */
-export function resolveTravelEvent(player, { eventId, choice: choiceId } = {}, now = Date.now()) {
+export function resolveTravelEvent(player, { eventId, choice: choiceId } = {}, now = trustedNow()) {
   const ev = player?.activeEvent;
   if (!ev) return { ok: false, reason: 'no_active_event', player };
   if (!validTravelEvent(player)) return { ok: false, reason: 'invalid_event_state', player };

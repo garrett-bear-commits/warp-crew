@@ -10,6 +10,7 @@
  *  - wc_comeback_d1 / d3
  */
 
+import { trustedNow } from '../shared/time.js';
 import {
   scheduleNotification,
   unscheduleNotification,
@@ -44,7 +45,7 @@ async function safeUnschedule(id) {
 }
 
 /** Call whenever fuel state changes or on boot after claim. */
-export async function syncFuelFullNotification(player, now = Date.now()) {
+export async function syncFuelFullNotification(player, now = trustedNow()) {
   const st = fuelStatus(player, now);
   await safeUnschedule(NOTIF_IDS.fuelFull);
   if (st.isFull || st.current >= st.max) return;
@@ -70,7 +71,7 @@ export async function syncFuelFullNotification(player, now = Date.now()) {
 }
 
 /** Call when launching or resolving an expedition. */
-export async function syncExpeditionNotification(player, now = Date.now()) {
+export async function syncExpeditionNotification(player, now = trustedNow()) {
   await safeUnschedule(NOTIF_IDS.expeditionDone);
   const job = player.activeExpedition;
   if (!job || !job.endAt) return;
@@ -91,7 +92,7 @@ export async function syncExpeditionNotification(player, now = Date.now()) {
 }
 
 /** Drydock builds: tell the captain when the upgrade is online. */
-export async function syncShipBuildNotification(player, now = Date.now()) {
+export async function syncShipBuildNotification(player, now = trustedNow()) {
   await safeUnschedule(NOTIF_IDS.shipBuildDone);
   const build = player.shipBuild;
   if (!build?.endAt) return;
@@ -159,7 +160,7 @@ export async function syncComebackSeries(player) {
 }
 
 /** Full resync — call on boot and after major state changes. */
-export async function syncAllNotifications(player, now = Date.now()) {
+export async function syncAllNotifications(player, now = trustedNow()) {
   await syncFuelFullNotification(player, now);
   await syncExpeditionNotification(player, now);
   await syncShipBuildNotification(player, now);

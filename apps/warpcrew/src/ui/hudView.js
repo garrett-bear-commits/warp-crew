@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { trustedNow } from '../shared/time.js';
 import { normalizeAssignments, STATIONS } from '../systems/stations.js';
 import { portraitFor } from '../data/portraits.js';
 
@@ -225,7 +226,7 @@ function commandState(player, expReady, now) {
 const TAB_LABELS = { ship: 'Ship', crew: 'Crew', missions: 'Contracts', shop: 'Shop', log: 'Log' };
 
 /** Bottom command bar; Missions becomes the large centre action when unlocked. */
-export function renderCommandBar(tab, player, expReady, tabs, { spotlight = null, badges = {}, now = Date.now() } = {}) {
+export function renderCommandBar(tab, player, expReady, tabs, { spotlight = null, badges = {}, now = trustedNow() } = {}) {
   const ids = tabs?.length ? tabs : ['ship'];
   const hasCenter = ids.includes('missions') && ids.length >= 3;
   const side = ids.filter((id) => !(hasCenter && id === 'missions'));

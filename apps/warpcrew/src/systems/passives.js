@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** Sum crew passives. Templates define them; combat/travel/expeditions consume them. */
 
+import { trustedNow } from '../shared/time.js';
 import { engineFuelCut } from './economy.js';
 import { getShipDef } from '../data/ships.js';
 
@@ -25,7 +26,7 @@ export function sumPassives(crew = []) {
   return out;
 }
 
-export function readyPassives(player, now = Date.now()) {
+export function readyPassives(player, now = trustedNow()) {
   const crew = (player.crew || []).filter((c) => {
     if (c.status === 'expedition') return false;
     if (c.status === 'injured' && (c.injuredUntil || 0) > now) return false;
@@ -95,7 +96,7 @@ export function repairHull(player, amount = 25) {
  */
 export const DOCK_REPAIR = Object.freeze({ hullPerHour: 25 });
 
-export function dockRepair(player, now = Date.now()) {
+export function dockRepair(player, now = trustedNow()) {
   const ship = player?.ship;
   if (!ship) return player;
   const hull = ship.hull ?? 100;

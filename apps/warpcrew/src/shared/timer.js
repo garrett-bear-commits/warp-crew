@@ -1,11 +1,12 @@
 // @ts-nocheck
-// Wall-clock progression. Time is Date.now() against stored timestamps.
+// Wall-clock progression. Time is trustedNow() against stored timestamps.
 // Never frame-delta for progression. Animation dt is separate.
 
+import { trustedNow } from './time.js';
 export const MS_PER_MINUTE = 60_000;
 export const MS_PER_HOUR = 3_600_000;
 
-export function wallClockProgress(job, now = Date.now()) {
+export function wallClockProgress(job, now = trustedNow()) {
   const duration = Math.max(1, job.endAt - job.startedAt);
   const elapsed = Math.max(0, Math.min(now - job.startedAt, duration));
   return {
@@ -16,7 +17,7 @@ export function wallClockProgress(job, now = Date.now()) {
   };
 }
 
-export function makeTimedJob({ id, kind, minutes, payload = {}, startedAt = Date.now() }) {
+export function makeTimedJob({ id, kind, minutes, payload = {}, startedAt = trustedNow() }) {
   return {
     id,
     kind,
@@ -28,7 +29,7 @@ export function makeTimedJob({ id, kind, minutes, payload = {}, startedAt = Date
 }
 
 /** Linear regen: units gained since lastClaimAt, capped at max. */
-export function regenAmount({ lastClaimAt, ratePerHour, max, current = 0, now = Date.now() }) {
+export function regenAmount({ lastClaimAt, ratePerHour, max, current = 0, now = trustedNow() }) {
   if (lastClaimAt == null || ratePerHour <= 0) {
     return { gained: 0, nextAt: now + MS_PER_HOUR / Math.max(ratePerHour, 0.0001), elapsedMs: 0 };
   }

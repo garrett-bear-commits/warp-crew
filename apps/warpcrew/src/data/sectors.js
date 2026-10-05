@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** Multi-node map — Spur + Veil Edge (week-of-content backbone) */
 
+import { trustedNow } from '../shared/time.js';
 import { encounterById } from '../systems/combat.js';
 import { GALAXY_NODES, GALAXY_BEATS, galaxyUnlocked } from './galaxies.js';
 
@@ -440,7 +441,7 @@ export const SECTOR_2 = {
   unlockFlag: 'veil_opened',
 };
 
-export function careerDay(player, now = Date.now()) {
+export function careerDay(player, now = trustedNow()) {
   return 1 + Math.floor((now - (player.createdAt || now)) / 86400000);
 }
 
@@ -454,7 +455,7 @@ export function gateBlockedByWall(player, nodeId) {
 }
 
 /** Nodes visible on map for this player */
-export function visibleNodes(player, now = Date.now()) {
+export function visibleNodes(player, now = trustedNow()) {
   const day = careerDay(player, now);
   const veilOpen = Boolean(player.flags?.veil_opened || player.story?.veilUnlocked);
   const tutorialTight =

@@ -1,3 +1,4 @@
+import { trustedNow } from '../shared/time.js';
 import { contractDayKey } from './contracts.js';
 
 export const MILESTONES = [
@@ -10,19 +11,19 @@ export function defaultDailyLoop(dayKey) {
   return { dayKey, contract: false, improve: false, away: false };
 }
 
-export function ensureDailyLoop(player, now = Date.now()) {
+export function ensureDailyLoop(player, now = trustedNow()) {
   const dayKey = contractDayKey(now);
   if (player.dailyLoop?.dayKey === dayKey) return player;
   return { ...player, dailyLoop: defaultDailyLoop(dayKey) };
 }
 
-export function markDailyMilestone(player, milestone, now = Date.now()) {
+export function markDailyMilestone(player, milestone, now = trustedNow()) {
   const next = ensureDailyLoop(player, now);
   if (!MILESTONES.some((item) => item.id === milestone) || next.dailyLoop[milestone] === true) return next;
   return { ...next, dailyLoop: { ...next.dailyLoop, [milestone]: true } };
 }
 
-export function dailyPlan(player, now = Date.now()) {
+export function dailyPlan(player, now = trustedNow()) {
   const state = ensureDailyLoop(player, now).dailyLoop;
   const completed = MILESTONES.filter((item) => state[item.id] === true).length;
   return { next: MILESTONES.find((item) => state[item.id] !== true) || null, completed, total: 3, complete: completed === 3 };
