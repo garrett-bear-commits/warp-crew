@@ -14,6 +14,7 @@ import { applyEncounterAction, recoverEncounter, applyEncounterCommand, guidedTa
 import { FTL_VERSION, PLAYER_WEAPONS, weaponDef, playerChargePerBeat, enemyChargePerBeat, currentTarget, playerEvasion, enemyEvasion, playerShieldCap, enemyShieldCap, ftlTacticStatus, RULES as FTL_RULES, OVERCHARGE } from './ftlCombat.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
+import { buyWeapon, equipWeapon } from './armory.js';
 import { nextUpgradeCost, upgradeSystem, completeShipBuild, skipShipBuild } from './hangar.js';
 import { levelCrew, rankUpCrew } from './gacha.js';
 import { medalLevelCostFor } from '../data/crewRoster.js';
@@ -138,7 +139,8 @@ function ftlEncounterView(player, encounter, { settled, ui = {} }) {
       const live = !encounter.result && encounter.phase === 'combat';
       return { id: weapon.id, name: def.name, shots: def.shots, damage: def.damage, chargePct: pct(weapon.chargeMs, def.chargeMs),
         nextPct: live ? pct(Math.min(def.chargeMs, weapon.chargeMs + playerChargePerBeat(encounter)), def.chargeMs) : pct(weapon.chargeMs, def.chargeMs),
-        chargeMs: weapon.chargeMs, maxMs: def.chargeMs, ready: weapon.chargeMs >= def.chargeMs };
+        chargeMs: weapon.chargeMs, maxMs: def.chargeMs, ready: weapon.chargeMs >= def.chargeMs, kind: def.kind,
+        ...(def.kind === 'missile' ? { ammo: encounter.ammo?.missile ?? 0 } : {}) };
     }),
     hold: encounter.intent.hold,
     target: currentTarget(encounter),
@@ -151,7 +153,7 @@ function ftlEncounterView(player, encounter, { settled, ui = {} }) {
       hull: encounter.enemy.hull,
       hullMax: encounter.enemy.startHull ?? 42,
       shields: { layers: encounter.enemy.shields.layers, max: enemyShieldCap(encounter), full: encounter.enemy.shields.max,
-        rechargePct: pct(encounter.enemy.shields.rechargeMs, FTL_RULES.enemyShieldRechargeMs) },
+        rechargePct: pct(encounter.enemy.shields.rechargeMs, FTL_RULES.enemyShieldRechargeMs), ionized: (encounter.enemy.shields.ionMs || 0) > 0 },
       evasion: enemyEvasion(encounter),
       rooms: Object.fromEntries(Object.keys(encounter.enemy.rooms).map(id => [id, room(encounter.enemy.rooms, id, ENEMY_ROOM_LABELS[id])])),
       weapons: encounter.enemy.weapons.map(weapon => ({ id: weapon.id, shots: weapon.shots, damage: weapon.damage,
@@ -673,6 +675,12 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     player = res.player;
     milestone('improve');
     if (act === 'ship-upgrade') events.push(event(res.build ? 'ship_build_started' : 'ship_upgrade', { system: data.system, level: res.nextLevel, ...(res.build ? { minutes: Math.round((res.build.endAt - res.build.startedAt) / 60000) } : {}) }));
+  } else if (act === 'weapon-buy' || act === 'weapon-equip') {
+    if (isTutorialActive(player)) return fail('improvements_locked');
+    const res = act === 'weapon-buy' ? buyWeapon(player, data.weapon) : equipWeapon(player, data.slot, data.weapon);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    if (act === 'weapon-buy') { milestone('improve'); events.push(event('weapon_bought', { weapon: data.weapon, credits: res.cost.credits })); }
   } else if (act === 'refuel-gems') {
     const res = refuelWithGems(player);
     if (!res.ok) return fail(res.reason);

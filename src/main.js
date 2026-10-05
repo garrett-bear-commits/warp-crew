@@ -135,6 +135,12 @@ function pushLog(msg) {
 const SESSION_ERROR_COPY = {
   fuel_full: 'Fuel tanks are already full.',
   drydock_busy: 'The drydock is already building an upgrade.',
+  already_owned: 'That weapon is already in the armory.',
+  unknown_weapon: 'That weapon is not for sale.',
+  cannot_afford: 'Not enough credits.',
+  no_slot: 'Upgrade Weapons for another slot.',
+  not_owned: 'Buy that weapon first.',
+  in_fight: 'Refit the guns after the fight.',
   not_enough_gems: 'Not enough gems.',
   no_build: 'Nothing is building in the drydock.',
   save_failed: 'Could not save. Try again.',
@@ -759,7 +765,7 @@ async function handleAction(act, data = {}) {
       pushLog(message);
       showToast({ title: message });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
-    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-order', 'encounter-recover', 'combat-order', 'travel-claim', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip'].includes(act)
+    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-order', 'encounter-recover', 'combat-order', 'travel-claim', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip', 'weapon-buy'].includes(act)
       // Beats come every second in real-time fights: refresh notifications only when one ends.
       || (act === 'encounter-advance' && (!player.activeEncounter || player.activeEncounter.result))) {
       await refreshNotifs();

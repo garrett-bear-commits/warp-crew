@@ -53,7 +53,7 @@ export function renderFtlEnemy(view) {
   return `<section class="ftl-enemy family-${e(art.family)}${enemy.shields.layers > 0 ? ' is-shielded' : ''}${view.result === 'win' ? ' is-destroyed' : ''}" aria-label="Enemy ship">
     <header class="ftl-enemy-head">
       <b>${e(view.enemyName)}</b>${view.threatLabel ? `<span class="ftl-threat" data-threat="${e(view.threatLabel.toLowerCase())}">${e(view.threatLabel)}</span>` : ''}
-      <span class="ftl-enemy-shields" aria-label="Enemy shields ${enemy.shields.layers} of ${enemy.shields.full}">${pips(enemy.shields.layers, enemy.shields.max, enemy.shields.full)}</span>
+      <span class="ftl-enemy-shields" aria-label="Enemy shields ${enemy.shields.layers} of ${enemy.shields.full}">${pips(enemy.shields.layers, enemy.shields.max, enemy.shields.full)}${enemy.shields.ionized ? '<i class="ftl-ionized">Ionized</i>' : ''}</span>
     </header>
     <div class="ftl-enemy-hull"><span>Hull</span>${bar(hullPct, 'hull enemy')}<b>${e(enemy.hull)}</b><small>Evade ${e(enemy.evasion)}%</small></div>
     <div class="ftl-enemy-ship" style="aspect-ratio:${art.aspect}">
@@ -96,6 +96,14 @@ function renderTactics(view) {
 }
 
 /** The strip under the ship view: hull, shields, guns, Hold, crew, orders, pause and the result. */
+/** The short line under a weapon's name: what it does, in the fewest words. */
+function weaponTag(w) {
+  if (w.kind === 'ion') return 'Ion · drops a shield';
+  if (w.kind === 'beam') return `Beam · ${w.damage} once shields are down`;
+  if (w.kind === 'missile') return `${w.damage} · through shields · ${w.ammo ?? 0} left`;
+  return `${w.shots}×${w.damage}`;
+}
+
 export function renderFtlControls(view, { selectedCrewId = null, paused = false, claimAct = 'contract-claim', claimRevision = view?.revision, claimAcceptanceId = view?.acceptanceId } = {}) {
   if (!view?.ftl) return '';
   const hullPct = Math.round((view.hull / view.hullMax) * 100);
@@ -121,8 +129,8 @@ export function renderFtlControls(view, { selectedCrewId = null, paused = false,
       <p class="ftl-result" role="status">${won ? `${e(view.enemyName)} is breaking up. Bring the cargo aboard.` : `${e(view.lossReason || 'The ship needs repairs.')}${view.settled ? ' The crew pulls salvage from the wreckage.' : ''}`}</p>
       ${claim}</section>`;
   }
-  const weapons = view.weapons.map(w => `<div class="ftl-weapon${w.ready ? ' is-ready' : ''}">
-      <b>${e(w.name)}</b><small>${w.shots}×${w.damage}</small>${chargeBar(w.chargePct, w.nextPct ?? w.chargePct, 'charge', view.beat)}</div>`).join('');
+  const weapons = view.weapons.map(w => `<div class="ftl-weapon${w.ready ? ' is-ready' : ''}${w.ammo === 0 ? ' is-empty' : ''}" data-weapon-kind="${e(w.kind || 'laser')}">
+      <b>${e(w.name)}</b><small>${e(weaponTag(w))}</small>${chargeBar(w.chargePct, w.nextPct ?? w.chargePct, 'charge', view.beat)}</div>`).join('');
   const selected = view.crew.find(member => member.id === selectedCrewId);
   const crew = view.crew.map(member => `<button type="button" class="ftl-crew-chip${member.id === selectedCrewId ? ' is-selected' : ''}${member.moving ? ' is-moving' : ''}"
       data-act="ftl-select-crew" data-crew-id="${e(member.id)}" aria-pressed="${member.id === selectedCrewId}" aria-label="${e(member.name)}, in ${e(view.rooms[member.room]?.label || 'the corridor')}">

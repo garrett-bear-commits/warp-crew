@@ -36,6 +36,11 @@ function ensureShip(ship) {
     next.ownedHulls = [next.shipId || 'sparrow'];
   }
   if (next.hull == null) next.hull = 100;
+  // Bought weapons and the fitted loadout (armory.js trims both to the catalog and slots on use).
+  if (!Array.isArray(ship?.armory)) delete next.armory;
+  else next.armory = ship.armory.filter(id => typeof id === 'string');
+  if (!Array.isArray(ship?.loadout)) delete next.loadout;
+  else next.loadout = ship.loadout.filter(id => typeof id === 'string').slice(0, 4);
   return next;
 }
 

@@ -35,6 +35,8 @@ import { unlockSfx } from './juice.js';
 import { startStageLoop } from './stageLoop.js';
 import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence, roomStyle } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
+import { WEAPON_CATALOG } from '../systems/ftlCombat.js';
+import { WEAPON_PRICES, WEAPON_BLURBS, ownedWeapons, shipLoadout, weaponSlots } from '../systems/armory.js';
 import { renderFtlEnemy, renderFtlShipMarkers } from './ftlView.js';
 import { morphInto } from './morph.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
@@ -1039,6 +1041,33 @@ function upgradeButton(player, system, label, next) {
   return `<button class="upgrade-btn" data-act="ship-upgrade" data-system="${system}" ${build ? 'disabled' : ''}><span>Upgrade ${escapeHtml(label)} → Lv ${next.level + 1}${timing}${build ? ' · drydock busy' : ''}</span><b>${next.credits}cr</b></button>`;
 }
 
+/** Weapons room: the fitted guns, the ones in storage, and the ones for sale. */
+export function renderArmory(player) {
+  const slots = weaponSlots(player);
+  const fitted = shipLoadout(player);
+  const owned = ownedWeapons(player);
+  const credits = player.wallet?.credits || 0;
+  const inFight = Boolean(player.activeEncounter && !player.activeEncounter.result);
+  const row = id => {
+    const w = WEAPON_CATALOG[id];
+    const slot = fitted.indexOf(id);
+    let actions;
+    if (slot >= 0) actions = `<span class="tag">Slot ${slot + 1}</span>`;
+    else if (owned.includes(id)) {
+      actions = Array.from({ length: slots }, (_, i) => `<button data-act="weapon-equip" data-weapon="${id}" data-slot="${i}" ${inFight ? 'disabled' : ''}>${i < fitted.length ? `Swap slot ${i + 1}` : `Fit slot ${i + 1}`}</button>`).join('');
+    } else {
+      const price = WEAPON_PRICES[id];
+      actions = `<button data-act="weapon-buy" data-weapon="${id}" ${credits >= price ? '' : 'disabled'}>Buy ${price}cr</button>`;
+    }
+    return `<div class="armory-row" data-weapon-kind="${w.kind}"><div><b>${escapeHtml(w.name)}</b><small>${escapeHtml(WEAPON_BLURBS[id] || '')}</small></div><div class="row">${actions}</div></div>`;
+  };
+  return `
+    <div class="armory">
+      <div class="sheet-kicker">Armory · ${fitted.length}/${slots} slots fitted${slots < 4 ? ` · more slots at Weapons Lv ${slots === 2 ? 4 : 8}` : ''}</div>
+      ${Object.keys(WEAPON_CATALOG).map(row).join('')}
+    </div>`;
+}
+
 function roomActions(room, player) {
   const hangar = isFeatureUnlocked(player, 'hangar');
   const crewOpen = isFeatureUnlocked(player, 'nav_crew');
@@ -1074,7 +1103,8 @@ function roomActions(room, player) {
     const weapons = nextUpgradeCost(player, 'weapons');
     return `
       ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : ''}
-      ${hangar && weapons ? `${upgradeButton(player, 'weapons', 'Weapons', weapons)}` : ''}`;
+      ${hangar && weapons ? `${upgradeButton(player, 'weapons', 'Weapons', weapons)}` : ''}
+      ${hangar ? renderArmory(player) : ''}`;
   }
   if (room.id === 'cargo') {
     const contract = player.activeContract;

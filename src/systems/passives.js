@@ -49,8 +49,9 @@ export function tradePayout(base, crew) {
 
 export function combatBonuses(player, encounter) {
   const pass = readyPassives(player);
-  const weapons = player.ship?.systems?.weapons || 1;
-  const weaponPow = (weapons - 1) * 4;
+  // Weapons upgrades now act inside FTL-lite fights (charge speed, extra slots),
+  // so they no longer also lower the enemy's threat.
+  const weaponPow = 0;
   const critPow = Math.round(pass.critChance * 40);
   const hullBias = Math.round((getShipDef(player.ship?.shipId).weaponBias || 0) * 40);
   let enemyScale = 1;

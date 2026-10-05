@@ -126,12 +126,13 @@ export function upgradeCost(baseCredits, level = 1) {
 export function systemStat(system, level = 1) {
   const lv = Math.max(0, Number(level) || 0);
   const shown = Math.max(system === 'quarters' || system === 'sensors' || system === 'medbay' ? 0 : 1, lv);
+  // Fight effects mirror shipCombatStats in ftlCombat.js (sensors are offset by one: Lv 0 is the plain ship).
   if (system === 'cargo') return `Trade +${(shown - 1) * 8}%`;
-  if (system === 'engines') return `Jump −${((shown - 1) * 0.35).toFixed(1)}F`;
-  if (system === 'weapons') return `+${(shown - 1) * 4} power`;
-  if (system === 'shields') return `Hull loss −${Math.round(shown * 1.5)}`;
+  if (system === 'engines') return `Jump −${((shown - 1) * 0.35).toFixed(1)}F · Dodge +${Math.min(10, shown - 1)}%`;
+  if (system === 'weapons') return `${2 + (shown >= 4 ? 1 : 0) + (shown >= 8 ? 1 : 0)} slots · Charge +${(shown - 1) * 3}%`;
+  if (system === 'shields') return `${1 + (shown >= 6 ? 1 : 0) + (shown >= 10 ? 1 : 0)} layer${shown >= 6 ? 's' : ''} · Recharge +${(shown - 1) * 4}%`;
   if (system === 'quarters') return '+1 berth';
-  if (system === 'sensors') return `Exp +${shown * 2}%`;
+  if (system === 'sensors') return `Exp +${shown * 2}% · Aim +${Math.min(8, shown)}%`;
   if (system === 'medbay') return `Injury −${shown * 8}%`;
   return '';
 }

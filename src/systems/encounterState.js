@@ -8,6 +8,7 @@ import { wallEncounterSetup } from './walls.js';
 import { RALLY } from './gemSinks.js';
 import { isCanonicalGuidedContract } from './contractState.js';
 import { startFtlEncounter, advanceFtlEncounter, applyFtlCommand, validFtlBody, FTL_VERSION, OVERCHARGE } from './ftlCombat.js';
+import { shipLoadout } from './armory.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
 const numberIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
@@ -140,8 +141,20 @@ export function fightingCrew(player, now = Date.now()) {
 }
 
 /** Every new normal fight (contract, wall, Explore jump) is an FTL-lite v3 fight. */
-export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null, guided = false }, now = Date.now()) {
+/** Enemy ship class from its catalog power: later-sector ships fight harder (see enemyLoadout). */
+export function enemyTierFor(encounterId) {
+  const power = encounterById(encounterId)?.power || 0;
+  return power >= 52 ? 2 : power >= 38 ? 1 : 0;
+}
+
+export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null, guided = false, flagship = 0 }, now = Date.now()) {
+  const systems = player.ship?.systems || {};
   return startFtlEncounter({
+    // The ship as fitted at the drydock: levels shape shields, charge, evasion and aim; the loadout is its guns.
+    shipLevels: guided ? null : { shields: systems.shields || 1, weapons: systems.weapons || 1, engines: systems.engines || 1, sensors: Math.min(20, (systems.sensors || 0) + 1) },
+    loadout: guided ? undefined : shipLoadout(player),
+    flagship: guided ? 0 : flagship,
+    enemyTier: guided ? 0 : enemyTierFor(encounterId),
     acceptanceId,
     encounterId,
     seed,
@@ -192,6 +205,8 @@ export function beginContractEncounter(player, now = Date.now()) {
     threat: wall ? wall.threat : contractThreat(player, contract, now),
     enemyHull: wall ? wall.enemyHull : null,
     remainingBefore: wall ? wall.remainingBefore : null,
+    // The first wall's flagship fights as tuned; later walls' flagships carry an extra shield layer.
+    flagship: wall ? (contract.wall.id === 'spur' ? 0 : 2) : 0,
   }, now) : startEncounter({
     acceptanceId: contract.acceptanceId,
     encounterId: contract.encounterId,

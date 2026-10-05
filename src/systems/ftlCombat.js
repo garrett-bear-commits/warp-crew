@@ -21,10 +21,43 @@ export const ENEMY_ROOMS = Object.freeze(['weapons', 'shields', 'engines', 'helm
 const PLAYER_ADJ = Object.freeze({ helm: ['shields', 'weapons'], shields: ['helm', 'weapons', 'engineering'], weapons: ['helm', 'shields', 'engineering'], engineering: ['shields', 'weapons'] });
 const ENEMY_ADJ = Object.freeze({ weapons: ['shields', 'helm'], shields: ['weapons', 'engines'], engines: ['shields', 'helm'], helm: ['weapons', 'engines'] });
 
-export const PLAYER_WEAPONS = Object.freeze([
-  Object.freeze({ id: 'burst', name: 'Burst Laser', shots: 2, damage: 4, chargeMs: 9000 }),
-  Object.freeze({ id: 'heavy', name: 'Heavy Laser', shots: 1, damage: 7, chargeMs: 11000 }),
-]);
+/**
+ * Player weapons. Lasers are stopped by a shield layer; missiles fly through
+ * shields but carry limited ammo per fight; ion blasts knock a layer out and
+ * stall the enemy's shield recharge; beams only bite an unshielded ship but cut
+ * deep and start fires.
+ */
+export const WEAPON_CATALOG = Object.freeze({
+  burst: Object.freeze({ id: 'burst', name: 'Burst Laser', kind: 'laser', shots: 2, damage: 4, chargeMs: 9000 }),
+  heavy: Object.freeze({ id: 'heavy', name: 'Heavy Laser', kind: 'laser', shots: 1, damage: 7, chargeMs: 11000 }),
+  missile: Object.freeze({ id: 'missile', name: 'Leto Missile', kind: 'missile', shots: 1, damage: 8, chargeMs: 12000, ammo: 3 }),
+  ion: Object.freeze({ id: 'ion', name: 'Ion Blast', kind: 'ion', shots: 1, damage: 0, chargeMs: 8000, ionMs: 6000, roomDamage: 12 }),
+  beam: Object.freeze({ id: 'beam', name: 'Pike Beam', kind: 'beam', shots: 1, damage: 6, chargeMs: 12000, roomDamage: 34, fireChance: 30 }),
+});
+export const DEFAULT_LOADOUT = Object.freeze(['burst', 'heavy']);
+/** The starting pair (kept for callers that list the default guns). */
+export const PLAYER_WEAPONS = Object.freeze(DEFAULT_LOADOUT.map(id => WEAPON_CATALOG[id]));
+export const MAX_WEAPON_SLOTS = 4;
+
+/**
+ * What drydock levels do in a fight. Level 1 everywhere is the plain Sparrow.
+ * Shields: faster recharge, a second layer at 6 and a third at 10.
+ * Weapons: faster charging, a third slot at 4 and a fourth at 8.
+ * Engines: harder to hit. Sensors: easier to hit them.
+ */
+export function shipCombatStats(levels = {}) {
+  const lv = key => Math.max(1, Math.min(20, Math.trunc(levels?.[key] || 1)));
+  return {
+    shieldLayers: 1 + (lv('shields') >= 6 ? 1 : 0) + (lv('shields') >= 10 ? 1 : 0),
+    shieldRechargeMult: Math.round((1 + 0.04 * (lv('shields') - 1)) * 100) / 100,
+    chargeMult: Math.round((1 + 0.03 * (lv('weapons') - 1)) * 100) / 100,
+    weaponSlots: 2 + (lv('weapons') >= 4 ? 1 : 0) + (lv('weapons') >= 8 ? 1 : 0),
+    evasionBonus: Math.min(10, lv('engines') - 1),
+    accuracyBonus: Math.min(8, lv('sensors') - 1),
+  };
+}
+
+export const shipStatsOf = state => shipCombatStats(state?.ship?.levels);
 
 export const RULES = Object.freeze({
   playerHullMax: 100,
@@ -62,14 +95,21 @@ export function seededIndex(seed, salt, size) {
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const room = () => ({ integrity: 100, fire: 0, fireMs: 0 });
 
-/** Enemy loadout from threat (0.6 Favorable … 1.6 Deadly). */
-export function enemyLoadout(threat = 1) {
+/**
+ * Enemy loadout from threat (0.6 Favorable … 1.6 Deadly). Siege-wall flagships are tougher:
+ * tier 1 (the first wall) always carries a second gun; tier 2 (later walls) also an extra shield layer.
+ */
+export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0 } = {}) {
   const t = clamp(Number(threat) || 1, 0.6, 1.6);
+  const tier = flagship === true ? 2 : Math.max(0, Math.min(2, Math.trunc(Number(flagship) || 0)));
+  // Enemy tier comes from the ship's class (later sectors): tier 1 fires three-shot volleys,
+  // tier 2 also carries an extra shield layer, so upgraded Sparrows still meet a fight.
+  const shipTier = Math.max(0, Math.min(2, Math.trunc(Number(enemyTier) || 0)));
   const damage = Math.max(2, Math.round(-16 + 24 * t));
-  const weapons = [{ id: 'cannon', shots: 2, damage, chargeMs: 10000 }];
-  if (t >= 1.1) weapons.push({ id: 'heavy', shots: 1, damage: Math.round(damage * 1.8), chargeMs: 12000 });
+  const weapons = [{ id: 'cannon', shots: shipTier >= 1 ? 3 : 2, damage, chargeMs: 10000 }];
+  if (t >= 1.1 || tier >= 1) weapons.push({ id: 'heavy', shots: 1, damage: Math.round(damage * 1.8), chargeMs: 12000 });
   return {
-    shieldLayers: t < 0.8 ? 0 : 1,
+    shieldLayers: Math.min(2, (t < 0.8 ? 0 : 1) + (tier >= 2 || shipTier >= 2 ? 1 : 0)),
     repairPerSec: Math.round((2 + 4 * t) * 10) / 10,
     evasion: Math.round(4 + 8 * t),
     weapons,
@@ -81,9 +121,18 @@ export function enemyLoadout(threat = 1) {
  * null station means free crew, who go wherever the ship needs them.
  */
 export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1, crew = [], hull = 100,
-  enemyHull = null, remainingBefore = null, tactics = [], boarders = false, shieldLayers = RULES.playerShieldLayers, guided = false }) {
+  enemyHull = null, remainingBefore = null, tactics = [], boarders = false, guided = false,
+  shipLevels = null, loadout = DEFAULT_LOADOUT, flagship = 0, enemyTier = 0 }) {
   const s = Number.isFinite(Number(seed)) ? Math.trunc(Number(seed)) : 0;
-  const load = enemyLoadout(threat);
+  const tier = Math.max(0, Math.min(2, Math.trunc(Number(enemyTier) || 0)));
+  const load = enemyLoadout(threat, { flagship, tier });
+  const levels = shipLevels ? Object.fromEntries(['shields', 'weapons', 'engines', 'sensors']
+    .map(key => [key, Math.max(1, Math.min(20, Math.trunc(shipLevels[key] || 1)))])) : null;
+  const stats = shipCombatStats(levels || {});
+  const guns = (loadout || DEFAULT_LOADOUT).filter(id => WEAPON_CATALOG[id]).slice(0, stats.weaponSlots);
+  const fitted = guns.length ? guns : [...DEFAULT_LOADOUT];
+  const missiles = fitted.filter(id => WEAPON_CATALOG[id].kind === 'missile').length;
+  const shieldLayers = stats.shieldLayers;
   const startHull = Number.isInteger(enemyHull) ? clamp(enemyHull, 1, 42) : 42;
   return {
     version: FTL_VERSION,
@@ -103,7 +152,9 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
     startHull: clamp(Math.round(hull), 1, RULES.playerHullMax),
     shields: { layers: shieldLayers, max: shieldLayers, rechargeMs: 0 },
     rooms: Object.fromEntries(PLAYER_ROOMS.map(id => [id, room()])),
-    weapons: PLAYER_WEAPONS.map(w => ({ id: w.id, chargeMs: Math.round(w.chargeMs * 0.2) })),
+    weapons: fitted.map(id => ({ id, chargeMs: Math.round(WEAPON_CATALOG[id].chargeMs * 0.2) })),
+    ...(levels ? { ship: { levels } } : {}),
+    ...(missiles ? { ammo: { missile: missiles * WEAPON_CATALOG.missile.ammo } } : {}),
     crew: crew.map(member => ({
       id: String(member.id), role: String(member.role || ''),
       station: PLAYER_ROOMS.includes(member.station) ? member.station : null,
@@ -113,6 +164,8 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
     intent: { target: null, hold: false, moves: {} },
     enemy: {
       hull: startHull,
+      ...(flagship ? { flagship: Math.max(1, Math.min(2, Math.trunc(Number(flagship) || 1))) } : {}),
+      ...(tier ? { tier } : {}),
       ...(Number.isInteger(enemyHull) ? { startHull, remainingBefore } : {}),
       threat: Math.round(clamp(Number(threat) || 1, 0.6, 1.6) * 100) / 100,
       evasion: load.evasion,
@@ -152,16 +205,17 @@ export function enemyShieldCap(state) {
   return rooms.shields.integrity >= 50 ? shields.max : rooms.shields.integrity > 0 ? Math.max(0, shields.max - 1) : 0;
 }
 
-/** Percent chance an enemy shot misses the player. */
+/** Percent chance an enemy shot misses the player (engines upgrades add to it). */
 export function playerEvasion(state) {
   const base = state.crew.some(member => member.room === 'helm') ? (manning(state, 'helm') >= 1.3 ? 15 : 10) : 5;
-  return Math.round(base * state.rooms.helm.integrity / 100);
+  return Math.round((base + shipStatsOf(state).evasionBonus) * state.rooms.helm.integrity / 100);
 }
 
+/** Percent chance a player shot misses (sensors upgrades take from it). */
 export function enemyEvasion(state) {
   const { evasion, rooms } = state.enemy;
   if (rooms.helm.integrity <= 0) return 0;
-  return Math.round(evasion * rooms.engines.integrity / 100);
+  return Math.max(0, Math.round(evasion * rooms.engines.integrity / 100) - shipStatsOf(state).accuracyBonus);
 }
 
 /** What an idle captain shoots: shields while they matter, then weapons. */
@@ -172,7 +226,12 @@ export function autoTarget(state) {
 export const currentTarget = state => (ENEMY_ROOMS.includes(state.intent?.target) ? state.intent.target : autoTarget(state));
 
 export function weaponDef(id) {
-  return PLAYER_WEAPONS.find(w => w.id === id);
+  return WEAPON_CATALOG[id];
+}
+
+/** A missile launcher with no ammo left cannot charge or fire. */
+export function weaponCanFire(state, weapon) {
+  return WEAPON_CATALOG[weapon.id]?.kind !== 'missile' || (state.ammo?.missile ?? 0) > 0;
 }
 
 // --- Commands (no time passes) ---------------------------------------------
@@ -246,9 +305,9 @@ function damageRoom(rooms, id, amount) {
   rooms[id].integrity = Math.max(0, rooms[id].integrity - amount);
 }
 
-function maybeFire(next, rooms, id, salt, events, t, side) {
+function maybeFire(next, rooms, id, salt, events, t, side, chance = RULES.fireChance) {
   if (rooms[id].fire > 0) return;
-  if (seededIndex(next.seed, salt, 100) < RULES.fireChance) {
+  if (seededIndex(next.seed, salt, 100) < chance) {
     rooms[id].fire = 100;
     rooms[id].fireMs = 0;
     events.push({ t, type: 'fire_start', side, room: id });
@@ -371,7 +430,7 @@ function runTick(next, events, t, salt, overcharged) {
   const cap = playerShieldCap(next);
   if (next.shields.layers > cap) next.shields.layers = cap;
   if (next.shields.layers < cap) {
-    next.shields.rechargeMs += Math.round(TICK_MS * manning(next, 'shields'));
+    next.shields.rechargeMs += Math.round(TICK_MS * manning(next, 'shields') * shipStatsOf(next).shieldRechargeMult);
     if (next.shields.rechargeMs >= RULES.shieldRechargeMs) {
       next.shields.layers += 1;
       next.shields.rechargeMs = 0;
@@ -383,7 +442,11 @@ function runTick(next, events, t, salt, overcharged) {
   const enemyCap = enemyShieldCap(next);
   const es = next.enemy.shields;
   if (es.layers > enemyCap) es.layers = enemyCap;
-  if (es.layers < enemyCap) {
+  // An ion hit stalls the enemy's shield recharge for a while.
+  if (es.ionMs > 0) {
+    es.ionMs = Math.max(0, es.ionMs - TICK_MS);
+    if (es.ionMs === 0) events.push({ t, type: 'ion_clear', side: 'enemy' });
+  } else if (es.layers < enemyCap) {
     es.rechargeMs += TICK_MS;
     if (es.rechargeMs >= RULES.enemyShieldRechargeMs) {
       es.layers += 1;
@@ -393,35 +456,52 @@ function runTick(next, events, t, salt, overcharged) {
   } else es.rechargeMs = 0;
 
   // Player weapons charge, then fire (all together when holding).
-  const rate = manning(next, 'weapons') * integrityFactor(next.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1);
+  const rate = manning(next, 'weapons') * integrityFactor(next.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1)
+    * shipStatsOf(next).chargeMult;
   for (const weapon of next.weapons) {
+    if (!weaponCanFire(next, weapon)) continue;
     const def = weaponDef(weapon.id);
     weapon.chargeMs = Math.min(def.chargeMs, weapon.chargeMs + Math.round(TICK_MS * rate));
   }
-  const ready = next.weapons.filter(w => w.chargeMs >= weaponDef(w.id).chargeMs);
-  const fireNow = next.intent.hold ? (ready.length === next.weapons.length ? ready : []) : ready;
+  const armed = next.weapons.filter(w => weaponCanFire(next, w));
+  const ready = armed.filter(w => w.chargeMs >= weaponDef(w.id).chargeMs);
+  const fireNow = next.intent.hold ? (ready.length === armed.length ? ready : []) : ready;
   const target = currentTarget(next);
   let shotNo = 0;
   for (const weapon of fireNow) {
     const def = weaponDef(weapon.id);
     weapon.chargeMs = 0;
+    if (def.kind === 'missile') next.ammo.missile -= 1;
     for (let shot = 0; shot < def.shots; shot += 1) {
       const at = t + shotNo * 70;
       shotNo += 1;
-      if (next.enemy.shields.layers > 0) {
+      const shielded = next.enemy.shields.layers > 0;
+      if (shielded && def.kind === 'beam') {
+        // Beams only cut an unshielded hull.
+        events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'shield', deflected: true });
+        continue;
+      }
+      if (shielded && def.kind !== 'missile') {
         next.enemy.shields.layers -= 1;
-        events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'shield' });
+        if (def.kind === 'ion') next.enemy.shields.ionMs = def.ionMs;
+        events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'shield', ...(def.kind === 'ion' ? { ion: true } : {}) });
         continue;
       }
       if (seededIndex(next.seed, salt + shot + shotNo * 3 + 1, 100) < enemyEvasion(next)) {
         events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'miss' });
         continue;
       }
+      if (def.kind === 'ion') {
+        damageRoom(next.enemy.rooms, target, def.roomDamage);
+        if (target === 'shields') next.enemy.shields.ionMs = def.ionMs;
+        events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'hit', damage: 0, ion: true });
+        continue;
+      }
       const amount = Math.min(def.damage, next.enemy.hull);
       next.enemy.hull -= amount;
-      damageRoom(next.enemy.rooms, target, RULES.roomHitDamage + 2 * def.damage);
+      damageRoom(next.enemy.rooms, target, def.roomDamage ?? RULES.roomHitDamage + 2 * def.damage);
       events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'hit', damage: amount });
-      maybeFire(next, next.enemy.rooms, target, salt + 50 + shotNo, events, at, 'enemy');
+      maybeFire(next, next.enemy.rooms, target, salt + 50 + shotNo, events, at, 'enemy', def.fireChance);
       if (next.enemy.hull <= 0) {
         next.enemy.hull = 0;
         finish(next, 'win', events, at);
@@ -544,9 +624,15 @@ export function validFtlBody(e) {
   if (e.phase === 'downed' && e.hull !== 1) return false;
   if (Object.hasOwn(e, 'rally') && !(rec(e.rally) && e.rally.used === true)) return false;
   if (!int(e.hull, 1, RULES.playerHullMax) || !int(e.startHull, 1, RULES.playerHullMax)) return false;
-  if (!validShields(e.shields, 3, RULES.shieldRechargeMs * 2) || !validRooms(e.rooms, PLAYER_ROOMS)) return false;
-  if (!Array.isArray(e.weapons) || e.weapons.length !== PLAYER_WEAPONS.length
-    || !e.weapons.every((w, i) => rec(w) && w.id === PLAYER_WEAPONS[i].id && int(w.chargeMs, 0, PLAYER_WEAPONS[i].chargeMs))) return false;
+  // Ship levels (drydock) are saved with the fight; layers and slots must match them.
+  if (Object.hasOwn(e, 'ship') && !(rec(e.ship) && rec(e.ship.levels)
+    && ['shields', 'weapons', 'engines', 'sensors'].every(key => int(e.ship.levels[key], 1, 20)))) return false;
+  const stats = shipStatsOf(e);
+  if (!validShields(e.shields, 3, RULES.shieldRechargeMs * 2) || e.shields.max !== stats.shieldLayers || !validRooms(e.rooms, PLAYER_ROOMS)) return false;
+  if (!Array.isArray(e.weapons) || e.weapons.length < 1 || e.weapons.length > stats.weaponSlots
+    || !e.weapons.every(w => rec(w) && WEAPON_CATALOG[w.id] && int(w.chargeMs, 0, WEAPON_CATALOG[w.id].chargeMs))) return false;
+  const missiles = e.weapons.filter(w => WEAPON_CATALOG[w.id].kind === 'missile').length;
+  if (missiles ? !(rec(e.ammo) && int(e.ammo.missile, 0, missiles * WEAPON_CATALOG.missile.ammo)) : Object.hasOwn(e, 'ammo')) return false;
   if (!Array.isArray(e.crew) || e.crew.length > 24 || new Set(e.crew.map(c => c?.id)).size !== e.crew.length
     || !e.crew.every(c => rec(c) && typeof c.id === 'string' && c.id && typeof c.role === 'string'
       && (c.station === null || PLAYER_ROOMS.includes(c.station)) && (c.room === null || PLAYER_ROOMS.includes(c.room))
@@ -556,10 +642,13 @@ export function validFtlBody(e) {
     || !Object.entries(i.moves).every(([id, roomId]) => e.crew.some(c => c.id === id) && PLAYER_ROOMS.includes(roomId))) return false;
   const en = e.enemy;
   if (!rec(en) || !num(en.threat, 0.6, 1.6)) return false;
-  const load = enemyLoadout(en.threat);
+  if (Object.hasOwn(en, 'flagship') && ![1, 2].includes(en.flagship)) return false;
+  if (Object.hasOwn(en, 'tier') && ![1, 2].includes(en.tier)) return false;
+  const load = enemyLoadout(en.threat, { flagship: en.flagship || 0, tier: en.tier || 0 });
   const startHull = Object.hasOwn(en, 'startHull') ? en.startHull : 42;
   if (!int(startHull, 1, 42) || !int(en.hull, 0, startHull) || en.evasion !== load.evasion || en.repairPerSec !== load.repairPerSec
     || !validShields(en.shields, 2, RULES.enemyShieldRechargeMs * 2) || en.shields.max !== load.shieldLayers
+    || (Object.hasOwn(en.shields, 'ionMs') && !int(en.shields.ionMs, 0, WEAPON_CATALOG.ion.ionMs))
     || !validRooms(en.rooms, ENEMY_ROOMS)) return false;
   // The enemy's guns are derived from threat: an edited save cannot soften them.
   if (!Array.isArray(en.weapons) || en.weapons.length !== load.weapons.length
@@ -618,7 +707,8 @@ export function ftlPolicyStep(state, policy = 'idle') {
 /** Charge gained per beat (ms), for smooth bars between beats. */
 export function playerChargePerBeat(state) {
   const overcharged = state.tactics?.burn?.throughBeat > state.beat;
-  return Math.round(BEAT_MS * manning(state, 'weapons') * integrityFactor(state.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1));
+  return Math.round(BEAT_MS * manning(state, 'weapons') * integrityFactor(state.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1)
+    * shipStatsOf(state).chargeMult);
 }
 
 export function enemyChargePerBeat(state) {

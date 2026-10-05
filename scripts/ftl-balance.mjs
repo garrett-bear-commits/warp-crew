@@ -20,8 +20,8 @@ function smart(state) {
   return s;
 }
 
-export function playFight({ threat, seed, policy = 'idle', hull = 100, boarders = false, crew = CREW }) {
-  let state = startFtlEncounter({ acceptanceId: 'sim', encounterId: 'sim', seed, threat, crew, hull, tactics: [], boarders });
+export function playFight({ threat, seed, policy = 'idle', hull = 100, boarders = false, crew = CREW, shipLevels = null, loadout, flagship = false }) {
+  let state = startFtlEncounter({ acceptanceId: 'sim', encounterId: 'sim', seed, threat, crew, hull, tactics: [], boarders, shipLevels, loadout, flagship });
   let guard = 0;
   while (state.result === null && guard < 600) {
     if (state.phase === 'downed') { state = advanceFtlEncounter(state, 'concede').state; break; }

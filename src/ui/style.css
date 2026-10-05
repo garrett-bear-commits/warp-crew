@@ -3144,3 +3144,15 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-offscreen.is-bottom { bottom: 10px; }
 @keyframes ftl-pulse-alert { 50% { box-shadow: 0 0 14px rgba(255, 90, 90, 0.6); } }
 @media (prefers-reduced-motion: reduce) { .ftl-offscreen { animation: none; } }
+
+/* Weapons room armory */
+.armory { display: grid; gap: 6px; margin-top: 8px; width: 100%; }
+.armory-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,0.04); }
+.armory-row small { display: block; opacity: 0.75; font-size: 11px; line-height: 1.3; }
+.armory-row .row { flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.armory-row button { font-size: 11px; padding: 4px 8px; }
+.ftl-ionized { font-style: normal; font-size: 10px; margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #3aa7ff; color: #041018; }
+.ftl-weapon[data-weapon-kind="ion"] b { color: #7cc8ff; }
+.ftl-weapon[data-weapon-kind="missile"] b { color: #ffb36b; }
+.ftl-weapon[data-weapon-kind="beam"] b { color: #ff7d9a; }
+.ftl-weapon.is-empty { opacity: 0.45; }
