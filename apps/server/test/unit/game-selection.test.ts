@@ -11,6 +11,8 @@ describe('Jest deployment game selection', () => {
     expect({ ...deployed.game, gameId: 'template' }).toEqual(local.game);
     expect(local.game.gameId).toBe('template');
     expect(selectGame('idle-civ').game.gameId).toBe('idle-civ');
+    expect(selectGame(audience, 'warpcrew').game.gameId).toBe(audience);
+    expect(selectGame(audience, 'warpcrew').game.features.subscriptions).toBe(true);
     expect(() => selectGame(audience)).toThrow('unknown game config');
     expect(() => selectGame(audience, 'unknown')).toThrow('unknown game config');
   });
