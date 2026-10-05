@@ -1,8 +1,8 @@
 Warp Crew Pages QA build 2026-10-05
-Source: claude/hud-overhaul@0f1fe0b0c070e960fbca02f11173fcbd37f4e4f2
-Scope: FTL-lite real-time crew fights (target enemy rooms, Hold volleys, shields, fires, crew moves, boarders, Overcharge, Board, Rally); guided first fight teaching targeting; Sparrow v4 and six enemy faction cutaways; sector map with lanes and authored events; Siege walls; timed drydock upgrades; starter kit and wall-pack offers; Captain's Commission subscription (local mock)
+Source: claude/hud-overhaul@4ef4610d9f793371fa9ab7d8a2be66226e8fc9e7
+Scope: FTL-lite real-time crew fights (target enemy rooms, Hold volleys, shields, fires, crew moves, boarders, Overcharge, Board, Rally); guided first fight teaching targeting; Sparrow v4 and six enemy faction cutaways; sector map with lanes and authored events; Siege walls; timed drydock upgrades; starter kit and wall-pack offers; Captain's Commission subscription (local mock); ship furniture pathing; off-screen incoming-fire alerts; first Siege wall needs four wins in a day
 Platform: GitHub Pages local/mock mode; not a Jest production build; purchases and the subscription use the local mock, with no server verification and no cloud save
-Index SHA-256: e88c3afef8181cdfda0caf991096b5111b9ac6d8f3ce6787dbb9c9ba53a2ff78
+Index SHA-256: 878832f5ab621d7e67ee4968f3268ac4e97da94fe8d338951664e05663030580
 QA hub SHA-256: 2f2e4f352d525d1be42e0069a2b9c6a18ea536e61d1d79098a77d9516923ead3
-JavaScript SHA-256: 615c7837253073c1bd82dd26bee91d348f57c6c31477812abb4a3ac77085dfb5
-CSS SHA-256: 91c7367d559f3c5a7ac71c7d568abca95bf5a2503a2bec76c5bd7839f96572d3
+JavaScript SHA-256: 675ba286dd9a6493f775c4bb9c21b5d70d8b312bcb97858176240b5e0722da9d
+CSS SHA-256: 894b1bce64d8f1795aca858abb94a2fdc92f10c8503a00181755f11bd1b701ba
