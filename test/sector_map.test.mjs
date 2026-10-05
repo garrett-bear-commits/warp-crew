@@ -168,5 +168,7 @@ assert.equal(sessionModels(vet, { missionView: 'explore', selectedMapNode: 'lane
   const forged = { ok: true, node: NODES.veil_gate, fuelCost: 2, outcome: { kind: 'story', flag: 'veil_opened' } };
   assert.equal(commitTravel(walled, forged).reason, 'siege_wall');
   assert.equal(openTravelEvent(walled, forged).ok, false);
+  const { beginTravelFight } = await import('../src/systems/travelFight.js');
+  assert.equal(beginTravelFight(walled, { ...forged, outcome: { kind: 'combat', encounter: 'swarm_probe' } }).reason, 'siege_wall');
 }
 console.log('sector_map.test.mjs OK');
