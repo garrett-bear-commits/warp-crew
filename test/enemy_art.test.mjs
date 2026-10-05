@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { ENEMY_FAMILIES, enemyArtFor } from '../src/data/art/enemyArt.js';
 import { ENCOUNTERS_V1 } from '../src/systems/combat.js';
-import { renderFtlEnemy } from '../src/ui/ftlView.js';
+import { renderFtlEnemy, enemyCrewState } from '../src/ui/ftlView.js';
 
 // Every encounter has a cutaway with all four targetable rooms inside the image.
 assert.deepEqual(ENEMY_FAMILIES, ['pirate', 'scrapper', 'swarm', 'ice', 'shade', 'crown']);
@@ -29,4 +29,21 @@ assert.match(html, /art\/enemies\/ice\.png/);
 assert.match(html, /family-ice/);
 const ice = enemyArtFor('ice_raiders').rooms.weapons;
 assert.match(html, new RegExp(`data-enemy-room="weapons"[^]*?|style="left:${ice.left}%;top:${ice.top}%`));
+
+// Enemy crew: one figure per room at its post, repairing a damaged room, gone from a burning or offline one.
+assert.equal((html.match(/data-enemy-crew=/g) || []).length, 4, 'one crew figure per room');
+assert.match(html, /ftl-enemy-crew is-manning" data-enemy-crew="weapons"/);
+assert.equal(enemyCrewState({ integrity: 60, fire: false, offline: false, damaged: true }), 'repairing');
+assert.equal(enemyCrewState({ integrity: 60, fire: true, offline: false, damaged: true }), 'gone');
+assert.equal(enemyCrewState({ integrity: 0, fire: false, offline: true, damaged: true }), 'gone');
+const hurt = renderFtlEnemy({ ...view, enemy: { ...view.enemy, rooms: { ...view.enemy.rooms,
+  weapons: { ...room, label: 'weapons', integrity: 55, damaged: true },
+  shields: { ...room, label: 'shields', integrity: 30, fire: true, damaged: true },
+  engines: { ...room, label: 'engines', integrity: 0, offline: true, damaged: true } } } });
+assert.match(hurt, /is-repairing" data-enemy-crew="weapons"/);
+assert.doesNotMatch(hurt, /data-enemy-crew="shields"/);
+assert.doesNotMatch(hurt, /data-enemy-crew="engines"/);
+assert.match(hurt, /data-enemy-crew="helm"/);
+// Figures sit inside the room buttons (still the tap target) and are hidden from assistive tech.
+assert.match(hurt, /class="ftl-enemy-room room-weapons[^>]*>\s*<span class="ftl-enemy-crew is-repairing" data-enemy-crew="weapons" aria-hidden="true">/);
 console.log('enemy_art.test.mjs OK');

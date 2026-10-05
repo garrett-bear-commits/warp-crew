@@ -27,6 +27,24 @@ const chargeBar = (from, to, cls = '', beat = 0) => `<span class="ftl-bar ${cls}
 const pips = (layers, max, full) => Array.from({ length: Math.max(full, max) }, (_, i) => `<i class="ftl-pip${i < layers ? ' on' : ''}${i >= max ? ' broken' : ''}"></i>`).join('');
 const live = view => !view.result && !view.downed;
 
+// A 7x11 pixel crew silhouette (head, shoulders, body, legs), tinted by the enemy family in CSS.
+const ENEMY_CREW_PIXELS = '<rect x="2" y="0" width="3" height="3"/><rect x="1" y="3" width="5" height="1"/><rect x="0" y="4" width="7" height="3"/><rect x="1" y="7" width="5" height="1"/><rect x="1" y="8" width="2" height="3"/><rect x="4" y="8" width="2" height="3"/>';
+
+/**
+ * The enemy crew member stationed in a room, from the room's state only (presentation, no rules):
+ * at their post when the room is whole, repairing when it is damaged, gone while it burns or is offline.
+ */
+export function enemyCrewState(room) {
+  if (!room || room.offline || room.fire) return 'gone';
+  return room.integrity < 100 || room.damaged ? 'repairing' : 'manning';
+}
+
+function enemyCrewFigure(id, room) {
+  const state = enemyCrewState(room);
+  if (state === 'gone') return '';
+  return `<span class="ftl-enemy-crew is-${state}" data-enemy-crew="${id}" aria-hidden="true"><svg viewBox="0 0 7 11" shape-rendering="crispEdges">${ENEMY_CREW_PIXELS}</svg>${state === 'repairing' ? '<i class="ftl-enemy-spark"></i>' : ''}</span>`;
+}
+
 /** Enemy ship: its cutaway art with four targetable rooms over their real positions, hull, shields and guns. */
 export function renderFtlEnemy(view) {
   if (!view?.ftl) return '';
@@ -45,7 +63,7 @@ export function renderFtlEnemy(view) {
       style="left:${box.left}%;top:${box.top}%;width:${box.width}%;height:${box.height}%"
       data-enemy-room="${id}" data-act="encounter-command" data-command-type="target" data-room="${id}" ${identity(view)} ${enabled ? '' : 'disabled'}${spotlight ? ' data-primary-pulse data-spotlight-target' : ''}
       aria-pressed="${targeted}" aria-label="Target their ${e(room.label)}${room.offline ? ', offline' : ''}">
-      <span class="ftl-room-tag">${icon(id)}<b>${e(room.label)}</b></span>${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
+      ${enemyCrewFigure(id, room)}<span class="ftl-room-tag">${icon(id)}<b>${e(room.label)}</b></span>${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
     </button>`;
   }).join('');
   const guns = enemy.weapons.map(w => `<div class="ftl-enemy-gun${w.chargePct >= 70 ? ' is-hot' : ''}">

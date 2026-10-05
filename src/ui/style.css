@@ -2940,6 +2940,24 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-enemy-room .fire { position: absolute; right: 3px; top: 3px; color: #ff9a3c; filter: drop-shadow(0 0 4px rgba(255, 140, 40, 0.9)); }
 .ftl-enemy-room.is-hit { animation: ftl-hit 420ms ease-out; }
 .ftl-enemy-room.is-miss { animation: ftl-miss 420ms ease-out; }
+/* Enemy crew: one pixel figure per room, tinted by faction. Presentational; taps go to the room button. */
+.ftl-enemy { --enemy-crew: #e0705f; }
+.ftl-enemy.family-scrapper { --enemy-crew: #d9a441; }
+.ftl-enemy.family-swarm { --enemy-crew: #9fd35a; }
+.ftl-enemy.family-ice { --enemy-crew: #8fd0ff; }
+.ftl-enemy.family-shade { --enemy-crew: #b48cff; }
+.ftl-enemy.family-crown { --enemy-crew: #ffd166; }
+.ftl-enemy-crew {
+  position: absolute; left: 50%; bottom: 8px; width: 10px; height: 16px; margin-left: -5px; pointer-events: none;
+  color: var(--enemy-crew); filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.85)) drop-shadow(0 0 3px rgba(0, 0, 0, 0.6));
+  animation: ftl-crew-idle 2.4s ease-in-out infinite; transition: opacity var(--motion-fast);
+}
+.ftl-enemy-crew svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.ftl-enemy-crew.is-repairing { left: auto; right: 6px; margin-left: 0; animation: ftl-crew-repair 0.5s steps(2) infinite; }
+.ftl-enemy-spark { position: absolute; left: -4px; top: 6px; width: 3px; height: 3px; background: #ffe08a; box-shadow: 0 0 4px #ffcf4a; animation: ftl-flicker 0.25s steps(2) infinite alternate; }
+.ftl-enemy.is-destroyed .ftl-enemy-crew { opacity: 0; }
+@keyframes ftl-crew-idle { 50% { transform: translateX(-3px); } }
+@keyframes ftl-crew-repair { 50% { transform: translateY(1px) rotate(-8deg); } }
 .ftl-enemy.is-destroyed .ftl-enemy-ship img { filter: grayscale(0.8) brightness(0.45); transform: rotate(-6deg) translateY(6px); }
 .ftl-enemy-guns { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 4px; font-size: 12px; }
 .ftl-enemy-gun { display: grid; gap: 2px; }
@@ -3014,6 +3032,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 @media (prefers-reduced-motion: reduce) {
   .ftl-bar > span { transition: none; }
   .ftl-enemy-room .reticle, .ftl-room-marker .incoming, .ftl-room-marker .fire, .ftl-move-target { animation: none; }
+  .ftl-enemy-crew, .ftl-enemy-spark { animation: none; }
 }
 .ftl-bar > span.is-filling { transition: none; animation: ftl-fill-a 1s linear; }
 /* Two identical keyframes: switching name each beat restarts the fill on a patched element. */
