@@ -339,6 +339,8 @@ async function bootCore(initResult) {
     onError: (error, detail) => console.warn('[warp-crew]', error, detail || ''),
   });
   useClock(wc.clock);
+  // Development builds only: the core client on the console for QA (`__warpcrew.state()`).
+  if (config.dev) globalThis.__warpcrew = wc;
   // QA's fresh-save link clears this device once (and, online, opens a new server generation).
   let fresh = false;
   try { fresh = consumeFreshStart({ location, history, clearSave: () => {} }); } catch { /* no location */ }

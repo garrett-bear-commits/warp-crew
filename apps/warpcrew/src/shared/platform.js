@@ -28,6 +28,8 @@ export function isReal() {
   const sdk = globalJest();
   if (!sdk) return false;
   if (inJestShell()) return true;
+  // The SDK refuses (and logs) getPlayer before init; until init settles only the shell counts.
+  if (!ready) return false;
   try {
     const id = sdk.getPlayer?.()?.playerId;
     if (id && !String(id).startsWith('mock-')) return true;
