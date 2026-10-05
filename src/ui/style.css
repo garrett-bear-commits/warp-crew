@@ -2984,6 +2984,19 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-move-target span { position: absolute; left: var(--label-x); top: var(--label-y); transform: translate(-50%, -50%); font: 700 calc(12px / var(--camera-scale, 1)) var(--font-display); text-transform: uppercase; }
 /* While move targets name the rooms, the ship's own room tags would say it twice. */
 .ship-fit:has(.ftl-move-target) .room-tag { opacity: 0; }
+/* Drag a crew member onto a room: the ghost follows the finger, valid rooms light, the one under it glows. */
+.ftl-move-target.is-drop-target { background: rgba(111, 211, 255, 0.2); }
+.ftl-move-target.is-drop-hover { background: rgba(111, 211, 255, 0.38); box-shadow: inset 0 0 0 calc(5px / var(--camera-scale, 1)) #bdf0ff; animation: none; }
+.ftl-crew-chip { touch-action: pan-x; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.ftl-crew-chip img { -webkit-user-drag: none; }
+.ftl-drag-ghost {
+  position: fixed; left: 0; top: 0; z-index: 60; display: flex; align-items: center; gap: 6px; margin: -74px 0 0 -34px;
+  padding: 4px 10px 4px 4px; border: 2px solid #6fd3ff; border-radius: 10px; background: rgba(10, 16, 26, 0.92);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55); pointer-events: none; font: 700 12px var(--font-display); color: #dff6ff; will-change: transform;
+}
+.ftl-drag-ghost img { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; image-rendering: pixelated; }
+.ftl-drag-ghost.is-over-room { border-color: #bdf0ff; background: rgba(20, 60, 84, 0.95); }
+.wc-shell.ftl-crew-dragging, .wc-shell.ftl-crew-dragging * { cursor: grabbing; }
 
 /* Controls strip */
 .ftl-controls {

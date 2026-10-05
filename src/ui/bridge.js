@@ -28,7 +28,8 @@ import { INTEL_TRACKS } from '../data/intel.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS, SPARROW_LAYOUT, HULL_PX, roomWorldPoint, canonicalRoomId } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS } from '../data/crewRoster.js';
-import { syncCrewLayer } from './crewWalk.js';
+import { syncCrewLayer, crewAgentAt } from './crewWalk.js';
+import { bindFtlCrewDrag } from './ftlCrewDrag.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatView.js';
 import { unlockSfx } from './juice.js';
@@ -39,7 +40,7 @@ import { renderFtlEnemy, renderFtlShipMarkers } from './ftlView.js';
 import { morphInto } from './morph.js';
 import { renderMissionSwitcher, renderContractBoard, renderContractReview, renderActiveContract, renderShipEncounter, renderCombatOrders, renderAwayPicker, renderDailyPlan } from './contractView.js';
 import { dailyPlan, ensureDailyLoop, MILESTONES as DAILY_MILESTONES } from '../systems/dailyLoop.js';
-import { makeCamera, focusCamera, resizeCamera, zoomAt, pan, project } from './shipCamera.js';
+import { makeCamera, focusCamera, resizeCamera, zoomAt, pan, project, unproject } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue, wallPackState, packValue } from '../systems/offers.js';
@@ -119,6 +120,7 @@ function bindOnce(root, ctx) {
   root.addEventListener('keydown', ev => trapDialogKey(root, ev));
   startStageLoop();
   bindCamera(root, ctx);
+  bindCrewDrag(root);
   root.addEventListener('pointerdown', () => unlockSfx(), { once: true });
   root.addEventListener('click', (ev) => {
     const handlers = root._wcHandlers;
@@ -402,6 +404,45 @@ function buildShell() {
   `;
 }
 
+/** Ship feedback plus FTL room markers; while a crew member is dragged, their drop targets. */
+function renderShipFeedbackSlot(root) {
+  const dragging = root._wcFtlEnc ? root._wcFtlDragCrewId || null : null;
+  morphInto(root.querySelector('[data-slot="ship-feedback"]'), (root._wcShipFeedback || '')
+    + (root._wcFtlEnc ? renderFtlShipMarkers(root._wcFtlEnc, { selectedCrewId: dragging || root._wcFtlSelected, dragging: Boolean(dragging) }) : ''));
+  // A beat re-render keeps the room under the finger lit.
+  const hover = dragging && root._wcFtlDrag?.hoverRoom;
+  if (hover) root.querySelector(`.ftl-move-target[data-room="${CSS.escape(hover)}"]`)?.classList.add('is-drop-hover');
+}
+
+/** Drag crew (chip or sprite) onto a room in FTL-lite fights; see ftlCrewDrag.js. */
+function bindCrewDrag(root) {
+  const stage = root.querySelector('.stage');
+  root._wcFtlDrag = bindFtlCrewDrag(root, {
+    view: () => root._wcFtlEnc || null,
+    spriteAt: (x, y, pad) => {
+      const rect = stage.getBoundingClientRect();
+      const camera = root._wcCamera;
+      return crewAgentAt(unproject(camera, { x: x - rect.left, y: y - rect.top }), pad / camera.scale);
+    },
+    setDragging: crewId => {
+      root._wcFtlDragCrewId = crewId;
+      renderShipFeedbackSlot(root);
+    },
+    send: dataset => root._wcHandlers?.onAction('encounter-command', dataset),
+    select: crewId => root._wcHandlers?.onAction('ftl-select-crew', { act: 'ftl-select-crew', crewId }),
+    edgePan: (x, y) => {
+      const rect = stage.getBoundingClientRect();
+      const edge = 48;
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return false;
+      const dy = y < rect.top + edge ? 7 : y > rect.bottom - edge ? -7 : 0;
+      if (!dy) return false;
+      const before = root._wcCamera;
+      root._wcSetCamera(pan(before, 0, dy));
+      return root._wcCamera.y !== before.y;
+    },
+  });
+}
+
 function setSlot(root, name, html) {
   const el = root.querySelector(`[data-slot="${name}"]`);
   if (el && el.innerHTML !== html) el.innerHTML = html;
@@ -558,7 +599,11 @@ function patchShell(root, ctx) {
   // Patched in place: these re-render every second and must not drop a tap mid-render.
   morphInto(root.querySelector('[data-slot="fight-top"]'), ftlEnc ? renderFtlEnemy(ftlEnc) : '');
   morphInto(root.querySelector('[data-slot="fight-bottom"]'), ftlEnc ? renderShipEncounter(ftlFight, ftlUi) : '');
-  morphInto(root.querySelector('[data-slot="ship-feedback"]'), renderShipFeedback(contractShipSignals(player)) + (ftlEnc ? renderFtlShipMarkers(ftlEnc, ftlUi) : ''));
+  root._wcFtlEnc = ftlEnc;
+  root._wcFtlSelected = ftlUi.selectedCrewId;
+  root._wcShipFeedback = renderShipFeedback(contractShipSignals(player));
+  if (!ftlEnc) root._wcFtlDrag?.cancel();
+  renderShipFeedbackSlot(root);
   // In FTL-lite fights the overlay (zoom toggle, incoming chips) re-renders every beat: patch it in place so taps land.
   const overlaysEl = root.querySelector('[data-slot="overlays"]');
   const ftlOverlay = player.activeEncounter?.version === 3 && isHome;
