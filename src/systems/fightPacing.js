@@ -17,10 +17,11 @@ export function beatDelayMs(encounter) {
 export function shouldAutoAdvanceFight(player) {
   const encounter = player?.activeEncounter;
   if (!encounter || encounter.result || encounter.phase === 'downed') return false;
-  if (encounter.kind === 'normal') return true;
+  if (encounter.kind === 'normal' && !encounter.guided) return true;
   const tutorial = player.tutorial;
-  if (tutorial?.phase !== 'fight' || encounter.kind !== 'guided') return false;
+  if (tutorial?.phase !== 'fight' || !(encounter.kind === 'guided' || encounter.guided === true)) return false;
   if (tutorial.script === 4) return encounter.orders?.brace?.used === true;
-  if (tutorial.script === 5) return encounter.version === 2 && encounter.orders?.targetWeapons?.used === true;
+  if (tutorial.script === 5) return encounter.version === 3 ? encounter.guided === true && encounter.intent?.target === 'weapons'
+    : encounter.version === 2 && encounter.orders?.targetWeapons?.used === true;
   return false;
 }

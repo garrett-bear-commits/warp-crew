@@ -81,7 +81,7 @@ export function enemyLoadout(threat = 1) {
  * null station means free crew, who go wherever the ship needs them.
  */
 export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1, crew = [], hull = 100,
-  enemyHull = null, remainingBefore = null, tactics = [], boarders = false, shieldLayers = RULES.playerShieldLayers }) {
+  enemyHull = null, remainingBefore = null, tactics = [], boarders = false, shieldLayers = RULES.playerShieldLayers, guided = false }) {
   const s = Number.isFinite(Number(seed)) ? Math.trunc(Number(seed)) : 0;
   const load = enemyLoadout(threat);
   const startHull = Number.isInteger(enemyHull) ? clamp(enemyHull, 1, 42) : 42;
@@ -90,6 +90,8 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
     acceptanceId: String(acceptanceId ?? ''),
     encounterId: String(encounterId ?? ''),
     kind: 'normal',
+    // The tutorial's first fight: the clock waits until the captain targets their weapons.
+    ...(guided ? { guided: true } : {}),
     seed: s,
     revision: 0,
     beat: 0,
@@ -538,6 +540,7 @@ export function validFtlBody(e) {
     || !int(e.beat, 0, 100_000) || e.revision !== e.beat || !Number.isInteger(e.eventIndex) || e.eventIndex < e.beat) return false;
   if (!(e.result === null ? ['combat', 'downed'].includes(e.phase) : e.phase === 'complete')) return false;
   if (e.result !== null && !['win', 'loss'].includes(e.result)) return false;
+  if (Object.hasOwn(e, 'guided') && e.guided !== true) return false;
   if (e.phase === 'downed' && e.hull !== 1) return false;
   if (Object.hasOwn(e, 'rally') && !(rec(e.rally) && e.rally.used === true)) return false;
   if (!int(e.hull, 1, RULES.playerHullMax) || !int(e.startHull, 1, RULES.playerHullMax)) return false;

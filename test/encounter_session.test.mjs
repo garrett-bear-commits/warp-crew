@@ -4,7 +4,7 @@ import { createCrewInstance } from '../src/data/crewRoster.js';
 import { chooseCaptain } from '../src/systems/captainFirstPlay.js';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { generateContractBoard, acceptContract, previewContractAction, commitContractAction, claimContractReward, tutorialDistressOffer } from '../src/systems/contracts.js';
-import { applyEncounterAction, normalizeEncounterState, recoverEncounter } from '../src/systems/encounterState.js';
+import { applyEncounterAction, applyEncounterCommand, normalizeEncounterState, recoverEncounter } from '../src/systems/encounterState.js';
 import { hireFirstCrew } from '../src/systems/tutorialV5.js';
 import { sessionAction, sessionModels, persistSessionTransition } from '../src/systems/sessionLoop.js';
 import { renderActiveContract, renderShipEncounter } from '../src/ui/contractView.js';
@@ -176,37 +176,25 @@ test('a lost normal fight settles to salvage once, and a legacy saved loss still
 });
 
 
-test('script-5 distress uses v2 for every starting captain output and the targeted guided win survives reload', () => {
-  const cases = [
-    ['captain_cyborg', { helm: 110, shields: 100, weapons: 110, engineering: 100 }],
-    ['captain_gunner', { helm: 100, shields: 110, weapons: 110, engineering: 100 }],
-    ['captain_alien', { helm: 100, shields: 100, weapons: 110, engineering: 100 }],
-    ['captain_droid', { helm: 100, shields: 110, weapons: 110, engineering: 100 }],
-  ];
-  for (const [templateId, outputs] of cases) {
+test('script-5 distress is a guided FTL-lite fight for every captain, and the targeted win survives reload', () => {
+  for (const templateId of ['captain_cyborg', 'captain_gunner', 'captain_alien', 'captain_droid']) {
     let player = captainGuided(templateId);
-    assert.equal(player.activeEncounter.version, 2, templateId);
-    assert.deepEqual(player.activeEncounter.outputs, outputs, templateId);
-    player = beat(player);
-    const locked = applyEncounterAction(player, {
-      acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision, order: 'target_weapons',
-    }, now);
-    assert.equal(locked.ok, true, templateId);
-    assert.ok(locked.events.some(event => event.type === 'enemy_weapon_disabled'), templateId);
-    assert.equal(applyEncounterAction(locked.player, {
-      acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision, order: 'target_weapons',
-    }, now).reason, 'stale_encounter_action', templateId);
-    player = migratePlayer(clone(locked.player));
-    assert.equal(player.activeEncounter.orders.targetWeapons.used, true, templateId);
-    const impact = applyEncounterAction(player, {
-      acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision,
-    }, now);
-    assert.equal(impact.ok, true, templateId);
-    assert.equal(impact.events.some(event => event.type === 'enemy_impact' && event.amount > 0), false, templateId);
-    player = impact.player;
-    for (let i = 0; i < 20 && !player.activeEncounter.result; i++) player = beat(player);
+    const encounter = player.activeEncounter;
+    assert.equal(encounter.version, 3, templateId);
+    assert.equal(encounter.guided, true, templateId);
+    assert.equal(encounter.enemy.threat, 0.6, 'an easy first enemy');
+    assert.equal(encounter.enemy.hull, 25);
+    assert.equal(Object.hasOwn(encounter, 'tactics'), false, 'no tactics in the first fight');
+    assert.equal(Object.hasOwn(encounter, 'boarders'), false, 'no boarders in the first fight');
+    assert.ok(encounter.crew.some(member => member.station), templateId);
+    const id = { acceptanceId: encounter.acceptanceId, revision: encounter.revision };
+    const targeted = applyEncounterCommand(player, { ...id, command: { type: 'target', room: 'weapons' } });
+    assert.equal(targeted.ok, true, templateId);
+    player = migratePlayer(clone(targeted.player));
+    assert.equal(player.activeEncounter.intent.target, 'weapons', 'the target survives reload');
+    for (let i = 0; i < 60 && !player.activeEncounter.result; i++) player = beat(player);
     assert.equal(player.activeEncounter.result, 'win', templateId);
-    assert.equal(player.activeEncounter.orders.targetWeapons.uses, 1, templateId);
+    assert.ok(player.activeEncounter.beat >= 12 && player.activeEncounter.beat <= 30, `first fight lasts 12-30 s (${player.activeEncounter.beat})`);
     assert.equal(player.activeContract.stage, 'return', templateId);
   }
 });

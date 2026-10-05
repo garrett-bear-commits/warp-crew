@@ -140,7 +140,7 @@ export function fightingCrew(player, now = Date.now()) {
 }
 
 /** Every new normal fight (contract, wall, Explore jump) is an FTL-lite v3 fight. */
-export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null }, now = Date.now()) {
+export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null, guided = false }, now = Date.now()) {
   return startFtlEncounter({
     acceptanceId,
     encounterId,
@@ -150,9 +150,19 @@ export function startCrewFight(player, { acceptanceId, encounterId, seed, threat
     hull: Math.max(1, Math.min(100, Math.round(player.ship?.hull ?? 100))),
     enemyHull,
     remainingBefore,
-    tactics: unlockedTactics(player),
-    boarders: boardersUnlocked(player) && BOARDING_ENEMIES.includes(String(encounterId)),
+    tactics: guided ? [] : unlockedTactics(player),
+    boarders: !guided && boardersUnlocked(player) && BOARDING_ENEMIES.includes(String(encounterId)),
+    guided,
   });
+}
+
+/** The script-5 tutorial's first fight is an easy FTL-lite fight that teaches targeting. */
+export const GUIDED_FIGHT = Object.freeze({ threat: 0.6, enemyHull: 25 });
+const ftlGuided = (player, contract) => contract?.profile === 'distress' && player?.tutorial?.script === 5;
+/** Did the captain do what the guided fight teaches? (v2: the Target Weapons order; v3: target their Weapons room.) */
+export function guidedTargetDone(encounter) {
+  return encounter?.version === FTL_VERSION ? encounter.guided === true && encounter.intent?.target === 'weapons'
+    : encounter?.orders?.targetWeapons?.used === true;
 }
 
 /** Hull a settled fight took off the ship (v3 fights use the ship's own hull). */
@@ -164,7 +174,14 @@ export function beginContractEncounter(player, now = Date.now()) {
   if (player?.activeEncounter || !eligibleContract(player, contract)) return player;
   const kind = contract.profile === 'distress' ? 'guided' : 'normal';
   const wall = contract.wall ? wallEncounterSetup(player, contract, contractThreat(player, contract, now), now) : null;
-  const encounter = kind === 'normal' ? startCrewFight(player, {
+  const encounter = ftlGuided(player, contract) ? startCrewFight(player, {
+    acceptanceId: contract.acceptanceId,
+    encounterId: contract.encounterId,
+    seed: contract.routeSeed,
+    threat: GUIDED_FIGHT.threat,
+    enemyHull: GUIDED_FIGHT.enemyHull,
+    guided: true,
+  }, now) : kind === 'normal' ? startCrewFight(player, {
     acceptanceId: contract.acceptanceId,
     encounterId: contract.encounterId,
     seed: contract.routeSeed,
@@ -247,9 +264,10 @@ function validSnapshot(encounter, contract, tutorial) {
     || entryRevision === null
     || (contract.profile === 'distress'
       && (tutorial?.script === 4 ? encounter.version !== 1
-        : tutorial?.script === 5 ? encounter.version !== 2 : true))
+        // Script 5: new saves are a guided v3 fight; saves from before keep their v2 fight.
+        : tutorial?.script === 5 ? !(encounter.version === 2 || (encounter.version === FTL_VERSION && encounter.guided === true)) : true))
     || encounter.encounterId !== contract.encounterId
-    || (contract.profile === 'distress' ? encounter.kind !== 'guided' : encounter.kind !== 'normal')
+    || (contract.profile === 'distress' ? !(encounter.kind === 'guided' || encounter.guided === true) : encounter.kind !== 'normal' || encounter.guided === true)
     || encounter.seed !== contract.routeSeed
     || contract.revision !== entryRevision + encounter.beat
     || !validEncounterBody(encounter)) return false;

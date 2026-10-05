@@ -35,10 +35,13 @@ function staffed() {
   return player;
 }
 
+/** The guided FTL-lite fight: tap their Weapons room, then the crew finish it. */
+const targetWeapons = player => act(player, 'encounter-command', { ...encounterIdentity(player), command: { type: 'target', room: 'weapons' } });
+
 function guidedWin(player) {
   player = act(player, 'tutorial-fight-start').player;
-  player = act(player, 'encounter-order', { ...encounterIdentity(player), order: 'target_weapons' }).player;
-  for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) {
+  player = targetWeapons(player).player;
+  for (let i = 0; i < 60 && player.tutorial.phase === 'fight'; i++) {
     player = act(player, 'encounter-advance', encounterIdentity(player)).player;
   }
   assert.equal(player.tutorial.phase, 'claim');
@@ -76,15 +79,17 @@ test('committed script-5 captain, hire, target order, claim, name, pull and Skip
   const fuel = player.wallet.fuel;
   player = act(player, 'tutorial-fight-start').player;
   assert.equal(player.activeContract.profile, 'distress');
-  assert.equal(player.activeEncounter.version, 2);
-  assert.equal(player.activeEncounter.kind, 'guided');
+  // The first fight is a guided FTL-lite fight: nothing moves until their Weapons room is targeted.
+  assert.equal(player.activeEncounter.version, 3);
+  assert.equal(player.activeEncounter.guided, true);
   assert.equal(player.wallet.fuel, fuel - 1);
   assert.equal(act(player, 'encounter-advance', encounterIdentity(player)).ok, false);
-  assert.equal(act(player, 'encounter-order', { ...encounterIdentity(player), order: 'brace' }).ok, false);
-  assert.equal(act(player, 'encounter-order', { acceptanceId: 'forged', revision: player.activeEncounter.revision, order: 'target_weapons' }).ok, false);
-  player = act(player, 'encounter-order', { ...encounterIdentity(player), order: 'target_weapons' }).player;
-  assert.equal(player.activeEncounter.orders.targetWeapons.used, true);
-  for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) {
+  assert.equal(act(player, 'encounter-command', { ...encounterIdentity(player), command: { type: 'target', room: 'shields' } }).ok, false);
+  assert.equal(act(player, 'encounter-order', { ...encounterIdentity(player), order: 'burn' }).ok, false);
+  assert.equal(act(player, 'encounter-command', { acceptanceId: 'forged', revision: player.activeEncounter.revision, command: { type: 'target', room: 'weapons' } }).ok, false);
+  player = targetWeapons(player).player;
+  assert.equal(player.activeEncounter.intent.target, 'weapons');
+  for (let i = 0; i < 60 && player.tutorial.phase === 'fight'; i++) {
     player = act(player, 'encounter-advance', encounterIdentity(player)).player;
   }
   assert.equal(player.tutorial.phase, 'claim');
@@ -145,13 +150,13 @@ test('save failure publishes no captain, hire, target order, or reward claim', (
   player = act(player, 'tutorial-first-hire').player;
   player = act(player, 'station-assign', { id: player.tutorial.firstHireInstanceId, station: 'weapons' }).player;
   player = act(player, 'tutorial-fight-start').player;
-  failed = act(player, 'encounter-order', { ...encounterIdentity(player), order: 'target_weapons' }, { save: () => false });
+  failed = act(player, 'encounter-command', { ...encounterIdentity(player), command: { type: 'target', room: 'weapons' } }, { save: () => false });
   assert.equal(failed.reason, 'save_failed');
-  assert.equal(failed.player.activeEncounter.orders.targetWeapons.used, false);
+  assert.equal(failed.player.activeEncounter.intent.target, null);
   assert.deepEqual(failed.captures, []);
   assert.deepEqual(failed.animations, []);
-  player = act(player, 'encounter-order', { ...encounterIdentity(player), order: 'target_weapons' }).player;
-  for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) player = act(player, 'encounter-advance', encounterIdentity(player)).player;
+  player = targetWeapons(player).player;
+  for (let i = 0; i < 60 && player.tutorial.phase === 'fight'; i++) player = act(player, 'encounter-advance', encounterIdentity(player)).player;
   assert.equal(player.tutorial.phase, 'claim');
   const wallet = { ...player.wallet };
   failed = act(player, 'contract-claim', contractIdentity(player), { save: () => false });
@@ -231,7 +236,7 @@ test('a corrupted saved v5 fight retries without charging launch fuel twice', ()
   player = act(player, 'tutorial-fight-start').player;
   assert.equal(player.wallet.fuel, spentFuel);
   assert.equal(player.wallet.credits, credits);
-  assert.equal(player.activeEncounter.version, 2);
+  assert.equal(player.activeEncounter.version, 3);
 });
 
 test('malformed v5 contract revision keeps paid launch credit on retry', () => {
@@ -271,7 +276,7 @@ for (const [label, corrupt] of [
   } })],
   ['missing return encounter', player => ({ ...player, activeEncounter: null })],
   ['unsupported return encounter version', player => ({ ...player, activeEncounter: {
-    ...player.activeEncounter, version: 3,
+    ...player.activeEncounter, version: 1,
   } })],
   ['wrong return offer ID', player => ({ ...player, activeContract: {
     ...player.activeContract, offerId: 'bogus',
@@ -302,8 +307,8 @@ for (const [label, corrupt] of [
     assert.equal(player.wallet.fuel, fuel);
     assert.equal(player.wallet.credits, credits);
     assert.notEqual(player.activeContract.acceptanceId, staleClaim.acceptanceId);
-    player = act(player, 'encounter-order', { ...encounterIdentity(player), order: 'target_weapons' }).player;
-    for (let i = 0; i < 12 && player.tutorial.phase === 'fight'; i++) {
+    player = targetWeapons(player).player;
+    for (let i = 0; i < 60 && player.tutorial.phase === 'fight'; i++) {
       player = act(player, 'encounter-advance', encounterIdentity(player)).player;
     }
     assert.equal(player.tutorial.phase, 'claim');

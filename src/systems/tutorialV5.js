@@ -1,3 +1,4 @@
+import { guidedTargetDone } from './encounterState.js';
 import { createCrewInstance } from '../data/crewRoster.js';
 import { defaultTutorialV4, grantWelcomePull, nameShip } from './tutorialV4.js';
 
@@ -94,8 +95,8 @@ export function advanceTutorialV5(player, event) {
     const encounter = player.activeEncounter;
     if (t.firstHireUsed && contract?.offerId === 'offer_tutorial_distress' && contract.profile === 'distress'
       && contract.stage === 'return' && contract.result?.success === true
-      && encounter?.kind === 'guided' && encounter.acceptanceId === contract.acceptanceId
-      && encounter.result === 'win' && encounter.orders?.targetWeapons?.used === true) update = { phase: 'claim', firstWin: true };
+      && (encounter?.kind === 'guided' || encounter?.guided === true) && encounter.acceptanceId === contract.acceptanceId
+      && encounter.result === 'win' && guidedTargetDone(encounter)) update = { phase: 'claim', firstWin: true };
   } else if (t.phase === 'claim' && event === 'reward_claimed') {
     if (t.firstWin && !player.activeContract && player.contractBoard?.completedOfferIds?.includes('offer_tutorial_distress')) {
       update = { phase: 'name_ship', firstClaim: true };

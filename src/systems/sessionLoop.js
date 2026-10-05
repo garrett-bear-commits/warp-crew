@@ -10,7 +10,7 @@ import { chooseCaptain } from './captainFirstPlay.js';
 import { listCombatOrders, previewCombatOrder, encounterById, crewPower } from './combat.js';
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs, STATIONS } from './stations.js';
-import { applyEncounterAction, recoverEncounter, applyEncounterCommand } from './encounterState.js';
+import { applyEncounterAction, recoverEncounter, applyEncounterCommand, guidedTargetDone } from './encounterState.js';
 import { FTL_VERSION, PLAYER_WEAPONS, weaponDef, playerChargePerBeat, enemyChargePerBeat, currentTarget, playerEvasion, enemyEvasion, playerShieldCap, enemyShieldCap, ftlTacticStatus, RULES as FTL_RULES, OVERCHARGE } from './ftlCombat.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
@@ -105,6 +105,7 @@ function ftlEncounterView(player, encounter, { settled, ui = {} }) {
     offline: rooms[id].integrity <= 0, damaged: rooms[id].integrity < 50 });
   return {
     ftl: true,
+    guided: encounter.guided === true,
     acceptanceId: encounter.acceptanceId,
     revision: encounter.revision,
     version: encounter.version,
@@ -363,7 +364,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     const permitted = {
       board: ['splash-dismiss'], captain: ['captain-choose'], hire: ['tutorial-first-hire'],
       assign: ['station-assign'],
-      fight: player.activeEncounter ? ['encounter-order', 'encounter-advance'] : ['tutorial-fight-start'],
+      fight: player.activeEncounter ? ['encounter-order', 'encounter-advance', 'encounter-command'] : ['tutorial-fight-start'],
       claim: ['contract-claim'], name_ship: ['tutorial-name'], pull: ['tutorial-welcome-pull'],
       register: ['tutorial-register-skip', 'tutorial-register-complete'],
     };
@@ -372,13 +373,22 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       const firstHire = v5FirstHire(player);
       if (!firstHire || data.id !== firstHire.hired.instanceId || data.station !== firstHire.station) return fail('tutorial_station_required');
     }
-    if (phase === 'fight' && player.activeEncounter?.kind === 'guided' && player.activeEncounter.orderWindow
-      && !player.activeEncounter.orders.targetWeapons?.used && act !== 'encounter-order') return fail('target_weapons_required');
-    if (phase === 'fight' && act === 'encounter-order' && data.order !== 'target_weapons') return fail('target_weapons_required');
+    const ftlGuidedFight = player.activeEncounter?.version === FTL_VERSION && player.activeEncounter.guided === true;
+    if (phase === 'fight' && ftlGuidedFight) {
+      // First, tap their Weapons room; nothing else (and no clock) until then.
+      if (player.activeEncounter.intent.target !== 'weapons'
+        && !(act === 'encounter-command' && data.command?.type === 'target' && data.command.room === 'weapons')) return fail('target_weapons_required');
+      if (act === 'encounter-order') return fail('target_weapons_required');
+    } else {
+      if (phase === 'fight' && act === 'encounter-command') return fail('tutorial_action_locked');
+      if (phase === 'fight' && player.activeEncounter?.kind === 'guided' && player.activeEncounter.orderWindow
+        && !player.activeEncounter.orders.targetWeapons?.used && act !== 'encounter-order') return fail('target_weapons_required');
+      if (phase === 'fight' && act === 'encounter-order' && data.order !== 'target_weapons') return fail('target_weapons_required');
+    }
     if (phase === 'claim' && (!player.tutorial.firstWin || player.activeContract?.offerId !== 'offer_tutorial_distress'
       || player.activeContract?.profile !== 'distress' || player.activeContract?.stage !== 'return'
       || player.activeEncounter?.acceptanceId !== player.activeContract?.acceptanceId
-      || player.activeEncounter?.orders?.targetWeapons?.used !== true)) return fail('guided_claim_required');
+      || !guidedTargetDone(player.activeEncounter))) return fail('guided_claim_required');
   }
   const milestone = name => {
     const prior = ensureDailyLoop(before, now).dailyLoop[name] === true;

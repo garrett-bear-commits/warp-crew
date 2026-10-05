@@ -32,11 +32,15 @@ export function renderFtlEnemy(view) {
   if (!view?.ftl) return '';
   const enemy = view.enemy;
   const hullPct = Math.round((enemy.hull / enemy.hullMax) * 100);
+  // Tutorial: their Weapons room is the one thing to tap; the rest wait until it is targeted.
+  const teaching = view.guided && view.targetChosen !== true && live(view);
   const rooms = ['shields', 'weapons', 'engines', 'helm'].map(id => {
     const room = enemy.rooms[id];
-    const targeted = view.target === id && live(view);
+    const targeted = view.target === id && live(view) && !teaching;
+    const spotlight = teaching && id === 'weapons';
+    const enabled = live(view) && (!teaching || spotlight);
     return `<button type="button" class="ftl-enemy-room room-${id}${targeted ? ' is-target' : ''}${room.offline ? ' is-offline' : room.damaged ? ' is-damaged' : ''}${room.fire ? ' is-burning' : ''}"
-      data-enemy-room="${id}" data-act="encounter-command" data-command-type="target" data-room="${id}" ${identity(view)} ${live(view) ? '' : 'disabled'}
+      data-enemy-room="${id}" data-act="encounter-command" data-command-type="target" data-room="${id}" ${identity(view)} ${enabled ? '' : 'disabled'}${spotlight ? ' data-primary-pulse data-spotlight-target' : ''}
       aria-pressed="${targeted}" aria-label="Target their ${e(room.label)}${room.offline ? ', offline' : ''}">
       ${icon(id)}<b>${e(room.label)}</b>${bar(room.integrity, 'integrity')}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
     </button>`;
@@ -59,7 +63,7 @@ export function renderFtlEnemy(view) {
         <small class="ftl-enemy-evade">Evade ${e(enemy.evasion)}%</small>
       </div>
     </div>
-    ${live(view) ? `<p class="ftl-hint">${view.targetChosen ? 'Tap a room to change target' : 'Tap a room to target it'}</p>` : ''}
+    ${live(view) ? `<p class="ftl-hint${teaching ? ' is-teaching' : ''}">${teaching ? 'Tap their <b>Weapons</b> room. Knock out their guns and the trader is safe.' : view.targetChosen ? 'Tap a room to change target' : 'Tap a room to target it'}</p>` : ''}
   </section>`;
 }
 

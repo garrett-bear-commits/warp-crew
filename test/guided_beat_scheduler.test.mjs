@@ -70,15 +70,15 @@ test('a committed v5 target order lets crew finish every captain fight without m
       timers.delete(id);
       await callback();
     };
-    assert.equal(scheduler.schedule(), false, 'no automatic beat before the order');
-    commit('encounter-order', { ...identity(player), order: 'target_weapons' });
+    assert.equal(scheduler.schedule(), false, 'no automatic beat before their weapons are targeted');
+    // The guided FTL-lite fight: tap their Weapons room, then the crew fight on their own.
+    commit('encounter-command', { ...identity(player), command: { type: 'target', room: 'weapons' } });
     const postOrderModel = sessionModels(player, {}, now).activeContractView;
-    assert.equal(postOrderModel.encounter.targetWeaponsUsed, true);
+    assert.equal(postOrderModel.encounter.guided, true);
+    assert.equal(postOrderModel.encounter.target, 'weapons');
     const postOrder = renderShipEncounter(postOrderModel);
     assert.doesNotMatch(postOrder, /data-act="encounter-advance"|Continue fight/);
-    assert.match(postOrder, /Crew engaging/);
-    assert.match(postOrder, /Pirate weapons disabled/);
-    assert.doesNotMatch(postOrder, /Incoming fire/);
+    assert.match(postOrder, /class="ftl-controls"/);
     assert.equal(scheduler.schedule(), true);
     assert.equal(scheduler.schedule(), false, 're-render cannot queue a second beat');
 
@@ -97,7 +97,6 @@ test('a committed v5 target order lets crew finish every captain fight without m
     assert.match(retry, /Retry fight progress/);
     assert.match(retry, /data-act="encounter-advance"/);
     assert.match(retry, new RegExp(`data-revision="${beforeFailedBeat}"`));
-    assert.doesNotMatch(retry, /Crew engaging/);
 
     if (captain === 'captain_cyborg') {
       failNextSave = true;
@@ -112,7 +111,7 @@ test('a committed v5 target order lets crew finish every captain fight without m
       ui.guidedBeatSaveFailed = null;
       assert.equal(scheduler.schedule(), true, 'a reloaded committed order resumes crew combat');
     }
-    for (let beats = 0; player.tutorial.phase === 'fight' && beats < 12; beats++) await tick();
+    for (let beats = 0; player.tutorial.phase === 'fight' && beats < 60; beats++) await tick();
     assert.equal(player.tutorial.phase, 'claim', captain);
     assert.equal(player.activeEncounter.result, 'win', captain);
     assert.equal(timers.size, 0, 'victory stops automatic beats');
