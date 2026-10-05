@@ -118,4 +118,12 @@ assert.match(systemStat('shields', 6), /2 layers/);
 assert.match(systemStat('engines', 3), /Dodge \+2%/);
 assert.match(systemStat('sensors', 2), /Aim \+2%/);
 
+// Audit fixes: boolean flagships validate, duplicate guns collapse, no buying mid-fight.
+assert.ok(validFtlBody(start({ flagship: true })), 'flagship: true saves the tier it fought with');
+const dup = start({ loadout: ['burst', 'burst'] });
+assert.deepEqual(dup.weapons.map(w => w.id), ['burst']);
+assert.equal(validFtlBody({ ...dup, weapons: [dup.weapons[0], dup.weapons[0]] }), false, 'one gun per slot');
+assert.deepEqual(shipLoadout({ ...p, ship: { ...p.ship, loadout: ['burst', 'burst', 'heavy'] } }), ['burst', 'heavy']);
+assert.equal(buyWeapon({ ...p, activeEncounter: { result: null } }, 'ion').reason, 'in_fight');
+
 console.log('ship weapons ok');

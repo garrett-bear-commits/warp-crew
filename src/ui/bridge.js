@@ -1058,7 +1058,7 @@ export function renderArmory(player) {
       actions = Array.from({ length: slots }, (_, i) => `<button data-act="weapon-equip" data-weapon="${id}" data-slot="${i}" ${inFight ? 'disabled' : ''}>${i < fitted.length ? `Swap slot ${i + 1}` : `Fit slot ${i + 1}`}</button>`).join('');
     } else {
       const price = WEAPON_PRICES[id];
-      actions = `<button data-act="weapon-buy" data-weapon="${id}" ${credits >= price ? '' : 'disabled'}>Buy ${price}cr</button>`;
+      actions = `<button data-act="weapon-buy" data-weapon="${id}" ${credits >= price && !inFight ? '' : 'disabled'}>Buy ${price}cr</button>`;
     }
     return `<div class="armory-row" data-weapon-kind="${w.kind}"><div><b>${escapeHtml(w.name)}</b><small>${escapeHtml(WEAPON_BLURBS[id] || '')}</small></div><div class="row">${actions}</div></div>`;
   };

@@ -28,7 +28,7 @@ export function ownedWeapons(player) {
 export function shipLoadout(player) {
   const owned = new Set(ownedWeapons(player));
   const saved = Array.isArray(player?.ship?.loadout) ? player.ship.loadout : DEFAULT_LOADOUT;
-  const fitted = saved.filter(id => owned.has(id)).slice(0, weaponSlots(player));
+  const fitted = [...new Set(saved)].filter(id => owned.has(id)).slice(0, weaponSlots(player));
   return fitted.length ? fitted : [...DEFAULT_LOADOUT];
 }
 
@@ -37,6 +37,7 @@ export function buyWeapon(player, weaponId) {
   if (ownedWeapons(player).includes(weaponId)) return { ok: false, reason: 'already_owned' };
   if (!WEAPON_CATALOG[weaponId] || price == null) return { ok: false, reason: 'unknown_weapon' };
   const cost = { credits: price };
+  if (player.activeEncounter && !player.activeEncounter.result) return { ok: false, reason: 'in_fight' };
   if (!canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
   const armory = [...ownedWeapons(player).filter(id => !DEFAULT_LOADOUT.includes(id)), weaponId];
   let next = { ...player, wallet: pay(player.wallet, cost).wallet, ship: { ...player.ship, armory } };

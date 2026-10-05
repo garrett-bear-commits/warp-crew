@@ -125,11 +125,13 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
   shipLevels = null, loadout = DEFAULT_LOADOUT, flagship = 0, enemyTier = 0 }) {
   const s = Number.isFinite(Number(seed)) ? Math.trunc(Number(seed)) : 0;
   const tier = Math.max(0, Math.min(2, Math.trunc(Number(enemyTier) || 0)));
-  const load = enemyLoadout(threat, { flagship, tier });
+  // One flagship tier for the loadout and the save, so the validator rebuilds the same enemy.
+  const flagTier = flagship === true ? 2 : Math.max(0, Math.min(2, Math.trunc(Number(flagship) || 0)));
+  const load = enemyLoadout(threat, { flagship: flagTier, tier });
   const levels = shipLevels ? Object.fromEntries(['shields', 'weapons', 'engines', 'sensors']
     .map(key => [key, Math.max(1, Math.min(20, Math.trunc(shipLevels[key] || 1)))])) : null;
   const stats = shipCombatStats(levels || {});
-  const guns = (loadout || DEFAULT_LOADOUT).filter(id => WEAPON_CATALOG[id]).slice(0, stats.weaponSlots);
+  const guns = [...new Set(loadout || DEFAULT_LOADOUT)].filter(id => WEAPON_CATALOG[id]).slice(0, stats.weaponSlots);
   const fitted = guns.length ? guns : [...DEFAULT_LOADOUT];
   const missiles = fitted.filter(id => WEAPON_CATALOG[id].kind === 'missile').length;
   const shieldLayers = stats.shieldLayers;
@@ -164,7 +166,7 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
     intent: { target: null, hold: false, moves: {} },
     enemy: {
       hull: startHull,
-      ...(flagship ? { flagship: Math.max(1, Math.min(2, Math.trunc(Number(flagship) || 1))) } : {}),
+      ...(flagTier ? { flagship: flagTier } : {}),
       ...(tier ? { tier } : {}),
       ...(Number.isInteger(enemyHull) ? { startHull, remainingBefore } : {}),
       threat: Math.round(clamp(Number(threat) || 1, 0.6, 1.6) * 100) / 100,
@@ -630,6 +632,7 @@ export function validFtlBody(e) {
   const stats = shipStatsOf(e);
   if (!validShields(e.shields, 3, RULES.shieldRechargeMs * 2) || e.shields.max !== stats.shieldLayers || !validRooms(e.rooms, PLAYER_ROOMS)) return false;
   if (!Array.isArray(e.weapons) || e.weapons.length < 1 || e.weapons.length > stats.weaponSlots
+    || new Set(e.weapons.map(w => w?.id)).size !== e.weapons.length
     || !e.weapons.every(w => rec(w) && WEAPON_CATALOG[w.id] && int(w.chargeMs, 0, WEAPON_CATALOG[w.id].chargeMs))) return false;
   const missiles = e.weapons.filter(w => WEAPON_CATALOG[w.id].kind === 'missile').length;
   if (missiles ? !(rec(e.ammo) && int(e.ammo.missile, 0, missiles * WEAPON_CATALOG.missile.ammo)) : Object.hasOwn(e, 'ammo')) return false;
