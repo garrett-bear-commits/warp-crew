@@ -149,8 +149,7 @@ button.hud-chip {
   display: inline-block;
   left: 0;
   top: 0;
-  width: 1152px;
-  height: 1728px;
+  /* Width and height are the hull's pixel size, set inline from the layout (HULL_PX). */
   transform-origin: top left;
   line-height: 0;
   z-index: 2;
@@ -1179,9 +1178,7 @@ button:focus-visible {
   pointer-events: none;
 }
 .sparrow-first-repair {
-  position: absolute;
-  left: 66%;
-  top: 82%;
+  position: absolute; /* left/top come from the layout (shipView.js) */
   width: 34px;
   height: 26px;
 }
@@ -1207,9 +1204,7 @@ button:focus-visible {
   background: rgba(7, 9, 14, 0.9);
 }
 .sparrow-berth-open {
-  position: absolute;
-  left: 33%;
-  top: 44%;
+  position: absolute; /* left/top come from the layout (shipView.js) */
   display: grid;
   place-items: center;
   width: 40px;
@@ -2969,6 +2964,8 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
   animation: ftl-pulse 1.2s ease-in-out infinite;
 }
 .ftl-move-target span { position: absolute; left: var(--label-x); top: var(--label-y); transform: translate(-50%, -50%); font: 700 calc(12px / var(--camera-scale, 1)) var(--font-display); text-transform: uppercase; }
+/* While move targets name the rooms, the ship's own room tags would say it twice. */
+.ship-fit:has(.ftl-move-target) .room-tag { opacity: 0; }
 
 /* Controls strip */
 .ftl-controls {

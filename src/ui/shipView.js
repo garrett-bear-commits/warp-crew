@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { roomById } from '../data/starterShip.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -41,21 +42,27 @@ function contractSignalLabel(signal) {
 export function contractShipSignals(player) {
   const stage = player?.activeContract?.stage;
   return {
-    operationsActive: Boolean(stage && stage !== 'return' && stage !== 'claimed'),
+    routeActive: Boolean(stage && stage !== 'return' && stage !== 'claimed'),
     cargoReady: stage === 'return',
     firstRepairLit: player?.flags?.sparrowFirstRepair === true,
     berth3Open: player?.flags?.berth3Opened === true && (player?.crewSlots || 0) >= 3 && player?.tutorial?.completed !== true,
   };
 }
 
+// Feedback props sit inside their rooms, wherever the layout puts them.
+function propStyle(roomId, fx, fy) {
+  const room = roomById(roomId);
+  return `left:${room.left + room.w * fx}%;top:${room.top + room.h * fy}%`;
+}
+
 export function renderShipFeedback(signals = {}) {
   if (!signals.firstRepairLit && !signals.berth3Open) return '';
   return `
-    ${signals.firstRepairLit ? `<div class="sparrow-first-repair is-lit" role="img" aria-label="Sparrow repair online">
+    ${signals.firstRepairLit ? `<div class="sparrow-first-repair is-lit" style="${propStyle('engineering', 0.78, 0.6)}" role="img" aria-label="Sparrow repair online">
       <span class="repair-light" aria-hidden="true"></span>
       <span class="repair-prop" aria-hidden="true"></span>
     </div>` : ''}
-    ${signals.berth3Open ? '<div class="sparrow-berth-open" role="img" aria-label="Third berth open"><span aria-hidden="true">3</span></div>' : ''}`;
+    ${signals.berth3Open ? `<div class="sparrow-berth-open" style="${propStyle('quarters', 0.45, 0.45)}" role="img" aria-label="Third berth open"><span aria-hidden="true">3</span></div>` : ''}`;
 }
 
 export function renderDepartureStatus(active) {

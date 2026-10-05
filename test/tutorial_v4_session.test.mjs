@@ -130,9 +130,11 @@ test('guided distress, Brace, claim, ship name, welcome crew and Skip survive ea
   const nextJob = renderOverlays(player, { isHome: true });
   assert.match(nextJob, /See contracts/);
   assert.match(nextJob, /Away teams/);
-  const stationSheet = renderOverlays(player, { isHome: true, selectedRoom: 'operations', fuel: {}, now });
+  const stationSheet = renderOverlays(player, { isHome: true, selectedRoom: 'shields', fuel: {}, now });
   assert.match(stationSheet, /class="room-sheet"/);
-  assert.match(stationSheet, /Operations/);
+  assert.match(stationSheet, /<h2>Shields<\/h2>/);
+  // A v3 room id (Operations held the Shields station) still opens a sheet: Sensors now.
+  assert.match(renderOverlays(player, { isHome: true, selectedRoom: 'operations', fuel: {}, now }), /<h2>Sensors<\/h2>/);
   const hangarSheet = renderOverlays(player, { isHome: true, selectedRoom: 'hangar', fuel: {}, now });
   assert.match(hangarSheet, /hangar-sheet/);
 });

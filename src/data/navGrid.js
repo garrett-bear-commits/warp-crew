@@ -1,12 +1,15 @@
 // @ts-nocheck
 /** Collision grid + A* for the Sparrow cutaway. 4-connected, no corner cut. */
 
-import { SPARROW_LAYOUT, roomAtExact } from './starterShip.js';
+import { SPARROW_LAYOUT, HULL_PX, roomAtExact } from './starterShip.js';
 
-export const COLS = 72;
-export const ROWS = 128;
+// About 16 hull pixels per cell on both axes, whatever the hull's size.
+const CELL_PX = 16;
+export const COLS = Math.round(HULL_PX.w / CELL_PX);
+export const ROWS = Math.round(HULL_PX.h / CELL_PX);
 const INSET = 1.0;
-const DOOR_R = 4.8;
+// Half the height of a doorway, in percent: the v4 door gaps are about 80 hull px tall.
+const DOOR_R = 1.6;
 
 const walk = new Uint8Array(COLS * ROWS);
 const baked = { ready: false };

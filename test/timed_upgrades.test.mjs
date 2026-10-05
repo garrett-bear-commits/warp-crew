@@ -50,7 +50,7 @@ assert.equal(viaSession.player.ship.systems.weapons, 4);
 assert.deepEqual([4, 5, 6, 7, 8, 12].map(buildMinutesFor), [30, 60, 120, 240, 480, 480]);
 
 // The room sheet shows the build with its skip, and blocks other upgrades.
-const sheet = renderRoomSheet(step.player, ROOMS.find(room => room.id === 'workshop'), { current: 5 }, now);
+const sheet = renderRoomSheet(step.player, ROOMS.find(room => room.id === 'weapons'), { current: 5 }, now);
 assert.match(sheet, /Building Weapons Lv 4 · .* left<\/span><b>Skip \d+g/);
 const engine = renderRoomSheet(step.player, ROOMS.find(room => room.id === 'engineering'), { current: 5 }, now);
 assert.match(engine, /data-act="ship-upgrade" data-system="engines" disabled>.*drydock busy/);

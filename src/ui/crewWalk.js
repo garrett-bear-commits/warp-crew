@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { ROOMS, SPARROW_LAYOUT, homeRoomId, ROOM_GRAPH, THRUSTERS } from '../data/starterShip.js';
+import { ROOMS, SPARROW_LAYOUT, HULL_PX, homeRoomId, ROOM_GRAPH, THRUSTERS } from '../data/starterShip.js';
 import { findPath, isWalkablePct, clampWalkable, nearestWalkableInRoom } from '../data/navGrid.js';
 import { routeToWorkAnchor } from '../data/shipRoutes.js';
 import { normalizeAssignments, STATIONS } from '../systems/stations.js';
@@ -309,11 +309,11 @@ function stepMotion(a, dt) {
 
 function resize() {
   if (!canvas) return;
-  // The canvas lives inside the already transformed 1152×1728 world layer.
+  // The canvas lives inside the already transformed hull-sized world layer.
   // Its bitmap must use world pixels; measuring the transformed rect applies
   // the camera scale to crew and thrusters a second time.
-  w = 1152;
-  h = 1728;
+  w = HULL_PX.w;
+  h = HULL_PX.h;
   if (canvas.width === w && canvas.height === h && ctx) return;
   canvas.width = w;
   canvas.height = h;
@@ -586,7 +586,7 @@ export function holdCrewForArrival(player, crewInstanceId) {
 export function moveCrewToArrival(player, crewInstanceId, { onDone, reducedMotion: immediate = reducedMotion } = {}) {
   const actor = agents.get(crewInstanceId);
   if (!actor) { onDone?.(); return; }
-  const room = ROOMS.find(candidate => candidate.id === 'workshop');
+  const room = ROOMS.find(candidate => candidate.id === 'weapons');
   arrivals.set(crewInstanceId, onDone);
   beginAuthoredTarget(actor, {
     crewInstanceId, mode: 'crew-arrival', roomId: room.id,

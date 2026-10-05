@@ -26,7 +26,7 @@ import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
 import { INTEL_TRACKS } from '../data/intel.js';
 import { planetType } from '../data/planets.js';
-import { ROOMS, SPARROW_LAYOUT } from '../data/starterShip.js';
+import { ROOMS, SPARROW_LAYOUT, HULL_PX, roomWorldPoint, canonicalRoomId } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS } from '../data/crewRoster.js';
 import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
@@ -130,7 +130,9 @@ function bindOnce(root, ctx) {
       if (action === 'ftl-zoom') {
         root._wcFtlWhole = !root._wcFtlWhole;
         const stage = root.querySelector('.stage');
-        root._wcSetCamera(fightCamera({ w: stage.clientWidth, h: stage.clientHeight }, { whole: root._wcFtlWhole }));
+        const whole = root._wcFtlWhole;
+        const fitFight = viewport => fightCamera(viewport, { whole });
+        root._wcSetCamera(fitFight({ w: stage.clientWidth, h: stage.clientHeight }), fitFight);
         root.querySelector('.wc-shell')?.classList.toggle('ftl-whole', root._wcFtlWhole);
         return;
       }
@@ -207,11 +209,15 @@ function bindOnce(root, ctx) {
 
 /** Whole-ship home view, clear of the top status panels. */
 export function homeCamera(viewport) {
-  const world = { w: 1152, h: 1728 };
-  const top = 78;
-  const bottom = 12;
-  const scale = Math.min(viewport.w / world.w, Math.max(80, viewport.h - top - bottom) / world.h);
-  return makeCamera(viewport, world, { x: world.w / 2, y: world.h / 2 - (top - bottom) / 2 / scale }, scale);
+  const world = HULL_PX;
+  const top = 92; // below the status and objective panels (they end ~84 px into the stage)
+  const bottom = 20; // engine bells stay above the command bar
+  const band = { w: viewport.w, h: Math.max(80, viewport.h - top - bottom) };
+  const scale = Math.min(band.w / world.w, band.h / world.h);
+  // Fit the ship in the band under the panels. (Framed in the full viewport,
+  // the clamp would re-centre a ship that fits and slide it under the panels.)
+  const framed = makeCamera(band, world, { x: world.w / 2, y: world.h / 2 }, scale);
+  return { ...framed, y: framed.y + top, viewport: { w: viewport.w, h: viewport.h } };
 }
 
 /**
@@ -219,17 +225,25 @@ export function homeCamera(viewport) {
  * view, drag to look around). `whole` fits the entire ship between the panels.
  */
 export function fightCamera(viewport, { whole = false } = {}) {
-  const world = { w: 1152, h: 1728 };
+  const world = HULL_PX;
   const fit = Math.min(viewport.w / world.w, Math.max(80, viewport.h - 12) / world.h);
-  const scale = whole ? fit : Math.max(fit, (viewport.w / world.w) * 1.12);
-  // Zoomed in, centre on the working decks (bridge to engineering sit at 10-85% of the hull).
-  return makeCamera(viewport, world, { x: world.w / 2, y: world.h * (whole ? 0.5 : 0.46) }, scale);
+  const scale = whole ? fit : Math.max(fit, viewport.w / (world.w * FIGHT_SPAN));
+  // Zoomed in, the view starts at the Bridge and runs down the decks (drag for
+  // Engineering); if the whole deck stack fits, centre on it instead.
+  const decksTop = world.h * (DECKS_TOP - 0.015);
+  const focusY = whole ? world.h / 2 : Math.min(world.h * DECKS_MID, decksTop + viewport.h / 2 / scale);
+  return makeCamera(viewport, world, { x: world.w / 2, y: focusY }, scale);
 }
 
+// Zoomed-in fights show the hull from just outside the airlock hatch to the
+// same margin on starboard, so every room and the airlock stay in view.
+const FIGHT_SPAN = 1 - 2 * Math.max(0, SPARROW_LAYOUT.anchors.airlock.x - 4) / 100;
+const DECKS_TOP = Math.min(...ROOMS.map(room => room.top)) / 100;
+const DECKS_MID = (DECKS_TOP * 100 + Math.max(...ROOMS.map(room => room.top + room.h))) / 200;
+
 export function initialSessionCamera(viewport) {
-  const camera = makeCamera(viewport, { w: 1152, h: 1728 });
-  const bridge = ROOMS.find(room => room.id === 'bridge');
-  const focused = focusCamera(camera, { x: bridge.labelAnchor.x * 11.52, y: bridge.labelAnchor.y * 17.28 }, camera.maxScale * 0.8);
+  const camera = makeCamera(viewport, HULL_PX);
+  const focused = focusCamera(camera, roomWorldPoint('bridge'), camera.maxScale * 0.8);
   return pan(focused, 0, -viewport.h * 0.2);
 }
 
@@ -247,23 +261,30 @@ function bindCamera(root, ctx) {
     }
   });
   const size = () => ({ w: stage.clientWidth || 390, h: stage.clientHeight || 620 });
-  root._wcCamera = [4, 5].includes(ctx?.player?.tutorial?.script) && !ctx.player.tutorial.completed
-    ? initialSessionCamera(size()) : homeCamera(size());
-  root._wcSetCamera = camera => {
+  const initialFit = [4, 5].includes(ctx?.player?.tutorial?.script) && !ctx.player.tutorial.completed
+    ? initialSessionCamera : homeCamera;
+  root._wcCamera = initialFit(size());
+  root._wcCameraFit = initialFit;
+  // `fitFor` re-frames an authored view (home, fight) when the stage resizes;
+  // gestures and focus pass none, so a resize keeps what the player chose.
+  root._wcSetCamera = (camera, fitFor = null) => {
     root._wcCamera = camera;
+    root._wcCameraFit = fitFor;
     fit.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
     fit.style.setProperty('--camera-scale', camera.scale);
   };
   const focus = (worldPoint, scale = root._wcCamera.maxScale) => {
     root._wcSetCamera(focusCamera(root._wcCamera, worldPoint, scale));
   };
-  const roomAt = point => ROOMS.find(room => point.x >= room.left * 11.52
-    && point.x <= (room.left + room.w) * 11.52
-    && point.y >= room.top * 17.28 && point.y <= (room.top + room.h) * 17.28);
+  const roomAt = point => {
+    const x = point.x / HULL_PX.w * 100;
+    const y = point.y / HULL_PX.h * 100;
+    return ROOMS.find(room => x >= room.left && x <= room.left + room.w && y >= room.top && y <= room.top + room.h);
+  };
   root._wcFocusRoom = roomId => {
-    const room = ROOMS.find(candidate => candidate.id === (roomId || root._wcSelectedRoom));
-    focus(room ? { x: room.labelAnchor.x * 11.52, y: room.labelAnchor.y * 17.28 }
-      : { x: 576, y: 864 });
+    const id = canonicalRoomId(roomId || root._wcSelectedRoom);
+    const room = ROOMS.find(candidate => candidate.id === id);
+    focus(room ? roomWorldPoint(room) : { x: HULL_PX.w / 2, y: HULL_PX.h / 2 });
   };
   root._wcCameraController = createCameraController({
     surface: stage,
@@ -287,9 +308,12 @@ function bindCamera(root, ctx) {
     },
     onFocus: point => focus(point),
   });
-  root._wcSetCamera(root._wcCamera);
+  root._wcSetCamera(root._wcCamera, initialFit);
   if (typeof ResizeObserver !== 'undefined') {
-    root._wcCameraResize = new ResizeObserver(() => root._wcSetCamera(resizeCamera(root._wcCamera, size())));
+    root._wcCameraResize = new ResizeObserver(() => {
+      const refit = root._wcCameraFit;
+      root._wcSetCamera(refit ? refit(size()) : resizeCamera(root._wcCamera, size()), refit);
+    });
     root._wcCameraResize.observe(stage);
   }
 }
@@ -326,8 +350,8 @@ function buildShell() {
         <div class="stage-hud" data-slot="stage-hud"></div>
         <div data-slot="crew-rail"></div>
         <div data-slot="ship-sequence"></div>
-        <div class="ship-fit">
-          <img class="sparrow-hull" src="${SPACE_ART.hull}" alt="" />
+        <div class="ship-fit" style="width:${HULL_PX.w}px;height:${HULL_PX.h}px">
+          <img class="sparrow-hull" src="${SPACE_ART.hull}" width="${HULL_PX.w}" height="${HULL_PX.h}" alt="" />
           <div class="ship-feedback-layer" data-slot="ship-feedback"></div>
           <canvas class="crew-canvas" data-slot="crew"></canvas>
           <div class="hotspot-layer" data-slot="hotspots"></div>
@@ -364,7 +388,7 @@ function patchShell(root, ctx) {
     activeTravelView = null,
     contractReview = null,
     awayPicker = null,
-    selectedRoom = null,
+    selectedRoom: requestedRoom = null,
     selectedCrewId = null,
     cinematic = null,
     shopProducts = null,
@@ -372,6 +396,8 @@ function patchShell(root, ctx) {
     departureInFlight = false,
     now = Date.now(),
   } = ctx;
+  // Room ids from the v3 hull (operations, workshop, stores) still resolve.
+  const selectedRoom = canonicalRoomId(requestedRoom);
   const fuel = fuelStatus(player, now);
   const locNode = visibleNodes(player, now).find((n) => n.id === player.location);
   const locName = locNode?.name || player.location;
@@ -396,7 +422,7 @@ function patchShell(root, ctx) {
   root._wcPlayer = player;
   const leavingFirstSession = root._wcFirstSession === true && !(firstSession || v5Session);
   root._wcFirstSession = firstSession || v5Session;
-  if (leavingFirstSession) root._wcSetCamera(homeCamera(root._wcCamera.viewport));
+  if (leavingFirstSession) root._wcSetCamera(homeCamera(root._wcCamera.viewport), homeCamera);
   const fighting = isBattlePlaying();
   let coachStep = step && !step.modal ? step : null;
   if (coachStep && coachStep.act === 'goto-missions' && tab === 'missions') {
@@ -424,11 +450,11 @@ function patchShell(root, ctx) {
     const viewport = root._wcCamera.viewport;
     if (roomSel) {
       // Keep the chosen room clear of its sheet: sheets sit below upper rooms and above lower ones.
-      const point = { x: roomSel.labelAnchor.x * 11.52, y: roomSel.labelAnchor.y * 17.28 };
+      const point = roomWorldPoint(roomSel);
       const targetY = roomSel.labelAnchor.y >= 55 ? viewport.h * 0.72 : viewport.h * 0.27;
       const focused = focusCamera(root._wcCamera, point, root._wcCamera.scale * 1.35);
       root._wcSetCamera(pan(focused, 0, targetY - viewport.h / 2));
-    } else if (root._wcLastSelectedRoom && root._wcLastSelectedRoom !== 'hangar') root._wcSetCamera(homeCamera(viewport));
+    } else if (root._wcLastSelectedRoom && root._wcLastSelectedRoom !== 'hangar') root._wcSetCamera(homeCamera(viewport), homeCamera);
   }
   root._wcLastSelectedRoom = selectedRoom;
   // Boarders land in a room the fight panel usually covers. Once per boarding,
@@ -446,14 +472,14 @@ function patchShell(root, ctx) {
         const panelTop = root.querySelector('.ship-encounter')?.getBoundingClientRect().top;
         const visibleH = Number.isFinite(panelTop) ? Math.max(120, Math.min(full.h, panelTop - stageTop)) : full.h * 0.6;
         const strip = makeCamera({ w: full.w, h: visibleH }, root._wcCamera.world);
-        const point = { x: boardedRoom.labelAnchor.x * 11.52, y: boardedRoom.labelAnchor.y * 17.28 };
+        const point = roomWorldPoint(boardedRoom);
         root._wcSetCamera(focusCamera(strip, point, strip.maxScale * 0.7));
       });
     }
   }
   if (boardKey) root._wcBoardFocusKey = boardKey;
   else if (root._wcBoardFullViewport) {
-    root._wcSetCamera(homeCamera(root._wcBoardFullViewport));
+    root._wcSetCamera(homeCamera(root._wcBoardFullViewport), homeCamera);
     root._wcBoardFullViewport = null;
   }
   root.querySelector('.wc-shell')?.classList.toggle('tab-home', isHome);
@@ -493,7 +519,8 @@ function patchShell(root, ctx) {
     setTimeout(() => {
       const stage = root.querySelector('.stage');
       const viewport = { w: stage?.clientWidth || 390, h: stage?.clientHeight || 620 };
-      root._wcSetCamera(root._wcFtlMode ? fightCamera(viewport) : homeCamera(viewport));
+      const refit = root._wcFtlMode ? fightCamera : homeCamera;
+      root._wcSetCamera(refit(viewport), refit);
     }, 60);
   }
   // Patched in place: these re-render every second and must not drop a tap mid-render.
@@ -585,7 +612,7 @@ export function renderHotspots(player, fuel, expReady, selectedRoom) {
   const signals = contractShipSignals(player);
   return ROOMS.map((r) => {
     const pip = roomPip(r, player, fuel, expReady);
-    const signal = r.id === 'operations' && signals.operationsActive
+    const signal = r.id === 'sensors' && signals.routeActive
       ? 'route'
       : r.id === 'cargo' && signals.cargoReady ? 'return' : '';
     const sys = r.system ? player.ship?.systems?.[r.system] || 0 : null;
@@ -604,7 +631,7 @@ export function guidedStationTap(player, roomId, scale, minScale) {
   const member = player.crew?.find(c => c.instanceId === player.tutorial.firstHireInstanceId);
   if (!member) return null;
   const station = member.templateId === 'merc_bolt' ? 'shields' : member.templateId === 'merc_jen' ? 'weapons' : null;
-  if (!station || STATIONS[station].roomId !== roomId) return null;
+  if (!station || STATIONS[station].roomId !== canonicalRoomId(roomId)) return null;
   return scale <= minScale * 1.1 ? { kind: 'focus', room: roomId }
     : { kind: 'assign', id: member.instanceId, station };
 }
@@ -641,7 +668,7 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
   if (isHome && player.tutorial?.script === 5 && player.tutorial.completed && !player.activeContract
     && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return '<button type="button" class="next-job-callout" data-act="goto-contracts" aria-label="Your crew is ready for another job. See contracts">Crew ready · See contracts</button>';
   const def = SHIPS[player.ship?.shipId] || SHIPS.sparrow;
-  const room = ROOMS.find((r) => r.id === selectedRoom);
+  const room = ROOMS.find((r) => r.id === canonicalRoomId(selectedRoom));
   const showHangar = isFeatureUnlocked(player, 'hangar');
   return `
       ${!selectedRoom && showHangar ? `<button class="ship-chip" data-act="select-room" data-room="hangar">${escapeHtml(def.name)}</button>` : ''}
@@ -985,13 +1012,15 @@ function roomActions(room, player) {
       ? '<button class="primary" data-act="contract-review" data-offer="offer_tutorial_distress" data-spot-target="bridge-alert">Review distress contract</button>'
       : '<button class="primary" data-act="goto-contracts">Contracts</button>';
   }
-  if (room.id === 'operations') {
+  if (room.id === 'sensors') {
     const sensors = nextUpgradeCost(player, 'sensors');
-    const shields = nextUpgradeCost(player, 'shields');
     return `
       <button class="primary" data-act="goto-missions">Contracts</button>
-      ${hangar && sensors ? `${upgradeButton(player, 'sensors', 'Sensors', sensors)}` : ''}
-      ${hangar && shields ? `${upgradeButton(player, 'shields', 'Shields', shields)}` : ''}`;
+      ${hangar && sensors ? `${upgradeButton(player, 'sensors', 'Sensors', sensors)}` : ''}`;
+  }
+  if (room.id === 'shields') {
+    const shields = nextUpgradeCost(player, 'shields');
+    return hangar && shields ? upgradeButton(player, 'shields', 'Shields', shields) : '';
   }
   if (room.id === 'medbay') {
     const medbay = nextUpgradeCost(player, 'medbay');
@@ -1005,7 +1034,7 @@ function roomActions(room, player) {
       ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : '<button class="primary" data-act="goto-missions">Jump</button>'}
       ${hangar && quarters ? `${upgradeButton(player, 'quarters', 'Quarters', quarters)}` : ''}`;
   }
-  if (room.id === 'workshop') {
+  if (room.id === 'weapons') {
     const weapons = nextUpgradeCost(player, 'weapons');
     return `
       ${crewOpen ? '<button class="ghost" data-act="goto-crew">Manage crew</button>' : ''}
@@ -1025,7 +1054,7 @@ function roomActions(room, player) {
       ? '<button class="ghost" data-act="goto-crew">Manage crew</button>'
       : '<button class="primary" data-act="goto-missions">Jump</button>';
   }
-  if (room.id === 'stores') {
+  if (room.id === 'armory') {
     return fuelBuyButtons(player) || '<button class="primary" data-act="goto-missions">Contracts</button>';
   }
   if (room.id === 'engineering') {

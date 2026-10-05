@@ -2,8 +2,8 @@
 // economy continue to use their existing selectors until separately balanced.
 export const STATIONS = Object.freeze({
   helm: { label: 'Helm', roomId: 'bridge', role: 'pilot' },
-  shields: { label: 'Shields', roomId: 'operations', role: 'engineer' },
-  weapons: { label: 'Weapons', roomId: 'workshop', role: 'gunner' },
+  shields: { label: 'Shields', roomId: 'shields', role: 'engineer' },
+  weapons: { label: 'Weapons', roomId: 'weapons', role: 'gunner' },
   engineering: { label: 'Engineering', roomId: 'engineering', role: 'engineer' },
 });
 

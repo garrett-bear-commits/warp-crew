@@ -27,7 +27,7 @@ assert.match(renderV5Modal({ ...gunnerPlayer, crew: [pilot] }), /Jen Park/);
 const crewView = renderCrew({ ...gunnerPlayer, stationAssignments: { 'captain-1': 'weapons' } });
 assert.match(crewView, /crew-identity/);
 assert.match(crewView, /Weapons/);
-const stationView = renderRoomSheet({ ...gunnerPlayer, stationAssignments: { 'captain-1': 'weapons' } }, ROOMS.find(room => room.id === 'workshop'), { current: 5 }, 1);
+const stationView = renderRoomSheet({ ...gunnerPlayer, stationAssignments: { 'captain-1': 'weapons' } }, ROOMS.find(room => room.id === 'weapons'), { current: 5 }, 1);
 assert.match(stationView, /crew-identity/);
 assert.match(stationView, /★/);
 const assigned = { ...gunnerPlayer, tutorial: { ...gunnerPlayer.tutorial, phase: 'assign', firstHireInstanceId: 'bolt-1' }, crew: [gunner, { instanceId: 'bolt-1', templateId: 'merc_bolt', name: 'Bolt', role: 'engineer' }] };

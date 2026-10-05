@@ -188,6 +188,6 @@ for (let i = 0; i < 200 && !player.activeEncounter.result; i++) {
 }
 assert.ok(['win', 'loss'].includes(player.activeEncounter.result));
 assert.equal(improvementFocus({ ...player, ship: { ...player.ship, hull: 69 } }).selectedRoom, 'engineering');
-assert.equal(improvementFocus({ ...player, ship: { ...player.ship, hull: 100 }, wallet: { credits: 100000, medals: 0 } }).selectedRoom, 'operations');
+assert.equal(improvementFocus({ ...player, ship: { ...player.ship, hull: 100 }, wallet: { credits: 100000, medals: 0 } }).selectedRoom, 'shields');
 assert.equal(improvementFocus({ ...player, ship: { ...player.ship, hull: 100 }, wallet: { credits: 0, medals: 0 } }).missionView, 'away');
 console.log('session_loop.test.mjs OK');

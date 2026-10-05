@@ -1,6 +1,8 @@
 import { project } from './shipCamera.js';
+import { HULL_PX } from '../data/starterShip.js';
 
-const DEFAULT_WORLD = { w: 1152, h: 1728 };
+const DEFAULT_WORLD = HULL_PX;
+const W = HULL_PX;
 
 export const worldProjection = (camera, worldPoint) => project(camera, worldPoint);
 
@@ -31,16 +33,18 @@ function landmarks(seed) {
     items.push({
       id: `star-${i}`,
       kind: 'star',
-      worldX: -600 + random() * 2352,
-      worldY: -600 + random() * 2928,
+      worldX: -600 + random() * (W.w + 1200),
+      worldY: -600 + random() * (W.h + 1200),
       size: random() < 0.1 ? 2 : 1,
       depth: random(),
     });
   }
-  items.push({ id: 'planet', kind: 'planet', worldX: 130 + random() * 180, worldY: 230 + random() * 250, size: 220 });
-  items.push({ id: 'ice', kind: 'ice', worldX: 850 + random() * 140, worldY: 1100 + random() * 230, size: 135 });
-  items.push({ id: 'nebula', kind: 'nebula', worldX: 670 + random() * 220, worldY: 600 + random() * 200, size: 820 });
-  items.push({ id: 'hole', kind: 'hole', worldX: 270 + random() * 560, worldY: 1400 + random() * 180, size: 170 });
+  // Landmark spots are shares of the hull's world size.
+  const at = (x, dx, y, dy) => ({ worldX: W.w * (x + random() * dx), worldY: W.h * (y + random() * dy) });
+  items.push({ id: 'planet', kind: 'planet', ...at(0.113, 0.156, 0.133, 0.145), size: 220 });
+  items.push({ id: 'ice', kind: 'ice', ...at(0.738, 0.122, 0.637, 0.133), size: 135 });
+  items.push({ id: 'nebula', kind: 'nebula', ...at(0.582, 0.191, 0.347, 0.116), size: 820 });
+  items.push({ id: 'hole', kind: 'hole', ...at(0.234, 0.486, 0.81, 0.104), size: 170 });
   cache.set(key, items);
   return items;
 }

@@ -1,6 +1,9 @@
-const SHIP_REFERENCE = Object.freeze({ w: 1152, h: 1728 });
+import { HULL_PX, ROOMS } from '../data/starterShip.js';
+
+const SHIP_REFERENCE = HULL_PX;
 const BATTLE_MARGIN = 1.55;
-const SMALLEST_AUTHORED_ROOM_WIDTH = 0.19;
+// Narrowest room as a share of the hull width (Shields/Sensors on the v4 Sparrow).
+export const SMALLEST_AUTHORED_ROOM_WIDTH = Math.min(...ROOMS.map(room => room.w)) / 100;
 const ROOMS_ACROSS_AT_NEAR_LIMIT = 2.5;
 const MIN_STATION_TARGET = 44;
 

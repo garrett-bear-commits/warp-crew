@@ -13,9 +13,9 @@ export const ANIMATION_PROFILES = Object.freeze({
     sourceCell: Object.freeze({ width: CREW_RIG.cell.w, height: CREW_RIG.cell.h }),
     footAnchor: Object.freeze({ x: CREW_RIG.footAnchor.x, y: CREW_RIG.footAnchor.y }),
     // World pixels per sheet pixel. The figure is ~34 sheet px tall, so ~102
-    // world px: about 45% of a room's height, close to FTL's proportions.
-    // Readable when zoomed in (~38 CSS px on a 390 px phone, the default in
-    // fights); the whole-ship view is an overview.
+    // world px: about a third of a Sparrow v4 room (most are 300-330 px tall),
+    // the proportion the v4 art was drawn for. About 30 CSS px on a 390 px
+    // phone when a fight opens zoomed in; the whole-ship view is an overview.
     scale: 3,
     shadow: Object.freeze({ width: 48, height: 12, offsetY: 1 }),
     clips: CREW_CLIPS,
