@@ -1,11 +1,8 @@
-Warp Crew Pages QA build 2026-09-25
-Source: codex/contract-route-overhaul@93106b42ce58bb9a55e645829aa30641f618ca91
-Scope: confirmed QA save restart in Log Settings; camera hint and illustrated trader distress retained
-Platform: GitHub Pages local/mock mode; not a Jest production build; no purchase or cloud-save claim
-Index SHA-256: 93f9b2a78cb54599f067248bab74a4b6686caf0c5d613db6997aa651862aa0bc
+Warp Crew Pages QA build 2026-10-05
+Source: claude/hud-overhaul@0f1fe0b0c070e960fbca02f11173fcbd37f4e4f2
+Scope: FTL-lite real-time crew fights (target enemy rooms, Hold volleys, shields, fires, crew moves, boarders, Overcharge, Board, Rally); guided first fight teaching targeting; Sparrow v4 and six enemy faction cutaways; sector map with lanes and authored events; Siege walls; timed drydock upgrades; starter kit and wall-pack offers; Captain's Commission subscription (local mock)
+Platform: GitHub Pages local/mock mode; not a Jest production build; purchases and the subscription use the local mock, with no server verification and no cloud save
+Index SHA-256: e88c3afef8181cdfda0caf991096b5111b9ac6d8f3ce6787dbb9c9ba53a2ff78
 QA hub SHA-256: 2f2e4f352d525d1be42e0069a2b9c6a18ea536e61d1d79098a77d9516923ead3
-JavaScript SHA-256: c9c361171494288e2b9956fc1c17f9bfcec6d70d107800a1dc2b834fa4f2be4b
-CSS SHA-256: bc94e11ab7a1f8358a6d903fee19ed4b508ebde6818356f37024f9caa6473548
-Splash SHA-256: f716761790dd244c39471bd25e2eeebdd331e6820c89a9f1a47f403fd898982a
-Pirate SHA-256: f0fb9394355bf89b2570b64fb4bf282446e77a706f15fc00020e6730be8345e9
-Trader SHA-256: 2c59dbe39e377bd73cea59d4a089bd7a20361f7a6f8f9cd28d6992fd3746ad97
+JavaScript SHA-256: 615c7837253073c1bd82dd26bee91d348f57c6c31477812abb4a3ac77085dfb5
+CSS SHA-256: 91c7367d559f3c5a7ac71c7d568abca95bf5a2503a2bec76c5bd7839f96572d3
