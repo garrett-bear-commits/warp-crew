@@ -8,7 +8,7 @@
  * opens a fight) and clears the event in one state change, so it can only pay once. The roll
  * is a hash of the event seed and the choice, so reloading never re-rolls a choice.
  */
-import { NODES, STORY_BEATS } from '../data/sectors.js';
+import { NODES, STORY_BEATS, gateBlockedByWall } from '../data/sectors.js';
 import { TRAVEL_EVENTS, TRAVEL_EVENT_BY_ID, ROUTE_EVENTS, ROUTE_EVENT_BY_ID } from '../data/events.js';
 import { catalogById, createCrewInstance } from '../data/crewRoster.js';
 import { SECTOR_MAPS } from '../data/sectorMaps.js';
@@ -115,6 +115,8 @@ export function validTravelEvent(player) {
   const node = NODES[ev.nodeId];
   const template = TRAVEL_EVENT_BY_ID[ev.templateId];
   if (!node || !template || !record(ev.base) || !EVENT_KINDS.includes(ev.base.kind)) return false;
+  // A gate behind an unbroken Siege wall can never be an event's destination.
+  if (gateBlockedByWall(player, ev.nodeId)) return false;
   if (!(node.outcomes || []).some(outcome => outcome.kind === ev.base.kind && sameBase(outcome, ev.base))) return false;
   if (!templateFits(template, node, ev.base)) return false;
   if (!Number.isInteger(ev.seed) || ev.seed < 0 || !ev.eventId.endsWith(`:${ev.seed}`)) return false;

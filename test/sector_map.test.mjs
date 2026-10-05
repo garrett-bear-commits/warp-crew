@@ -153,5 +153,11 @@ assert.equal(sessionModels(vet, { missionView: 'explore', selectedMapNode: 'lane
   const walled = { tutorial: { script: 5, completed: true, phase: 'done' }, flags: { veil_opened: true }, story: {}, stats: {}, location: 'ice_spur', ship: { hull: 100 } };
   assert.equal(laneCheck(walled, 'veil_gate').ok, false);
   assert.equal(laneCheck(walled, 'veil_gate').reason, 'siege_wall');
+  const { validTravelEvent } = await import('../src/systems/travelEvents.js');
+  const { acceptContract } = await import('../src/systems/contracts.js');
+  const atGate = { ...walled, activeEvent: { version: 1, eventId: 'event:veil_gate:1:7', nodeId: 'veil_gate', templateId: 'x', base: { kind: 'story' }, seed: 7, fuelSpent: 2, fromNodeId: 'ice_spur' } };
+  assert.equal(validTravelEvent(atGate), false, 'no saved event at a walled gate');
+  const board = { dayKey: 'd', completedOfferIds: [], offers: [{ id: 'o1', destinationId: 'veil_gate', profile: 'reliable' }] };
+  assert.equal(acceptContract({ ...walled, contractBoard: board }, 'o1').reason, 'siege_wall', 'no contract to a walled gate');
 }
 console.log('sector_map.test.mjs OK');

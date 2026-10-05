@@ -675,7 +675,9 @@ export function pickExploreChoice(player, ev, policy, now) {
 /** A settled post-tutorial captain at Spur Anchor: the starter crew aboard, fuel and credits to spare. */
 function exploreAuditCaptain(startAt) {
   const base = createNewPlayer({ tutorialScript: 4, now: startAt, rng: createSeededRng(7) });
+  // A captain who has broken every Siege wall, so every beacon (gates included) can be audited.
   return { ...base, tutorial: { ...base.tutorial, completed: true, phase: 'done' }, location: 'station_home',
+    flags: { ...(base.flags || {}), wall_spur: true, wall_veil: true, wall_ember: true, wall_hollow: true, wall_crown: true },
     wallet: { ...base.wallet, fuel: 10, credits: 1000 }, crew: base.crew.map(member => ({ ...member, status: 'ready', injuredUntil: 0 })) };
 }
 

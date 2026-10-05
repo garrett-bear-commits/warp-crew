@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Deterministic, saved daily Contract Board. Route mutations belong elsewhere. */
 
-import { visibleNodes, NODES, STORY_BEATS } from '../data/sectors.js';
+import { visibleNodes, NODES, STORY_BEATS, gateBlockedByWall } from '../data/sectors.js';
 import { CONTRACT_PROFILES, combatWeight, qualifiesForProfile, storySalvageWeight } from '../data/contracts.js';
 import { encounterById, previewCombatOrder, crewPower, rubberBandPower } from './combat.js';
 import { grant, scaleSitePayout } from './economy.js';
@@ -327,6 +327,8 @@ export function acceptContract(player, offerId, now = Date.now()) {
   }
   const node = NODES[offer.destinationId];
   if (!node) return { ok: false, reason: 'unknown_destination', player };
+  // The board never offers a walled gate; a tampered or stale board cannot either.
+  if (gateBlockedByWall(player, offer.destinationId)) return { ok: false, reason: 'siege_wall', player };
   if (!validOfferContent(offer)) return { ok: false, reason: 'invalid_contract_content', player };
   if (offer.profile === 'distress' && (player.tutorial?.firstCombat || player.tutorial?.hiredThird || player.tutorial?.completed || player.tutorial?.dismissed)) {
     return { ok: false, reason: 'tutorial_already_resolved', player };
