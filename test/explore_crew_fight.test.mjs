@@ -24,7 +24,8 @@ const ident = player => ({ acceptanceId: player.activeEncounter.acceptanceId, re
 
 // A realistic post-tutorial captain with everyone aboard and fuel to jump.
 let veteran = completeFreshTutorial();
-veteran = { ...veteran, activeContract: null, activeEncounter: null, activeExpedition: null,
+// Jumps follow lanes: start at Spur Anchor, one lane from Dust Lane and the Null Scrapyard.
+veteran = { ...veteran, location: 'station_home', activeContract: null, activeEncounter: null, activeExpedition: null,
   crew: veteran.crew.map(c => ({ ...c, status: 'ready', injuredUntil: 0 })), wallet: { ...veteran.wallet, fuel: 10, gems: 0 } };
 const gunner = veteran.crew.find(c => c.role === 'gunner');
 const staffed = assignStation(veteran, gunner.instanceId, 'weapons', now).player;

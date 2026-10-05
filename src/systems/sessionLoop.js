@@ -29,6 +29,9 @@ import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
 import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
 import { beginTravelFight, applyTravelFightAction, claimTravelFight, applyTravelFightCommand } from './travelFight.js';
+import { arrivalOpensEvent, openTravelEvent, resolveTravelEvent, eventView, routeEventFor, routeChoiceMatches } from './travelEvents.js';
+import { laneCheck, sectorMapModel } from './sectorMap.js';
+import { resolveRoutePayout } from './contractRewards.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -229,6 +232,28 @@ function encounterView(player, encounter, { settled, ui = {}, now = Date.now() }
   };
 }
 
+/** Contract route event card: authored situation, two choices bound to secure/push with their real stakes. */
+function routeEventModel(player, contract, previews, now) {
+  const routeEvent = routeEventFor(contract);
+  if (!routeEvent) return null;
+  return { id: routeEvent.id, title: routeEvent.title, text: routeEvent.text, revision: contract.revision, acceptanceId: contract.acceptanceId,
+    choices: routeEvent.choices.map(choice => {
+      const preview = previews[choice.route] || previewContractAction(player, { id: choice.route }, now);
+      const consequence = preview.consequence || {};
+      let stakes;
+      if (consequence.encounterId) {
+        const threat = threatLabel(contractThreat(player, { encounterId: consequence.encounterId }, now));
+        stakes = `Fight: ${consequence.encounterName} · ${threat} · win ${formatReward(consequence.encounterRewards)}`;
+      } else {
+        const outcome = choice.route === 'secure' ? contract.secureOutcome : contract.routeOutcome;
+        const payout = resolveRoutePayout(player, contract, outcome, now);
+        stakes = outcome?.kind === 'story' ? `Story lead · ${formatReward(payout.rewards)}` : `Pays ${formatReward(payout.rewards) || 'nothing'}`;
+      }
+      return { id: choice.id, route: choice.route, label: choice.label, stakes, fuel: preview.cost?.fuel ?? 0,
+        enabled: Boolean(preview.ok), reason: preview.ok ? null : preview.reason, fight: Boolean(consequence.encounterId) };
+    }) };
+}
+
 export function sessionModels(player, ui = {}, now = Date.now()) {
   const contract = player.activeContract;
   const stations = stationOutputs(player, now);
@@ -236,7 +261,8 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
     contractBoard: player.contractBoard ? { ...player.contractBoard, offers: player.contractBoard.offers.map(offer => {
       const rewardBand = contractRewardBand(player, offer, { now });
       return { ...offer, rewardBand, primaryReward: rewardBand.label, enabled: rewardBand.available && !player.contractBoard.completedOfferIds.includes(offer.id) };
-    }) } : null, activeContractView: null, activeTravelView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {} };
+    }) } : null, activeContractView: null, activeTravelView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {},
+    activeEventView: eventView(player, now), eventResult: ui.eventResult || null, sectorMap: sectorMapModel(player, ui, now) };
   if (ui.reviewedOfferId) {
     const review = reviewContractOffer(player, ui.reviewedOfferId);
     if (review.ok) {
@@ -265,7 +291,8 @@ export function sessionModels(player, ui = {}, now = Date.now()) {
         consequence: combatChoice || (id === 'secure' ? 'Resolve the secured route outcome.' : id === 'push' ? 'Follow the signal to its snapshotted discovery.' : 'Spend fuel and depart.') };
     });
     if (contract.stage === 'return') actions.push({ id: 'claim', label: 'Bring it aboard', enabled: true, primary: true });
-    models.activeContractView = { ...contract, actions,
+    if (contract.stage === 'choice') models.routeEvent = routeEventModel(player, contract, models.contractPreviews, now);
+    models.activeContractView = { ...contract, actions, routeEvent: models.routeEvent || null,
       crewLabel: readyCrew(player, now).map(c => c.name).join(', ') || 'No ready crew',
       result: contract.result ? { ...contract.result, rewardLabel: formatReward(contract.result.rewards) } : null,
       abandon: contract.profile === 'distress' || player.activeEncounter ? null : { enabled: true, label: contract.stage === 'briefing' ? 'Abandon' : 'Break contract', consequence: 'No pending reward. Spent fuel is not refunded.' },
@@ -461,6 +488,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     Object.assign(nextUi, improvementFocus(player));
   } else if (act === 'contract-review') {
     if (player.activeTravelFight) return fail('travel_fight_active');
+    if (player.activeEvent) return fail('event_active');
     const review = reviewContractOffer(player, data.offer);
     if (!review.ok || player.activeContract || player.contractBoard.completedOfferIds.includes(data.offer)) return fail(review.reason || 'offer_unavailable');
     nextUi.reviewedOfferId = data.offer;
@@ -469,6 +497,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   } else if (act === 'contract-review-close') nextUi.reviewedOfferId = null;
   else if (act === 'contract-accept') {
     if (player.activeTravelFight) return fail('travel_fight_active');
+    if (player.activeEvent) return fail('event_active');
     const review = reviewContractOffer(player, data.offer);
     if (review.ok && !contractRewardBand(player, review.offer, { now }).available) return fail('reward_unavailable');
     const res = acceptContract(player, data.offer, now);
@@ -540,13 +569,15 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       }
       Object.assign(nextUi, improvementFocus(player));
     } else {
+      // Route events: a choice id must belong to this contract's event and match its action.
+      if (data.choice != null && (contract.stage !== 'choice' || !routeChoiceMatches(contract, data.choice, data.action))) return fail('stale_contract_action');
       const action = act === 'contract-order' ? { id: 'order', orderId: data.order } : { id: data.action };
       const key = action.id === 'order' ? `order:${action.orderId}` : action.id;
       const preview = ui.contractPreviews?.[key] || previewContractAction(player, action, now);
       const res = commitContractAction(player, preview, { rng, now });
       if (!res.ok) return res;
       player = res.player;
-      events.push(fromAnalytics(res.analytics));
+      events.push(fromAnalytics(data.choice != null ? { ...res.analytics, routeEvent: routeEventFor(contract)?.id || null, choice: data.choice } : res.analytics));
       if (!before.activeEncounter && player.activeEncounter) Object.assign(nextUi, { tab: 'ship', selectedRoom: null });
       if (act === 'contract-order') {
         const recommendedOrder = encounterById(contract.encounterId).tell.recommendedOrder;
@@ -633,6 +664,10 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     if (player.activeContract) return fail('active_contract');
     if (isTutorialActive(player)) return fail('tutorial_contract_required');
     if (ui.pendingCombat || player.activeTravelFight || player.activeEncounter) return fail('combat_pending');
+    if (player.activeEvent) return fail('event_active');
+    // Sector map: only beacons joined to your location by a lane (Spur Anchor if crippled or stranded).
+    const lane = laneCheck(player, data.node, now);
+    if (!lane.ok) return fail(lane.reason);
     const preview = previewTravel(player, data.node, { rng });
     if (!preview.ok) return fail(preview.reason);
     if (preview.needsAssists) {
@@ -643,6 +678,14 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       events.push(event('travel', { node: data.node, kind: 'combat' }), fromAnalytics(res.analytics));
       Object.assign(nextUi, { tab: 'ship', selectedRoom: null, pendingCombat: null });
       effect = { kind: 'encounter-beat', events: [], outcome: null };
+    } else if (arrivalOpensEvent(player, preview.node, preview.outcome)) {
+      // Non-combat arrivals open an event card; arrival waits for the choice.
+      const res = openTravelEvent(player, preview, now);
+      if (!res.ok) return fail(res.reason);
+      player = res.player;
+      events.push(event('travel', { node: data.node, kind: 'event' }), fromAnalytics(res.analytics));
+      Object.assign(nextUi, { selectedMapNode: null, eventResult: null });
+      effect = { kind: 'event-open' };
     } else {
       const res = commitTravel(player, preview, { rng });
       if (!res.ok) return res;
@@ -651,6 +694,29 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       events.push(event('travel', { node: data.node, kind: res.result.kind }));
       effect = { kind: 'travel', result: res.result };
     }
+  } else if (act === 'event-choose') {
+    const res = resolveTravelEvent(player, { eventId: data.eventId, choice: data.choice }, now);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    events.push(fromAnalytics(res.analytics));
+    if (res.result.fight) {
+      events.push(fromAnalytics(res.fightAnalytics));
+      Object.assign(nextUi, { tab: 'ship', selectedRoom: null, eventResult: null });
+      effect = { kind: 'encounter-beat', events: [], outcome: null };
+    } else {
+      tutorial('travel_success');
+      nextUi.eventResult = { title: res.result.event.title, choiceLabel: res.result.event.choiceLabel, text: res.result.flavor,
+        nodeName: res.result.node.name, rewardLabel: res.result.rewards ? formatReward(res.result.rewards) : '',
+        hullLoss: res.result.hullLoss, injured: res.result.injured, hired: res.result.hired?.name || null,
+        beat: res.result.beat ? { title: res.result.beat.title, text: res.result.beat.text } : null };
+      effect = { kind: 'travel', result: res.result };
+    }
+  } else if (act === 'event-dismiss') {
+    nextUi.eventResult = null;
+  } else if (act === 'map-select') {
+    nextUi.selectedMapNode = data.node && NODES[data.node] ? data.node : null;
+  } else if (act === 'map-sector') {
+    Object.assign(nextUi, { mapSector: data.sector || null, selectedMapNode: null });
   } else if (act === 'travel-claim') {
     const res = claimTravelFight(player, data);
     if (!res.ok) return fail(res.reason);

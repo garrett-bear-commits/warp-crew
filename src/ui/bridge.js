@@ -49,6 +49,9 @@ import { PRODUCT_DEFS } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
 import { trustedNow } from '../shared/cloud.js';
 import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
+import { renderSectorMap } from './sectorMapView.js';
+import { renderEventCard, renderEventResult, renderRouteEvent } from './eventView.js';
+import { sectorMapModel } from '../systems/sectorMap.js';
 
 const NODE_KIND_ART = {
   station: 'c',
@@ -470,7 +473,9 @@ function patchShell(root, ctx) {
   setSlot(root, 'crew-rail', isHome && !fighting && !firstSession && !v5Session && !selectedRoom ? renderCrewRail(player) : '');
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
-  const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
+  // Travel events: the open card (saved) or its result (UI only) sits over every tab.
+  const eventModal = !player.flags?.splashSeen ? '' : ctx.activeEventView ? renderEventCard(ctx.activeEventView) : ctx.eventResult ? renderEventResult(ctx.eventResult) : '';
+  const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
   const wallPack = wallPackState(player, currentWall(player, now));
   const calm = !baseModal.trim() && isHome && !fighting && !player.activeEncounter && !selectedRoom;
@@ -633,8 +638,7 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
   }
   if (isHome && player.tutorial?.script === 4 && !player.tutorial.completed) return renderSessionGuidance(player, now);
   if (isHome && player.activeContract?.stage === 'choice' && activeContractView?.actions?.length) {
-    const choices = activeContractView.actions.filter(action => action.id === 'secure' || action.id === 'push');
-    return `<aside class="first-session-cue route-choice" aria-label="Route choice"><p>Signal ahead. What should the crew do?</p>${choices.map(action => `<button class="${action.id === 'push' ? 'primary' : ''}" data-act="contract-action" data-action="${escapeHtml(action.id)}" data-revision="${escapeHtml(activeContractView.revision)}" data-acceptance-id="${escapeHtml(activeContractView.acceptanceId)}" ${action.enabled ? '' : 'disabled'}>${escapeHtml(action.label)}</button>`).join('')}</aside>`;
+    return renderRouteEvent(activeContractView.routeEvent, activeContractView);
   }
   if (isHome && player.tutorial?.script === 4 && player.tutorial.completed && !player.activeContract
     && !selectedRoom && (player.stats?.contractsCompleted || 0) <= 1) return `<aside class="first-session-cue" aria-label="Next job"><p>Next job is ready.</p><button class="primary" data-act="goto-contracts">See contracts</button><small>Away teams are on Missions when you're ready.</small></aside>`;
@@ -1169,13 +1173,15 @@ export function renderMissions(player, now, model = {}) {
           + mapBlock('Hollow', hollow)
           + mapBlock('Crown', crown)}
     </div>`;
+  // Sector map (FTL-lite phase 3) replaces the node grid outside the legacy script-2 tutorial.
+  const sectorPanel = tight ? mapPanel : `<div class="panel sector-panel">${renderSectorMap(model.sectorMap || sectorMapModel(player, model, now))}</div>`;
 
   const expPanel = showExp ? `
     <div class="panel away-view">
       <h2>Away</h2>
       ${exp ? renderActiveExpedition(player, exp, now) : planetList.map((p) => renderPlanetCard(player, p, teachDust)).join('')}
     </div>` : '<section class="panel away-view"><h2>Away</h2><p>Continue your first contract to unlock expeditions.</p></section>';
-  return switcher + (view === 'away' ? expPanel : mapPanel);
+  return switcher + (view === 'away' ? expPanel : sectorPanel);
 }
 
 function renderActiveExpedition(player, exp, now) {
