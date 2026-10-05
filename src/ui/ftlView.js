@@ -3,7 +3,7 @@
 // the Sparrow, and the controls strip below. Pure HTML from the session model.
 import { ROOMS } from '../data/starterShip.js';
 import { roomStyle } from './shipView.js';
-import { artUrl } from '../shared/artUrl.js';
+import { enemyArtFor } from '../data/art/enemyArt.js';
 
 const e = value => String(value ?? '')
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
@@ -27,42 +27,41 @@ const chargeBar = (from, to, cls = '', beat = 0) => `<span class="ftl-bar ${cls}
 const pips = (layers, max, full) => Array.from({ length: Math.max(full, max) }, (_, i) => `<i class="ftl-pip${i < layers ? ' on' : ''}${i >= max ? ' broken' : ''}"></i>`).join('');
 const live = view => !view.result && !view.downed;
 
-/** Enemy ship: name, threat, hull, shield layers, weapon charge and four targetable rooms. */
+/** Enemy ship: its cutaway art with four targetable rooms over their real positions, hull, shields and guns. */
 export function renderFtlEnemy(view) {
   if (!view?.ftl) return '';
   const enemy = view.enemy;
+  const art = enemyArtFor(view.encounterId);
   const hullPct = Math.round((enemy.hull / enemy.hullMax) * 100);
   // Tutorial: their Weapons room is the one thing to tap; the rest wait until it is targeted.
   const teaching = view.guided && view.targetChosen !== true && live(view);
   const rooms = ['shields', 'weapons', 'engines', 'helm'].map(id => {
     const room = enemy.rooms[id];
+    const box = art.rooms[id] || { left: 0, top: 0, width: 25, height: 25 };
     const targeted = view.target === id && live(view) && !teaching;
     const spotlight = teaching && id === 'weapons';
     const enabled = live(view) && (!teaching || spotlight);
     return `<button type="button" class="ftl-enemy-room room-${id}${targeted ? ' is-target' : ''}${room.offline ? ' is-offline' : room.damaged ? ' is-damaged' : ''}${room.fire ? ' is-burning' : ''}"
+      style="left:${box.left}%;top:${box.top}%;width:${box.width}%;height:${box.height}%"
       data-enemy-room="${id}" data-act="encounter-command" data-command-type="target" data-room="${id}" ${identity(view)} ${enabled ? '' : 'disabled'}${spotlight ? ' data-primary-pulse data-spotlight-target' : ''}
       aria-pressed="${targeted}" aria-label="Target their ${e(room.label)}${room.offline ? ', offline' : ''}">
-      ${icon(id)}<b>${e(room.label)}</b>${bar(room.integrity, 'integrity')}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
+      <span class="ftl-room-tag">${icon(id)}<b>${e(room.label)}</b></span>${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
     </button>`;
   }).join('');
   const guns = enemy.weapons.map(w => `<div class="ftl-enemy-gun${w.chargePct >= 70 ? ' is-hot' : ''}">
-      <span>${w.shots}×${w.damage}</span>${chargeBar(w.chargePct, w.nextPct ?? w.chargePct, 'charge enemy', view.beat)}<small>→ ${e(w.targetLabel)}</small></div>`).join('');
-  return `<section class="ftl-enemy${enemy.shields.layers > 0 ? ' is-shielded' : ''}${view.result === 'win' ? ' is-destroyed' : ''}" aria-label="Enemy ship">
+      <span>${w.shots}×${w.damage} → ${e(w.targetLabel)}</span>${chargeBar(w.chargePct, w.nextPct ?? w.chargePct, 'charge enemy', view.beat)}</div>`).join('');
+  return `<section class="ftl-enemy family-${e(art.family)}${enemy.shields.layers > 0 ? ' is-shielded' : ''}${view.result === 'win' ? ' is-destroyed' : ''}" aria-label="Enemy ship">
     <header class="ftl-enemy-head">
       <b>${e(view.enemyName)}</b>${view.threatLabel ? `<span class="ftl-threat" data-threat="${e(view.threatLabel.toLowerCase())}">${e(view.threatLabel)}</span>` : ''}
       <span class="ftl-enemy-shields" aria-label="Enemy shields ${enemy.shields.layers} of ${enemy.shields.full}">${pips(enemy.shields.layers, enemy.shields.max, enemy.shields.full)}</span>
     </header>
-    <div class="ftl-enemy-body">
-      <div class="ftl-enemy-ship">
-        <img src="${artUrl('art/space/pirate-scout.png')}" alt="" draggable="false" />
-        <div class="ftl-enemy-rooms">${rooms}</div>
-      </div>
-      <div class="ftl-enemy-stats">
-        <div class="ftl-enemy-hull"><span>Hull</span>${bar(hullPct, 'hull enemy')}<b>${e(enemy.hull)}</b></div>
-        ${guns}
-        <small class="ftl-enemy-evade">Evade ${e(enemy.evasion)}%</small>
-      </div>
+    <div class="ftl-enemy-hull"><span>Hull</span>${bar(hullPct, 'hull enemy')}<b>${e(enemy.hull)}</b><small>Evade ${e(enemy.evasion)}%</small></div>
+    <div class="ftl-enemy-ship" style="aspect-ratio:${art.aspect}">
+      <img src="${art.image}" alt="" draggable="false" />
+      <span class="ftl-enemy-bubble" aria-hidden="true"></span>
+      ${rooms}
     </div>
+    <div class="ftl-enemy-guns">${guns}</div>
     ${live(view) ? `<p class="ftl-hint${teaching ? ' is-teaching' : ''}">${teaching ? 'Tap their <b>Weapons</b> room. Knock out their guns and the trader is safe.' : view.targetChosen ? 'Tap a room to change target' : 'Tap a room to target it'}</p>` : ''}
   </section>`;
 }

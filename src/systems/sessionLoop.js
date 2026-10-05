@@ -106,6 +106,7 @@ function ftlEncounterView(player, encounter, { settled, ui = {} }) {
   return {
     ftl: true,
     guided: encounter.guided === true,
+    encounterId: encounter.encounterId,
     acceptanceId: encounter.acceptanceId,
     revision: encounter.revision,
     version: encounter.version,
