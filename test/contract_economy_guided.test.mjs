@@ -1,7 +1,8 @@
 // Siege damage resets at local midnight; the evidence and these assertions are pinned to UTC.
 process.env.TZ = 'UTC';
 import assert from 'node:assert/strict';
-import { simulateFreePlayer30Days, reconcileLedger, runEconomySeedSet, renderEconomyMarkdown, GUIDED_STRATEGIES } from '../src/sim/contractEconomy.js';
+import { simulateFreePlayer30Days, reconcileLedger, runEconomySeedSet, renderEconomyMarkdown, GUIDED_STRATEGIES, EXPLORE_STRATEGIES } from '../src/sim/contractEconomy.js';
+import { hasLane } from '../src/data/sectorMaps.js';
 import { WALL_BY_ID, SIEGE_SEGMENT } from '../src/systems/walls.js';
 import { buildSkipGems, UPGRADE_BUILD } from '../src/systems/hangar.js';
 import { RALLY } from '../src/systems/gemSinks.js';
@@ -53,6 +54,22 @@ function checkRun(run) {
     }
     previous = attempt;
   }
+  // Explore: jumps follow lit lanes, events are resolved, fights are claimed, the ledger names every Explore delta.
+  const jumps = run.days.flatMap(d => d.explore?.jumps || []);
+  assert.equal(run.explore.jumps, jumps.length, label);
+  for (const jump of jumps) {
+    assert.ok(hasLane(jump.from, jump.to) || jump.to === 'station_home', `${label}: ${jump.from} -> ${jump.to} follows a lane`);
+    if (jump.kind === 'event') assert.ok(jump.choice, `${label}: event resolved`);
+    assert.ok(!jump.unsettled, `${label}: Explore fight settled`);
+  }
+  for (const day of run.days) {
+    const x = day.explore;
+    if (!x) continue;
+    const limits = EXPLORE_STRATEGIES[run.strategy];
+    assert.ok(x.jumps.length <= limits.maxJumps, label);
+    for (const jump of x.jumps) assert.ok(day.costsByAction['explore:travel-to']?.fuel > 0, `${label}: jump fuel ledgered`);
+  }
+  assert.equal(run.explore.events + jumps.filter(j => j.kind !== 'event').length, run.explore.jumps, label);
   for (const wall of Object.values(run.walls)) {
     const attempts = run.wallAttempts.filter(a => a.wall === wall.id);
     assert.equal(wall.attempts, attempts.length, label);
@@ -87,6 +104,12 @@ assert.ok(Object.values(runs[3].walls).some(w => w.attemptDays >= 2), 'a multi-d
 assert.ok(runs[3].wallAttempts.some(a => a.day > 3 && a.remainingBefore === WALL_BY_ID[a.wall].pool
   && runs[3].wallAttempts.some(b => b.wall === a.wall && b.day === a.day - 1)), 'damage resets on the next day');
 assert.throws(() => simulateFreePlayer30Days({ seed: 1, strategy: 'balanced', flow: 'guided', sessionOrder: 'later' }), /session order/);
+// Every strategy travels the map: jumps, events and Explore fights all happen in 30 days.
+for (const run of runs.slice(0, 3)) {
+  assert.ok(run.explore.jumps > 0 && run.explore.events > 0, `${run.strategy} explores`);
+  assert.ok(run.explore.earned.credits > 0, `${run.strategy} earns credits exploring`);
+}
+assert.ok(runs[2].explore.jumps >= runs[0].explore.jumps, 'ambitious jumps at least as often as cautious');
 
 // The evidence renderer adds the guided section and keeps the baseline table.
 const report = runEconomySeedSet({ seeds: [4219], startAt });
@@ -94,6 +117,8 @@ const markdown = renderEconomyMarkdown(report);
 assert.ok(markdown.startsWith('## 30-day free-player economy'));
 assert.match(markdown, /## 30-day guided-flow economy: siege walls, gems, timed drydock/);
 assert.match(markdown, /\| balanced \| First wall fell on day \|/);
+assert.match(markdown, /### Explore per run \(fights-first\)/);
+assert.match(markdown, /\| balanced \| Explore net credits \|/);
 assert.match(markdown, /Conservation: 3\/3 guided runs PASS \(fights-first\), 3\/3 PASS \(away-first\)/);
 assert.equal(report.runs.length, 3);
 assert.ok(report.runs.every(run => !run.flow && !run.walls), 'the script-3 baseline stays untouched');

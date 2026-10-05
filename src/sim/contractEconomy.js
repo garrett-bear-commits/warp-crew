@@ -13,7 +13,8 @@ import { WALLS, siegeState } from '../systems/walls.js';
 import { FUEL_REFILL, RALLY } from '../systems/gemSinks.js';
 import { STARTER_CAPTAINS } from '../data/crewRoster.js';
 import { hullRepairOffer, pay } from '../systems/economy.js';
-import { repairHull } from '../systems/passives.js';
+import { repairHull, fuelCostFor } from '../systems/passives.js';
+import { laneCheck, riskRead } from '../systems/sectorMap.js';
 
 /** Guided captains patch the hull before a Siege-wall attempt when it is below this. */
 const WALL_REPAIR_BELOW = 60;
@@ -40,6 +41,45 @@ export const GUIDED_STRATEGIES = {
   ambitious: { wallFuelReserve: 0, gems: 'all' },
 };
 export const MAX_WALL_ATTEMPTS_PER_SESSION = 8;
+/**
+ * Guided-flow Explore policy, played after the day's contract and wall attempts (before the evening
+ * upgrades and, in fights-first, before the away team leaves).
+ *   fuelReserve  — fuel kept after the jump.  maxJumps — jumps per check-in.  minHull — no jump below this hull.
+ *   avoid        — threat labels (the beacon card's honest risk read) the captain will not jump into.
+ * Destinations: lit lanes only; unvisited beacons first, then best expected arrival value per fuel,
+ * minus a strategy price on the beacon's fight share. Events use pickExploreChoice with the same policy name.
+ */
+export const EXPLORE_STRATEGIES = {
+  cautious: { fuelReserve: 3, maxJumps: 1, minHull: 70, avoid: ['Dangerous', 'Deadly'], fightPrice: 2 },
+  balanced: { fuelReserve: 2, maxJumps: 2, minHull: 50, avoid: ['Deadly'], fightPrice: 1 },
+  ambitious: { fuelReserve: 1, maxJumps: 3, minHull: 35, avoid: [], fightPrice: 0 },
+};
+const EXPLORE_EVENT_POLICY = { cautious: 'cautious', balanced: 'balanced', ambitious: 'ambitious' };
+
+/** Expected credit value of arriving at a beacon (non-fight outcomes, at their instant pay). */
+function arrivalValue(node) {
+  const outcomes = node?.outcomes || [];
+  const total = outcomes.reduce((sum, outcome) => sum + outcome.w, 0) || 1;
+  return outcomes.reduce((sum, outcome) => sum + (outcome.kind === 'combat' ? 0 : (outcome.w / total) * creditValue(outcome)), 0);
+}
+
+/** The scripted captain's next jump from where the ship is, or null. */
+export function pickExploreJump(player, strategy, now) {
+  const rulesX = EXPLORE_STRATEGIES[strategy];
+  const fuel = player.wallet?.fuel ?? 0;
+  const options = [];
+  for (const node of Object.values(NODES)) {
+    if (node.id === 'station_home' || !laneCheck(player, node.id, now).ok) continue;
+    const cost = fuelCostFor(player, node.fuelCost ?? 1);
+    if (fuel - cost < rulesX.fuelReserve) continue;
+    const risk = riskRead(player, node, now);
+    if (risk.threat && rulesX.avoid.includes(risk.threat)) continue;
+    const unvisited = !(player.stats?.visits?.[node.id] > 0);
+    const score = (unvisited ? 1000 : 0) + arrivalValue(node) / Math.max(1, cost) - rulesX.fightPrice * risk.fightPct;
+    options.push({ id: node.id, fuel: cost, score, threat: risk.threat, fightPct: risk.fightPct });
+  }
+  return options.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))[0] || null;
+}
 /** contracts.js refuses a launch at or below this hull ('hull_critical'). */
 const HULL_CRITICAL = 8;
 const GEM_SINKS = { rally: 'rally', 'refuel-gems': 'fuel_refill', 'ship-build-skip': 'drydock_skip' };
@@ -370,6 +410,66 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         run.builds[run.builds.length - 1].skippedFor = skip;
       }
     };
+    // Explore fights: the same disciplined captain as contracts. Downed captains concede (no Rally,
+    // so the gem ledger and the free Rally stay with contracts and walls).
+    const fightTravel = record => {
+      let beats = 0;
+      while (player.activeEncounter && !player.activeEncounter.result && beats < MAX_FIGHT_BEATS) {
+        let encounter = player.activeEncounter;
+        if (encounter.version === FTL_VERSION && encounter.phase !== 'downed') {
+          for (const command of ftlPolicyStep(encounter, 'smart').commands) {
+            act('encounter-command', { acceptanceId: encounter.acceptanceId, revision: encounter.revision, command }, 'explore:encounter-command');
+            encounter = player.activeEncounter;
+          }
+        }
+        const ident = { acceptanceId: encounter.acceptanceId, revision: encounter.revision };
+        if (encounter.phase === 'downed') record.downed = (record.downed || 0) + 1;
+        const ok = encounter.phase === 'downed' ? act('encounter-order', { ...ident, order: 'concede' }, 'explore:encounter-order')
+          : act('encounter-advance', ident, 'explore:encounter-advance');
+        if (!ok) break;
+        beats += 1;
+      }
+      record.beats = (record.beats || 0) + beats;
+      const fight = player.activeTravelFight;
+      if (fight?.stage !== 'return') { record.unsettled = true; return; }
+      record.fights = (record.fights || 0) + 1;
+      if (fight.result.success) record.fightWins = (record.fightWins || 0) + 1;
+      act('travel-claim', { acceptanceId: fight.fightId, revision: fight.revision }, 'explore:travel-claim');
+    };
+    // Scripted Explore session: jump along lanes while fuel above the strategy reserve and hull allow.
+    const explore = () => {
+      const rulesX = EXPLORE_STRATEGIES[strategy];
+      const sources = before => Object.fromEntries(CURRENCIES.map(c => [c, (player.wallet[c] || 0) - (before[c] || 0)]));
+      const log = { jumps: [], stopped: null, startFuel: player.wallet.fuel, startHull: player.ship.hull ?? 100 };
+      day.explore = log;
+      for (let n = 0; n < rulesX.maxJumps; n++) {
+        if (player.activeContract || player.activeTravelFight || player.activeEvent || player.activeEncounter) { log.stopped = 'busy'; break; }
+        if ((player.ship.hull ?? 100) < rulesX.minHull) { log.stopped = 'hull_low'; break; }
+        const target = pickExploreJump(player, strategy, now);
+        if (!target) { log.stopped = player.wallet.fuel - 1 < rulesX.fuelReserve ? 'fuel_reserve' : 'no_lane'; break; }
+        const before = wallet(player);
+        const jump = { day: index + 1, from: player.location || 'station_home', to: target.id, fuel: target.fuel, kind: null, event: null, choice: null };
+        if (!act('travel-to', { node: target.id }, 'explore:travel-to')) { log.stopped = 'refused'; break; }
+        if (player.activeEvent) {
+          jump.kind = 'event';
+          jump.event = player.activeEvent.templateId;
+          const choice = pickExploreChoice(player, player.activeEvent, EXPLORE_EVENT_POLICY[strategy], now);
+          if (!choice) { log.stopped = 'no_choice'; log.jumps.push(jump); break; }
+          jump.choice = choice.id;
+          if (!act('event-choose', { eventId: player.activeEvent.eventId, choice: choice.id }, 'explore:event-choose')) { log.stopped = 'refused'; log.jumps.push(jump); break; }
+          act('event-dismiss', {}, 'explore:event-dismiss');
+        } else jump.kind = player.activeTravelFight ? 'fight' : 'arrive';
+        if (player.activeTravelFight) {
+          jump.fightFrom = jump.kind;
+          fightTravel(jump);
+        }
+        jump.delta = sources(before);
+        jump.hullAfter = player.ship.hull ?? 100;
+        log.jumps.push(jump);
+        if (jump.unsettled) { log.stopped = 'fight_unsettled'; break; }
+      }
+      if (!log.stopped) log.stopped = 'max_jumps';
+    };
     if (guided) {
       buyUpgrades();
       // Evening wall: attempt the flagship while it is on the board and fuel above the strategy reserve remains.
@@ -403,6 +503,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         day.wallAttempts.push(record); run.wallAttempts.push(record);
         if (record.beaten && run.walls[wall.id]) run.walls[wall.id].fellOnDay = index + 1;
       }
+      explore();
       player = prepareSession(player, now);
       noteWalls(day, index);
       buyUpgrades();
@@ -479,6 +580,7 @@ function summarizeGuided(run) {
   run.gems = { earned: run.totals.sources.gems, earnedBySource: gemsBy('rewardsBySource'),
     spent: run.totals.sinks.gems, spentBySink, end: run.finalWallet.gems,
     daysWithSpend: run.days.filter(d => d.gemSpends.some(spend => spend.gems > 0)).length };
+  run.explore = summarizeExplore(run);
   const fights = [...run.days.map(d => d.contract).filter(Boolean), ...run.wallAttempts];
   const first = run.walls[WALLS[0].id];
   Object.assign(run.metrics, {
@@ -497,13 +599,46 @@ function summarizeGuided(run) {
     upgradeLevels: run.days.reduce((sum, d) => sum + d.improvements.length, 0),
     drydockBusyDays: run.days.filter(d => d.blockedActions.some(a => a.reason === 'drydock_busy')).length,
     hullRepairCredits: run.totals.costsByAction['hull-repair']?.credits || 0,
+    exploreJumps: run.explore.jumps,
+    exploreEvents: run.explore.events,
+    exploreFights: run.explore.fights,
+    exploreCredits: run.explore.netCredits,
+    exploreCreditShare: run.totals.sources.credits ? Math.round(run.explore.earned.credits / run.totals.sources.credits * 100) : 0,
   });
+}
+
+/** Explore stats from the day logs and the explore:* ledger buckets. */
+function summarizeExplore(run) {
+  const jumps = run.days.flatMap(d => d.explore?.jumps || []);
+  const bucket = kind => {
+    const total = zero();
+    for (const [key, value] of Object.entries(run.totals[kind])) if (key.startsWith('explore:')) for (const c of CURRENCIES) total[c] += value[c];
+    return total;
+  };
+  const earned = bucket('rewardsBySource');
+  const spent = bucket('costsByAction');
+  const stops = {};
+  for (const d of run.days) if (d.explore?.stopped) stops[d.explore.stopped] = (stops[d.explore.stopped] || 0) + 1;
+  return {
+    jumps: jumps.length,
+    days: run.days.filter(d => d.explore?.jumps.length).length,
+    events: jumps.filter(j => j.kind === 'event').length,
+    fights: jumps.reduce((sum, j) => sum + (j.fights || 0), 0),
+    fightWins: jumps.reduce((sum, j) => sum + (j.fightWins || 0), 0),
+    eventFights: jumps.filter(j => j.kind === 'event' && j.fights).length,
+    downed: jumps.reduce((sum, j) => sum + (j.downed || 0), 0),
+    beacons: new Set(jumps.map(j => j.to)).size,
+    sectors: [...new Set(jumps.map(j => NODES[j.to]?.sector).filter(Boolean))],
+    earned, spent,
+    netCredits: earned.credits - spent.credits,
+    stops,
+  };
 }
 
 /** Summary-only copy of a run (no daily ledgers), for sensitivity sets. */
 function runSummary(run) {
-  const { seed, strategy, captain, gemPolicy, wallFuelReserve, sessionOrder, policy, metrics, walls, gems, builds, finalWallet, systemLevels, reconciliation } = run;
-  return { seed, strategy, captain, gemPolicy, wallFuelReserve, sessionOrder, policy, metrics, walls, gems, builds, finalWallet, systemLevels, reconciliation };
+  const { seed, strategy, captain, gemPolicy, wallFuelReserve, sessionOrder, policy, metrics, walls, gems, explore, builds, finalWallet, systemLevels, reconciliation } = run;
+  return { seed, strategy, captain, gemPolicy, wallFuelReserve, sessionOrder, policy, metrics, walls, gems, explore, builds, finalWallet, systemLevels, reconciliation };
 }
 
 export function runEconomySeedSet({ seeds = ECONOMY_SEEDS, startAt = ECONOMY_START } = {}) {
@@ -564,7 +699,8 @@ function renderGuidedMarkdown(report) {
   const lines = ['## 30-day guided-flow economy: siege walls, gems, timed drydock', '',
     `Added 2026-09-27; the script-3 section above is unchanged. Same seeds, start and one check-in every 24 hours, but each captain plays the shipped script-5 first session (captains rotate by seed: ${[...new Set(runs.map(r => r.captain))].join(', ')}), so siege walls apply. All transitions go through production session actions; wall attempts, Rally, gem refills and drydock skips are ledgered in their own buckets (wall:*, rally, refuel-gems, ship-build-skip, hull-repair).`, '',
     `Session order (fights-first): claim returned away team, patch the hull only if critical (production repair-hull: 25 hull for 35 credits), strategy contract, buy every affordable improvement the drydock allows (levels above 3 start a timed build that completes on a later check-in through prepareSession), attack the wall while it is on the board and fuel minus the attempt cost stays at or above the strategy reserve (at most ${MAX_WALL_ATTEMPTS_PER_SESSION} attempts), buy again, then launch the away team. Wall fights use the same disciplined crew orders as contracts. Gem policies: ${strategies.map(policy).join('; ')}. never = no gem spends (the free first Rally is still taken); rally-refuel = paid Rally on a near miss and a 50-gem refill only when the day's contract or first wall attempt is unaffordable; all = paid Rally, a refill whenever it buys another wall attempt, and every drydock skip it can afford. No purchases, ads or force completion; wall-pack offers are recorded when production triggers them but never bought.`, '',
-    'Not modeled: Explore travel (under conversion elsewhere), so walls after the first arrive only when contract story flags open their sector; expedition gem skips; a second check-in the same day. Injuries from a same-instant claim still block that day\'s away launch (empty_party), as in the baseline. Worst: latest wall arrival and fall, most attempts and near-miss losses, largest gem buffer at the wall (least need for a wall pack), fewest gems earned, most gems spent, most repair credits, fewest useful sessions/upgrades/walls.', '',
+    `Explore (added 2026-10-05): after the contract and the wall attempts, the captain jumps along lit lanes while fuel minus the jump stays at or above the strategy's Explore reserve and the hull is at or above its floor (${Object.entries(EXPLORE_STRATEGIES).map(([k, v]) => `${k}: reserve ${v.fuelReserve}, up to ${v.maxJumps} jump${v.maxJumps > 1 ? 's' : ''}, hull ≥ ${v.minHull}, avoids ${v.avoid.length ? v.avoid.join('/') : 'nothing'}`).join('; ')}). Unvisited beacons first, then the best expected arrival pay per fuel minus a price on the beacon's fight share. Events are resolved with the strategy's pickExploreChoice policy; Explore fights (beacon or event) use the same disciplined crew captain and concede when downed (Explore never spends the Rally). Explore actions are ledgered in explore:* buckets.`, '',
+    'Not modeled: expedition gem skips; a second check-in the same day. Injuries from a same-instant claim still block that day\'s away launch (empty_party), as in the baseline. Worst: latest wall arrival and fall, most attempts and near-miss losses, largest gem buffer at the wall (least need for a wall pack), fewest gems earned, most gems spent, most repair credits, fewest useful sessions/upgrades/walls.', '',
     '| Strategy | Metric | Median | Worst seed | Worst value |', '|---|---|---:|---:|---:|'];
   for (const strategy of strategies) {
     metricRows(lines, runs.filter(r => r.strategy === strategy), strategy, [
@@ -584,7 +720,20 @@ function renderGuidedMarkdown(report) {
       ['Gems spent', r => r.metrics.gemsSpent, true],
       ['End gems', r => r.finalWallet.gems, true],
       ['Hull repair credits', r => r.metrics.hullRepairCredits, true],
+      ['Explore jumps', r => r.metrics.exploreJumps, false],
+      ['Explore events', r => r.metrics.exploreEvents, false],
+      ['Explore fights', r => r.metrics.exploreFights, true],
+      ['Explore net credits', r => r.metrics.exploreCredits, false],
+      ['Explore share of credits earned (%)', r => r.metrics.exploreCreditShare, false],
     ]);
+  }
+  lines.push('', '### Explore per run (fights-first)', '',
+    'Credits, medals and reputation are what explore:* buckets paid (event rewards, fight prizes, instant arrivals) minus Explore credit costs. Stops count the reason each check-in\'s Explore session ended.', '',
+    '| Strategy | Seed | Jumps | Days exploring | Events | Fights (won) | Downed | Beacons | Sectors | Fuel | Net credits | Medals | Reputation | Stops |',
+    '|---|---:|---:|---:|---:|---|---:|---:|---|---:|---:|---:|---:|---|');
+  for (const run of runs) {
+    const x = run.explore;
+    lines.push(`| ${run.strategy} | ${run.seed} | ${x.jumps} | ${x.days} | ${x.events} | ${x.fights} (${x.fightWins}) | ${x.downed} | ${x.beacons} | ${x.sectors.join(', ') || '—'} | ${x.spent.fuel} | ${x.netCredits} | ${x.earned.medals} | ${x.earned.reputation} | ${Object.entries(x.stops).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k} ${v}`).join(', ')} |`);
   }
   lines.push('', '### Walls per run (fights-first)', '',
     '| Strategy | Seed | Captain | Wall | Arrival day | Gems at arrival | Attempts | Attempt days | Attempts / attempt day | Fell on day | Days to break | Losses | Near-miss losses | Rally free/paid | Wall-pack offer |',
@@ -768,7 +917,7 @@ export function auditExploreEvents({ startAt = ECONOMY_START } = {}) {
 
 function renderExploreMarkdown(explore) {
   const lines = ['## Explore events (FTL-lite phase 3)', '',
-    `Added 2026-10-04. Explore arrivals that used to pay instantly (trade, delivery, salvage, story) now open authored events. This audit resolves every event at every beacon and non-combat outcome it fits (${explore.combos} combinations, ${explore.templates} events) through the production resolver, ${explore.rollSeeds} roll seeds each, for a settled captain at Spur Anchor with the starter crew aboard (roles: ${explore.crewRoles.join(', ')}). Role choices for roles outside that crew are unavailable, as they would be in play. The 30-day runs above still do not jump on the map; their contract route choices go through the new route-event cards with the strategy's existing route policy, so their numbers are unchanged.`, '',
+    `Added 2026-10-04. Explore arrivals that used to pay instantly (trade, delivery, salvage, story) now open authored events. This audit resolves every event at every beacon and non-combat outcome it fits (${explore.combos} combinations, ${explore.templates} events) through the production resolver, ${explore.rollSeeds} roll seeds each, for a settled captain at Spur Anchor with the starter crew aboard (roles: ${explore.crewRoles.join(', ')}). Role choices for roles outside that crew are unavailable, as they would be in play. Since 2026-10-05 the guided 30-day runs above also jump on the map with these same policies (see Explore per run); their contract route choices go through the route-event cards with the strategy's existing route policy.`, '',
     'Policies use only what the card shows. cautious: fewest risky outcomes, then best expected pay. balanced: best expected value (pay minus costs, 4 credits per hull point, 40 per injury, 30 per fight). ambitious: highest single-outcome ceiling. Credit ratio is credits paid minus credit costs, divided by what the same arrivals paid instantly before events (1.00 = unchanged). Fights opened by events pay the beacon\'s normal fight prize on top (not counted here).', '',
     '| Policy | Credit ratio | Medal ratio | Fight % | Injury % | Hull / event | Fuel / event | Hires |', '|---|---:|---:|---:|---:|---:|---:|---:|'];
   for (const [policy, s] of Object.entries(explore.byPolicy)) {
