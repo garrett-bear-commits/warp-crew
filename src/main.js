@@ -53,7 +53,8 @@ import { cancelCrewDeparture, holdCrewForDeparture, moveCrewToDeparture, holdCre
 import { playLaunch } from './ui/spaceFlight.js';
 import { playCombat, playEncounterBeat, isBattlePlaying } from './ui/combatView.js';
 import { createGuidedBeatScheduler } from './ui/guidedBeatScheduler.js';
-import { sfx } from './ui/juice.js';
+import { sfx, unlockSfx } from './ui/juice.js';
+import { toggleSfxMuted, preloadSfx } from './ui/sound.js';
 import { startStageLoop } from './ui/stageLoop.js';
 import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
@@ -520,9 +521,10 @@ function render() {
         }
         tab = t;
         selectedRoom = null;
+        sfx('tap');
         render();
       },
-      onAction: handleAction,
+      onAction: userAction,
     },
   });
 }
@@ -639,8 +641,44 @@ function res0Blocked(sku, now = trustedNow()) {
   return false;
 }
 
+// Interface sounds for taps. Fight orders and travel make their own sounds from their effects.
+const QUIET_TAP_ACTS = new Set(['encounter-advance', 'encounter-order', 'sfx-toggle', 'travel-to', 'map-select']);
+const CONFIRM_ACTS = new Set(['contract-accept', 'exp-launch', 'exp-start', 'event-choose', 'ship-upgrade', 'level-crew',
+  'daily-improve', 'captain-choose', 'tutorial-fight-start', 'combat-order', 'contract-order']);
+const COIN_ACTS = new Set(['contract-claim', 'travel-claim', 'refuel-gems']);
+
+/** Actions from the player's own taps: sound, then the shared handler. */
+async function userAction(act, data = {}) {
+  unlockSfx();
+  if (act === 'map-select') sfx('beacon');
+  else if (!QUIET_TAP_ACTS.has(act)) sfx(CONFIRM_ACTS.has(act) ? 'confirm' : 'tap');
+  const result = await handleAction(act, data);
+  if (result?.ok === false) sfx('error');
+  else if (result?.ok && COIN_ACTS.has(act)) sfx('coin', { delay: 0.08 });
+  return result;
+}
+
+/** Sounds for a committed session effect (fights voice their own beats in combatView). */
+function effectSound(act, effect) {
+  const travelled = act === 'travel-to';
+  if (effect.kind === 'launch') sfx('launch');
+  else if (effect.kind === 'crew-arrival' || effect.kind === 'expedition') sfx('arrive');
+  else if (effect.kind === 'event-open') { if (travelled) sfx('jump'); sfx('card', { delay: travelled ? 0.55 : 0 }); }
+  else if (effect.kind === 'travel') { if (travelled) sfx('jump'); if (effect.result?.rewards) sfx('coin', { delay: travelled ? 0.6 : 0 }); }
+  else if (effect.kind === 'encounter-beat' && !effect.events?.length && !effect.outcome) {
+    if (travelled) sfx('jump');
+    sfx('lock', { delay: travelled ? 0.5 : 0 });
+  }
+}
+
 async function handleAction(act, data = {}) {
   if (isBattlePlaying()) return;
+  if (act === 'sfx-toggle') {
+    const muted = toggleSfxMuted();
+    if (!muted) sfx('tap');
+    render();
+    return;
+  }
   if (act === 'restart-save') {
     if (tab !== 'log' || isTutorialActive(player)) return;
     confirmRestartSave = true;
@@ -726,6 +764,7 @@ async function handleAction(act, data = {}) {
       },
       capture: captureEvent,
       animate: (effect) => {
+        effectSound(act, effect);
         if ((effect.kind === 'travel' || effect.kind === 'combat') && effect.result) logTravelResult(effect.result);
         if (effect.kind === 'launch') {
           playLaunch({ onDone: () => { if (shipSequence === 'launch') shipSequence = null; render(); } });
@@ -1119,6 +1158,8 @@ export function mountWarpCrew(rootEl) {
   const gen = ++mountId;
   app = rootEl;
   startStageLoop();
+  // Sound files load after first paint and never hold up boot.
+  setTimeout(() => { if (mountId === gen) preloadSfx(); }, 1500);
   boot().catch((err) => {
     if (mountId !== gen) return;
     console.error(err);

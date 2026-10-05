@@ -13,6 +13,10 @@ const NOSE = toWorld(SPARROW_LAYOUT.anchors.nose);
 const ENEMY_STATION = toWorld({ x: 89.4, y: 13.9 });
 const ENEMY_SPAWN = toWorld({ x: 95.5, y: -5.8 });
 import { STATIONS } from '../systems/stations.js';
+import { RULES as FTL_RULES } from '../systems/ftlCombat.js';
+
+// Our hull at or under this sounds the alarm when hit (matches the HUD's low-hull tint).
+const HULL_ALARM_AT = FTL_RULES.playerHullMax * 0.3;
 
 let canvas = null;
 let stageEl = null;
@@ -168,9 +172,39 @@ export function playFtlBeat(events = []) {
     }
     ftlShots.push({ ...event, at: ftlClock + (event.t || 0) / 1000, travel: 0.32, done: false });
   }
-  if (events.some(event => event.type === 'shot')) setTimeout(() => sfx('pew'), 40);
-  if (events.some(event => event.type === 'result' && event.result === 'win')) { sfx('boom'); addTrauma(0.6); setTimeout(() => sfx('win'), 300); }
-  if (events.some(event => event.type === 'fire_start' && event.side === 'player')) sfx('hit');
+  if (events.some(event => event.type === 'result' && event.result === 'win')) addTrauma(0.6);
+  playFtlBeatSounds(events, reduced);
+}
+
+const shotSound = shot => shot.from === 'player' ? (shot.weapon === 'heavy' ? 'shot_heavy' : 'shot_burst') : 'shot_enemy';
+const landSound = shot => shot.outcome === 'shield' ? 'shield'
+  : shot.outcome === 'hit' ? (shot.from === 'player' ? 'hit_enemy' : 'hit') : null;
+
+/** Sounds for one beat. With motion, shots sound from drawFtl as their bolts launch and land. */
+function playFtlBeatSounds(events, reduced) {
+  const at = event => ({ delay: Math.max(0, event.t || 0) / 1000 });
+  let hullHit = null;
+  for (const event of events) {
+    if (event.type === 'shot') {
+      if (event.from === 'enemy' && event.outcome === 'hit') hullHit = hullHit || event;
+      if (!reduced) continue;
+      sfx(shotSound(event), at(event));
+      const land = landSound(event);
+      if (land) sfx(land, { delay: at(event).delay + 0.12 });
+    } else if (event.type === 'fire_start' && event.side === 'player') sfx('fire', at(event));
+    else if (event.type === 'fire_out' && event.side === 'player') sfx('fire_out', at(event));
+    else if (event.type === 'boarders_incoming') sfx('clamp');
+    else if (event.type === 'boarders_landed') sfx('boarders');
+    else if (event.type === 'boarders_repelled') sfx('confirm', at(event));
+    else if (event.type === 'order') sfx(event.order === 'burn' ? 'overcharge' : event.order === 'board' ? 'board' : event.order === 'rally' ? 'rally' : 'confirm');
+    else if (event.type === 'boarding') sfx(event.success ? 'boom' : 'hit', { delay: 0.25 });
+    else if (event.type === 'downed') { sfx('hull_down', at(event)); sfx('alarm', { delay: at(event).delay + 0.6 }); }
+    else if (event.type === 'result' && event.result === 'win') { sfx('boom', at(event)); sfx('win', { delay: at(event).delay + 0.35 }); }
+    else if (event.type === 'result' && event.result === 'loss') sfx('hull_down', at(event));
+  }
+  // Hull critical: one alarm when a hit lands while the hull is low (the alarm's own gap keeps it from nagging).
+  const enc = crewEncounter;
+  if (hullHit && enc && !enc.result && enc.phase === 'combat' && enc.hull <= HULL_ALARM_AT) sfx('alarm', { delay: at(hullHit).delay + 0.45 });
 }
 
 function drawFtl(g, camera, dt) {
@@ -180,6 +214,7 @@ function drawFtl(g, camera, dt) {
   for (const shot of ftlShots) {
     const progress = (ftlClock - shot.at) / shot.travel;
     if (progress < 0) continue;
+    if (!shot.voiced) { shot.voiced = true; sfx(shotSound(shot)); }
     const ally = shot.from === 'player';
     const from = ally ? ship('weapons') : { x: enemyRoomX('weapons'), y: -24 };
     const to = ally ? { x: enemyRoomX(shot.room), y: -24 }
@@ -187,15 +222,14 @@ function drawFtl(g, camera, dt) {
     if (progress >= 1) {
       if (!shot.done) {
         shot.done = true;
+        if (landSound(shot)) sfx(landSound(shot));
         if (ally) {
           flashEnemyRoom(shot.room, shot.outcome);
-          if (shot.outcome === 'hit') sfx('hit');
         } else if (shot.outcome === 'shield') {
           ftlRipples.push({ x: to.x, y: to.y, life: 0.45 });
         } else if (shot.outcome === 'hit') {
           addTrauma(0.32);
           hitstop(0.04);
-          sfx('hit');
           for (let i = 0; i < 16; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = 60 + Math.random() * 170;
