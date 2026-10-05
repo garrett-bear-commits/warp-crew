@@ -85,6 +85,7 @@ function noteVisit(player, nodeId) {
 
 export function commitTravel(player, preview, { assistsUsed = [], orderId = null, rng = Math.random } = {}) {
   if (!preview?.ok) return { ok: false, reason: preview?.reason || 'bad_preview' };
+  if (gateBlockedByWall(player, preview.node?.id)) return { ok: false, reason: 'siege_wall' };
 
   const order = orderId == null ? null : previewCombatOrder({
     playerPower: preview.playerPower, enemyPower: preview.encounter?.power,

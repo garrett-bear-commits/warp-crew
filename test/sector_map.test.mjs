@@ -161,5 +161,12 @@ assert.equal(sessionModels(vet, { missionView: 'explore', selectedMapNode: 'lane
   assert.equal(acceptContract({ ...walled, contractBoard: board }, 'o1').reason, 'siege_wall', 'no contract to a walled gate');
   const { previewTravel } = await import('../src/systems/travel.js');
   assert.equal(previewTravel(walled, 'veil_gate').reason, 'siege_wall', 'the shared travel preview refuses a walled gate');
+  // Even a forged preview cannot commit a jump or open an event there.
+  const { commitTravel } = await import('../src/systems/travel.js');
+  const { openTravelEvent } = await import('../src/systems/travelEvents.js');
+  const { NODES } = await import('../src/data/sectors.js');
+  const forged = { ok: true, node: NODES.veil_gate, fuelCost: 2, outcome: { kind: 'story', flag: 'veil_opened' } };
+  assert.equal(commitTravel(walled, forged).reason, 'siege_wall');
+  assert.equal(openTravelEvent(walled, forged).ok, false);
 }
 console.log('sector_map.test.mjs OK');

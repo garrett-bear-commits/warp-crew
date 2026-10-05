@@ -74,6 +74,7 @@ export function eventEncounterFor(node) {
 /** Spend the jump fuel and open the event card. */
 export function openTravelEvent(player, preview, now = Date.now()) {
   if (!preview?.ok || !preview.node || !arrivalOpensEvent(player, preview.node, preview.outcome)) return { ok: false, reason: 'bad_preview', player };
+  if (gateBlockedByWall(player, preview.node.id)) return { ok: false, reason: 'siege_wall', player };
   if (player.activeContract) return { ok: false, reason: 'active_contract', player };
   if (player.activeTravelFight || player.activeEncounter) return { ok: false, reason: 'combat_pending', player };
   if (player.activeEvent) return { ok: false, reason: 'event_active', player };
