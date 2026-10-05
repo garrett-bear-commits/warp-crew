@@ -101541,19 +101541,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -101747,7 +101738,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -101796,7 +101787,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -101813,7 +101804,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -110217,19 +110208,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -110423,7 +110405,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -110472,7 +110454,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -110489,7 +110471,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -118895,19 +118877,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -119101,7 +119074,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -119150,7 +119123,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -119167,7 +119140,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -127584,19 +127557,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -127790,7 +127754,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -127839,7 +127803,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -127856,7 +127820,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -136308,19 +136272,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -136514,7 +136469,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -136563,7 +136518,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -136580,7 +136535,7 @@
               "medals": 8,
               "reputation": 7
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -144994,19 +144949,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -145200,7 +145146,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -145249,7 +145195,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -145266,7 +145212,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -160479,19 +160425,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -160685,7 +160622,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -160734,7 +160671,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -160751,7 +160688,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -176009,19 +175946,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -176215,7 +176143,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -176264,7 +176192,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -176281,7 +176209,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -191892,19 +191820,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -192098,7 +192017,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -192147,7 +192066,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -192164,7 +192083,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -207774,19 +207693,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -207980,7 +207890,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 3,
+            "fightSteps": 16,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -208029,7 +207939,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "endHull": 100,
+            "endHull": 98,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -208046,7 +207956,7 @@
               "medals": 14,
               "reputation": 4
             },
-            "startHull": 100,
+            "startHull": 98,
             "actions": [
               {
                 "action": "contract-review",
@@ -223633,19 +223543,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -223841,7 +223742,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 46,
+            "fightSteps": 59,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -223890,7 +223791,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "endHull": 88,
+            "endHull": 86,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -223907,7 +223808,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "startHull": 88,
+            "startHull": 86,
             "actions": [
               {
                 "action": "contract-review",
@@ -233113,19 +233014,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -233321,7 +233213,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 46,
+            "fightSteps": 59,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -233370,7 +233262,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "endHull": 86,
+            "endHull": 84,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -233387,7 +233279,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "startHull": 86,
+            "startHull": 84,
             "actions": [
               {
                 "action": "contract-review",
@@ -242812,19 +242704,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -243020,7 +242903,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 46,
+            "fightSteps": 59,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -243069,7 +242952,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "endHull": 88,
+            "endHull": 86,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -243086,7 +242969,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "startHull": 88,
+            "startHull": 86,
             "actions": [
               {
                 "action": "contract-review",
@@ -257572,19 +257455,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -257780,7 +257654,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 46,
+            "fightSteps": 59,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -257829,7 +257703,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "endHull": 86,
+            "endHull": 84,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -257846,7 +257720,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "startHull": 86,
+            "startHull": 84,
             "actions": [
               {
                 "action": "contract-review",
@@ -278861,19 +278735,10 @@
                 "ok": true
               },
               {
-                "action": "encounter-order",
-                "fields": {
-                  "acceptanceId": "contract_2026-09-22_distress:1",
-                  "revision": 1,
-                  "order": "target_weapons"
-                },
-                "ok": true
-              },
-              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 6,
+                  "revision": 17,
                   "acceptanceId": "contract_2026-09-22_distress:1"
                 },
                 "ok": true
@@ -279069,7 +278934,7 @@
             "gemSpends": [],
             "repairs": [],
             "loginRewardHeld": true,
-            "fightSteps": 46,
+            "fightSteps": 59,
             "affordabilityGaps": [
               {
                 "system": "engines",
@@ -279118,7 +278983,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "endHull": 88,
+            "endHull": 86,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -279135,7 +279000,7 @@
               "medals": 13,
               "reputation": 6
             },
-            "startHull": 88,
+            "startHull": 86,
             "actions": [
               {
                 "action": "contract-review",

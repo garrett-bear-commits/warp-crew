@@ -185,8 +185,10 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       act('station-assign', { id: hired.instanceId, station: hired.templateId === 'merc_bolt' ? 'shields' : 'weapons' });
       act('tutorial-fight-start');
       const ident = () => ({ acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision });
-      act('encounter-order', { ...ident(), order: 'target_weapons' });
-      for (let beat = 0; beat < 40 && player.tutorial.phase === 'fight'; beat++) if (!act('encounter-advance', ident())) break;
+      // The guided first fight: v3 asks the captain to target their Weapons room; saves from before used the v2 order.
+      if (player.activeEncounter?.version === FTL_VERSION) act('encounter-command', { ...ident(), command: { type: 'target', room: 'weapons' } });
+      else act('encounter-order', { ...ident(), order: 'target_weapons' });
+      for (let beat = 0; beat < MAX_FIGHT_BEATS && player.tutorial.phase === 'fight'; beat++) if (!act('encounter-advance', ident())) break;
       act('contract-claim', contractIdentity(player, { action: 'claim' }));
       act('tutorial-name', { name: 'Sparrow' });
       act('tutorial-welcome-pull');

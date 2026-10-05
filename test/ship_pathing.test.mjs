@@ -26,8 +26,9 @@ const authored = pathRooms('sensors', 'engineering');
 const expectedAuthored = [
   { x: 43.2, y: 42, room: 'sensors', via: 'door-exit' },
   { x: 50, y: 42, room: null, via: 'spine' },
-  { x: 50, y: 80, room: null, via: 'spine' },
-  { x: 45.5, y: 80, room: 'engineering', via: 'door-enter' },
+  // Engineering's door is at the top of the bay, where the spine ends (not through the reactor column).
+  { x: 50, y: 73.8, room: null, via: 'spine' },
+  { x: 50, y: 75.6, room: 'engineering', via: 'door-enter' },
 ];
 if (JSON.stringify(authored) !== JSON.stringify(expectedAuthored)) {
   throw new Error(`authored route ${JSON.stringify(authored)}`);
