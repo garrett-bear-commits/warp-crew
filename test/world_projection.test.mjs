@@ -3,8 +3,9 @@ import { effectScreenPoint, visibleLandmarks, worldProjection } from '../src/ui/
 import { makeCamera } from '../src/ui/shipCamera.js';
 import { attachCombat, playCombat } from '../src/ui/combatView.js';
 import { stopStageLoop } from '../src/ui/stageLoop.js';
+import { HULL_PX, SPARROW_LAYOUT, worldPoint } from '../src/data/starterShip.js';
 
-const base = { x: 0, y: 0, scale: 1, viewport: { w: 390, h: 620 }, world: { w: 1152, h: 1728 } };
+const base = { x: 0, y: 0, scale: 1, viewport: { w: 390, h: 620 }, world: HULL_PX };
 const fx = { worldX: 100, worldY: 150 };
 
 assert.deepEqual(worldProjection(base, { x: 100, y: 150 }), { x: 100, y: 150 });
@@ -35,7 +36,7 @@ globalThis.window = { devicePixelRatio: 1, addEventListener() {} };
 globalThis.ResizeObserver = class { observe() {} };
 globalThis.requestAnimationFrame = () => 1;
 globalThis.cancelAnimationFrame = () => {};
-let camera = makeCamera({ w: 390, h: 620 }, { w: 1152, h: 1728 }, { x: 400, y: 1400 }, 0.9);
+let camera = makeCamera({ w: 390, h: 620 }, HULL_PX, { x: HULL_PX.w * 0.35, y: HULL_PX.h * 0.81 }, 0.9);
 const closeScale = camera.scale;
 let cameraSets = 0;
 const combatCanvas = {
@@ -50,7 +51,9 @@ attachCombat(combatCanvas, { style: {} }, () => camera, next => {
 playCombat({ preview: { encounter: { name: 'Pirate Scout' } }, win: true });
 assert.equal(cameraSets, 1, 'combat applies a camera overview before drawing');
 assert.ok(camera.scale < closeScale, 'battle starts at a wider scale than a close station view');
-for (const point of [{ worldX: 576, worldY: 121 }, { worldX: 1030, worldY: 240 }]) {
+const nose = worldPoint(SPARROW_LAYOUT.anchors.nose);
+const station = worldPoint({ x: 89.4, y: 13.9 });
+for (const point of [{ worldX: nose.x, worldY: nose.y }, { worldX: station.x, worldY: station.y }]) {
   const screen = effectScreenPoint(camera, point);
   assert.ok(screen.x >= 55 && screen.x <= 335 && screen.y >= 40 && screen.y <= 580,
     `both combat anchors fit inside safe screen bounds: ${JSON.stringify(screen)}`);

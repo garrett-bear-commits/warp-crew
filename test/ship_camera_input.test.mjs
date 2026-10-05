@@ -1,3 +1,4 @@
+import { HULL_PX } from '../src/data/starterShip.js';
 import assert from 'node:assert/strict';
 import { createCameraController } from '../src/ui/shipCameraController.js';
 import { guidedStationTap } from '../src/ui/bridge.js';
@@ -15,7 +16,7 @@ function setup(scale = 0.25, cameraDisabled = false) {
     classList: { contains(name) { return cameraDisabled && name === 'camera-disabled'; } },
   };
   let camera = { x: 0, y: 0, scale, minScale: 0.2, maxScale: 2,
-    viewport: { w: 390, h: 620 }, world: { w: 1152, h: 1728 } };
+    viewport: { w: 390, h: 620 }, world: HULL_PX };
   const taps = [];
   const gestures = [];
   const control = createCameraController({ surface, getCamera: () => camera,
@@ -160,6 +161,6 @@ console.log('ship_camera_input.test.mjs OK');
 
 const assignment = { tutorial: { script: 5, phase: 'assign', firstHireInstanceId: 'jen-1' },
   crew: [{ instanceId: 'jen-1', templateId: 'merc_jen' }] };
-assert.deepEqual(guidedStationTap(assignment, 'workshop', 0.2, 0.2), { kind: 'focus', room: 'workshop' });
-assert.deepEqual(guidedStationTap(assignment, 'workshop', 0.5, 0.2), { kind: 'assign', id: 'jen-1', station: 'weapons' });
+assert.deepEqual(guidedStationTap(assignment, 'weapons', 0.2, 0.2), { kind: 'focus', room: 'weapons' });
+assert.deepEqual(guidedStationTap(assignment, 'weapons', 0.5, 0.2), { kind: 'assign', id: 'jen-1', station: 'weapons' });
 assert.equal(guidedStationTap(assignment, 'bridge', 0.5, 0.2), null);

@@ -63,7 +63,8 @@ import { cloudEnabled, fetchCloudSave, pushCloudSave, verifyReceipt, verifySubsc
 import { refreshCommission, subscribeCommission, cancelCommission, acceptRetention, claimCommissionDaily, syncCommission, usableTerms } from './systems/subscription.js';
 import { chooseSave, applyLedger, withPurchaseSkus } from './systems/cloudSync.js';
 import { currentWall } from './systems/walls.js';
-import { applyResolvedSlicePortraits } from './data/portraits.js';
+import { applyResolvedSlicePortraits, SPACE_ART } from './data/portraits.js';
+import { canonicalRoomId } from './data/starterShip.js';
 
 let app = null;
 let mountId = 0;
@@ -384,7 +385,7 @@ async function boot() {
   const sliceKeys = ['splash', 'rex', 'bolt', 'kira', 'tink', 'nemi'];
   const essentials = sliceKeys
     .map(key => ({ src: artUrl(ART_VERTICAL_SLICE[key].path), fallback: artUrl(ART_VERTICAL_SLICE[key].fallback) }));
-  essentials.push({ src: artUrl('art/space/sparrow-hull-v3.png'), fallback: artUrl('art/pixel/ships/sparrow-cutaway.jpg') });
+  essentials.push({ src: SPACE_ART.hull, fallback: artUrl('art/pixel/ships/sparrow-cutaway.jpg') });
   const essentialP = preloadEssentialAssets(essentials, loadEssentialImage, progress => {
     essentialProgress = progress;
     setLoadingProgress(progress);
@@ -759,7 +760,8 @@ async function handleAction(act, data = {}) {
     return committed;
   }
   if (act === 'select-room') {
-    selectedRoom = selectedRoom === data.room ? null : data.room;
+    const room = canonicalRoomId(data.room);
+    selectedRoom = selectedRoom === room ? null : room;
     render();
     return;
   }

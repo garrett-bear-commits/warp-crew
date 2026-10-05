@@ -70,7 +70,7 @@ assert.deepEqual(normalizeAssignments(migrated), { [rex.instanceId]: null, [bolt
 assert.deepEqual(migrated.crew.map(c => c.instanceId), player.crew.map(c => c.instanceId));
 
 // Catches a visible station that disagrees with the authoritative selector or room mapping.
-const shieldsRoom = ROOMS.find(room => room.id === 'operations');
+const shieldsRoom = ROOMS.find(room => room.id === 'shields');
 const sheet = renderRoomSheet(assigned.player, shieldsRoom, {}, now);
 assert.match(sheet, /Bolt/);
 assert.match(sheet, /Shields output: 100 \+ 10 = 110/);
@@ -84,7 +84,7 @@ const crewPanel = renderCrew(player, now);
 assert.match(crewPanel, new RegExp(`data-id="${bolt.instanceId}" data-station="helm"[^>]*>Helm 100 [(][-]10[)]</button>`));
 assert.match(crewPanel, new RegExp(`data-id="${bolt.instanceId}" data-station="shields"[^>]*>Shields 110 [(][+]10[)]</button>`));
 const targets = crewTargetStates(assigned.player);
-assert.equal(targets.find(target => target.crewInstanceId === bolt.instanceId)?.roomId, 'operations');
+assert.equal(targets.find(target => target.crewInstanceId === bolt.instanceId)?.roomId, 'shields');
 assert.equal(targets.find(target => target.crewInstanceId === rex.instanceId)?.roomId, 'bridge');
 const medic = createCrewInstance('merc_moss', { instanceId: 'medic_station_test' });
 const medbay = ROOMS.find(room => room.id === 'medbay');

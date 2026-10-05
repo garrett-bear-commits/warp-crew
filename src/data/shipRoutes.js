@@ -46,6 +46,12 @@ function pathSegment(from, to, room, via, nextRoom) {
   }));
 }
 
+function inAirlockPassage(point) {
+  const passage = SPARROW_LAYOUT.halls.find((hall) => hall.id === 'airlock');
+  return Boolean(passage) && point.x >= passage.left && point.x <= passage.left + passage.width
+    && point.y >= passage.top && point.y <= passage.top + passage.height;
+}
+
 /** Return a walk to the room's work marker, or an explicit disconnected result. */
 export function routeToWorkAnchor(from, roomId) {
   const target = SPARROW_LAYOUT.rooms.find((room) => room.id === roomId);
@@ -53,8 +59,7 @@ export function routeToWorkAnchor(from, roomId) {
   if (!isWalkablePct(from.x, from.y)) return disconnected();
   // An actor keeps its last room identity while crossing the hall. The
   // physical position is authoritative when selecting the next doorway.
-  const source = roomAtExact(from.x, from.y);
-  const sourceId = source?.id || 'spine';
+  let source = roomAtExact(from.x, from.y);
 
   const points = [];
   let current = { x: from.x, y: from.y };
@@ -67,6 +72,14 @@ export function routeToWorkAnchor(from, roomId) {
     room = nextRoom;
     return true;
   };
+
+  // The airlock passage opens only into Cargo: step aboard there first.
+  if (!source && inAirlockPassage(from)) {
+    const cargo = SPARROW_LAYOUT.rooms.find((candidate) => candidate.id === 'cargo');
+    if (!cargo || !append(SPARROW_LAYOUT.anchors.cargoDeparture, 'airlock-enter', cargo.id)) return disconnected();
+    source = cargo;
+  }
+  const sourceId = source?.id || 'spine';
 
   if (sourceId !== target.id) {
     const graphPath = graphRoute(sourceId, target.id);

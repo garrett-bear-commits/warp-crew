@@ -6,7 +6,7 @@ import {
 
 const bridge = SPARROW_LAYOUT.rooms.find((room) => room.id === 'bridge');
 const clip = polygonCss(bridge.hitPolygon);
-if (clip !== 'polygon(38% 10%, 62% 10%, 62% 23%, 38% 23%)') {
+if (clip !== 'polygon(34.1% 13.6%, 65.9% 13.6%, 65.9% 21.1%, 34.1% 21.1%)') {
   throw new Error(`bridge clip ${clip}`);
 }
 

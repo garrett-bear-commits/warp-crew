@@ -78,7 +78,7 @@ export function renderFtlShipMarkers(view, { selectedCrewId = null } = {}) {
     const boarded = view.boarders?.phase === 'aboard' && view.boarders.room === room.id;
     const status = `${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${boarded ? icon('boarders', 'boarders') : ''}${incoming.has(room.id) && live(view) ? icon('reticle', 'incoming') : ''}`;
     const marker = `<div class="ftl-room-marker${room.offline ? ' is-offline' : room.damaged ? ' is-damaged' : ''}${room.fire ? ' is-burning' : ''}" style="left:${shipRoom.labelAnchor.x}%;top:${shipRoom.labelAnchor.y}%" aria-hidden="true">${status}</div>`;
-    const move = selected ? `<button type="button" class="ftl-move-target" style="${roomStyle(shipRoom)}" data-act="encounter-command" data-command-type="move" data-crew-id="${e(selected.id)}" data-room="${e(room.id)}" ${identity(view)} aria-label="Send ${e(selected.name)} to ${e(room.label)}"><span>${e(room.label)}</span></button>` : '';
+    const move = selected ? `<button type="button" class="ftl-move-target" style="${roomStyle(shipRoom)}" data-act="encounter-command" data-command-type="move" data-crew-id="${e(selected.id)}" data-room="${e(room.id)}" ${identity(view)} aria-label="Send ${e(selected.name)} to ${e(shipRoom.label)}"><span>${e(shipRoom.label)}</span></button>` : '';
     return marker + move;
   }).join('');
 }

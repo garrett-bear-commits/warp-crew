@@ -1,9 +1,41 @@
 // @ts-nocheck
-/** Sparrow cutaway geometry in percentages of sparrow-hull-v3.png. */
+/**
+ * Sparrow cutaway geometry, driven by the measured Sparrow v4 layout
+ * (src/data/art/sparrowV4Layout.json). Everything here is in percentages of
+ * the hull image; HULL_PX is the one source for the world size in pixels.
+ */
+import LAYOUT from './art/sparrowV4Layout.json' with { type: 'json' };
 
-export const HULL_PX = { w: 1152, h: 1728 };
+export const HULL_IMAGE = LAYOUT.image;
+export const HULL_PX = Object.freeze({ w: LAYOUT.sourceSize.width, h: LAYOUT.sourceSize.height });
+
+/** Percent point on the hull image -> world pixels inside the ship layer. */
+export function worldPoint(point) {
+  return { x: (point.x / 100) * HULL_PX.w, y: (point.y / 100) * HULL_PX.h };
+}
 
 const SHIP_SYSTEMS = new Set(['engines', 'shields', 'cargo', 'weapons', 'quarters', 'sensors', 'medbay']);
+
+// Game meaning of each cutaway room (geometry comes from the layout JSON).
+const ROOM_META = {
+  bridge: { role: 'pilot' },
+  shields: { system: 'shields' },
+  weapons: { system: 'weapons', role: 'gunner' },
+  sensors: { system: 'sensors', role: 'scout' },
+  medbay: { system: 'medbay', role: 'medic' },
+  quarters: { system: 'quarters' },
+  mess: {},
+  cargo: { system: 'cargo', role: 'trader' },
+  armory: { role: 'security' },
+  engineering: { system: 'engines', role: 'engineer' },
+};
+
+/** Room ids from the v3 hull. Nothing persisted names a cutaway room, but stale UI input may. */
+export const LEGACY_ROOM_IDS = Object.freeze({ operations: 'sensors', workshop: 'weapons', stores: 'armory' });
+
+export function canonicalRoomId(id) {
+  return typeof id === 'string' && Object.hasOwn(LEGACY_ROOM_IDS, id) ? LEGACY_ROOM_IDS[id] : id;
+}
 
 const rectPolygon = (left, top, width, height) => [
   { x: left, y: top },
@@ -12,28 +44,17 @@ const rectPolygon = (left, top, width, height) => [
   { x: left, y: top + height },
 ];
 
-const room = ({
-  id,
-  label,
-  system = null,
-  role = null,
-  left,
-  top,
-  width,
-  height,
-  workAnchor,
-  doorId,
-}) => ({
+const room = ({ id, label, left, top, width, height, workAnchor }) => ({
   id,
   name: label,
   label,
-  system,
-  role,
+  system: ROOM_META[id]?.system || null,
+  role: ROOM_META[id]?.role || null,
   hitPolygon: rectPolygon(left, top, width, height),
   walkBounds: { left, top, width, height },
-  workAnchor,
+  workAnchor: { ...workAnchor },
   labelAnchor: { x: left + width / 2, y: top + height / 2 },
-  doorId,
+  doorId: `door_${id}`,
   left,
   top,
   w: width,
@@ -42,56 +63,44 @@ const room = ({
   walkY: workAnchor.y,
 });
 
+const rooms = LAYOUT.rooms.map(room);
+const cargoRoom = rooms.find((candidate) => candidate.id === 'cargo');
+const airlock = { x: LAYOUT.airlock.x, y: LAYOUT.airlock.y };
+// The airlock hatch sits on the port hull beside Cargo: a short passage joins them.
+const AIRLOCK_PASSAGE_HALF_H = 1.6;
+const airlockPassage = {
+  id: 'airlock',
+  left: airlock.x - 1.5,
+  top: airlock.y - AIRLOCK_PASSAGE_HALF_H,
+  width: cargoRoom.left + 3 - (airlock.x - 1.5),
+  height: AIRLOCK_PASSAGE_HALF_H * 2,
+};
+
 export const SPARROW_LAYOUT = {
+  image: HULL_IMAGE,
   sourceSize: { width: HULL_PX.w, height: HULL_PX.h },
-  rooms: [
-    room({ id: 'bridge', label: 'Bridge', role: 'pilot', left: 38, top: 10, width: 24, height: 13, workAnchor: { x: 56, y: 20 }, doorId: 'door_bridge' }),
-    room({ id: 'operations', label: 'Operations', system: 'sensors', role: 'scout', left: 28, top: 25, width: 19, height: 14, workAnchor: { x: 43, y: 35 }, doorId: 'door_operations' }),
-    room({ id: 'medbay', label: 'Medbay', system: 'medbay', role: 'medic', left: 54, top: 25, width: 19, height: 14, workAnchor: { x: 58, y: 35 }, doorId: 'door_medbay' }),
-    room({ id: 'quarters', label: 'Quarters', system: 'quarters', left: 27, top: 40, width: 20, height: 14, workAnchor: { x: 45, y: 52 }, doorId: 'door_quarters' }),
-    room({ id: 'workshop', label: 'Workshop', system: 'weapons', role: 'gunner', left: 54, top: 40, width: 20, height: 14, workAnchor: { x: 64, y: 51 }, doorId: 'door_workshop' }),
-    room({ id: 'cargo', label: 'Cargo Hold', system: 'cargo', role: 'trader', left: 25, top: 56, width: 22, height: 16, workAnchor: { x: 45, y: 69 }, doorId: 'door_cargo' }),
-    room({ id: 'mess', label: 'Mess', left: 54, top: 56, width: 21, height: 16, workAnchor: { x: 56, y: 69 }, doorId: 'door_mess' }),
-    room({ id: 'stores', label: 'Stores', system: 'cargo', role: 'security', left: 24, top: 73, width: 23, height: 13, workAnchor: { x: 45, y: 84 }, doorId: 'door_stores' }),
-    room({ id: 'engineering', label: 'Engineering', system: 'engines', role: 'engineer', left: 54, top: 73, width: 22, height: 13, workAnchor: { x: 56, y: 84 }, doorId: 'door_engineering' }),
-  ],
-  doors: [
-    { id: 'door_bridge', roomId: 'bridge', room: { x: 50, y: 22 }, spine: { x: 50, y: 24 } },
-    { id: 'door_operations', roomId: 'operations', room: { x: 47, y: 32 }, spine: { x: 48, y: 32 } },
-    { id: 'door_medbay', roomId: 'medbay', room: { x: 54, y: 32 }, spine: { x: 52, y: 32 } },
-    { id: 'door_quarters', roomId: 'quarters', room: { x: 47, y: 47 }, spine: { x: 48, y: 47 } },
-    { id: 'door_workshop', roomId: 'workshop', room: { x: 54, y: 47 }, spine: { x: 52, y: 47 } },
-    { id: 'door_cargo', roomId: 'cargo', room: { x: 47, y: 64 }, spine: { x: 48, y: 64 } },
-    { id: 'door_mess', roomId: 'mess', room: { x: 54, y: 64 }, spine: { x: 52, y: 64 } },
-    { id: 'door_stores', roomId: 'stores', room: { x: 47, y: 79.5 }, spine: { x: 48, y: 79.5 } },
-    { id: 'door_engineering', roomId: 'engineering', room: { x: 54, y: 79.5 }, spine: { x: 52, y: 79.5 } },
-  ],
+  rooms,
+  doors: LAYOUT.rooms.map((source) => ({
+    id: `door_${source.id}`,
+    roomId: source.id,
+    room: { ...source.door.room },
+    spine: { ...source.door.spine },
+  })),
   halls: [
-    { id: 'spine', left: 47.5, top: 22, width: 5, height: 67 },
+    { id: 'spine', ...LAYOUT.spine },
+    airlockPassage,
   ],
-  blockers: [
-    { id: 'bridge_chair', shape: 'ellipse', x: 50, y: 17.5, rx: 2.5, ry: 4 },
-    { id: 'operations_console', shape: 'rect', left: 28.5, top: 26, width: 12, height: 5 },
-    { id: 'medbay_bed', shape: 'rect', left: 63.2, top: 26.5, width: 6.5, height: 10.5 },
-    { id: 'quarters_bunks', shape: 'rect', left: 28, top: 41, width: 15, height: 10 },
-    { id: 'workshop_counter', shape: 'rect', left: 57, top: 41, width: 15, height: 4 },
-    { id: 'cargo_crates', shape: 'rect', left: 26, top: 57, width: 15, height: 12 },
-    { id: 'mess_table', shape: 'rect', left: 58, top: 58, width: 13, height: 8 },
-    { id: 'stores_crates', shape: 'rect', left: 25, top: 74, width: 14, height: 9 },
-    { id: 'engineering_machine', shape: 'rect', left: 59, top: 74, width: 13, height: 8 },
-  ],
+  // The v4 art has no measured furniture blockers: floor rects and work anchors are the walkable truth.
+  blockers: [],
   effects: {
-    // Nozzle exits measured from sparrow-hull-v3.png alpha: two main bells and two trim nozzles.
-    thrusters: [
-      { x: 28.8, y: 94.0, size: 1 },
-      { x: 70.4, y: 94.0, size: 1 },
-      { x: 41.4, y: 96.2, size: 0.55 },
-      { x: 56.8, y: 96.2, size: 0.55 },
-    ],
+    thrusters: LAYOUT.thrusters.map((thruster) => ({ x: thruster.x, y: thruster.y, size: 1 })),
   },
   anchors: {
-    cargoDeparture: { x: 45, y: 69 },
-    airlock: { x: 47, y: 64 },
+    // Crew leaving step to Cargo's port wall, then out through the airlock.
+    cargoDeparture: { x: cargoRoom.left + 2, y: airlock.y },
+    airlock,
+    // Where the auto-battle (v1/v2) guns fire from: the bow, ahead of the Bridge.
+    nose: { x: 50, y: 5 },
   },
 };
 
@@ -131,11 +140,11 @@ export const DOOR_ROUTE_GRAPH = {
 const HOME_BY_ROLE = {
   pilot: 'bridge',
   engineer: 'engineering',
-  gunner: 'workshop',
+  gunner: 'weapons',
   medic: 'medbay',
   trader: 'cargo',
-  scout: 'operations',
-  security: 'stores',
+  scout: 'sensors',
+  security: 'armory',
 };
 
 export function pointInPolygon(x, y, points) {
@@ -155,7 +164,14 @@ export function roomAtExact(x, y) {
 }
 
 export function roomById(id) {
-  return ROOMS.find((candidate) => candidate.id === id) || ROOMS[0];
+  const key = canonicalRoomId(id);
+  return ROOMS.find((candidate) => candidate.id === key) || ROOMS[0];
+}
+
+/** Room label point in world pixels (markers, camera focus, shot targets). */
+export function roomWorldPoint(roomOrId) {
+  const target = typeof roomOrId === 'string' ? roomById(roomOrId) : roomOrId;
+  return worldPoint(target.labelAnchor);
 }
 
 export function homeRoomId(role) {
@@ -220,21 +236,26 @@ export function roomAt(x, y) {
   return best;
 }
 
+const inPct = (point) => point && point.x >= 0 && point.x <= 100 && point.y >= 0 && point.y <= 100;
+const inRect = (point, rect, slack = 0) => point.x >= rect.left - slack && point.x <= rect.left + rect.width + slack
+  && point.y >= rect.top - slack && point.y <= rect.top + rect.height + slack;
+
 export function validateSparrowLayout() {
   const errors = [];
   const roomIds = new Set();
   const doorIds = new Set();
 
+  if (!(HULL_PX.w > 0 && HULL_PX.h > 0)) errors.push('layout sourceSize missing');
+
   for (const current of ROOMS) {
     if (roomIds.has(current.id)) errors.push(`duplicate room ${current.id}`);
     roomIds.add(current.id);
+    if (!Object.hasOwn(ROOM_META, current.id)) errors.push(`${current.id} has no game meaning`);
     if (!Array.isArray(current.hitPolygon) || current.hitPolygon.length < 3) {
       errors.push(`${current.id} polygon needs at least three points`);
     }
     for (const point of current.hitPolygon || []) {
-      if (point.x < 0 || point.x > 100 || point.y < 0 || point.y > 100) {
-        errors.push(`${current.id} polygon point outside hull`);
-      }
+      if (!inPct(point)) errors.push(`${current.id} polygon point outside hull`);
     }
     if (current.system && !SHIP_SYSTEMS.has(current.system)) {
       errors.push(`${current.id} unknown system ${current.system}`);
@@ -246,21 +267,28 @@ export function validateSparrowLayout() {
     if (!door || door.roomId !== current.id) errors.push(`${current.id} unresolved door ${current.doorId}`);
   }
 
+  for (const id of Object.keys(ROOM_META)) {
+    if (!roomIds.has(id)) errors.push(`layout is missing room ${id}`);
+  }
+
+  const spine = SPARROW_LAYOUT.halls.find((hall) => hall.id === 'spine');
   for (const door of SPARROW_LAYOUT.doors) {
     if (doorIds.has(door.id)) errors.push(`duplicate door ${door.id}`);
     doorIds.add(door.id);
     if (!roomIds.has(door.roomId)) errors.push(`${door.id} unknown room ${door.roomId}`);
     for (const point of [door.room, door.spine]) {
-      if (!point || point.x < 0 || point.x > 100 || point.y < 0 || point.y > 100) {
-        errors.push(`${door.id} coordinate outside hull`);
-      }
+      if (!inPct(point)) errors.push(`${door.id} coordinate outside hull`);
     }
+    if (spine && !inRect(door.spine, spine)) errors.push(`${door.id} spine point off the spine`);
+    const owner = ROOMS.find((candidate) => candidate.id === door.roomId);
+    if (owner && !inRect(door.room, owner.walkBounds, 0.01)) errors.push(`${door.id} room point outside ${door.roomId}`);
   }
 
   for (const [id, anchor] of Object.entries(SPARROW_LAYOUT.anchors || {})) {
-    if (!anchor || anchor.x < 0 || anchor.x > 100 || anchor.y < 0 || anchor.y > 100) {
-      errors.push(`${id} anchor outside hull`);
-    }
+    if (!inPct(anchor)) errors.push(`${id} anchor outside hull`);
+  }
+  for (const [index, thruster] of SPARROW_LAYOUT.effects.thrusters.entries()) {
+    if (!inPct(thruster)) errors.push(`thruster ${index} outside hull`);
   }
 
   for (let i = 0; i < ROOMS.length; i++) {

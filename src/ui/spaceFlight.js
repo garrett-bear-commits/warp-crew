@@ -2,6 +2,7 @@
 import { SPACE_ART } from '../data/portraits.js';
 import { onTick } from './stageLoop.js';
 import { makeCamera } from './shipCamera.js';
+import { HULL_PX } from '../data/starterShip.js';
 
 // Screen-space parallax backdrop. The ship flies "up", so every layer streams down.
 let canvas = null, ctx = null, w = 0, h = 0, dpr = 1, started = false;
@@ -113,7 +114,7 @@ function resize() {
 
 function panOffset(camera) {
   if (!camera?.viewport) return { x: 0, y: 0 };
-  const world = camera.world || { w: 1152, h: 1728 };
+  const world = camera.world || HULL_PX;
   return {
     x: camera.x + (world.w * camera.scale) / 2 - camera.viewport.w / 2,
     y: camera.y + (world.h * camera.scale) / 2 - camera.viewport.h / 2,
@@ -260,7 +261,7 @@ function tick(sim, dt) {
 export function attachSpace(el, cameraGetter, seed = 77) {
   if (!el) return;
   getCamera = typeof cameraGetter === 'function' ? cameraGetter
-    : () => makeCamera({ w, h }, { w: 1152, h: 1728 });
+    : () => makeCamera({ w, h }, HULL_PX);
   landmarkSeed = seed;
   if (!motionQuery) motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
   if (canvas === el && started) return;

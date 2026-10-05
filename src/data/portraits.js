@@ -3,6 +3,7 @@
 
 import { artUrl } from '../shared/artUrl.js';
 import { ART_VERTICAL_SLICE } from './artManifest.js';
+import { HULL_IMAGE } from './starterShip.js';
 
 const sliceUrl = key => artUrl(ART_VERTICAL_SLICE[key].path);
 
@@ -88,11 +89,11 @@ export const SHIP_ART = {
   dreadnought: artUrl('art/pixel/ships/dreadnought.png'),
 };
 
-export const CUTAWAY_ART = artUrl('art/space/sparrow-hull-v3.png');
+export const CUTAWAY_ART = artUrl(HULL_IMAGE);
 export const SWARM_ART = artUrl('art/pixel/fx/swarm.png');
 
 export const SPACE_ART = {
-  hull: artUrl('art/space/sparrow-hull-v3.png'),
+  hull: CUTAWAY_ART,
   stars: artUrl('art/space/stars.png'),
   nebula: artUrl('art/space/nebula.png'),
   planet: artUrl('art/space/planet.png'),

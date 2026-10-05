@@ -55,9 +55,9 @@ const provenance = await verifyBuild();
 const browser = await (await fetch(`${cdpUrl}/json/version`)).json();
 const report = { browser: browser.Browser, pageUrl, provenance, screens: [], checks: {} };
 let welcomeFixture = null;
-const arrivalRoute = routeToWorkAnchor(SPARROW_LAYOUT.anchors.airlock, 'workshop');
-assert.equal(arrivalRoute.ok, true, 'first hire must have a walkable airlock-to-workshop route');
-assert.ok(arrivalRoute.points.some(point => point.via === 'door-enter' && point.room === 'workshop'), 'first hire route must enter the workshop through its door');
+const arrivalRoute = routeToWorkAnchor(SPARROW_LAYOUT.anchors.airlock, 'weapons');
+assert.equal(arrivalRoute.ok, true, 'first hire must have a walkable airlock-to-weapons route');
+assert.ok(arrivalRoute.points.some(point => point.via === 'door-enter' && point.room === 'weapons'), 'first hire route must enter Weapons through its door');
 report.checks.crewRoute = { start: SPARROW_LAYOUT.anchors.airlock, end: arrivalRoute.points.at(-1),
   waypoints: arrivalRoute.points.length, doors: arrivalRoute.points.filter(point => point.via),
   points: arrivalRoute.points.map(point => ({ x: point.x, y: point.y, room: point.room || 'hall', via: point.via || null })) };

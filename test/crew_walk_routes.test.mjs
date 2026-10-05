@@ -42,11 +42,11 @@ assert.deepEqual(
   { ok: false, reason: 'disconnected' },
 );
 assert.deepEqual(
-  routeToWorkAnchor({ x: 56, y: 20, room: 'bridge' }, 'missing'),
+  routeToWorkAnchor({ x: 50, y: 17.3, room: 'bridge' }, 'missing'),
   { ok: false, reason: 'disconnected' },
 );
 assert.deepEqual(
-  routeToWorkAnchor({ x: 50, y: 17.5, room: 'bridge' }, 'engineering'),
+  routeToWorkAnchor({ x: 10, y: 30, room: 'bridge' }, 'engineering'),
   { ok: false, reason: 'disconnected' },
 );
 
@@ -58,9 +58,17 @@ assert.ok(fromSpine.points.some((point) => point.via === 'door-enter' && point.r
 assertWalkableRoute({ x: 50, y: 45, room: 'bridge' }, 'bridge', fromSpine);
 
 // Physical room geometry overrides a stale room hint during mid-walk rerouting.
-const staleRoom = routeToWorkAnchor({ x: 56, y: 84, room: 'bridge' }, 'workshop');
+const staleRoom = routeToWorkAnchor({ x: 39.7, y: 82.3, room: 'bridge' }, 'weapons');
 assert.equal(staleRoom.ok, true);
 assert.ok(staleRoom.points.some((point) => point.via === 'door-exit' && point.room === 'engineering'));
-assertWalkableRoute({ x: 56, y: 84, room: 'engineering' }, 'workshop', staleRoom);
+assertWalkableRoute({ x: 39.7, y: 82.3, room: 'engineering' }, 'weapons', staleRoom);
+
+// New crew and boarders come in through the port airlock and walk the spine to their room.
+const { airlock } = SPARROW_LAYOUT.anchors;
+for (const roomId of ['weapons', 'shields', 'bridge', 'engineering']) {
+  const arrival = routeToWorkAnchor(airlock, roomId);
+  assertWalkableRoute({ ...airlock, room: 'cargo' }, roomId, arrival);
+  assert.ok(arrival.points.some((point) => point.via === 'door-enter' && point.room === roomId), `airlock -> ${roomId} enters by its door`);
+}
 
 console.log('crew_walk_routes.test.mjs OK');

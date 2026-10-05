@@ -10,6 +10,8 @@ import {
   facingForMove,
   motionPolicy,
 } from '../src/ui/crewAnimation.js';
+import { HULL_PX, SPARROW_LAYOUT } from '../src/data/starterShip.js';
+import { fightCamera } from '../src/ui/bridge.js';
 
 const profile = ANIMATION_PROFILES.crew_rig;
 
@@ -72,12 +74,20 @@ for (const flip of [false, true]) {
 const mid = profile.sourceCell.width / 2;
 assert.ok(Math.abs(profile.footAnchor.x - mid) <= 1, 'body centred so a flip does not jump');
 
-// Size: the figure (~34 of 56 cell px) is about 45% of a room's height (~230 world px),
-// close to FTL's proportions, and still reads when the hull fills a phone's width.
+// Size: on the v4 Sparrow the figure (~34 of 56 cell px) is about a third of a
+// room's height, the proportion the art was drawn for. Rooms are measured from
+// the layout; the Bridge is a short strip, so the median room is the yardstick.
 const figureWorld = 34 * profile.scale;
+const roomHeights = SPARROW_LAYOUT.rooms.map(room => room.h / 100 * HULL_PX.h).sort((a, b) => a - b);
+const medianRoom = roomHeights[Math.floor(roomHeights.length / 2)];
 assert.ok(figureWorld >= 90 && figureWorld <= 115, `figure ${figureWorld}px`);
-assert.ok(figureWorld / 230 <= 0.5, 'crew are about half a room tall, not a whole room');
-assert.ok(figureWorld * (390 / 1152) * 1.12 >= 30, '30+ CSS px in the zoomed-in fight view on a 390px phone');
+assert.ok(figureWorld / medianRoom >= 0.28 && figureWorld / medianRoom <= 0.4,
+  `crew are about a third of a room tall (${figureWorld}/${medianRoom})`);
+assert.ok(figureWorld < Math.min(...roomHeights) * 0.6, 'crew fit inside the shortest room');
+// The bigger hull makes a zoomed-in fight show fewer CSS px per world px than
+// the v3 hull did (390/1536 vs 390/1152), so the floor is ~29 CSS px, not 30.
+const fightScale = fightCamera({ w: 390, h: 420 }).scale;
+assert.ok(figureWorld * fightScale >= 29, `29+ CSS px in the zoomed-in fight view on a 390px phone (${(figureWorld * fightScale).toFixed(1)})`);
 
 const actor = { x: 50, y: 40, face: 'right', frame: 0, state: 'walk' };
 for (const face of ['left', 'right']) {

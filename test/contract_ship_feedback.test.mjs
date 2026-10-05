@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { SPARROW_LAYOUT } from '../src/data/starterShip.js';
+import { HULL_PX, SPARROW_LAYOUT } from '../src/data/starterShip.js';
 import {
   contractShipSignals,
   renderRoomHotspot,
@@ -28,7 +28,7 @@ const crewShadow = animationProfileFor().shadow;
 // failing to render the durable first Sparrow repair after the route clears.
 const base = { activeContract: null, flags: {}, crew: [] };
 assert.deepEqual(contractShipSignals(base), {
-  operationsActive: false,
+  routeActive: false,
   cargoReady: false,
   firstRepairLit: false,
   berth3Open: false,
@@ -37,7 +37,7 @@ assert.deepEqual(contractShipSignals({
   ...base,
   activeContract: { stage: 'choice' },
 }), {
-  operationsActive: true,
+  routeActive: true,
   cargoReady: false,
   firstRepairLit: false,
   berth3Open: false,
@@ -47,7 +47,7 @@ assert.deepEqual(contractShipSignals({
   activeContract: { stage: 'return' },
   flags: { sparrowFirstRepair: true },
 }), {
-  operationsActive: false,
+  routeActive: false,
   cargoReady: true,
   firstRepairLit: true,
   berth3Open: false,
@@ -57,20 +57,20 @@ assert.equal(contractShipSignals({
   flags: { sparrowFirstRepair: true },
 }).firstRepairLit, true);
 
-const operations = SPARROW_LAYOUT.rooms.find((room) => room.id === 'operations');
+const operations = SPARROW_LAYOUT.rooms.find((room) => room.id === 'sensors');
 const operationsHtml = renderRoomHotspot({ room: operations, signal: 'route' });
 assert.match(operationsHtml, /contract-route/);
-assert.match(operationsHtml, /aria-label="Operations, route active"/);
+assert.match(operationsHtml, /aria-label="Sensors, route active"/);
 assert.match(operationsHtml, />ROUTE</);
 
 const cargo = SPARROW_LAYOUT.rooms.find((room) => room.id === 'cargo');
 const cargoHtml = renderRoomHotspot({ room: cargo, signal: 'return' });
 assert.match(cargoHtml, /contract-return/);
-assert.match(cargoHtml, /aria-label="Cargo Hold, reward ready"/);
+assert.match(cargoHtml, /aria-label="Cargo, reward ready"/);
 assert.match(cargoHtml, />REWARD</);
 
 const repairHtml = renderShipFeedback({
-  operationsActive: false,
+  routeActive: false,
   cargoReady: false,
   firstRepairLit: true,
 });
@@ -99,6 +99,7 @@ const crew = [
   { instanceId: 'crew-engineer', role: 'engineer', status: 'ready' },
   { instanceId: 'crew-gunner', role: 'gunner', status: 'ready' },
 ];
+const anchorOf = (id) => SPARROW_LAYOUT.rooms.find((room) => room.id === id).workAnchor;
 const routeTargets = crewTargetStates({
   crew,
   activeContract: { stage: 'choice' },
@@ -108,14 +109,14 @@ assert.deepEqual(routeTargets, [
     crewInstanceId: 'crew-pilot',
     mode: 'contract-station',
     roomId: 'bridge',
-    anchors: [{ x: 56, y: 20 }],
+    anchors: [{ ...anchorOf('bridge') }],
     immediate: false,
   },
   {
     crewInstanceId: 'crew-engineer',
     mode: 'contract-station',
     roomId: 'engineering',
-    anchors: [{ x: 56, y: 84 }],
+    anchors: [{ ...anchorOf('engineering') }],
     immediate: false,
   },
 ]);
@@ -211,7 +212,7 @@ const awayPlayer = {
 };
 
 syncCrewLayer(canvas, readyPlayer);
-assert.deepEqual([canvas.width, canvas.height], [1152, 1728], 'crew bitmap uses world pixels inside the transformed ship');
+assert.deepEqual([canvas.width, canvas.height], [HULL_PX.w, HULL_PX.h], 'crew bitmap uses world pixels inside the transformed ship');
 holdCrewForDeparture(selectedIds);
 syncCrewLayer(canvas, awayPlayer);
 let normalCompletions = 0;
@@ -224,7 +225,7 @@ moveCrewToDeparture(awayPlayer, selectedIds, {
     normalCompletions++;
     shadowFeet.length = 0;
     runFrame();
-    completionAirlockIds = shadowFeet.filter(foot => Math.abs(foot.x - 47) < 0.001 && Math.abs(foot.y - 64) < 0.001).map(foot => foot.crewInstanceId);
+    completionAirlockIds = shadowFeet.filter(foot => Math.abs(foot.x - SPARROW_LAYOUT.anchors.airlock.x) < 0.001 && Math.abs(foot.y - SPARROW_LAYOUT.anchors.airlock.y) < 0.001).map(foot => foot.crewInstanceId);
     syncCrewLayer(canvas, awayPlayer);
   },
 });
@@ -324,8 +325,8 @@ runFrame();
 motion.set(true);
 shadowFeet.length = 0;
 runFrame();
-assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 20) < 0.001), `Bridge actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
-assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - 56) < 0.001 && Math.abs(y - 84) < 0.001), `Engineering actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
+assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - anchorOf('bridge').x) < 0.001 && Math.abs(y - anchorOf('bridge').y) < 0.001), `Bridge actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
+assert.ok(shadowFeet.some(({ x, y }) => Math.abs(x - anchorOf('engineering').x) < 0.001 && Math.abs(y - anchorOf('engineering').y) < 0.001), `Engineering actor snapped to authored work anchor: ${JSON.stringify(shadowFeet)}`);
 
 // Disabling walk frames alone still lets idle actors slide and collision pushes
 // move them. Record actual rendered feet across live preference changes.
@@ -343,7 +344,7 @@ for (let i = 0; i < 100; i++) { shadowFeet.length = 0; runFrame(); }
 assert.notDeepEqual([...shadowFeet].sort((a, b) => a.crewInstanceId.localeCompare(b.crewInstanceId)), staticFeet, 'normal ambient crew movement resumes');
 
 // Committed recruitment must first materialize this exact actor at Airlock,
-// retain that ownership across renders/combat, then finish at Workshop once.
+// retain that ownership across renders/combat, then finish at Weapons once.
 const jen = { instanceId: 'arriving-jen', templateId: 'merc_jen', role: 'gunner', status: 'ready' };
 const recruited = { ...readyPlayer, crew: [...crew, jen] };
 let arrivalCompletions = 0;
@@ -351,14 +352,14 @@ crewPresentation.holdCrewForArrival(recruited, jen.instanceId);
 syncCrewLayer(canvas, recruited);
 shadowFeet.length = 0;
 runFrame();
-assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 47, y: 64 }, 'Jen appears at authored Airlock');
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, ...SPARROW_LAYOUT.anchors.airlock }, 'Jen appears at authored Airlock');
 crewPresentation.moveCrewToArrival(recruited, jen.instanceId, { onDone: () => arrivalCompletions++ });
 setBattleStations(true);
 syncCrewLayer(canvas, recruited);
 runUntil(() => arrivalCompletions === 1);
 shadowFeet.length = 0;
 runFrame();
-assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, x: 64, y: 51 }, 'Jen walks to authored Workshop');
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === jen.instanceId), { crewInstanceId: jen.instanceId, ...anchorOf('weapons') }, 'Jen walks to authored Weapons');
 setBattleStations(false);
 motion.set(true);
 const reducedJen = { ...jen, instanceId: 'arriving-jen-reduced' };
@@ -369,7 +370,7 @@ crewPresentation.moveCrewToArrival(reducedRecruit, reducedJen.instanceId, { onDo
 shadowFeet.length = 0;
 runFrame();
 assert.equal(arrivalCompletions, 2, 'reduced arrival completes exactly once');
-assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === reducedJen.instanceId), { crewInstanceId: reducedJen.instanceId, x: 64, y: 51 }, 'reduced Jen snaps to the same Workshop anchor');
+assert.deepEqual(shadowFeet.find(f => f.crewInstanceId === reducedJen.instanceId), { crewInstanceId: reducedJen.instanceId, ...anchorOf('weapons') }, 'reduced Jen snaps to the same Weapons anchor');
 motion.set(true);
 assert.equal(arrivalCompletions, 2);
 

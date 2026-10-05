@@ -5,7 +5,13 @@ import { addTrauma, hitstop, sfx, unlockSfx, applyShake } from './juice.js';
 import { setBattleStations } from './crewWalk.js';
 import { effectScreenPoint } from './worldProjection.js';
 import { makeCamera } from './shipCamera.js';
-import { ROOMS } from '../data/starterShip.js';
+import { ROOMS, SPARROW_LAYOUT, HULL_PX, roomWorldPoint, worldPoint } from '../data/starterShip.js';
+
+// Auto-battle (v1/v2) anchors in world pixels: the Sparrow's bow, and where the pirate holds station.
+const toWorld = point => { const p = worldPoint(point); return { worldX: p.x, worldY: p.y }; };
+const NOSE = toWorld(SPARROW_LAYOUT.anchors.nose);
+const ENEMY_STATION = toWorld({ x: 89.4, y: 13.9 });
+const ENEMY_SPAWN = toWorld({ x: 95.5, y: -5.8 });
 import { STATIONS } from '../systems/stations.js';
 
 let canvas = null;
@@ -127,7 +133,9 @@ let ftlClock = 0;
 
 const roomWorld = stationId => {
   const room = ROOMS.find(candidate => candidate.id === STATIONS[stationId]?.roomId);
-  return room ? { worldX: room.labelAnchor.x * 11.52, worldY: room.labelAnchor.y * 17.28 } : { worldX: 576, worldY: 400 };
+  if (!room) return { worldX: HULL_PX.w / 2, worldY: HULL_PX.h * 0.23 };
+  const point = roomWorldPoint(room);
+  return { worldX: point.x, worldY: point.y };
 };
 
 function enemyRoomX(roomId) {
@@ -262,8 +270,8 @@ export function playEncounterBeat(events = []) {
 
 export function playCombat({ preview, win = true, onDone } = {}) {
   unlockSfx();
-  const nose = { worldX: 576, worldY: 121 };
-  const pirateTarget = { worldX: 1030, worldY: 240 };
+  const nose = { ...NOSE };
+  const pirateTarget = { ...ENEMY_STATION };
   // The presentation starts wide enough to show the Sparrow and its target.
   // This does not lock the camera: gestures may pan and zoom after the start.
   const currentCamera = getCamera?.();
@@ -283,7 +291,7 @@ export function playCombat({ preview, win = true, onDone } = {}) {
     sparks: [],
     flashes: [],
     done: false,
-    pirate: { worldX: 1100, worldY: -100,
+    pirate: { worldX: ENEMY_SPAWN.worldX, worldY: ENEMY_SPAWN.worldY,
       targetWorldX: pirateTarget.worldX, targetWorldY: pirateTarget.worldY, a: 0, dead: 0 },
     nose,
     nextVolley: 0.55,
@@ -493,13 +501,13 @@ function drawCrewEncounter(g, camera, dt) {
   const frame = encounterVisualFrame(crewEncounter);
   if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) crewClock += dt;
   enemyHit = Math.max(0, enemyHit - dt);
-  const enemyBase = effectScreenPoint(camera, { worldX: 1030, worldY: 240 });
+  const enemyBase = effectScreenPoint(camera, ENEMY_STATION);
   const shake = enemyHit > 0 ? enemyHit * 18 : 0;
   const enemy = {
     x: enemyBase.x + (Math.random() - 0.5) * shake,
     y: enemyBase.y + Math.sin(crewClock * 1.8) * 4 + (Math.random() - 0.5) * shake,
   };
-  const ship = effectScreenPoint(camera, { worldX: 576, worldY: 121 });
+  const ship = effectScreenPoint(camera, NOSE);
   const { width: pw, height: ph } = pirateDrawSize(pirateImg?.naturalWidth || 5, pirateImg?.naturalHeight || 3, camera.scale);
   g.save();
   g.globalAlpha = crewEncounter.result === 'win' ? 0.25 : 0.95;
