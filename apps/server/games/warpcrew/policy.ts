@@ -32,6 +32,18 @@ type Wrapper = 'codec' | 'legacy' | 'bare';
 const record = (v: unknown): v is Record<string, unknown> =>
   v !== null && typeof v === 'object' && !Array.isArray(v);
 
+/**
+ * The most any lifetime counter can honestly reach (years of daily play are in the low thousands).
+ * A save above it is refused outright, so no first save (which has no head to jump from) can
+ * plant an impossible depth that every honest save after it would regress from.
+ */
+export const MAX_LIFETIME_COUNTER = 1_000_000;
+const COUNTERS = ['jumps', 'combatsWon', 'expeditions', 'contractsCompleted'] as const;
+
+/** A crew member the client can load: an object naming its template and instance. */
+const crewMember = (c: unknown): boolean =>
+  record(c) && typeof c.templateId === 'string' && typeof c.instanceId === 'string';
+
 /** A non-negative safe integer reading of a counter; anything else counts as 0. */
 const count = (v: unknown): number =>
   typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.min(Math.floor(v), 2 ** 40) : 0;
@@ -45,6 +57,22 @@ export function isWarpcrewPlayer(v: unknown): v is WarpcrewPlayer {
     if (n !== undefined && !(typeof n === 'number' && Number.isFinite(n))) return false;
   }
   if (v.stats !== undefined && !record(v.stats)) return false;
+  if (record(v.stats)) {
+    const stats = v.stats;
+    if (
+      COUNTERS.some(
+        (key) => typeof stats[key] === 'number' && (stats[key] as number) > MAX_LIFETIME_COUNTER,
+      )
+    )
+      return false;
+  }
+  // The client dereferences every crew and reserve entry on load (crewRoster.recomputeCrew).
+  for (const key of ['crew', 'reserve'] as const) {
+    const list = v[key];
+    if (list !== undefined && !(Array.isArray(list) && list.length <= 64 && list.every(crewMember)))
+      return false;
+  }
+  if (v.ship !== undefined && !record(v.ship)) return false;
   return true;
 }
 
@@ -81,20 +109,67 @@ export function summaryOf(player: WarpcrewPlayer): Record<string, number> {
   };
 }
 
-/** Identifiers and provider evidence a QA copy must not carry. */
+/**
+ * The top-level player fields a QA copy keeps. An allowlist, so a field added to the save later
+ * (an email, a device id, a provider token) stays out of QA exports until someone adds it here on
+ * purpose; the parity test fails when the game's fresh player grows a field this list does not name.
+ */
+export const QA_FIELDS = [
+  'activeContract',
+  'activeEncounter',
+  'activeEvent',
+  'activeExpedition',
+  'activeTravelFight',
+  'captainInstanceId',
+  'contractBoard',
+  'createdAt',
+  'crew',
+  'crewSlots',
+  'dailyLoop',
+  'dailyPullAvailable',
+  'drydockFinishes',
+  'flags',
+  'fuelClaimAt',
+  'fuelMax',
+  'fuelRatePerHour',
+  'gacha',
+  'hullRepairAt',
+  'lastLoginDay',
+  'location',
+  'loginStreak',
+  'reserve',
+  'ship',
+  'shipBuild',
+  'stationAssignments',
+  'stats',
+  'story',
+  'tutorial',
+  'version',
+  'wallet',
+] as const;
+
+/** A crew member with any player-typed name replaced by the template's own. */
+function sanitizeCrew(list: unknown): unknown {
+  if (!Array.isArray(list)) return list;
+  return list.map((c) => {
+    if (!record(c)) return c;
+    const { customName: _custom, ...rest } = c;
+    return { ...rest, ...(c.isCaptain ? { name: 'Captain' } : {}) };
+  });
+}
+
+/** Identifiers, player-typed names and provider evidence a QA copy must not carry. */
 function sanitizePlayer(player: WarpcrewPlayer): WarpcrewPlayer {
-  const {
-    cloudSeq: _seq,
-    cloudDirty: _dirty,
-    ...rest
-  } = player as WarpcrewPlayer & {
-    cloudSeq?: unknown;
-    cloudDirty?: unknown;
-  };
+  const kept: Record<string, unknown> = {};
+  for (const key of QA_FIELDS) if (key in player) kept[key] = player[key];
+  const ship = record(kept.ship) ? kept.ship : undefined;
   return {
-    ...rest,
-    // A player-typed name.
+    ...(kept as WarpcrewPlayer),
+    // Player-typed names: the captain, renamed crew and the ship.
     captainName: 'Captain',
+    crew: sanitizeCrew(kept.crew),
+    reserve: sanitizeCrew(kept.reserve),
+    ...(ship ? { ship: { ...ship, name: 'Sparrow', nickname: undefined } } : {}),
     // Signed Jest receipts name the player (`sub`); provider tokens are payment references.
     pendingReceipts: [],
     iapFulfilled: [],

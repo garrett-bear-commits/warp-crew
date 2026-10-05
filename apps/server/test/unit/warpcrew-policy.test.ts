@@ -5,6 +5,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { gameConfigProblems } from '@foundation/server';
 import { warpcrewGame } from '../../games/warpcrew/game.config.ts';
 import {
+  MAX_LIFETIME_COUNTER,
+  QA_FIELDS,
   progressOf,
   unwrapWarpcrew,
   warpcrewPolicy,
@@ -166,6 +168,81 @@ describe('Warp Crew policy: malformed saves', () => {
         ok: false,
         reason: 'shape',
       });
+  });
+});
+
+describe('Warp Crew policy: audit fixes', () => {
+  it('refuses crew or reserve entries the client could not load, and the client drops them anyway', () => {
+    const member = (
+      game.createNewPlayer({ tutorialScript: 4, now: T0, rng: () => 0.42 }).crew as unknown[]
+    )[0];
+    expect(member).toBeTruthy();
+    for (const bad of [
+      { crew: [null] },
+      { crew: 'x' },
+      { crew: [{}] },
+      { reserve: [1] },
+      { crew: [{ templateId: 'merc_rex' }] },
+      { ship: null },
+      { crew: Array.from({ length: 65 }, () => member) },
+    ]) {
+      expect(
+        warpcrewPolicy.validateBlob({ ...fresh, ...bad }).ok,
+        JSON.stringify(bad).slice(0, 60),
+      ).toBe(false);
+    }
+    // A save written before the policy tightened still boots on the client.
+    expect(() => game.migratePlayer({ ...fresh, crew: [null, 3, member] })).not.toThrow();
+    expect(game.migratePlayer({ ...fresh, crew: [null, member] }).crew).toHaveLength(1);
+  });
+
+  it('refuses impossible lifetime counters, so no first save can plant an unreachable depth', () => {
+    for (const key of ['jumps', 'combatsWon', 'expeditions', 'contractsCompleted']) {
+      const stats = { ...(fresh.stats as object), [key]: MAX_LIFETIME_COUNTER + 1 };
+      expect(warpcrewPolicy.validateBlob({ ...fresh, stats }).ok, key).toBe(false);
+      const ok = { ...(fresh.stats as object), [key]: MAX_LIFETIME_COUNTER };
+      expect(warpcrewPolicy.validateBlob({ ...fresh, stats: ok }).ok, key).toBe(true);
+    }
+    expect(
+      warpcrewPolicy.validateBlob({ ...fresh, stats: { ...(fresh.stats as object), jumps: 1e300 } })
+        .ok,
+    ).toBe(false);
+  });
+
+  it('QA copies drop player-typed crew and ship names and any field not on the allowlist', () => {
+    const named = {
+      ...played,
+      crew: (played.crew as Record<string, unknown>[]).map((c, i) =>
+        i === 0
+          ? { ...c, isCaptain: true, customName: 'Vex Secret', name: 'Vex Secret' }
+          : { ...c, customName: 'Pal' },
+      ),
+      ship: { ...(played.ship as object), name: 'My Real Name', nickname: 'Home' },
+      email: 'someone@example.com',
+      deviceId: 'abc',
+    };
+    const clean = warpcrewPolicy.sanitizeForQa(named) as Record<string, unknown>;
+    const text = JSON.stringify(clean);
+    for (const leak of ['Vex Secret', 'Pal', 'My Real Name', 'Home', 'someone@example.com', 'abc"'])
+      expect(text.includes(leak), leak).toBe(false);
+    expect(warpcrewPolicy.validateBlob(clean).ok).toBe(true);
+  });
+
+  it('the QA allowlist names every field a fresh or played player has', () => {
+    const allowed = new Set<string>([
+      ...QA_FIELDS,
+      'captainName',
+      'pendingReceipts',
+      'iapFulfilled',
+      'purchaseSkus',
+      'cloudSeq',
+      'cloudDirty',
+    ]);
+    for (const p of [fresh, played, game.migratePlayer(fresh)])
+      for (const key of Object.keys(p))
+        expect(allowed.has(key), `QA_FIELDS is missing ${key}: decide if QA copies keep it`).toBe(
+          true,
+        );
   });
 });
 

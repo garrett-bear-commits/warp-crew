@@ -94,8 +94,10 @@ export function migratePlayer(player) {
   const jumps = player.stats?.jumps || 0;
   const combats = player.stats?.combatsWon || 0;
   const base = createNewPlayer({ captainName, tutorialScript: player.tutorial?.script === 5 ? 5 : 4 });
-  let crew = Array.isArray(player.crew) ? player.crew.map((c) => recomputeCrew(c)) : base.crew;
-  let reserve = Array.isArray(player.reserve) ? player.reserve.map((c) => recomputeCrew(c)) : [];
+  // A crew entry that is not an object (a damaged or hand-edited save) is dropped, never dereferenced.
+  const crewRecord = (c) => c !== null && typeof c === 'object' && !Array.isArray(c) && typeof c.templateId === 'string';
+  let crew = Array.isArray(player.crew) ? player.crew.filter(crewRecord).map((c) => recomputeCrew(c)) : base.crew;
+  let reserve = Array.isArray(player.reserve) ? player.reserve.filter(crewRecord).map((c) => recomputeCrew(c)) : [];
   let crewSlots = player.crewSlots ?? base.crewSlots;
   const tutorial = player.tutorial?.script === 5
     ? normalizeTutorialV5(player.tutorial)
