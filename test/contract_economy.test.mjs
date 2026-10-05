@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { STRATEGIES, simulateFreePlayer30Days, reconcileLedger } from '../src/sim/contractEconomy.js';
+import { STRATEGIES, simulateFreePlayer30Days, reconcileLedger, auditExploreEvents } from '../src/sim/contractEconomy.js';
 import { createNewPlayer } from '../src/systems/player.js';
 import { startExpedition, resolveExpedition, applyExpeditionResult } from '../src/systems/expedition.js';
 
@@ -46,4 +46,8 @@ assert.equal(claimed.ok, true);
 assert.equal(claimed.player.activeExpedition, null);
 assert.ok(claimed.player.crew.every(c => c.injuredUntil === now + 18 * 60000));
 assert.equal(applyExpeditionResult(claimed.player, result, { now }).ok, false);
+// Explore events: the scripted policies never find a result above what the same arrival paid instantly.
+const explore = auditExploreEvents({ startAt });
+assert.deepEqual(explore.breaches, []);
+assert.deepEqual(explore, auditExploreEvents({ startAt }), 'deterministic');
 console.log('contract_economy.test.mjs OK');

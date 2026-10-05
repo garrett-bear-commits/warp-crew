@@ -444,6 +444,38 @@ The historical script-3 runs never patch the hull. Once it reaches the critical 
 
 Conservation: 15/15 guided runs PASS (fights-first), 15/15 PASS (away-first). Guided daily ledgers are in the same JSON under guided.runs; the away-first set keeps summaries only.
 
+## Explore events (FTL-lite phase 3)
+
+Added 2026-10-04. Explore arrivals that used to pay instantly (trade, delivery, salvage, story) now open authored events. This audit resolves every event at every beacon and non-combat outcome it fits (514 combinations, 29 events) through the production resolver, 12 roll seeds each, for a settled captain at Spur Anchor with the starter crew aboard (roles: pilot, engineer). Role choices for roles outside that crew are unavailable, as they would be in play. The 30-day runs above still do not jump on the map; their contract route choices go through the new route-event cards with the strategy's existing route policy, so their numbers are unchanged.
+
+Policies use only what the card shows. cautious: fewest risky outcomes, then best expected pay. balanced: best expected value (pay minus costs, 4 credits per hull point, 40 per injury, 30 per fight). ambitious: highest single-outcome ceiling. Credit ratio is credits paid minus credit costs, divided by what the same arrivals paid instantly before events (1.00 = unchanged). Fights opened by events pay the beacon's normal fight prize on top (not counted here).
+
+| Policy | Credit ratio | Medal ratio | Fight % | Injury % | Hull / event | Fuel / event | Hires |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| cautious | 0.83 | 0.78 | 0 | 0 | 0 | 0.04 | 0 |
+| balanced | 0.92 | 0.91 | 1 | 5 | 0.1 | 0.04 | 0 |
+| ambitious | 0.89 | 0.91 | 3 | 6 | 0.1 | 0 | 0 |
+
+| Policy | Sector | Combinations | Credit ratio | Fight % | Injury % | Hull / event |
+|---|---|---:|---:|---:|---:|---:|
+| cautious | spur | 177 | 0.85 | 0 | 0 | 0 |
+| cautious | veil | 132 | 0.82 | 0 | 0 | 0 |
+| cautious | ember | 70 | 0.86 | 0 | 0 | 0 |
+| cautious | hollow | 74 | 0.82 | 0 | 0 | 0 |
+| cautious | crown | 61 | 0.81 | 0 | 0 | 0 |
+| balanced | spur | 177 | 0.91 | 1 | 4 | 0.1 |
+| balanced | veil | 132 | 0.91 | 1 | 5 | 0.1 |
+| balanced | ember | 70 | 0.93 | 1 | 4 | 0.1 |
+| balanced | hollow | 74 | 0.93 | 2 | 8 | 0.1 |
+| balanced | crown | 61 | 0.91 | 1 | 7 | 0.1 |
+| ambitious | spur | 177 | 0.89 | 3 | 4 | 0.1 |
+| ambitious | veil | 132 | 0.90 | 3 | 5 | 0.1 |
+| ambitious | ember | 70 | 0.91 | 3 | 4 | 0.1 |
+| ambitious | hollow | 74 | 0.91 | 3 | 8 | 0.1 |
+| ambitious | crown | 61 | 0.87 | 4 | 7 | 0.4 |
+
+Ceiling check: no event result pays more credits, medals or reputation than the same arrival paid instantly (PASS).
+
 ## Phone-sized runtime evidence
 
 This section is appended by both report generators from this file, so regenerating the balance and economy reports preserves the browser evidence. It is a local production-build check, not a published Pages or Jest build and not physical-device proof.
