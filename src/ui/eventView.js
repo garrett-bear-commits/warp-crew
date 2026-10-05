@@ -22,12 +22,13 @@ function choiceBlock(choice, eventId) {
 }
 
 /** Saved, unresolved travel event. */
-export function renderEventCard(view) {
+export function renderEventCard(view, { hint = false } = {}) {
   if (!view) return '';
   return `<div class="modal-backdrop contract-backdrop event-backdrop"><section class="contract-sheet event-card" role="dialog" aria-modal="true" aria-labelledby="event-title">
     <p class="event-kicker">${e(KIND[view.kind] || 'Event')} · ${e(view.nodeName)} · ${e(view.sectorName)}</p>
     <h2 id="event-title">${e(view.title)}</h2>
     <p class="event-text">${e(view.text)}</p>
+    ${hint ? '<p class="event-hint">Tip: a choice tagged with a role uses that crew member\'s skill, and the odds already count it.</p>' : ''}
     <div class="event-choices">${view.choices.map(choice => choiceBlock(choice, view.eventId)).join('')}</div>
   </section></div>`;
 }

@@ -32,6 +32,7 @@ import { beginTravelFight, applyTravelFightAction, claimTravelFight, applyTravel
 import { arrivalOpensEvent, openTravelEvent, resolveTravelEvent, eventView, routeEventFor, routeChoiceMatches } from './travelEvents.js';
 import { laneCheck, sectorMapModel } from './sectorMap.js';
 import { resolveRoutePayout } from './contractRewards.js';
+import { markExploreNudge, noteMapJump } from './exploreNudge.js';
 
 export function prepareSession(player, now = Date.now()) {
   let next = ensureDailyLoop(player, now);
@@ -507,6 +508,11 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     player = prepareSession(player, now);
     Object.assign(nextUi, { tab: 'missions', missionView: view, selectedRoom: null });
     if (view === 'contracts') boardSeen();
+    // Opening Explore retires its one-time coach mark.
+    if (view === 'explore') player = markExploreNudge(player, 'coach');
+  } else if (act === 'explore-nudge-dismiss') {
+    if (!['coach', 'mapIntro'].includes(data.nudge)) return fail('unknown_nudge');
+    player = markExploreNudge(player, data.nudge);
   } else if (act === 'daily-improve') {
     Object.assign(nextUi, improvementFocus(player));
   } else if (act === 'contract-review') {
@@ -693,11 +699,12 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
     if (!lane.ok) return fail(lane.reason);
     const preview = previewTravel(player, data.node, { rng });
     if (!preview.ok) return fail(preview.reason);
+    const mapFound = paid => noteMapJump(paid, before);
     if (preview.needsAssists) {
       // Explore fights are real-time crew fights on the ship, like contract confrontations.
       const res = beginTravelFight(player, preview, now);
       if (!res.ok) return fail(res.reason);
-      player = res.player;
+      player = mapFound(res.player);
       events.push(event('travel', { node: data.node, kind: 'combat' }), fromAnalytics(res.analytics));
       Object.assign(nextUi, { tab: 'ship', selectedRoom: null, pendingCombat: null });
       effect = { kind: 'encounter-beat', events: [], outcome: null };
@@ -705,14 +712,14 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
       // Non-combat arrivals open an event card; arrival waits for the choice.
       const res = openTravelEvent(player, preview, now);
       if (!res.ok) return fail(res.reason);
-      player = res.player;
+      player = mapFound(res.player);
       events.push(event('travel', { node: data.node, kind: 'event' }), fromAnalytics(res.analytics));
       Object.assign(nextUi, { selectedMapNode: null, eventResult: null });
       effect = { kind: 'event-open' };
     } else {
       const res = commitTravel(player, preview, { rng });
       if (!res.ok) return res;
-      player = res.player;
+      player = mapFound(res.player);
       tutorial('travel_success');
       events.push(event('travel', { node: data.node, kind: res.result.kind }));
       effect = { kind: 'travel', result: res.result };
@@ -720,7 +727,7 @@ export function sessionAction(player, ui, act, data = {}, { now = Date.now(), rn
   } else if (act === 'event-choose') {
     const res = resolveTravelEvent(player, { eventId: data.eventId, choice: data.choice }, now);
     if (!res.ok) return fail(res.reason);
-    player = res.player;
+    player = markExploreNudge(res.player, 'eventHint');
     events.push(fromAnalytics(res.analytics));
     if (res.result.fight) {
       events.push(fromAnalytics(res.fightAnalytics));

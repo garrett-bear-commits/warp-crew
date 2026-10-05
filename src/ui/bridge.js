@@ -53,6 +53,7 @@ import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBa
 import { renderSectorMap } from './sectorMapView.js';
 import { renderEventCard, renderEventResult, renderRouteEvent } from './eventView.js';
 import { sectorMapModel } from '../systems/sectorMap.js';
+import { exploreNudges } from '../systems/exploreNudge.js';
 
 const NODE_KIND_ART = {
   station: 'c',
@@ -566,9 +567,13 @@ function patchShell(root, ctx) {
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, root._wcCameraOpen));
   setSlot(root, 'crew-rail', isHome && !fighting && !firstSession && !v5Session && !selectedRoom ? renderCrewRail(player) : '');
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
-  setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen));
+  // New captains: a one-time pointer to the sector map (coach mark, first-visit card, first-event hint).
+  const nudges = exploreNudges(player);
+  const exploreCoach = nudges.coach && player.flags?.splashSeen && !fighting && !player.activeEncounter && !player.activeEvent
+    && !(tab === 'missions' && ctx.missionView === 'explore');
+  setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen) + (exploreCoach ? renderExploreCoach() : ''));
   // Travel events: the open card (saved) or its result (UI only) sits over every tab.
-  const eventModal = !player.flags?.splashSeen ? '' : ctx.activeEventView ? renderEventCard(ctx.activeEventView) : ctx.eventResult ? renderEventResult(ctx.eventResult) : '';
+  const eventModal = !player.flags?.splashSeen ? '' : ctx.activeEventView ? renderEventCard(ctx.activeEventView, { hint: nudges.eventHint }) : ctx.eventResult ? renderEventResult(ctx.eventResult) : '';
   const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
   const wallPack = wallPackState(player, currentWall(player, now));
@@ -625,7 +630,7 @@ function patchShell(root, ctx) {
 
   if (!isHome) {
     const detail = `${emptyHints(player, fuel, tab)}
-          ${tab === 'missions' ? renderMissions(player, now, ctx) : ''}
+          ${tab === 'missions' ? renderMissions(player, now, { ...ctx, exploreNudges: nudges }) : ''}
           ${tab === 'crew' ? renderCrew(player, now) : ''}
           ${tab === 'shop' ? renderShop(player, shopProducts, now) : ''}
           ${tab === 'log' ? renderLog(player, log, goals) : ''}`;
@@ -678,6 +683,24 @@ function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, 
           </div>
         </div>
   `;
+}
+
+/** One-time coach mark over the command bar: Explore (the sector map) is open. Never blocks play. */
+export function renderExploreCoach() {
+  return `<aside class="explore-coach" aria-label="New: Explore">
+    <p><b>New · Explore</b> Jump to beacons on the sector map.</p>
+    <button type="button" class="primary" data-act="mission-view" data-view="explore">Open map</button>
+    <button type="button" class="explore-coach-close" data-act="explore-nudge-dismiss" data-nudge="coach" aria-label="Dismiss">×</button>
+  </aside>`;
+}
+
+/** First visit to the map: what it is and how events work. */
+export function renderExploreIntro() {
+  return `<aside class="explore-intro" aria-label="The sector map">
+    <b>The sector map</b>
+    <p>Jump along lanes; each beacon shows what you might find; events let your crew's skills change the outcome.</p>
+    <button type="button" data-act="explore-nudge-dismiss" data-nudge="mapIntro">Got it</button>
+  </aside>`;
 }
 
 export function renderNav(tab, player, expReady, tabs, step, crewAttentionSeen = false) {
@@ -1240,7 +1263,8 @@ function renderNodeCard(n, player, here, step) {
 export function renderMissions(player, now, model = {}) {
   const views = missionViews(player);
   const view = views.includes(model.missionView) ? model.missionView : 'contracts';
-  const switcher = renderMissionSwitcher(view, views);
+  const nudges = model.exploreNudges || {};
+  const switcher = renderMissionSwitcher(view, views, { fresh: nudges.coach ? ['explore'] : [] });
   if (view === 'contracts') {
     const board = model.contractBoard || player.contractBoard || { offers: [] };
     const content = player.activeContract
@@ -1280,7 +1304,7 @@ export function renderMissions(player, now, model = {}) {
           + mapBlock('Crown', crown)}
     </div>`;
   // Sector map (FTL-lite phase 3) replaces the node grid outside the legacy script-2 tutorial.
-  const sectorPanel = tight ? mapPanel : `<div class="panel sector-panel">${renderSectorMap(model.sectorMap || sectorMapModel(player, model, now))}</div>`;
+  const sectorPanel = tight ? mapPanel : `<div class="panel sector-panel">${nudges.mapIntro ? renderExploreIntro() : ''}${renderSectorMap(model.sectorMap || sectorMapModel(player, model, now))}</div>`;
 
   const expPanel = showExp ? `
     <div class="panel away-view">

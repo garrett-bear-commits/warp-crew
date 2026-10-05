@@ -3176,3 +3176,29 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-offscreen.is-bottom { bottom: 10px; }
 @keyframes ftl-pulse-alert { 50% { box-shadow: 0 0 14px rgba(255, 90, 90, 0.6); } }
 @media (prefers-reduced-motion: reduce) { .ftl-offscreen { animation: none; } }
+
+/* New captains: one-time pointers to the sector map (never modal). */
+.bottom-nav { position: relative; }
+.explore-coach {
+  position: absolute; left: 50%; bottom: calc(100% + 10px); z-index: 25; transform: translateX(-50%);
+  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; width: min(340px, calc(100vw - 32px));
+  padding: 8px 8px 8px 12px; border: 1px solid #6fd3ff; border-radius: 12px; background: rgba(10, 18, 30, 0.96);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), 0 0 14px rgba(111, 211, 255, 0.25); animation: explore-coach-in 320ms ease-out;
+}
+.explore-coach::after { content: ''; position: absolute; left: 50%; top: 100%; margin-left: -7px; border: 7px solid transparent; border-top-color: #6fd3ff; }
+.explore-coach p { margin: 0; font-size: 13px; line-height: 1.3; text-align: left; }
+.explore-coach p b { display: block; font: 700 12px var(--font-display); text-transform: uppercase; letter-spacing: 0.05em; color: #6fd3ff; }
+.explore-coach .primary { min-height: 40px; padding: 0 12px; font-size: 13px; border-radius: 10px; }
+.explore-coach-close { min-width: 40px; min-height: 40px; padding: 0; background: transparent; border: 0; color: var(--muted); font-size: 20px; }
+.mission-switcher button.is-new { position: relative; border-color: #6fd3ff; }
+.mission-switcher button.is-new .nav-badge { top: 4px; right: 8px; background: #6fd3ff; }
+.explore-intro {
+  display: grid; gap: 4px; margin: 0 0 10px; padding: 10px 12px; border: 1px solid rgba(111, 211, 255, 0.55); border-radius: 10px;
+  background: linear-gradient(180deg, rgba(20, 50, 72, 0.6), rgba(10, 18, 30, 0.8));
+}
+.explore-intro b { font: 700 14px var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; color: #bdf0ff; }
+.explore-intro p { margin: 0; font-size: 14px; line-height: 1.4; }
+.explore-intro button { justify-self: end; min-height: 40px; padding: 0 14px; }
+.event-hint { margin: 6px 0 0; padding: 6px 8px; border-left: 3px solid #6fd3ff; background: rgba(111, 211, 255, 0.08); font-size: 13px; color: #cfeeff; }
+@keyframes explore-coach-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+@media (prefers-reduced-motion: reduce) { .explore-coach { animation: none; } }
