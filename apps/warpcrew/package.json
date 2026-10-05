@@ -1,5 +1,5 @@
 {
-  "name": "warp-crew",
+  "name": "@warpcrew/client",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -34,6 +34,7 @@
     "postgres": "^3.4.9"
   },
   "engines": {
-    "node": ">=22"
-  }
+    "node": ">=24.0.0 <25"
+  },
+  "description": "Warp Crew: the game client, its sims and QA scripts (legacy save server in server/ until the core server replaces it)"
 }

@@ -72,7 +72,7 @@ Many of these modules mutate the passed player object. That convention is intern
 Consequences:
 
 - Local refresh persistence exists.
-- Cross-device recovery is not implemented.
+- Cross-device recovery: cloud saves and purchase records go through the save server (`server/README.md`), which the game-core server replaces during the port.
 - Client state cannot be authoritative proof for paid entitlements.
 - Schema migration exists, but server reconciliation, conflict handling, and transaction identity do not.
 

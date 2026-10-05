@@ -8,3 +8,4 @@ docs/architecture-v1.md
 docs/architecture-v1.formatted.md
 packages/contracts/openapi.json
 *.md
+apps/warpcrew

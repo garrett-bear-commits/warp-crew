@@ -1,6 +1,21 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "warp-crew", "runtimeExecutable": "npx", "runtimeArgs": ["vite", "--host", "--port", "5174", "--strictPort"], "port": 5174 }
+    {
+      "name": "warp-crew",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": [
+        "pnpm",
+        "-F",
+        "@warpcrew/client",
+        "exec",
+        "vite",
+        "--host",
+        "--port",
+        "5174",
+        "--strictPort"
+      ],
+      "port": 5174
+    }
   ]
 }

@@ -21,6 +21,8 @@ export default tseslint.config(
       '**/playwright-report/**',
       '**/test-results/**',
       'infra/pgdata/**',
+      // Warp Crew is plain JS from before the core import; it joins lint as each part is ported.
+      'apps/warpcrew/**',
     ],
   },
   js.configs.recommended,

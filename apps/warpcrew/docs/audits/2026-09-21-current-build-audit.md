@@ -111,7 +111,7 @@ Visible text below 16px: 19 items.
 7. The combat choice is mostly a power comparison plus a free bonus. Rule failed: meaningful primary interaction. Fix: give each assist a distinct visible effect and a constrained tactical cost or charge model.
 8. The reward and recruit steps repeat text that the visuals could carry. Rule failed: show, do not explain. Fix: animate currencies to the HUD, visibly open the berth, and place the recruit into the ship.
 9. The tutorial exits into another persistent tutorial card rather than a clear repeatable session plan. Rule failed: continuity. Fix: end with a compact three-action daily plan and then yield the screen.
-10. The registration step promises cross-device saving that is not implemented. Rule failed: truthful UX copy. Fix: either implement verified cloud persistence first or change the prompt so it makes no recovery promise.
+10. The registration step promises cross-device saving that did not exist at the time. Rule failed: truthful UX copy. Fix: either implement verified cloud persistence first or change the prompt so it makes no recovery promise.
 
 ### Crew
 
