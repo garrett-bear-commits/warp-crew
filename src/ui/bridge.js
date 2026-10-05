@@ -32,6 +32,7 @@ import { syncCrewLayer } from './crewWalk.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatView.js';
 import { unlockSfx } from './juice.js';
+import { isSfxMuted } from './sound.js';
 import { startStageLoop } from './stageLoop.js';
 import { contractShipSignals, renderDepartureStatus, renderRoomHotspot, renderShipFeedback, renderShipSequence, roomStyle } from './shipView.js';
 import { renderShipDebug, shipDebugEnabled } from './shipDebug.js';
@@ -1692,7 +1693,8 @@ function renderShop(player, shopProducts, now = Date.now()) {
 }
 
 export function renderQaSettings() {
-  return `<div class="panel qa-settings"><h2>Settings</h2><p class="muted">QA tool · Start the game again on this device.</p><button class="danger" data-act="restart-save">Restart save</button></div>`;
+  const muted = isSfxMuted();
+  return `<div class="panel qa-settings"><h2>Settings</h2><p class="row"><button type="button" data-act="sfx-toggle" aria-pressed="${muted ? 'false' : 'true'}">Sound: ${muted ? 'Off' : 'On'}</button></p><p class="muted">QA tool · Start the game again on this device.</p><button class="danger" data-act="restart-save">Restart save</button></div>`;
 }
 
 export function renderRestartSaveConfirm() {
