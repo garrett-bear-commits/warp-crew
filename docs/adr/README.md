@@ -25,3 +25,4 @@ Format: Context → Decision → Consequences. All dated 2026-08-17 unless state
 | [ADR-032](ADR-032-audit-fixes.md) | Decisions taken while fixing the v1 audit findings (replay semantics, TLS, lease tokens, DR markers, Sentry sampling, business-key locks) |
 | [ADR-033](ADR-033-schema-n1-boot.md) | Schema boot compatibility is a declared N-1 extra for one prior image |
 | [ADR-034](ADR-034-disposable-save-sessions.md) | Player-save takeover uses a disposable browser session |
+| [ADR-035](ADR-035-bundles-one-time-packs-subscriptions.md) | Bundle packs, one-time packs (migration `0018`), an ownership query and verified subscriptions (2026-10-05) |

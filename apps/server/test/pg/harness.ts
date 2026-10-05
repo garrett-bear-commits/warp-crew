@@ -81,6 +81,8 @@ export async function setupHarness(
     cfAccess?: CfAccessConfig;
     cfAccessFetch?: typeof fetch;
     log?: Logger;
+    /** Server config overrides (e.g. real Jest providers with a test secret). */
+    config?: Partial<ServerConfig>;
   } = {},
 ): Promise<Harness> {
   const test = await createTestDatabase(opts.prefix ?? 'app');
@@ -135,6 +137,7 @@ export async function setupHarness(
     staticDir: '',
     jobsEnabled: false,
     typesafeApiKey: opts.typesafeApiKey ?? '',
+    ...opts.config,
   };
   validateConfig(config);
   const game: GameConfig = { ...templateGame, ...opts.game };

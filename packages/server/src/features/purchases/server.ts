@@ -1,5 +1,6 @@
-// purchases feature (§4.3, ADR-007, ADR-024): receipt verify (provider), purchase_transactions,
-// purchase_adjustments (±), classification, per-pack promotions, /purchases/mine, player_flags.
+// purchases feature (§4.3, ADR-007, ADR-024, ADR-035): receipt verify (provider),
+// purchase_transactions, purchase_adjustments (±), classification, per-pack promotions, bundle and
+// one-time packs, /purchases/mine, /purchases/owned, player_flags.
 import type { FastifyInstance } from 'fastify';
 import {
   PurchaseVerifyBody,
@@ -14,6 +15,8 @@ import {
   type AdminAdjustmentResult,
   type PurchaseRecord,
   type PurchaseAdjustment,
+  type PurchasesOwnedResponse,
+  type GrantReward,
 } from '@foundation/contracts';
 import type { PurchaseClassification } from '@foundation/contracts/enums';
 import type { VerifiedReceipt } from '@foundation/jest-verify';
@@ -23,7 +26,7 @@ import { route } from '../../http/route.ts';
 import type { AppContext } from '../../http/context.ts';
 import type { Q, Tx } from '../../db/index.ts';
 import type { CatalogPack, GameConfig } from '../../game/config.ts';
-import { mintGrant } from '../../rewards/mint.ts';
+import { mintGrant, premiumOf } from '../../rewards/mint.ts';
 import { actorLabel } from '../../cqrs/bus.ts';
 import { entitlementFor } from '../../game/facts.ts';
 import { sha256Hex } from '../../db/canonical.ts';
@@ -62,6 +65,27 @@ export function classifyReceipt(r: VerifiedReceipt, catalog: readonly CatalogPac
   )
     return { kind: 'paid', pack };
   return { kind: 'unclassified', pack };
+}
+
+/**
+ * What one delivery of a minting purchase grants: a bundle's rewards (ADR-035), or the pack's
+ * premium with its first-purchase promotion. Empty when the classification does not mint.
+ */
+export function deliveryRewards(
+  c: Classified,
+  packPreviouslyPurchased: boolean,
+  purchases: GameConfig['purchases'],
+): GrantReward[] {
+  if (c.kind === 'unsupported') return [];
+  if (c.pack.rewards) {
+    const mints =
+      c.kind === 'paid'
+        ? purchases.mintPremium === 'on'
+        : c.kind === 'sandbox' && purchases.mintSandbox === 'on';
+    return mints ? c.pack.rewards.map((r) => ({ ...r })) : [];
+  }
+  const amount = grantedAmount(c, packPreviouslyPurchased, purchases);
+  return amount > 0 ? [{ kind: 'premium_currency', amount }] : [];
 }
 
 export function grantedAmount(
@@ -138,6 +162,7 @@ interface TxRow {
   price: string | null;
   currency: string | null;
   sandbox: boolean | null;
+  duplicate_of: string | null;
   created_at: Date;
   completed_at: Date | null;
   recorded_at: Date;
@@ -152,6 +177,7 @@ const toRecord = (r: TxRow): PurchaseRecord => ({
   ...(r.price !== null ? { price: Number(r.price) } : {}),
   ...(r.currency ? { currency: r.currency } : {}),
   sandbox: r.sandbox,
+  ...(r.duplicate_of !== null ? { duplicateOf: Number(r.duplicate_of) } : {}),
   createdAt: r.created_at.getTime(),
   completedAt: r.completed_at ? r.completed_at.getTime() : null,
   recordedAt: r.recorded_at.getTime(),
@@ -181,8 +207,16 @@ const toAdj = (r: AdjRow): PurchaseAdjustment => ({
 export async function listPurchases(q: Q, playerKey: string): Promise<PurchaseRecord[]> {
   const rows = await q<
     TxRow[]
-  >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, created_at, completed_at, recorded_at FROM purchase_transactions WHERE player_key = ${playerKey} ORDER BY created_at, id`;
+  >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, duplicate_of, created_at, completed_at, recorded_at FROM purchase_transactions WHERE player_key = ${playerKey} ORDER BY created_at, id`;
   return rows.map(toRecord);
+}
+
+/** One-time SKUs this player owns: the SKUs of minted paid purchases marked one_time (ADR-035). */
+export async function ownedOneTime(q: Q, playerKey: string): Promise<string[]> {
+  const rows = await q<
+    { sku: string }[]
+  >`SELECT DISTINCT sku FROM purchase_transactions WHERE player_key = ${playerKey} AND one_time ORDER BY sku`;
+  return rows.map((r) => r.sku);
 }
 
 export async function listAdjustments(
@@ -212,7 +246,7 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
     if (!tokenLocked) await t`SELECT pg_advisory_xact_lock(6, hashtext(${r.purchaseToken}))`;
     const existing = await t<
       (TxRow & { player_key: string })[]
-    >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, created_at, completed_at, recorded_at, player_key FROM purchase_transactions WHERE provider_token = ${r.purchaseToken}`;
+    >`SELECT id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, duplicate_of, created_at, completed_at, recorded_at, player_key FROM purchase_transactions WHERE provider_token = ${r.purchaseToken}`;
     if (existing[0] && existing[0].player_key !== playerKey)
       return {
         purchaseToken: r.purchaseToken,
@@ -225,7 +259,7 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
         purchaseToken: r.purchaseToken,
         outcome: 'duplicate',
         purchase: toRecord(existing[0]),
-        completion: existing[0].grant_key ? 'ready' : 'withhold',
+        completion: existing[0].grant_key || existing[0].duplicate_of ? 'ready' : 'withhold',
       };
 
     const c = classifyReceipt(r, game.catalog);
@@ -236,32 +270,44 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
         reason: 'delivery_unavailable',
         completion: 'withhold',
       };
-    let granted = 0;
+    let rewards: GrantReward[] = [];
     let grantKey: string | null = null;
-    if (c.kind !== 'unsupported') {
+    // One-time packs (ADR-035): once a paid purchase owns the pack, any later receipt for it is
+    // recorded against the owning row for support to refund, and grants nothing.
+    let duplicateOf: string | null = null;
+    if (c.kind !== 'unsupported' && c.pack.oneTime) {
+      const owner = await t<
+        { id: string }[]
+      >`SELECT id FROM purchase_transactions WHERE player_key = ${playerKey} AND sku = ${r.productSku} AND one_time`;
+      duplicateOf = owner[0]?.id ?? null;
+    }
+    if (c.kind !== 'unsupported' && duplicateOf === null) {
       // Minted sandbox and paid deliveries share one first-buy bonus per pack, matching the
       // client's single first-purchase record.
       const prev = await t<
         { n: number }[]
       >`SELECT count(*)::int AS n FROM purchase_transactions WHERE player_key = ${playerKey} AND pack_key = ${c.pack.packKey} AND classification IN ('paid', 'sandbox') AND grant_key IS NOT NULL`;
-      granted = grantedAmount(c, (prev[0]?.n ?? 0) > 0, game.purchases);
+      rewards = deliveryRewards(c, (prev[0]?.n ?? 0) > 0, game.purchases);
     }
-    if (granted > 0) {
+    const granted = premiumOf(rewards);
+    if (rewards.length > 0) {
       grantKey = `purchase:${sha256Hex(r.purchaseToken)}`;
       await mintGrant(t, {
         playerKey,
         grantKey,
         source: 'purchase',
-        rewards: [{ kind: 'premium_currency', amount: granted }],
+        rewards,
         reason: `purchase ${r.productSku}`,
         actor: actorLabel(exec),
         commandId,
       });
     }
+    // Only a minted paid purchase owns a one-time pack; sandbox deliveries never do.
+    const owns = c.kind === 'paid' && c.pack.oneTime === true && grantKey !== null;
     const ins = await t<TxRow[]>`
-      INSERT INTO purchase_transactions (provider_token, player_key, sku, pack_key, base_amount, granted, price, currency, sandbox, classification, created_at, completed_at, source, command_id, grant_key)
-      VALUES (${r.purchaseToken}, ${playerKey}, ${r.productSku}, ${c.pack?.packKey ?? null}, ${c.pack?.baseAmount ?? 0}, ${granted}, ${r.price ?? null}, ${r.currency ?? null}, ${r.sandbox}, ${c.kind}, ${new Date(r.createdAt)}, ${r.completedAt === null ? null : new Date(r.completedAt)}, 'live_receipt', ${commandId}, ${grantKey})
-      RETURNING id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, created_at, completed_at, recorded_at`;
+      INSERT INTO purchase_transactions (provider_token, player_key, sku, pack_key, base_amount, granted, price, currency, sandbox, classification, created_at, completed_at, source, command_id, grant_key, one_time, duplicate_of)
+      VALUES (${r.purchaseToken}, ${playerKey}, ${r.productSku}, ${c.pack?.packKey ?? null}, ${c.pack?.baseAmount ?? 0}, ${granted}, ${r.price ?? null}, ${r.currency ?? null}, ${r.sandbox}, ${c.kind}, ${new Date(r.createdAt)}, ${r.completedAt === null ? null : new Date(r.completedAt)}, 'live_receipt', ${commandId}, ${grantKey}, ${owns}, ${duplicateOf})
+      RETURNING id, sku, pack_key, classification, granted, grant_key, price, currency, sandbox, duplicate_of, created_at, completed_at, recorded_at`;
     await ctx.outbox.emit(t, {
       kind: 'purchase.recorded',
       playerKey,
@@ -271,6 +317,7 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
         classification: c.kind,
         granted,
         grantKey,
+        ...(duplicateOf !== null ? { duplicateOf: Number(duplicateOf) } : {}),
       },
       commandId,
     });
@@ -278,7 +325,9 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
       purchaseToken: r.purchaseToken,
       outcome: 'recorded',
       purchase: toRecord(ins[0]!),
-      completion: grantKey ? 'ready' : 'withhold',
+      // A duplicate one-time payment completes: nothing will ever be delivered for it, and support
+      // refunds it from the recorded row.
+      completion: grantKey || duplicateOf !== null ? 'ready' : 'withhold',
     };
   };
 
@@ -488,6 +537,17 @@ export function registerPurchases(app: FastifyInstance, ctx: AppContext): void {
         purchasesDisabled: disabled,
         checkoutEnabled:
           !disabled && game.purchases.mintPremium === 'on' && !purchaseVerificationPaused(ctx),
+      };
+      return out;
+    },
+  );
+  route<undefined, typeof import('@foundation/contracts').PurchasesOwnedResponse>(
+    app,
+    ctx,
+    'purchases.owned',
+    async ({ exec }) => {
+      const out: Omit<PurchasesOwnedResponse, 'serverNow' | 'requestId'> = {
+        oneTime: await ownedOneTime(ctx.db.sql, exec!.playerKey!),
       };
       return out;
     },

@@ -6,11 +6,13 @@ import type { FastifyInstance } from 'fastify';
 import {
   createJestIdentityVerifier,
   createJestPaymentsVerifier,
+  createJestSubscriptionsVerifier,
   createMockIdentityVerifier,
   createMockPaymentsVerifier,
+  createMockSubscriptionsVerifier,
 } from '@foundation/jest-verify';
 import type { ServerConfig } from './config.ts';
-import type { GameConfig, GamePolicy } from './game/config.ts';
+import { gameConfigProblems, type GameConfig, type GamePolicy } from './game/config.ts';
 import { createDb, pgSslOption, type Db } from './db/index.ts';
 import { checkSchema } from './db/migrate.ts';
 import { CommandBus } from './cqrs/bus.ts';
@@ -33,6 +35,7 @@ import { registerInbox } from './features/inbox/server.ts';
 import { registerLiveops, createLiveopsCache } from './features/liveops/server.ts';
 import { registerTelemetry } from './features/telemetry/server.ts';
 import { registerNames } from './features/names/server.ts';
+import { registerSubscriptions } from './features/subscriptions/server.ts';
 import { registerJournal } from './features/journal/server.ts';
 import { registerAdmin } from './features/admin/server.ts';
 import { registerQa } from './features/qa/server.ts';
@@ -97,6 +100,9 @@ export function createLogger(
 }
 
 export async function createServer(o: CreateServerOptions): Promise<Server> {
+  const gameProblems = gameConfigProblems(o.game, o.policy);
+  if (gameProblems.length)
+    throw new Error(`game config ${o.game.gameId} refused: ${gameProblems.join('; ')}`);
   const log = o.log ?? createLogger(o.config.logLevel);
   const clock = o.clock ?? systemClock;
   const db =
@@ -117,6 +123,10 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     o.config.paymentsProvider === 'jest'
       ? createJestPaymentsVerifier({ secretsB64: o.config.jestSecrets })
       : createMockPaymentsVerifier();
+  const subscriptions =
+    o.config.paymentsProvider === 'jest'
+      ? createJestSubscriptionsVerifier({ secretsB64: o.config.jestSecrets })
+      : createMockSubscriptionsVerifier();
   const cfAccess = o.config.cfAccess
     ? createCfAccessVerifier(o.config.cfAccess, {
         ...(o.cfAccessFetch ? { fetch: o.cfAccessFetch } : {}),
@@ -166,6 +176,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
     limiter,
     identity,
     payments,
+    subscriptions,
     cfAccess,
     log,
     httpStats: createHttpStats(),
@@ -185,6 +196,7 @@ export async function createServer(o: CreateServerOptions): Promise<Server> {
   registerLineage(app, ctx);
   registerNames(app, ctx);
   if (o.game.features.purchases) registerPurchases(app, ctx);
+  if (o.game.features.subscriptions) registerSubscriptions(app, ctx);
   if (o.game.features.grants) registerGrants(app, ctx);
   if (o.game.features.achievements) registerAchievements(app, ctx);
   if (o.game.features.achievements || o.game.features.daily) registerDaily(app, ctx);

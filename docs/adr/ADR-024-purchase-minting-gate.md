@@ -64,7 +64,8 @@ then recover normally because no disabled-delivery ledger row was written. Any p
 an older build with `grant_key IS NULL` requires explicit operator compensation rather than silent
 promotion. A migrated long key remains claimable through either its retained alias or canonical
 key, with grant-claim idempotency still anchored to the unchanged grant id. Subscriptions are beta
-and remain deferred from this remediation.
+and remain deferred from this remediation (2026-10-05: verified per request, never stored, ADR-035; sandbox
+subscriptions follow `mintSandbox`).
 
 Sources reviewed: [Jest payments](https://docs.jest.com/sdk/html5/payments),
 [sandbox users](https://docs.jest.com/testing/sandbox), and

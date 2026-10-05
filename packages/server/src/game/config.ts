@@ -12,11 +12,42 @@ import type { BlobLimits } from '../codec/blob.ts';
 export interface CatalogPack {
   sku: string;
   packKey: string;
-  /** Premium currency granted for a paid purchase (server fact). */
+  /**
+   * Premium currency granted for a paid purchase (server fact). For a bundle (`rewards`) this is
+   * the premium currency inside the bundle (what `purchase_transactions.granted` records).
+   */
   baseAmount: number;
-  /** First purchase of this pack doubles (per-pack promotion keyed by pack id). */
+  /** First purchase of this pack doubles (per-pack promotion keyed by pack id). Not for bundles. */
   firstPurchaseMultiplier?: number;
   title?: string;
+  /**
+   * Bundle pack (ADR-035): one delivery grants exactly these rewards, in the game's grant
+   * vocabulary (`GamePolicy.grantRewardProblem` must accept them), instead of `baseAmount`
+   * premium alone. Boot refuses a bundle whose premium differs from `baseAmount`.
+   */
+  rewards?: GrantReward[];
+  /**
+   * Sold once per player (ADR-035). The first minted paid purchase owns it; any later receipt for
+   * it (paid or sandbox) is recorded with `duplicateOf` for support to refund and granted nothing.
+   * Sandbox purchases never make it owned.
+   */
+  oneTime?: boolean;
+}
+
+/** A subscription SKU the game knows (ADR-035). Perks are the game's; the server only verifies. */
+export interface SubscriptionSku {
+  sku: string;
+  title?: string;
+}
+
+/**
+ * Subscriptions (ADR-035): Jest's signed subscription list is verified per request and nothing
+ * is stored. Sandbox subscriptions are active only with `purchases.mintSandbox: 'on'`.
+ */
+export interface SubscriptionsConfig {
+  skus: SubscriptionSku[];
+  /** How old a signed list may be (from its `iat`). Default and ceiling: 24 h. */
+  maxAgeSec?: number;
 }
 
 export interface BoardConfig {
@@ -48,6 +79,8 @@ export interface FeatureFlagsConfig {
   qa: boolean;
   /** Daily reward claim + status without the achievements evaluator (on with `achievements`). */
   daily?: boolean;
+  /** Verify signed subscription lists (`GameConfig.subscriptions`, ADR-035). */
+  subscriptions?: boolean;
 }
 
 export interface GameConfig {
@@ -65,6 +98,8 @@ export interface GameConfig {
   knownSchemaVersions: number[];
   /** Real premium minting from receipts (ADR-024). `mintSandbox` also mints signed sandbox receipts. */
   purchases: { mintPremium: 'on' | 'off'; mintSandbox?: 'on' | 'off' };
+  /** Known subscription SKUs; required when `features.subscriptions` (ADR-035). */
+  subscriptions?: SubscriptionsConfig;
   blobLimits: BlobLimits;
   maxTokenAgeSec: number;
   /** In-bundle content defaults (published documents override, ADR-012). */
@@ -115,3 +150,58 @@ export const DEFAULT_RETENTION: RetentionConfig = {
   keepGenerations: 3,
   refusedBlobsPerHour: 5,
 };
+
+/** Ceiling for `subscriptions.maxAgeSec`: an older signed list could be replayed after a cancel. */
+export const SUBSCRIPTION_MAX_AGE_SEC = 24 * 3600;
+
+const premiumIn = (rewards: readonly GrantReward[]): number =>
+  rewards.reduce((n, r) => (r.kind === 'premium_currency' ? n + r.amount : n), 0);
+
+/**
+ * Why this game's catalog and subscription configuration cannot boot (ADR-035), or []. Bundles
+ * must be grants the game can apply, one-time packs must be unambiguous, and subscriptions need
+ * their SKUs. createServer refuses to start on any problem.
+ */
+export function gameConfigProblems(game: GameConfig, policy: GamePolicy): string[] {
+  const problems: string[] = [];
+  const skus = new Set<string>();
+  for (const pack of game.catalog) {
+    if (skus.has(pack.sku)) problems.push(`catalog ${pack.sku}: duplicate sku`);
+    skus.add(pack.sku);
+    if (!Number.isSafeInteger(pack.baseAmount) || pack.baseAmount < 0)
+      problems.push(`catalog ${pack.sku}: baseAmount must be a non-negative integer`);
+    if (pack.rewards === undefined) continue;
+    if (pack.rewards.length === 0) problems.push(`catalog ${pack.sku}: a bundle needs rewards`);
+    if ((pack.firstPurchaseMultiplier ?? 1) !== 1)
+      problems.push(`catalog ${pack.sku}: a bundle cannot take a firstPurchaseMultiplier`);
+    if (premiumIn(pack.rewards) !== pack.baseAmount)
+      problems.push(
+        `catalog ${pack.sku}: baseAmount ${pack.baseAmount} differs from the bundle's premium ${premiumIn(pack.rewards)}`,
+      );
+    const problem = policy.grantRewardProblem?.(pack.rewards) ?? null;
+    if (problem) problems.push(`catalog ${pack.sku}: ${problem}`);
+  }
+  const subs = game.subscriptions;
+  if (game.features.subscriptions) {
+    if (!subs || subs.skus.length === 0)
+      problems.push('features.subscriptions needs subscriptions.skus');
+  }
+  if (subs) {
+    const seen = new Set<string>();
+    for (const s of subs.skus) {
+      if (!s.sku) problems.push('subscriptions: empty sku');
+      if (seen.has(s.sku)) problems.push(`subscriptions ${s.sku}: duplicate sku`);
+      seen.add(s.sku);
+    }
+    if (
+      subs.maxAgeSec !== undefined &&
+      !(
+        Number.isSafeInteger(subs.maxAgeSec) &&
+        subs.maxAgeSec > 0 &&
+        subs.maxAgeSec <= SUBSCRIPTION_MAX_AGE_SEC
+      )
+    )
+      problems.push(`subscriptions.maxAgeSec must be 1..${SUBSCRIPTION_MAX_AGE_SEC}`);
+  }
+  return problems;
+}

@@ -182,6 +182,60 @@ export const purchaseBatchVerifyResult: C.PurchaseBatchVerifyResult = {
   serverNow: T0 + 2000,
 };
 
+/** A second payment for a one-time pack the player owns (ADR-035): recorded, never granted. */
+export const purchaseVerifyDuplicateOneTime: C.PurchaseVerifyResult = {
+  purchaseToken: 'provider-token-fixture-2',
+  outcome: 'recorded',
+  completion: 'ready',
+  purchase: {
+    id: 2,
+    sku: 'starter_kit',
+    packKey: 'starter_kit',
+    classification: 'paid',
+    granted: 0,
+    price: 4.99,
+    currency: 'USD',
+    sandbox: false,
+    duplicateOf: 1,
+    createdAt: T0,
+    completedAt: null,
+    recordedAt: T0 + 2000,
+  },
+  requestId: REQUEST_ID,
+  serverNow: T0 + 2000,
+};
+
+export const purchasesOwned: C.PurchasesOwnedResponse = {
+  oneTime: ['starter_kit'],
+  requestId: REQUEST_ID,
+  serverNow: T0,
+};
+
+export const subscriptionsVerifyBody: C.SubscriptionsVerifyBody = {
+  commandId: FIXTURE_UUIDS.commandId,
+  subscriptionsSigned: 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZW1wbGF0ZSJ9.fixture',
+};
+
+export const subscriptionsVerifyResult: C.SubscriptionsVerifyResult = {
+  outcome: 'verified',
+  issuedAt: T0,
+  subscriptions: [
+    {
+      sku: 'sub_patron',
+      active: true,
+      status: 'active',
+      sandbox: false,
+      trialEligible: false,
+      retentionOffer: { price: 599, durationPeriods: 2 },
+      price: 999,
+      currency: 'USD',
+      billingPeriod: 'monthly',
+    },
+  ],
+  requestId: REQUEST_ID,
+  serverNow: T0 + 100,
+};
+
 export const grantClaimBody: C.GrantClaimBody = {
   commandId: FIXTURE_UUIDS.commandId,
   grantKey: 'admin:ticket-123:make-good',
@@ -367,7 +421,24 @@ export const ROUTE_FIXTURES: Record<string, { body?: unknown; response: unknown 
   'saves.beacon': [{ body: saveBeaconBody, response: saveWriteResultAnchored }],
   'saves.current': [{ response: saveCurrentEmpty }, { response: saveCurrentWithSnapshot }],
   'lineage.restart': [{ body: lineageRestartBody, response: generationReceipt }],
-  'purchases.verify': [{ body: purchaseVerifyBody, response: purchaseVerifyResult }],
+  'purchases.verify': [
+    { body: purchaseVerifyBody, response: purchaseVerifyResult },
+    { body: purchaseVerifyBody, response: purchaseVerifyDuplicateOneTime },
+  ],
+  'purchases.owned': [{ response: purchasesOwned }],
+  'subscriptions.verify': [
+    { body: subscriptionsVerifyBody, response: subscriptionsVerifyResult },
+    {
+      body: subscriptionsVerifyBody,
+      response: {
+        outcome: 'rejected',
+        reason: 'stale',
+        subscriptions: [],
+        requestId: REQUEST_ID,
+        serverNow: T0,
+      },
+    },
+  ],
   'purchases.verifyBatch': [{ body: purchaseBatchVerifyBody, response: purchaseBatchVerifyResult }],
   'grants.claim': [{ body: grantClaimBody, response: grantClaimResult }],
   'codes.redeem': [

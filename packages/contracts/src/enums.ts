@@ -214,6 +214,23 @@ export const RECEIPT_FAILURES = [
 ] as const;
 export type ReceiptFailure = (typeof RECEIPT_FAILURES)[number];
 
+/** Why a signed subscription list was refused (ADR-035). */
+export const SUBSCRIPTION_FAILURES = [
+  'no_secret',
+  'malformed',
+  'bad_alg',
+  'bad_signature',
+  'wrong_audience',
+  'sub_mismatch',
+  'no_iat',
+  'stale',
+  'malformed_subscription',
+] as const;
+export type SubscriptionFailure = (typeof SUBSCRIPTION_FAILURES)[number];
+
+export const SUBSCRIPTION_BILLING_PERIODS = ['weekly', 'monthly', 'yearly'] as const;
+export type SubscriptionBillingPeriod = (typeof SUBSCRIPTION_BILLING_PERIODS)[number];
+
 /** Header names (§6). */
 export const HEADERS = {
   playerKey: 'x-player-key',

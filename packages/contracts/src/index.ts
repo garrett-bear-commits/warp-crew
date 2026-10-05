@@ -5,6 +5,7 @@ export * from './common.ts';
 export * from './saves.ts';
 export * from './lineage.ts';
 export * from './purchases.ts';
+export * from './subscriptions.ts';
 export * from './grants.ts';
 export * from './liveops.ts';
 export * from './inbox.ts';

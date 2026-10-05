@@ -3,6 +3,7 @@ import { ErrorEnvelope, Ok } from './common.ts';
 import * as saves from './saves.ts';
 import * as lineage from './lineage.ts';
 import * as purchases from './purchases.ts';
+import * as subscriptions from './subscriptions.ts';
 import * as grants from './grants.ts';
 import * as liveops from './liveops.ts';
 import * as inbox from './inbox.ts';
@@ -194,6 +195,27 @@ export const ROUTES: readonly RouteDef[] = [
     feature: 'purchases',
     summary: 'My purchases + pendingAdjustments',
     response: purchases.PurchasesMineResponse,
+  },
+  {
+    id: 'purchases.owned',
+    method: 'GET',
+    path: '/v1/purchases/owned',
+    auth: 'player',
+    feature: 'purchases',
+    summary: 'One-time SKUs I own (read before a one-time checkout; no answer, no checkout)',
+    response: purchases.PurchasesOwnedResponse,
+  },
+
+  // subscriptions
+  {
+    id: 'subscriptions.verify',
+    method: 'POST',
+    path: '/v1/subscriptions/verify',
+    auth: 'player',
+    feature: 'subscriptions',
+    summary: "Verify Jest's signed subscription list; entitlement per known SKU, nothing stored",
+    body: subscriptions.SubscriptionsVerifyBody,
+    response: subscriptions.SubscriptionsVerifyResult,
   },
   {
     id: 'purchases.ackAdjustments',

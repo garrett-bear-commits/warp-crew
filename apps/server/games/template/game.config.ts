@@ -16,6 +16,7 @@ export const templateGame: GameConfig = {
     purchases: true,
     grants: true,
     qa: true,
+    subscriptions: true,
   },
   catalog: [
     {
@@ -50,6 +51,7 @@ export const templateGame: GameConfig = {
   journal: 'errors_only', // ADR-020
   knownSchemaVersions: [1, 2],
   purchases: { mintPremium: 'off' }, // ADR-024: owner gate + real paid/sandbox payload validation
+  subscriptions: { skus: [{ sku: 'sub_patron', title: 'Patron' }] }, // ADR-035: verified, never stored
   blobLimits: DEFAULT_BLOB_LIMITS,
   maxTokenAgeSec: 24 * 3600,
   content: { achievements, dailyRewards },

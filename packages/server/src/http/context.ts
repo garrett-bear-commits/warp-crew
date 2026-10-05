@@ -1,4 +1,8 @@
-import type { IdentityVerifier, PaymentsVerifier } from '@foundation/jest-verify';
+import type {
+  IdentityVerifier,
+  PaymentsVerifier,
+  SubscriptionsVerifier,
+} from '@foundation/jest-verify';
 import type { Logger } from 'pino';
 import type { ServerConfig } from '../config.ts';
 import type { Db } from '../db/index.ts';
@@ -28,6 +32,8 @@ export interface AppContext {
   limiter: RateLimiter;
   identity: IdentityVerifier;
   payments: PaymentsVerifier;
+  /** Signed subscription lists (same provider and secrets as payments, ADR-035). */
+  subscriptions: SubscriptionsVerifier;
   /** Cloudflare Access token check for admin routes (config.cfAccess); null: none. */
   cfAccess: CfAccessVerifier | null;
   log: Logger;

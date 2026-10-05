@@ -33,7 +33,7 @@ export async function playerFacts(q: Q, playerKey: string, now: number): Promise
   >`SELECT registered, seen_days, first_seen_at, last_seen_at, last_build FROM players WHERE player_key = ${playerKey}`;
   const paid = await q<
     { n: number; total: string }[]
-  >`SELECT count(*)::int AS n, coalesce(sum(granted),0)::text AS total FROM purchase_transactions WHERE player_key = ${playerKey} AND classification = 'paid'`;
+  >`SELECT count(*)::int AS n, coalesce(sum(granted),0)::text AS total FROM purchase_transactions WHERE player_key = ${playerKey} AND classification = 'paid' AND duplicate_of IS NULL`;
   const adj = await q<
     { n: string }[]
   >`SELECT coalesce(sum(delta),0)::text AS n FROM purchase_adjustments WHERE player_key = ${playerKey}`;

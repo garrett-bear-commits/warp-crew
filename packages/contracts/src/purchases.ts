@@ -30,6 +30,11 @@ export const PurchaseRecord = Type.Object(
     currency: Type.Optional(Type.String()),
     /** Signed sandbox provenance; null only for legacy/imported rows where it was not retained. */
     sandbox: Type.Union([Type.Boolean(), Type.Null()]),
+    /**
+     * A one-time pack this player already owned (ADR-035): the id of the owning purchase. The
+     * payment is recorded for support to refund and granted nothing.
+     */
+    duplicateOf: Type.Optional(NonNegInt),
     createdAt: EpochMs,
     completedAt: Type.Union([EpochMs, Type.Null()]),
     recordedAt: EpochMs,
@@ -112,6 +117,16 @@ export const PurchasesMineResponse = Response(
   { $id: 'PurchasesMineResponse' },
 );
 export type PurchasesMineResponse = Static<typeof PurchasesMineResponse>;
+
+/**
+ * GET /v1/purchases/owned — one-time SKUs this player owns (ADR-035). Read immediately before a
+ * one-time checkout: when this does not answer, the client must not open checkout.
+ */
+export const PurchasesOwnedResponse = Response(
+  { oneTime: Type.Array(Type.String({ minLength: 1, maxLength: 256 }), { maxItems: 500 }) },
+  { $id: 'PurchasesOwnedResponse' },
+);
+export type PurchasesOwnedResponse = Static<typeof PurchasesOwnedResponse>;
 
 /** POST /v1/purchases/adjustments/ack {commandId, adjustmentIds[]} */
 export const AdjustmentsAckBody = Mutation(

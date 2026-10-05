@@ -26,6 +26,7 @@ export const DEFAULT_BUCKETS: Record<string, LimitBucket> = {
   'saves.beacon': { limit: 30, windowMs: 60_000 },
   lineage: { limit: 10, windowMs: 60_000 },
   purchases: { limit: 30, windowMs: 60_000 },
+  subscriptions: { limit: 30, windowMs: 60_000 },
   grants: { limit: 60, windowMs: 60_000 },
   codes: { limit: 10, windowMs: 60_000 },
   journal: { limit: 20, windowMs: 60_000 },

@@ -6,6 +6,7 @@ export type {
   PurchaseBatchVerifyResult,
   PurchaseVerification,
   PurchasesMineResponse,
+  PurchasesOwnedResponse,
   AdjustmentsAckBody,
   AdjustmentsAckResult,
   PurchaseRecord,

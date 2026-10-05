@@ -33,7 +33,11 @@ separate platform games); `GAME_CONFIG` names the `games/<id>/` entry that suppl
 Configure `game.config.ts`:
 
 - enable only features the client uses;
-- define catalog packs and boards;
+- define catalog packs and boards: a pack grants `baseAmount` premium currency, or a bundle of `rewards` in the
+  game's grant vocabulary, and `oneTime: true` sells it once per player (the client reads
+  `GET /v1/purchases/owned` before a one-time checkout and opens none without an answer; ADR-035);
+- for subscriptions, turn on `features.subscriptions` and list `subscriptions.skus`; the server verifies Jest's
+  signed list per request and stores nothing (ADR-035);
 - set origins, retention, blob limits, token age, budgets, and known save schemas;
 - keep premium purchase minting off until a real signed receipt is verified; `purchases.mintSandbox` (default off)
   additionally delivers signed sandbox receipts and needs its own owner approval (ADR-024);

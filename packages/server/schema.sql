@@ -377,6 +377,8 @@ col purchase_transactions.command_id uuid YES
 col purchase_transactions.grant_key text YES 
 col purchase_transactions.recorded_at timestamp with time zone NO now()
 col purchase_transactions.sandbox boolean YES NULLIF(true, true)
+col purchase_transactions.one_time boolean NO false
+col purchase_transactions.duplicate_of bigint YES 
 col rate_limits.key text NO 
 col rate_limits.window_start timestamp with time zone NO 
 col rate_limits.count integer NO 0
@@ -544,9 +546,11 @@ con purchase_adjustments.purchase_adjustments_pkey PRIMARY KEY (id)
 con purchase_adjustments.purchase_adjustments_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES purchase_transactions(id)
 con purchase_transactions.purchase_transactions_base_amount_check CHECK ((base_amount >= 0))
 con purchase_transactions.purchase_transactions_classification_check CHECK ((classification = ANY (ARRAY['paid'::text, 'sandbox'::text, 'unclassified'::text, 'unsupported'::text])))
+con purchase_transactions.purchase_transactions_duplicate_grants_nothing CHECK (((duplicate_of IS NULL) OR ((granted = 0) AND (grant_key IS NULL)))) NOT VALID
 con purchase_transactions.purchase_transactions_grant_key_length CHECK (((grant_key IS NULL) OR (char_length(grant_key) <= 200)))
 con purchase_transactions.purchase_transactions_granted_check CHECK ((granted >= 0))
 con purchase_transactions.purchase_transactions_granted_classification CHECK (((classification = ANY (ARRAY['paid'::text, 'sandbox'::text])) OR (granted = 0)))
+con purchase_transactions.purchase_transactions_one_time_owner CHECK (((NOT one_time) OR ((classification = 'paid'::text) AND (grant_key IS NOT NULL) AND (duplicate_of IS NULL)))) NOT VALID
 con purchase_transactions.purchase_transactions_pkey PRIMARY KEY (id)
 con purchase_transactions.purchase_transactions_provider_token_key UNIQUE (provider_token)
 con purchase_transactions.purchase_transactions_sandbox_not_paid CHECK (((sandbox IS DISTINCT FROM true) OR (classification <> 'paid'::text)))
@@ -652,6 +656,7 @@ idx purchase_adjustment_acks_pkey CREATE UNIQUE INDEX purchase_adjustment_acks_p
 idx purchase_adjustments_command_id_key CREATE UNIQUE INDEX purchase_adjustments_command_id_key ON public.purchase_adjustments USING btree (command_id)
 idx purchase_adjustments_pkey CREATE UNIQUE INDEX purchase_adjustments_pkey ON public.purchase_adjustments USING btree (id)
 idx purchase_adjustments_player CREATE INDEX purchase_adjustments_player ON public.purchase_adjustments USING btree (player_key, recorded_at)
+idx purchase_transactions_one_time_once CREATE UNIQUE INDEX purchase_transactions_one_time_once ON public.purchase_transactions USING btree (player_key, sku) WHERE one_time
 idx purchase_transactions_pack CREATE INDEX purchase_transactions_pack ON public.purchase_transactions USING btree (player_key, pack_key) WHERE (classification = 'paid'::text)
 idx purchase_transactions_pkey CREATE UNIQUE INDEX purchase_transactions_pkey ON public.purchase_transactions USING btree (id)
 idx purchase_transactions_player CREATE INDEX purchase_transactions_player ON public.purchase_transactions USING btree (player_key, created_at, id)

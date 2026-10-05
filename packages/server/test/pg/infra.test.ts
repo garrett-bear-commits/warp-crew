@@ -163,6 +163,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
           '0015_legacy_purchase_grant_keys.sql',
           '0016_sandbox_purchase_grants.sql',
           '0017_players_first_build.sql',
+          '0018_purchase_one_time_packs.sql',
         ]);
         const keys = await sql<
           { purchase_key: string; grant_key: string; grant_id: string; alias_key: string }[]
@@ -296,10 +297,10 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     }
   });
 
-  it('boot check: this image matches at 0017; a declared next extra is ahead here and exact-head-incompatible', async () => {
+  it('boot check: this image matches at 0018; a declared next extra is ahead here and exact-head-incompatible', async () => {
     const t = await createTestDatabase('schema_n1');
     const extraDir = writeMigrationsDir(listMigrations());
-    writeFileSync(join(extraDir, '0018_n1_probe.sql'), `${n1CompatLine(17)}\nSELECT 1;\n`);
+    writeFileSync(join(extraDir, '0019_n1_probe.sql'), `${n1CompatLine(18)}\nSELECT 1;\n`);
     try {
       await migrateUp(t.url);
       const sql = connect(t.url, { max: 1 });
@@ -319,7 +320,7 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const n1 = await checkSchema(sql);
         expect(n1.ok).toBe(true);
         expect(n1.state).toBe('ahead');
-        expect(n1.ahead).toEqual(['0018_n1_probe.sql']);
+        expect(n1.ahead).toEqual(['0019_n1_probe.sql']);
         expect(
           exactHeadMatches(
             listMigrations().map((m) => ({ name: m.name, checksum: m.checksum })),
@@ -338,23 +339,23 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
         const afterRepair = await checkSchema(sql);
         expect(afterRepair).toMatchObject({ ok: true, state: 'ahead' });
 
-        writeFileSync(join(extraDir, '0018_n1_probe.sql'), `${n1CompatLine(16)}\nSELECT 1;\n`);
+        writeFileSync(join(extraDir, '0019_n1_probe.sql'), `${n1CompatLine(17)}\nSELECT 1;\n`);
         await expect(repairChecksums(t.url, extraDir)).rejects.toThrow(/does not match stored/);
         expect(await checkSchema(sql)).toMatchObject({ ok: true, state: 'ahead' });
 
         writeFileSync(
-          join(extraDir, '0018_n1_probe.sql'),
-          `${n1CompatLine(17)}\nSELECT 1; -- repaired\n`,
+          join(extraDir, '0019_n1_probe.sql'),
+          `${n1CompatLine(18)}\nSELECT 1; -- repaired\n`,
         );
         await repairChecksums(t.url, extraDir);
         const afterExtraRepair = await checkSchema(sql);
         expect(afterExtraRepair).toMatchObject({
           ok: true,
           state: 'ahead',
-          ahead: ['0018_n1_probe.sql'],
+          ahead: ['0019_n1_probe.sql'],
         });
 
-        await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0019_ghost.sql', 'x')`;
+        await sql`INSERT INTO schema_migrations (name, checksum) VALUES ('0020_ghost.sql', 'x')`;
         const over = await checkSchema(sql);
         expect(over.ok).toBe(false);
         expect(over.state).toBe('incompatible');
@@ -370,10 +371,10 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
   it('--repair refuses an applied file that gained an n1 marker without a declaration', async () => {
     const t = await createTestDatabase('repair_n1_gain');
     const extraDir = writeMigrationsDir(listMigrations());
-    writeFileSync(join(extraDir, '0018_gain.sql'), 'SELECT 1;\n');
+    writeFileSync(join(extraDir, '0019_gain.sql'), 'SELECT 1;\n');
     try {
       await migrateUp(t.url, { dir: extraDir });
-      writeFileSync(join(extraDir, '0018_gain.sql'), `${n1CompatLine(17)}\nSELECT 1;\n`);
+      writeFileSync(join(extraDir, '0019_gain.sql'), `${n1CompatLine(18)}\nSELECT 1;\n`);
       await expect(repairChecksums(t.url, extraDir)).rejects.toThrow(/no schema_n1_compat row/);
     } finally {
       rmSync(extraDir, { recursive: true, force: true });
@@ -386,12 +387,12 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
     const gapDir = writeMigrationsDir(listMigrations());
     try {
       await migrateUp(t.url, { dir: gapDir });
-      writeFileSync(join(gapDir, '0019_gap.sql'), 'SELECT 1;\n');
+      writeFileSync(join(gapDir, '0020_gap.sql'), 'SELECT 1;\n');
       await expect(migrateUp(t.url, { dir: gapDir })).rejects.toThrow(/contiguous ordinal chain/);
       const sql = connect(t.url, { max: 1 });
       try {
         const extra = await sql<{ n: number }[]>`
-          SELECT count(*)::int AS n FROM schema_migrations WHERE name = '0019_gap.sql'`;
+          SELECT count(*)::int AS n FROM schema_migrations WHERE name = '0020_gap.sql'`;
         expect(extra[0]!.n).toBe(0);
       } finally {
         await sql.end({ timeout: 5 });
@@ -405,8 +406,9 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
   it('the 0016 image still boots on a database migrated to 0017 (image rollback)', async () => {
     const t = await createTestDatabase('rollback_0017');
     const image0016 = priorMigrationsDir(17);
+    const image0017 = priorMigrationsDir(18);
     try {
-      await migrateUp(t.url);
+      await migrateUp(t.url, { dir: image0017 });
       const sql = connect(t.url, { max: 1 });
       try {
         expect(await checkSchema(sql, image0016)).toMatchObject({
@@ -419,6 +421,28 @@ describe('migrations from empty (§9): checksummed, locked, idempotent, boot che
       }
     } finally {
       rmSync(image0016, { recursive: true, force: true });
+      rmSync(image0017, { recursive: true, force: true });
+      await t.drop();
+    }
+  });
+
+  it('the 0017 image still boots on a database migrated to 0018 (image rollback)', async () => {
+    const t = await createTestDatabase('rollback_0018');
+    const image0017 = priorMigrationsDir(18);
+    try {
+      await migrateUp(t.url);
+      const sql = connect(t.url, { max: 1 });
+      try {
+        expect(await checkSchema(sql, image0017)).toMatchObject({
+          ok: true,
+          state: 'ahead',
+          ahead: ['0018_purchase_one_time_packs.sql'],
+        });
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+    } finally {
+      rmSync(image0017, { recursive: true, force: true });
       await t.drop();
     }
   });
