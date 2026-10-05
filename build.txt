@@ -1,8 +1,3 @@
 Warp Crew Pages QA build 2026-10-05
-Source: claude/hud-overhaul@4ef4610d9f793371fa9ab7d8a2be66226e8fc9e7
-Scope: FTL-lite real-time crew fights (target enemy rooms, Hold volleys, shields, fires, crew moves, boarders, Overcharge, Board, Rally); guided first fight teaching targeting; Sparrow v4 and six enemy faction cutaways; sector map with lanes and authored events; Siege walls; timed drydock upgrades; starter kit and wall-pack offers; Captain's Commission subscription (local mock); ship furniture pathing; off-screen incoming-fire alerts; first Siege wall needs four wins in a day
-Platform: GitHub Pages local/mock mode; not a Jest production build; purchases and the subscription use the local mock, with no server verification and no cloud save
-Index SHA-256: 878832f5ab621d7e67ee4968f3268ac4e97da94fe8d338951664e05663030580
-QA hub SHA-256: 2f2e4f352d525d1be42e0069a2b9c6a18ea536e61d1d79098a77d9516923ead3
-JavaScript SHA-256: 675ba286dd9a6493f775c4bb9c21b5d70d8b312bcb97858176240b5e0722da9d
-CSS SHA-256: 894b1bce64d8f1795aca858abb94a2fdc92f10c8503a00181755f11bd1b701ba
+Source: claude/hud-overhaul@a66d1f28591d9a50ca473e90ce3bfe8f9479acbf
+Scope: FTL-lite real-time crew fights; drydock upgrades act in fights (shield layers, weapon slots, charge, dodge, aim); Weapons-room armory with Ion Blast, Leto Missile and Pike Beam; flagship and enemy tiers; Kenney CC0 sound effects with a Sound toggle in Log > Settings; drag crew onto rooms; enemy crew figures; one-time Explore map nudge for new captains; sector map with lanes and authored events; Siege walls; timed drydock upgrades; offers; Captain's Commission (local mock)
