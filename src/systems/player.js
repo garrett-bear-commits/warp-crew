@@ -14,6 +14,7 @@ import { clampFuel } from './economy.js';
 import { normalizeAssignments } from './stations.js';
 import { normalizeEncounterState } from './encounterState.js';
 import { normalizeTravelFightState } from './travelFight.js';
+import { normalizeEventState } from './travelEvents.js';
 
 const SAVE_VERSION = 9;
 
@@ -137,7 +138,7 @@ export function migratePlayer(player) {
   next.fuelMax = fuelMaxFor(next, def);
   next.fuelRatePerHour = fuelRateFor(next, def);
   next.wallet = clampFuel(next.wallet, next.fuelMax);
-  return reconcileWelcomeV5(reconcileFirstHireV5(normalizeTravelFightState(normalizeEncounterState(normalizeContractState(next, { nodes: NODES, encounterById })))));
+  return reconcileWelcomeV5(reconcileFirstHireV5(normalizeEventState(normalizeTravelFightState(normalizeEncounterState(normalizeContractState(next, { nodes: NODES, encounterById }))))));
 }
 
 export function assignedCrew(player) {

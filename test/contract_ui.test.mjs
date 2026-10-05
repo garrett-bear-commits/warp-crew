@@ -97,7 +97,8 @@ const player = { ...completeFreshTutorial(), activeContract: null, activeExpedit
 const missions = renderMissions(player, Date.now());
 assert.ok(missions.includes('Quiet Freight'));
 assert.ok(!missions.includes('data-act="travel-to"') && !missions.includes('data-act="exp-choose"'));
-const explore = renderMissions({ ...player, activeContract: { title: 'Active' } }, Date.now(), { missionView: 'explore' });
+// Sector map: Jump lives on the tapped beacon's card (a lane from Spur Anchor leads to Dust Lane).
+const explore = renderMissions({ ...player, location: 'station_home', activeContract: { title: 'Active' } }, Date.now(), { missionView: 'explore', selectedMapNode: 'lane_a' });
 assert.ok(explore.includes('Finish or abandon the active contract first.'));
 const travelControls = explore.match(/<button[^>]*data-act="travel-to"[^>]*>/g) || [];
 assert.ok(travelControls.length > 0);

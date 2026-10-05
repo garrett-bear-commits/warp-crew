@@ -3032,3 +3032,110 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 @media (prefers-reduced-motion: reduce) { .ftl-enemy-room[data-spotlight-target] { animation: none; } }
 .ftl-enemy-room { overflow: visible; }
 .ftl-room-tag { white-space: nowrap; }
+
+/* ---------------------------------------------------------------------------
+   Sector map and events (FTL-lite phase 3).
+   --------------------------------------------------------------------------- */
+.sector-panel { padding: 12px 10px 14px; }
+.sector-map-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sector-map-head h2 { margin: 0; font-family: var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.sector-map-head span { font-size: 12px; color: var(--muted); text-align: right; }
+.sector-chips { display: flex; gap: 6px; overflow-x: auto; margin: 8px 0 2px; padding-bottom: 2px; }
+.sector-chips button { flex: 0 0 auto; min-height: 34px; padding: 0 12px; font: 700 12px var(--font-display); text-transform: uppercase; letter-spacing: 0.04em; }
+.sector-chips button.is-current { border-color: var(--accent); color: var(--accent); }
+.sector-map {
+  position: relative; width: 100%; margin: 10px 0 4px; border: 1px solid var(--ops-edge, var(--line)); border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 20% 30%, rgba(88, 225, 255, 0.07), transparent 45%),
+    radial-gradient(circle at 80% 75%, rgba(255, 181, 71, 0.06), transparent 40%),
+    radial-gradient(1px 1px at 12% 18%, rgba(230, 241, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 63% 42%, rgba(230, 241, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 38% 81%, rgba(230, 241, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 87% 12%, rgba(230, 241, 255, 0.45), transparent),
+    #060a12;
+  overflow: hidden;
+}
+.sector-lanes { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sector-lanes line { stroke: rgba(142, 163, 187, 0.32); stroke-width: 1.4; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.sector-lanes line.live { stroke: var(--accent); stroke-opacity: 0.85; stroke-width: 2; stroke-dasharray: none; }
+.map-beacon {
+  position: absolute; transform: translate(-50%, -19px); display: grid; justify-items: center; gap: 1px;
+  width: 66px; min-height: 0; padding: 0; border: 0 !important; background: none !important; box-shadow: none !important;
+  color: var(--text); text-align: center; clip-path: none;
+}
+.map-beacon .beacon-dot {
+  position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid rgba(142, 163, 187, 0.5); background: #0d1520; color: var(--muted);
+}
+.map-glyph { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.map-beacon .beacon-name { font: 600 11px/1.15 var(--font-sans); color: var(--muted); max-width: 66px; text-shadow: 0 1px 2px #000; }
+.map-beacon .beacon-fuel { font: 700 11px var(--font-display); color: var(--accent); }
+.map-beacon.type-trade .beacon-dot { color: #8fe3b0; }
+.map-beacon.type-salvage .beacon-dot { color: var(--ops-amber, var(--warn)); }
+.map-beacon.type-story .beacon-dot { color: #b9a4ff; }
+.map-beacon.type-danger .beacon-dot { color: var(--bad); }
+.map-beacon.type-station .beacon-dot { color: var(--hull); }
+.map-beacon.is-reachable .beacon-dot { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88, 225, 255, 0.14), 0 0 12px rgba(88, 225, 255, 0.35); }
+.map-beacon.is-reachable .beacon-name { color: var(--text); }
+.map-beacon.is-visited:not(.is-here) .beacon-dot::after {
+  content: ''; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--muted); border: 2px solid #060a12;
+}
+.map-beacon.is-here .beacon-dot { border-color: var(--hull); background: #10261c; box-shadow: 0 0 14px rgba(111, 224, 140, 0.5); }
+.map-beacon.is-here .beacon-name { color: var(--hull); font-weight: 700; }
+.beacon-ship { position: absolute; top: -16px; right: -14px; color: var(--hull); }
+.beacon-ship .map-glyph { width: 20px; height: 20px; fill: var(--hull); stroke: #060a12; stroke-width: 1.5; }
+.map-beacon.is-border { opacity: 0.72; }
+.map-beacon.is-border .beacon-dot { border-style: dashed; }
+.map-beacon.is-walled .beacon-dot { border-color: var(--bad); color: var(--bad); border-style: dashed; }
+.map-beacon.is-selected .beacon-dot { outline: 2px solid var(--ops-amber, var(--warn)); outline-offset: 3px; }
+.map-beacon:focus-visible .beacon-dot { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sector-map-legend { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+.beacon-card { margin-top: 10px; padding: 12px; border: 1px solid var(--ops-edge, var(--line)); border-radius: var(--radius-md); background: #0a1019; }
+.beacon-card header { display: flex; align-items: center; gap: 10px; }
+.beacon-card header b { display: block; font: 700 17px var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; }
+.beacon-card header small { color: var(--muted); font-size: 12px; }
+.beacon-card-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--ops-edge, var(--line)); color: var(--accent); }
+.beacon-card p { margin: 8px 0; }
+.beacon-risk { font: 700 13px var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; color: var(--warn); }
+.beacon-risk.risk-none, .beacon-risk.risk-favorable { color: var(--good); }
+.beacon-risk.risk-deadly { color: var(--bad); }
+.beacon-mix { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; padding: 0; list-style: none; font-size: 12px; }
+.beacon-mix li { padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); }
+.beacon-mix li b { color: var(--text); }
+.beacon-mix li.mix-combat b { color: var(--bad); }
+.beacon-jump { width: 100%; min-height: var(--tap); }
+.beacon-note { font-size: 12px; color: var(--muted); }
+
+.event-card { display: grid; gap: 4px; }
+.event-kicker { margin: 0 !important; font: 700 11px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ops-amber, var(--warn)); }
+.event-card h2 { margin: 2px 0 0; font-family: var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; }
+.event-text { line-height: 1.45; }
+.event-choices { display: grid; gap: 10px; margin-top: 6px; }
+.event-choice { display: grid; gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.02); }
+.event-choice > button { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; width: 100%; min-height: var(--tap); text-align: left; }
+.event-choice.is-unavailable { opacity: 0.75; }
+.event-tag { padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; font: 700 11px var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+.event-label { flex: 1 1 auto; font-weight: 600; }
+.event-cost { font: 700 12px var(--font-display); text-transform: uppercase; }
+.event-odds { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: 13px; color: var(--muted); }
+.event-odds b, .event-stakes b { display: inline-block; min-width: 40px; color: var(--text); }
+.event-odds li.is-risky, .event-stakes.is-risky { color: #ffb3a7; }
+.event-stakes { margin: 0 !important; font-size: 13px; color: var(--muted); }
+.event-reason { margin: 0 !important; font-size: 12px; color: var(--warn); }
+.event-beat { padding: 8px; border-left: 3px solid #b9a4ff; background: rgba(185, 164, 255, 0.08); font-size: 14px; }
+.event-beat b { display: block; }
+.event-payout { font: 700 15px var(--font-display); letter-spacing: 0.02em; color: var(--good); }
+.event-result > button { width: 100%; min-height: var(--tap); }
+
+.route-event { gap: 6px; }
+.route-event p { margin: 0; line-height: 1.4; }
+.route-event .route-event-title { font: 700 16px var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; }
+.route-event-choice { display: grid; gap: 2px; }
+.route-event-choice button { width: 100%; min-height: var(--tap); }
+.route-event-choice small { font-size: 12px; color: var(--muted); }
+.route-event-choice small.is-risky { color: #ffb3a7; }
+.map-beacon .beacon-name { padding: 0 2px; border-radius: 3px; background: rgba(6, 10, 18, 0.72); }
+.map-beacon .beacon-fuel { padding: 0 4px; border-radius: 4px; background: #060a12; }
+/* The tapped beacon's card stays in thumb reach while the map scrolls above it. */
+.beacon-card { position: sticky; bottom: 8px; z-index: 3; box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.55); }
+.contract-sheet.event-card { padding-top: 16px; }

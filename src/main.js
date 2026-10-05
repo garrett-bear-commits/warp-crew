@@ -154,6 +154,14 @@ const SESSION_ERROR_COPY = {
   encounter_finished: 'The fight is over. Bring the cargo aboard.',
   not_enough_fuel: 'Not enough fuel for this job.',
   hull_critical: 'Repair your hull before the next job.',
+  // Sector map and events.
+  no_lane: 'No lane from here. Jump along the lanes.',
+  already_here: 'You are already here.',
+  locked_node: 'That beacon is not on your charts yet.',
+  event_active: 'Deal with the event first.',
+  stale_event: 'That event is over. Check the log.',
+  no_active_event: 'That event is over. Check the log.',
+  choice_unavailable: 'That choice is not available right now.',
 };
 
 export function sessionFailureMessage(reason, currentPlayer = null) {

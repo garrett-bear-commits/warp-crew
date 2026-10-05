@@ -446,8 +446,8 @@ export function careerDay(player, now = Date.now()) {
 
 // Siege walls (src/systems/walls.js): a guided-flow captain must break each
 // sector's flagship before the next sector's gate appears.
-const GATE_WALLS = { veil_gate: 'spur', ember_gate: 'veil', hollow_mouth: 'ember', halo_approach: 'hollow' };
-function gateBlockedByWall(player, nodeId) {
+export const GATE_WALLS = { veil_gate: 'spur', ember_gate: 'veil', hollow_mouth: 'ember', halo_approach: 'hollow' };
+export function gateBlockedByWall(player, nodeId) {
   const wall = GATE_WALLS[nodeId];
   return Boolean(wall) && [4, 5].includes(player?.tutorial?.script) && player.tutorial.completed === true
     && player.flags?.[`wall_${wall}`] !== true;
@@ -468,6 +468,9 @@ export function visibleNodes(player, now = Date.now()) {
     if (tutorialTight) {
       return n.id === 'station_home' || n.id === 'lane_a';
     }
+    // Sector map lanes run through the gates: a gate you have already passed stays open,
+    // so a sector you unlocked is never cut off from the Spur.
+    if (GATE_WALLS[n.id] && galaxyUnlocked(player, n.sector)) return true;
     if (n.sector === 'veil' && n.id !== 'veil_gate' && !veilOpen) return false;
     if (n.id === 'veil_gate' && day < 2 && !player.flags?.rumor_swarm) return false;
     if (n.sector === 'ember' && n.id !== 'ember_gate' && !galaxyUnlocked(player, 'ember')) return false;

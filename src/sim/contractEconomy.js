@@ -14,6 +14,9 @@ import { FUEL_REFILL, RALLY } from '../systems/gemSinks.js';
 import { STARTER_CAPTAINS } from '../data/crewRoster.js';
 import { hullRepairOffer, pay } from '../systems/economy.js';
 import { repairHull } from '../systems/passives.js';
+import { NODES, STORY_BEATS } from '../data/sectors.js';
+import { eventCandidates, resolveTravelEvent, choiceStatus, eventReward, EVENT_KINDS, EVENT_VERSION } from '../systems/travelEvents.js';
+import { TRAVEL_EVENT_BY_ID } from '../data/events.js';
 
 export const STRATEGIES = {
   cautious: { profiles: ['reliable', 'strange', 'risky'], route: 'secure', order: 'brace' },
@@ -269,7 +272,11 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
             && !previews.push.consequence.sameEncounter
             && JSON.stringify(previews.push.consequence) !== JSON.stringify(previews.secure.consequence)) route = 'push';
           record.route = route;
-          if (!act('contract-action', contractIdentity(player, { action: route }), tag('contract-action'))) break;
+          // Route event card: the scripted policy takes the choice bound to its route.
+          const routeEvent = sessionModels(player, ui, now).routeEvent;
+          const choice = routeEvent?.choices.find(entry => entry.route === route) || null;
+          if (choice) record.routeEvent = { id: routeEvent.id, choice: choice.id };
+          if (!act('contract-action', contractIdentity(player, { action: route, ...(choice ? { choice: choice.id } : {}) }), tag('contract-action'))) break;
         } else if (stage === 'confrontation' && player.activeEncounter) {
           // Contract fights are real-time crew fights; every strategy plays disciplined orders.
           record.order = 'crew';
@@ -501,6 +508,7 @@ export function runEconomySeedSet({ seeds = ECONOMY_SEEDS, startAt = ECONOMY_STA
     seeds, startAt, runs: strategies.flatMap(strategy => seeds.map(seed => simulateFreePlayer30Days({ seed, strategy, startAt }))),
     guided: { flow: 'guided', sessionOrder: 'fights-first', runs: guided('fights-first') },
     guidedAwayFirst: { flow: 'guided', sessionOrder: 'away-first', runs: guided('away-first').map(runSummary) },
+    explore: auditExploreEvents({ startAt }),
   };
 }
 
@@ -539,6 +547,7 @@ export function renderEconomyMarkdown(report) {
   }
   lines.push('', `Conservation: ${report.runs.filter(r => r.reconciliation.ok).length}/${report.runs.length} runs PASS. Detailed daily ledgers: [JSON](artifacts/contract-economy-30-day.json).`, '');
   if (report.guided) lines.push(...renderGuidedMarkdown(report));
+  if (report.explore) lines.push(...renderExploreMarkdown(report.explore));
   return lines.join('\n');
 }
 
@@ -616,5 +625,152 @@ function renderGuidedMarkdown(report) {
   const all = [...runs, ...away];
   lines.push('', `Conservation: ${runs.filter(r => r.reconciliation.ok).length}/${runs.length} guided runs PASS (fights-first), ${away.filter(r => r.reconciliation.ok).length}/${away.length} PASS (away-first). Guided daily ledgers are in the same JSON under guided.runs; the away-first set keeps summaries only.`, '');
   if (all.some(r => !r.reconciliation.ok)) throw new Error('guided ledger failed conservation');
+  return lines;
+}
+
+// ── Explore events (FTL-lite phase 3) ─────────────────────────────────────
+
+/**
+ * Scripted policies for travel events. They only use what the card shows: availability,
+ * costs, the outcome odds and what each outcome pays.
+ *   cautious  — fewest risky outcomes (hull, injury, fight), then best expected pay
+ *   balanced  — best expected value (pay, minus costs and a price on hull, injury and fights)
+ *   ambitious — highest ceiling (best single outcome), then best expected pay
+ */
+export const EXPLORE_POLICIES = ['cautious', 'balanced', 'ambitious'];
+const EXPLORE_ROLL_SEEDS = 12;
+const creditValue = r => (r.credits || 0) + 5 * (r.medals || 0) + 5 * (r.reputation || 0);
+
+function outcomeValue(player, ev, outcome) {
+  let value = 0;
+  if (outcome.pay) value += creditValue(eventReward(player, ev, outcome.pay));
+  if (outcome.story) value += creditValue(STORY_BEATS[ev.base.flag]?.rewards || {});
+  if (outcome.hull) value -= 4 * outcome.hull;
+  if (outcome.injure) value -= 40;
+  if (outcome.fight) value -= 30;
+  return value;
+}
+
+export function pickExploreChoice(player, ev, policy, now) {
+  const template = TRAVEL_EVENT_BY_ID[ev.templateId];
+  const scored = template.choices.filter(choice => choiceStatus(player, choice, now).available).map(choice => {
+    const total = choice.outcomes.reduce((sum, outcome) => sum + outcome.w, 0);
+    const cost = (choice.cost?.credits || 0) + 30 * (choice.cost?.fuel || 0);
+    const values = choice.outcomes.map(outcome => outcomeValue(player, ev, outcome) - cost);
+    return {
+      choice,
+      ev: choice.outcomes.reduce((sum, outcome, i) => sum + (outcome.w / total) * values[i], 0),
+      risk: choice.outcomes.reduce((sum, outcome) => sum + (outcome.hull || outcome.injure || outcome.fight ? outcome.w / total : 0), 0),
+      ceiling: Math.max(...values),
+    };
+  });
+  const order = {
+    cautious: (a, b) => a.risk - b.risk || b.ev - a.ev,
+    balanced: (a, b) => b.ev - a.ev || a.risk - b.risk,
+    ambitious: (a, b) => b.ceiling - a.ceiling || b.ev - a.ev,
+  }[policy];
+  return scored.sort((a, b) => order(a, b) || a.choice.id.localeCompare(b.choice.id))[0]?.choice || null;
+}
+
+/** A settled post-tutorial captain at Spur Anchor: the starter crew aboard, fuel and credits to spare. */
+function exploreAuditCaptain(startAt) {
+  const base = createNewPlayer({ tutorialScript: 4, now: startAt, rng: createSeededRng(7) });
+  return { ...base, tutorial: { ...base.tutorial, completed: true, phase: 'done' }, location: 'station_home',
+    wallet: { ...base.wallet, fuel: 10, credits: 1000 }, crew: base.crew.map(member => ({ ...member, status: 'ready', injuredUntil: 0 })) };
+}
+
+/**
+ * Resolve every travel event at every beacon and non-combat outcome it fits, through the real
+ * resolver, under each scripted policy and a fixed set of roll seeds. Compares what the event
+ * pays with what the same arrival paid instantly before events (the base at pay 1).
+ */
+export function auditExploreEvents({ startAt = ECONOMY_START } = {}) {
+  const captain = exploreAuditCaptain(startAt);
+  const rows = [];
+  const breaches = [];
+  for (const node of Object.values(NODES)) {
+    const seen = new Set();
+    for (const outcome of node.outcomes || []) {
+      if (!EVENT_KINDS.includes(outcome.kind)) continue;
+      const key = JSON.stringify({ ...outcome, w: 0 });
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const base = { kind: outcome.kind };
+      for (const currency of ['credits', 'medals', 'reputation']) if (Number.isFinite(outcome[currency])) base[currency] = outcome[currency];
+      if (outcome.kind === 'story') base.flag = outcome.flag;
+      for (const template of eventCandidates(node, base)) {
+        const probe = { nodeId: node.id, base };
+        const instant = outcome.kind === 'story' ? { credits: 0, medals: 0, reputation: 0, ...STORY_BEATS[outcome.flag]?.rewards }
+          : eventReward(captain, probe, 1);
+        for (const policy of EXPLORE_POLICIES) {
+          const row = { node: node.id, sector: node.sector, kind: outcome.kind, template: template.id, policy, choice: null, rolls: 0,
+            instant: { credits: instant.credits || 0, medals: instant.medals || 0, reputation: instant.reputation || 0 },
+            paid: { credits: 0, medals: 0, reputation: 0 }, spent: { credits: 0, fuel: 0 }, fights: 0, injuries: 0, hullLoss: 0, hires: 0 };
+          for (let roll = 1; roll <= EXPLORE_ROLL_SEEDS; roll++) {
+            const seed = (roll * 2654435761) % 2147483647;
+            const ev = { version: EVENT_VERSION, eventId: `event:${node.id}:${roll}:${seed}`, templateId: template.id, nodeId: node.id,
+              fromNodeId: 'station_home', base, seed, fuelSpent: 0, openedAt: startAt };
+            const player = { ...captain, activeEvent: ev };
+            const choice = pickExploreChoice(player, ev, policy, startAt);
+            if (!choice) continue;
+            row.choice = choice.id;
+            const res = resolveTravelEvent(player, { eventId: ev.eventId, choice: choice.id }, startAt);
+            if (!res.ok) throw new Error(`explore audit: ${node.id}/${template.id}/${choice.id}: ${res.reason}`);
+            row.rolls += 1;
+            const gross = res.result.rewards || {};
+            for (const currency of ['credits', 'medals', 'reputation']) {
+              row.paid[currency] += gross[currency] || 0;
+              // No single event result may pay more than the same arrival paid before events.
+              if ((gross[currency] || 0) > (row.instant[currency] || 0)) breaches.push({ node: node.id, template: template.id, choice: choice.id, currency, paid: gross[currency], instant: row.instant[currency] });
+            }
+            row.spent.credits += choice.cost?.credits || 0;
+            row.spent.fuel += choice.cost?.fuel || 0;
+            if (res.result.fight) row.fights += 1;
+            if (res.result.injured) row.injuries += 1;
+            if (res.result.hired) row.hires += 1;
+            row.hullLoss += res.result.hullLoss || 0;
+          }
+          rows.push(row);
+        }
+      }
+    }
+  }
+  const summarize = list => {
+    const sum = (fn) => list.reduce((total, row) => total + fn(row), 0);
+    const rolls = sum(row => row.rolls) || 1;
+    const instantCredits = sum(row => row.instant.credits * row.rolls) || 1;
+    const instantMedals = sum(row => row.instant.medals * row.rolls) || 1;
+    return {
+      events: list.length,
+      creditRatio: Math.round(((sum(row => row.paid.credits - row.spent.credits)) / instantCredits) * 100) / 100,
+      medalRatio: Math.round((sum(row => row.paid.medals) / instantMedals) * 100) / 100,
+      fightPct: Math.round((sum(row => row.fights) / rolls) * 100),
+      injuryPct: Math.round((sum(row => row.injuries) / rolls) * 100),
+      hullPerEvent: Math.round((sum(row => row.hullLoss) / rolls) * 10) / 10,
+      fuelPerEvent: Math.round((sum(row => row.spent.fuel) / rolls) * 100) / 100,
+      hires: sum(row => row.hires),
+    };
+  };
+  const byPolicy = Object.fromEntries(EXPLORE_POLICIES.map(policy => [policy, summarize(rows.filter(row => row.policy === policy))]));
+  const sectors = [...new Set(rows.map(row => row.sector))];
+  const bySector = Object.fromEntries(EXPLORE_POLICIES.map(policy => [policy,
+    Object.fromEntries(sectors.map(sector => [sector, summarize(rows.filter(row => row.policy === policy && row.sector === sector))]))]));
+  return { rollSeeds: EXPLORE_ROLL_SEEDS, crewRoles: captain.crew.map(member => member.role), combos: rows.length / EXPLORE_POLICIES.length,
+    templates: new Set(rows.map(row => row.template)).size, byPolicy, bySector, breaches, rows };
+}
+
+function renderExploreMarkdown(explore) {
+  const lines = ['## Explore events (FTL-lite phase 3)', '',
+    `Added 2026-10-04. Explore arrivals that used to pay instantly (trade, delivery, salvage, story) now open authored events. This audit resolves every event at every beacon and non-combat outcome it fits (${explore.combos} combinations, ${explore.templates} events) through the production resolver, ${explore.rollSeeds} roll seeds each, for a settled captain at Spur Anchor with the starter crew aboard (roles: ${explore.crewRoles.join(', ')}). Role choices for roles outside that crew are unavailable, as they would be in play. The 30-day runs above still do not jump on the map; their contract route choices go through the new route-event cards with the strategy's existing route policy, so their numbers are unchanged.`, '',
+    'Policies use only what the card shows. cautious: fewest risky outcomes, then best expected pay. balanced: best expected value (pay minus costs, 4 credits per hull point, 40 per injury, 30 per fight). ambitious: highest single-outcome ceiling. Credit ratio is credits paid minus credit costs, divided by what the same arrivals paid instantly before events (1.00 = unchanged). Fights opened by events pay the beacon\'s normal fight prize on top (not counted here).', '',
+    '| Policy | Credit ratio | Medal ratio | Fight % | Injury % | Hull / event | Fuel / event | Hires |', '|---|---:|---:|---:|---:|---:|---:|---:|'];
+  for (const [policy, s] of Object.entries(explore.byPolicy)) {
+    lines.push(`| ${policy} | ${s.creditRatio.toFixed(2)} | ${s.medalRatio.toFixed(2)} | ${s.fightPct} | ${s.injuryPct} | ${s.hullPerEvent} | ${s.fuelPerEvent} | ${s.hires} |`);
+  }
+  lines.push('', '| Policy | Sector | Combinations | Credit ratio | Fight % | Injury % | Hull / event |', '|---|---|---:|---:|---:|---:|---:|');
+  for (const [policy, sectors] of Object.entries(explore.bySector)) {
+    for (const [sector, s] of Object.entries(sectors)) lines.push(`| ${policy} | ${sector} | ${s.events} | ${s.creditRatio.toFixed(2)} | ${s.fightPct} | ${s.injuryPct} | ${s.hullPerEvent} |`);
+  }
+  lines.push('', `Ceiling check: ${explore.breaches.length ? `${explore.breaches.length} results pay above the instant value (FAIL)` : 'no event result pays more credits, medals or reputation than the same arrival paid instantly (PASS)'}.`, '');
   return lines;
 }
