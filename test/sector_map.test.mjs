@@ -159,5 +159,7 @@ assert.equal(sessionModels(vet, { missionView: 'explore', selectedMapNode: 'lane
   assert.equal(validTravelEvent(atGate), false, 'no saved event at a walled gate');
   const board = { dayKey: 'd', completedOfferIds: [], offers: [{ id: 'o1', destinationId: 'veil_gate', profile: 'reliable' }] };
   assert.equal(acceptContract({ ...walled, contractBoard: board }, 'o1').reason, 'siege_wall', 'no contract to a walled gate');
+  const { previewTravel } = await import('../src/systems/travel.js');
+  assert.equal(previewTravel(walled, 'veil_gate').reason, 'siege_wall', 'the shared travel preview refuses a walled gate');
 }
 console.log('sector_map.test.mjs OK');

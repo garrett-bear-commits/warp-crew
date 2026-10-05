@@ -678,7 +678,8 @@ export function claimContractReward(player, now = Date.now()) {
     ...nextPlayer,
     wallet,
     flags: contract.profile === 'distress' ? { ...nextPlayer.flags, sparrowFirstRepair: true } : nextPlayer.flags,
-    location: contract.destinationId,
+    // A contract from before a Siege wall cannot carry the ship through it.
+    location: gateBlockedByWall(player, contract.destinationId) ? player.location : contract.destinationId,
     stats: {
       ...player.stats,
       visits,

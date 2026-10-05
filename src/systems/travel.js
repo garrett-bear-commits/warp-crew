@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { NODES, pickOutcome, visibleNodes } from '../data/sectors.js';
+import { NODES, pickOutcome, visibleNodes, gateBlockedByWall } from '../data/sectors.js';
 import { spendFuel } from './fuel.js';
 import { grant, scaleSitePayout } from './economy.js';
 import { resolveCombat, resolveCombatOrder, previewCombatOrder, crewPower, encounterById, rubberBandPower } from './combat.js';
@@ -15,6 +15,8 @@ import { fuelCostFor, tradePayout, combatBonuses, hullAfterCombat, injuryMinutes
 export function previewTravel(player, nodeId, { rng = Math.random } = {}) {
   const node = NODES[nodeId];
   if (!node) return { ok: false, reason: 'unknown_node' };
+  // Every travel path goes through here: an unbroken Siege wall holds its gate.
+  if (gateBlockedByWall(player, nodeId)) return { ok: false, reason: 'siege_wall' };
   const visible = visibleNodes(player);
   if (!visible.find((n) => n.id === nodeId)) {
     return { ok: false, reason: 'locked_node' };
