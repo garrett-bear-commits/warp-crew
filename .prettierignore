@@ -1,0 +1,10 @@
+node_modules
+dist
+pnpm-lock.yaml
+coverage
+test-results
+playwright-report
+docs/architecture-v1.md
+docs/architecture-v1.formatted.md
+packages/contracts/openapi.json
+*.md

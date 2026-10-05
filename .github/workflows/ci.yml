@@ -1,0 +1,50 @@
+name: ci
+on:
+  push:
+    branches: [main, game-foundation-v1]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: foundation_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/foundation_test
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.30.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm fmt:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm guards
+      - run: pnpm test
+      - run: pnpm test:pg
+      - run: pnpm test:model
+      - run: pnpm test:scripts
+      - name: OpenAPI breaking-change check vs the last released tag (reports 'unavailable' when no tag exists)
+        run: git fetch --tags --quiet || true && pnpm -F @foundation/contracts openapi:diff
+      - name: template game bundle size gate (§3)
+        run: node --experimental-strip-types packages/tooling/src/bundle-size.ts apps/template-game/dist 600000
+      - name: clean-checkout Docker image build (§10; admin inspector built in a builder stage)
+        run: git archive HEAD | docker build -f apps/server/Dockerfile -
+      - name: browser acceptance (Playwright chromium + webkit)
+        run: |
+          pnpm --filter @foundation/template-game exec playwright install --with-deps chromium webkit
+          pnpm test:e2e

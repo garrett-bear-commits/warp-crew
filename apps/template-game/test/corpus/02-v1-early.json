@@ -1,0 +1,7 @@
+{
+  "name": "02-v1-early",
+  "note": "schema 1 save from build 0.9.x: no gems/clicks/cosmetics fields",
+  "schemaVersion": 1,
+  "blob": "{\"schemaVersion\":1,\"state\":{\"v\":1,\"counter\":12,\"gold\":7,\"upgrades\":{\"auto\":0,\"click\":1},\"settledAt\":1786924812000}}",
+  "expectedProgress": 12
+}

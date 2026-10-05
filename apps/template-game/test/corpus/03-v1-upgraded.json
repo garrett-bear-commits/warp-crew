@@ -1,0 +1,7 @@
+{
+  "name": "03-v1-upgraded",
+  "note": "schema 1 save with auto-clickers and a stray unknown field kept by the migration",
+  "schemaVersion": 1,
+  "blob": "{\"schemaVersion\":1,\"state\":{\"v\":1,\"counter\":340,\"gold\":1290.5,\"upgrades\":{\"auto\":3,\"click\":2},\"settledAt\":1786925000000,\"legacyFlag\":true}}",
+  "expectedProgress": 340
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@foundation/idle-civ",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Idle Civilization Camp → Hamlet tracer (Checkpoint 4)",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@foundation/client": "workspace:*",
+    "@foundation/contracts": "workspace:*",
+    "@foundation/server": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@foundation/testkit": "workspace:*",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "happy-dom": "^20.11.2",
+    "typescript": "5.9.3",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  }
+}

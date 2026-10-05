@@ -1,0 +1,38 @@
+{
+  "name": "@foundation/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Web adapter: engine contract, loop, storage, sync, journal, clock, providers, react hooks",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/react/index.tsx",
+    "./providers/jest": "./src/providers/jest.ts",
+    "./providers/mock": "./src/providers/mock.ts",
+    "./providers/standalone": "./src/providers/standalone.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run && vitest run -c vitest.model.config.ts"
+  },
+  "dependencies": {
+    "@foundation/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@foundation/testkit": "workspace:*",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "fake-indexeddb": "^6.2.5",
+    "fast-check": "^4.9.0",
+    "happy-dom": "^20.11.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

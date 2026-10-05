@@ -1,0 +1,7 @@
+{
+  "name": "05-v2-late",
+  "note": "schema 2 late save: large gold, several cosmetics, gems from adjustments",
+  "schemaVersion": 2,
+  "blob": "{\"schemaVersion\":2,\"state\":{\"v\":2,\"counter\":15000,\"gold\":123456.75,\"gems\":245,\"clicks\":9000,\"upgrades\":{\"auto\":9,\"click\":6},\"cosmetics\":[\"badge-week\",\"hat-summer\",\"badge-regular\"],\"settledAt\":1787000000000}}",
+  "expectedProgress": 15000
+}

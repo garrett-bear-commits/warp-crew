@@ -1,0 +1,35 @@
+{
+  "name": "@foundation/template-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Counter/idle game exercising every core path (acceptance suite)",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "VITE_API_URL=http://127.0.0.1:8090 VITE_PLATFORM=mock VITE_ALLOW_QA_QUERY=true vite build && playwright test"
+  },
+  "dependencies": {
+    "@foundation/client": "workspace:*",
+    "@foundation/contracts": "workspace:*",
+    "@foundation/server": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@foundation/testkit": "workspace:*",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.5",
+    "fast-check": "^4.9.0",
+    "happy-dom": "^20.11.2",
+    "typescript": "5.9.3",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  }
+}

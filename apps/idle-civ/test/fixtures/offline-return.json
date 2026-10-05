@@ -1,0 +1,9 @@
+{
+  "kind": "offline",
+  "configVersion": "economy-smoke-v0.2.0",
+  "saveVersion": 1,
+  "awayHours": 8,
+  "creditedHours": 6,
+  "frozenHours": 2,
+  "note": "Prepaid Hut may complete on wall time after the 6h economy cap. progressOf does not rise in onGap."
+}

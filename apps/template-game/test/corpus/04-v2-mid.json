@@ -1,0 +1,7 @@
+{
+  "name": "04-v2-mid",
+  "note": "schema 2 mid-game save after a daily reward and a cosmetic grant (playerName sanitised away)",
+  "schemaVersion": 2,
+  "blob": "{\"schemaVersion\":2,\"state\":{\"v\":2,\"counter\":2048,\"gold\":5311,\"gems\":10,\"clicks\":1900,\"upgrades\":{\"auto\":4,\"click\":3},\"cosmetics\":[\"badge-week\"],\"settledAt\":1786930000000}}",
+  "expectedProgress": 2048
+}

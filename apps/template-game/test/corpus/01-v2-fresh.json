@@ -1,0 +1,7 @@
+{
+  "name": "01-v2-fresh",
+  "note": "fresh state right after start_new (schema 2)",
+  "schemaVersion": 2,
+  "blob": "{\"schemaVersion\":2,\"state\":{\"v\":2,\"counter\":0,\"gold\":0,\"gems\":0,\"clicks\":0,\"upgrades\":{\"auto\":0,\"click\":0},\"cosmetics\":[],\"settledAt\":1786924800000}}",
+  "expectedProgress": 0
+}

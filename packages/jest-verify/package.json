@@ -1,0 +1,23 @@
+{
+  "name": "@foundation/jest-verify",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Node-only verifiers (player token, receipts) \u2014 never imported by browser code",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@foundation/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.10",
+    "@foundation/testkit": "workspace:*"
+  }
+}

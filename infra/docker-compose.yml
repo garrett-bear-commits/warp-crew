@@ -1,0 +1,21 @@
+# Local Postgres 16 for integration tests and the dev server (ADR-025).
+# One database = one game + one environment (ADR-003): dev uses `foundation_dev`,
+# tests use `foundation_test` (DATABASE_URL_TEST).
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: foundation-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: foundation_dev
+    ports:
+      - '55432:5432'
+    command: ['postgres', '-c', 'wal_level=replica', '-c', 'max_connections=200']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - ./init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro

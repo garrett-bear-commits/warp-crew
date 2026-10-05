@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Game admin</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <!-- Signed out, this card is the whole page. The console below is an inert <template>: it is
+         cloned only after the key is verified and removed again on sign-out. -->
+    <main id="signin" class="signin">
+      <form
+        id="signin-form"
+        class="signin-card"
+        autocomplete="off"
+        novalidate
+        aria-labelledby="signin-title"
+      >
+        <div class="signin-head">
+          <span class="brand-mark" aria-hidden="true">G</span>
+          <h1 id="signin-title">Game admin</h1>
+          <span class="env-badge" data-env-badge></span>
+        </div>
+        <label class="field">
+          <span class="field-label">Admin key ID</span>
+          <input
+            name="keyId"
+            type="text"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            required
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">Admin secret</span>
+          <input name="secret" type="password" autocomplete="off" required />
+        </label>
+        <p id="signin-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" class="btn btn-primary btn-block" id="signin-submit">Sign in</button>
+      </form>
+    </main>
+
+    <div id="app-root"></div>
+    <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+    <template id="app-template">
+      <div class="app">
+        <header class="topbar">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">G</span>
+            <span class="brand-name">Game admin</span>
+            <span class="env-badge" data-env-badge></span>
+          </div>
+          <div class="session">
+            <div class="session-who">
+              <span class="session-key mono" data-session-key></span>
+              <span class="session-scopes" data-session-scopes></span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-signout>Sign out</button>
+          </div>
+        </header>
+
+        <div class="shell">
+          <nav class="rail" aria-label="Workspaces">
+            <button type="button" class="nav-item" data-view="players">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span>Players</span>
+            </button>
+            <button type="button" class="nav-item" data-view="liveops">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+              </svg>
+              <span>Live ops</span>
+            </button>
+            <button type="button" class="nav-item" data-view="audit">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1z" />
+                <path
+                  d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"
+                />
+                <path d="M9 12h6M9 16h4" />
+              </svg>
+              <span>Audit</span>
+            </button>
+          </nav>
+
+          <main class="main">
+            <!-- Players -->
+            <section class="view" data-view-panel="players" aria-labelledby="players-title" hidden>
+              <h1 id="players-title" class="view-title">Players</h1>
+              <form class="search" data-lookup role="search" autocomplete="off" novalidate>
+                <svg class="icon search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+                <label class="sr-only" for="player-search">Player ID</label>
+                <input
+                  id="player-search"
+                  name="playerKey"
+                  type="search"
+                  placeholder="Player ID"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  required
+                />
+                <button type="submit" class="btn btn-primary">Load</button>
+              </form>
+
+              <div data-player-empty></div>
+
+              <div class="player" data-player hidden>
+                <div class="player-head">
+                  <div class="player-id">
+                    <h2 class="mono" data-player-key></h2>
+                    <div class="pills" data-player-pills></div>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm" data-player-reload>
+                    Reload
+                  </button>
+                </div>
+                <div class="stats" data-stats></div>
+
+                <section
+                  class="card actions-card"
+                  data-player-actions
+                  aria-labelledby="actions-title"
+                >
+                  <div class="actions-head">
+                    <h3 id="actions-title" class="card-title">Actions</h3>
+                    <div class="action-toggles" data-action-toggles>
+                      <button
+                        type="button"
+                        class="toggle"
+                        id="act-letter"
+                        aria-expanded="false"
+                        aria-controls="form-letter"
+                        data-cap="letter"
+                      >
+                        Send letter
+                      </button>
+                      <button
+                        type="button"
+                        class="toggle"
+                        id="act-grant"
+                        aria-expanded="false"
+                        aria-controls="form-grant"
+                        data-cap="grant"
+                      >
+                        Mint grant
+                      </button>
+                      <button
+                        type="button"
+                        class="toggle"
+                        id="act-adjust"
+                        aria-expanded="false"
+                        aria-controls="form-adjust"
+                        data-cap="adjustPurchase"
+                      >
+                        Fix purchase
+                      </button>
+                      <button
+                        type="button"
+                        class="toggle"
+                        id="act-flag"
+                        aria-expanded="false"
+                        aria-controls="form-flag"
+                        data-cap="playerFlag"
+                      >
+                        Set flag
+                      </button>
+                    </div>
+                  </div>
+
+                  <form
+                    id="form-letter"
+                    class="stack action-form"
+                    aria-labelledby="act-letter"
+                    data-cap="letter"
+                    autocomplete="off"
+                    novalidate
+                    hidden
+                  >
+                    <label class="field">
+                      <span class="field-label">Title</span>
+                      <input name="title" required maxlength="200" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">Body</span>
+                      <textarea name="body" required maxlength="4000" rows="4"></textarea>
+                    </label>
+                    <details class="more">
+                      <summary>More options</summary>
+                      <label class="field">
+                        <span class="field-label">Grant key <i>optional</i></span>
+                        <input name="grantKey" maxlength="200" />
+                      </label>
+                      <label class="field">
+                        <span class="field-label">Ticket <i>optional</i></span>
+                        <input name="ticketRef" maxlength="128" />
+                      </label>
+                    </details>
+                    <label class="field">
+                      <span class="field-label">Reason</span>
+                      <input name="reason" required maxlength="512" />
+                    </label>
+                    <div class="form-foot">
+                      <button type="submit" class="btn btn-primary">Review letter</button>
+                    </div>
+                    <output class="result"></output>
+                  </form>
+
+                  <form
+                    id="form-grant"
+                    class="stack action-form"
+                    aria-labelledby="act-grant"
+                    data-cap="grant"
+                    autocomplete="off"
+                    novalidate
+                    hidden
+                  >
+                    <label class="field">
+                      <span class="field-label">Grant key</span>
+                      <input name="grantKey" required maxlength="200" />
+                    </label>
+                    <!-- Filled from the game's grant vocabulary (rewards.ts bindRewardFields). -->
+                    <div class="field-row" data-reward-fields></div>
+                    <label class="field" data-reward-json hidden>
+                      <span class="field-label">Rewards <i>JSON</i></span>
+                      <textarea
+                        name="rewards"
+                        class="mono"
+                        rows="3"
+                        spellcheck="false"
+                        disabled
+                      ></textarea>
+                    </label>
+                    <div class="check-row">
+                      <label class="check"
+                        ><input name="rewardsAdvanced" type="checkbox" /> Advanced (JSON)</label
+                      >
+                    </div>
+                    <details class="more">
+                      <summary>More options</summary>
+                      <label class="field">
+                        <span class="field-label">Title <i>optional</i></span>
+                        <input name="title" maxlength="200" />
+                      </label>
+                      <label class="field">
+                        <span class="field-label">Body <i>optional</i></span>
+                        <textarea name="body" maxlength="2000" rows="2"></textarea>
+                      </label>
+                      <label class="field">
+                        <span class="field-label">Expires <i>optional, local time</i></span>
+                        <input name="expiresAt" type="datetime-local" />
+                      </label>
+                      <label class="field">
+                        <span class="field-label">Ticket <i>optional</i></span>
+                        <input name="ticketRef" maxlength="128" />
+                      </label>
+                    </details>
+                    <label class="field">
+                      <span class="field-label">Reason</span>
+                      <input name="reason" required maxlength="512" />
+                    </label>
+                    <div class="form-foot">
+                      <button type="submit" class="btn btn-primary">Review grant</button>
+                    </div>
+                    <output class="result"></output>
+                  </form>
+
+                  <form
+                    id="form-adjust"
+                    class="stack action-form"
+                    aria-labelledby="act-adjust"
+                    data-cap="adjustPurchase"
+                    autocomplete="off"
+                    novalidate
+                    hidden
+                  >
+                    <fieldset class="field">
+                      <legend class="field-label">Fix</legend>
+                      <div class="radio-row">
+                        <label class="radio"
+                          ><input type="radio" name="kind" value="make_good" checked /> Credit
+                          purchase</label
+                        >
+                        <label class="radio"
+                          ><input type="radio" name="kind" value="refund" /> Refund</label
+                        >
+                        <label class="radio"
+                          ><input type="radio" name="kind" value="correction" /> Correction</label
+                        >
+                      </div>
+                    </fieldset>
+                    <div class="field-row">
+                      <label class="field">
+                        <span class="field-label"
+                          ><span data-adjust-unit>Amount</span><i data-adjust-hint></i
+                        ></span>
+                        <input name="amount" type="number" min="1" step="1" required />
+                      </label>
+                      <label class="field" data-adjust-transaction>
+                        <span class="field-label">Transaction ID <i>optional</i></span>
+                        <input name="transactionId" type="number" min="0" step="1" />
+                      </label>
+                    </div>
+                    <details class="more">
+                      <summary>More options</summary>
+                      <label class="field">
+                        <span class="field-label">Ticket <i>optional</i></span>
+                        <input name="ticketRef" maxlength="128" />
+                      </label>
+                    </details>
+                    <label class="field">
+                      <span class="field-label">Reason</span>
+                      <input name="reason" required maxlength="512" />
+                    </label>
+                    <div class="form-foot">
+                      <button type="submit" class="btn btn-primary">Review credit</button>
+                    </div>
+                    <output class="result"></output>
+                  </form>
+
+                  <form
+                    id="form-flag"
+                    class="stack action-form"
+                    aria-labelledby="act-flag"
+                    data-cap="playerFlag"
+                    autocomplete="off"
+                    novalidate
+                    hidden
+                  >
+                    <label class="field">
+                      <span class="field-label">Flag</span>
+                      <select name="flag" required data-options="player-flags"></select>
+                    </label>
+                    <fieldset class="field">
+                      <legend class="field-label">State</legend>
+                      <div class="radio-row">
+                        <label class="radio"
+                          ><input type="radio" name="enabled" value="on" checked /> Set</label
+                        >
+                        <label class="radio"
+                          ><input type="radio" name="enabled" value="off" /> Clear</label
+                        >
+                      </div>
+                    </fieldset>
+                    <label class="field" data-flag-until>
+                      <span class="field-label">Until <i>optional, local time</i></span>
+                      <input name="until" type="datetime-local" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">Reason</span>
+                      <input name="reason" required maxlength="512" />
+                    </label>
+                    <div class="form-foot">
+                      <button type="submit" class="btn btn-primary">Review flag</button>
+                    </div>
+                    <output class="result"></output>
+                  </form>
+                </section>
+                <div class="card tabs-card">
+                  <div class="tabs" role="tablist" aria-label="Player data" data-player-tabs>
+                    <button
+                      type="button"
+                      role="tab"
+                      id="tab-timeline"
+                      aria-controls="panel-timeline"
+                      aria-selected="true"
+                    >
+                      Timeline <span class="count" data-count="timeline"></span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      id="tab-saves"
+                      aria-controls="panel-saves"
+                      aria-selected="false"
+                    >
+                      Saves <span class="count" data-count="saves"></span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      id="tab-blob"
+                      aria-controls="panel-blob"
+                      aria-selected="false"
+                    >
+                      Save viewer
+                    </button>
+                  </div>
+                  <div
+                    class="tab-panel"
+                    role="tabpanel"
+                    id="panel-timeline"
+                    aria-labelledby="tab-timeline"
+                    tabindex="0"
+                    data-timeline
+                  ></div>
+                  <div
+                    class="tab-panel"
+                    role="tabpanel"
+                    id="panel-saves"
+                    aria-labelledby="tab-saves"
+                    tabindex="0"
+                    data-saves
+                    hidden
+                  ></div>
+                  <div
+                    class="tab-panel"
+                    role="tabpanel"
+                    id="panel-blob"
+                    aria-labelledby="tab-blob"
+                    tabindex="0"
+                    data-blob
+                    hidden
+                  ></div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Live ops -->
+            <section class="view" data-view-panel="liveops" aria-labelledby="liveops-title" hidden>
+              <h1 id="liveops-title" class="view-title">Live ops</h1>
+              <div class="card-grid">
+                <form
+                  class="card stack"
+                  id="form-publish-flag"
+                  data-cap="publishFlag"
+                  autocomplete="off"
+                  novalidate
+                >
+                  <h2 class="card-title">Flag</h2>
+                  <label class="field">
+                    <span class="field-label">Key</span>
+                    <input name="key" required maxlength="64" spellcheck="false" />
+                  </label>
+                  <div class="field-row">
+                    <label class="field">
+                      <span class="field-label">Value</span>
+                      <input
+                        name="value"
+                        required
+                        maxlength="256"
+                        placeholder="true, 3, text"
+                        spellcheck="false"
+                      />
+                    </label>
+                    <label class="field field-narrow">
+                      <span class="field-label">Rollout %</span>
+                      <input
+                        name="rolloutPercent"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value="100"
+                        required
+                      />
+                    </label>
+                  </div>
+                  <label class="field">
+                    <span class="field-label">Segment <i>optional</i></span>
+                    <input name="segmentId" spellcheck="false" />
+                  </label>
+                  <div class="check-row">
+                    <label class="check"
+                      ><input name="enabled" type="checkbox" checked /> Enabled</label
+                    >
+                    <label class="check"><input name="shadow" type="checkbox" /> Shadow</label>
+                  </div>
+                  <label class="field">
+                    <span class="field-label">Reason</span>
+                    <input name="reason" required maxlength="512" />
+                  </label>
+                  <div class="form-foot">
+                    <button type="submit" class="btn btn-primary">Review flag</button>
+                  </div>
+                  <output class="result"></output>
+                </form>
+
+                <form
+                  class="card stack"
+                  id="form-publish-content"
+                  data-cap="publishContent"
+                  autocomplete="off"
+                  novalidate
+                >
+                  <h2 class="card-title">Content</h2>
+                  <div class="field-row">
+                    <label class="field">
+                      <span class="field-label">Kind</span>
+                      <select name="kind" required data-options="content-kinds"></select>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">Environment</span>
+                      <select name="env" required data-options="content-envs"></select>
+                    </label>
+                  </div>
+                  <label class="field">
+                    <span class="field-label">Document <i>JSON</i></span>
+                    <textarea
+                      name="document"
+                      class="mono"
+                      required
+                      rows="7"
+                      spellcheck="false"
+                    ></textarea>
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Min build <i>optional</i></span>
+                    <input name="minBuildVersion" spellcheck="false" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Reason</span>
+                    <input name="reason" required maxlength="512" />
+                  </label>
+                  <div class="form-foot">
+                    <button type="submit" class="btn btn-primary">Review content</button>
+                  </div>
+                  <output class="result"></output>
+                </form>
+
+                <form
+                  class="card stack"
+                  id="form-cohort"
+                  data-cap="cohortGrant"
+                  autocomplete="off"
+                  novalidate
+                >
+                  <h2 class="card-title">Cohort grant</h2>
+                  <label class="field">
+                    <span class="field-label">Grant key prefix</span>
+                    <input name="grantKeyPrefix" required maxlength="120" spellcheck="false" />
+                  </label>
+                  <label class="field">
+                    <span class="field-label">Segment <i>JSON</i></span>
+                    <textarea
+                      name="predicate"
+                      class="mono"
+                      required
+                      rows="3"
+                      spellcheck="false"
+                    ></textarea>
+                  </label>
+                  <!-- Filled from the game's grant vocabulary (rewards.ts bindRewardFields). -->
+                  <div class="field-row" data-reward-fields></div>
+                  <label class="field" data-reward-json hidden>
+                    <span class="field-label">Rewards <i>JSON</i></span>
+                    <textarea
+                      name="rewards"
+                      class="mono"
+                      rows="3"
+                      spellcheck="false"
+                      disabled
+                    ></textarea>
+                  </label>
+                  <div class="check-row">
+                    <label class="check"
+                      ><input name="rewardsAdvanced" type="checkbox" /> Advanced (JSON)</label
+                    >
+                  </div>
+                  <details class="more">
+                    <summary>More options</summary>
+                    <label class="field">
+                      <span class="field-label">Title <i>optional</i></span>
+                      <input name="title" maxlength="200" />
+                    </label>
+                    <label class="field">
+                      <span class="field-label">Body <i>optional</i></span>
+                      <textarea name="body" maxlength="2000" rows="2"></textarea>
+                    </label>
+                    <label class="field">
+                      <span class="field-label">Ticket <i>optional</i></span>
+                      <input name="ticketRef" maxlength="128" />
+                    </label>
+                  </details>
+                  <label class="field">
+                    <span class="field-label">Reason</span>
+                    <input name="reason" required maxlength="512" />
+                  </label>
+                  <div class="check-row">
+                    <label class="check"
+                      ><input name="dryRun" type="checkbox" checked /> Dry run</label
+                    >
+                  </div>
+                  <div class="form-foot">
+                    <button type="submit" class="btn btn-primary">Review cohort grant</button>
+                  </div>
+                  <output class="result"></output>
+                </form>
+              </div>
+            </section>
+
+            <!-- Audit -->
+            <section class="view" data-view-panel="audit" aria-labelledby="audit-title" hidden>
+              <h1 id="audit-title" class="view-title">Audit</h1>
+              <section class="card" aria-labelledby="actions-log-title">
+                <div class="card-head">
+                  <h2 id="actions-log-title" class="card-title">Admin actions</h2>
+                  <div class="card-tools">
+                    <label class="sr-only" for="actions-filter">Filter admin actions</label>
+                    <input
+                      id="actions-filter"
+                      class="input-sm"
+                      type="search"
+                      placeholder="Filter"
+                      data-actions-filter
+                    />
+                    <button type="button" class="btn btn-secondary btn-sm" data-load-actions>
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+                <div data-actions></div>
+              </section>
+              <section class="card" aria-labelledby="dead-letters-title">
+                <div class="card-head">
+                  <h2 id="dead-letters-title" class="card-title">Dead letters</h2>
+                  <div class="card-tools">
+                    <label class="sr-only" for="replay-reason" data-cap="deadLetterReplay"
+                      >Replay reason</label
+                    >
+                    <input
+                      id="replay-reason"
+                      class="input-sm"
+                      maxlength="512"
+                      placeholder="Replay reason"
+                      data-cap="deadLetterReplay"
+                    />
+                    <button type="button" class="btn btn-secondary btn-sm" data-load-dead>
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+                <div data-dead-letters></div>
+              </section>
+            </section>
+          </main>
+        </div>
+
+        <dialog class="dialog" data-dialog></dialog>
+      </div>
+    </template>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

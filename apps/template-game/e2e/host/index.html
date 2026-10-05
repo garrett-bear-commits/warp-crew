@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>jest.com-shaped host harness</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #111;
+        color: #eee;
+      }
+      header {
+        padding: 8px 12px;
+        font-size: 14px;
+      }
+      iframe {
+        border: 0;
+        width: 100vw;
+        height: calc(100vh - 34px);
+      }
+    </style>
+  </head>
+  <body>
+    <header>Host harness (cross-site iframe → partitioned storage is the normal case)</header>
+    <iframe id="game" title="game" allow="storage-access"></iframe>
+    <script>
+      const params = new URLSearchParams(location.search);
+      document.getElementById('game').src = params.get('game') || 'http://localhost:4173/';
+    </script>
+  </body>
+</html>
