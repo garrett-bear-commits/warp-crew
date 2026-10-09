@@ -25,7 +25,9 @@ Built so far:
 - Crew families (two or four aboard give a fight bonus).
 - Music: four CC0 tracks, one per scene, with their own switch (`src/ui/music.js`, `src/data/musicManifest.js`,
   built by `scripts/build-music.mjs`).
-- Art mockup round 1 (Flora, $0.33), waiting for Garrett's pick: [ledger](art/2026-10-09-style-mockup-ledger.md).
+- Art in style C (Garrett's pick): all 50 portraits and the Sparrow v5 hull ([mockup](art/2026-10-09-style-mockup-ledger.md),
+  [art pass](art/2026-10-09-portrait-pass-ledger.md)). The ship's geometry lives in `src/data/art/sparrowV5Layout.json`,
+  built by `scripts/measure-sparrow-v5.py`.
 - The step-0 fixes.
 
 The live checklist is in [NEXT.md](NEXT.md). Node 24 is needed (`/opt/nvm`: `nvm use 24` in cloud sessions).

@@ -50,18 +50,23 @@ assert.deepEqual(
   { ok: false, reason: 'disconnected' },
 );
 
+// Points come from the layout, so these hold for whichever Sparrow art is installed.
+const spine = SPARROW_LAYOUT.halls.find((hall) => hall.id === 'spine');
+const midSpine = { x: spine.left + spine.width / 2, y: spine.top + spine.height / 2 };
+const engineeringSpot = SPARROW_LAYOUT.rooms.find((room) => room.id === 'engineering').workAnchor;
+
 // The actor still calls its last room "bridge" while crossing the spine.
 // Returning to Bridge must enter its authored doorway from the hall.
-const fromSpine = routeToWorkAnchor({ x: 50, y: 45, room: 'bridge' }, 'bridge');
+const fromSpine = routeToWorkAnchor({ ...midSpine, room: 'bridge' }, 'bridge');
 assert.equal(fromSpine.ok, true);
 assert.ok(fromSpine.points.some((point) => point.via === 'door-enter' && point.room === 'bridge'));
-assertWalkableRoute({ x: 50, y: 45, room: 'bridge' }, 'bridge', fromSpine);
+assertWalkableRoute({ ...midSpine, room: 'bridge' }, 'bridge', fromSpine);
 
 // Physical room geometry overrides a stale room hint during mid-walk rerouting.
-const staleRoom = routeToWorkAnchor({ x: 39.7, y: 82.3, room: 'bridge' }, 'weapons');
+const staleRoom = routeToWorkAnchor({ ...engineeringSpot, room: 'bridge' }, 'weapons');
 assert.equal(staleRoom.ok, true);
 assert.ok(staleRoom.points.some((point) => point.via === 'door-exit' && point.room === 'engineering'));
-assertWalkableRoute({ x: 39.7, y: 82.3, room: 'engineering' }, 'weapons', staleRoom);
+assertWalkableRoute({ ...engineeringSpot, room: 'engineering' }, 'weapons', staleRoom);
 
 // New crew and boarders come in through the port airlock and walk the spine to their room.
 const { airlock } = SPARROW_LAYOUT.anchors;

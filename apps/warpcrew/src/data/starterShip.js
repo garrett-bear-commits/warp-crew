@@ -1,10 +1,10 @@
 // @ts-nocheck
 /**
- * Sparrow cutaway geometry, driven by the measured Sparrow v4 layout
- * (src/data/art/sparrowV4Layout.json). Everything here is in percentages of
+ * Sparrow cutaway geometry, driven by the measured Sparrow v5 layout
+ * (src/data/art/sparrowV5Layout.json, built by scripts/measure-sparrow-v5.py). Everything here is in percentages of
  * the hull image; HULL_PX is the one source for the world size in pixels.
  */
-import LAYOUT from './art/sparrowV4Layout.json' with { type: 'json' };
+import LAYOUT from './art/sparrowV5Layout.json' with { type: 'json' };
 
 export const HULL_IMAGE = LAYOUT.image;
 export const HULL_PX = Object.freeze({ w: LAYOUT.sourceSize.width, h: LAYOUT.sourceSize.height });
@@ -90,7 +90,7 @@ export const SPARROW_LAYOUT = {
     { id: 'spine', ...LAYOUT.spine },
     airlockPassage,
   ],
-  // Furniture crew walk around, measured against the v4 art (docs/art/qa/sparrow-v4-blockers.png).
+  // Furniture crew walk around, measured against the v5 art (docs/art/qa/sparrow-v5-layout.png).
   blockers: (LAYOUT.blockers || []).map((blocker) => ({ ...blocker, shape: 'rect' })),
   effects: {
     thrusters: LAYOUT.thrusters.map((thruster) => ({ x: thruster.x, y: thruster.y, size: 1 })),

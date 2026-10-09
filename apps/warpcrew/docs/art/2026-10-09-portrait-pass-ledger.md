@@ -1,4 +1,4 @@
-# Ledger: portrait pass in style C, 2026-10-09
+# Ledger: art pass in style C (portraits and the Sparrow), 2026-10-09
 
 Approved by Garrett 2026-10-09 ("yes start the full art pass", estimate $3.50–4.50). Account: his **personal** Flora
 workspace `ws_qd74q6ne1vz179axy853gsba3s7v9r97`, project `prj_ns7f3yytp61zv39w1ea33bqynd8fycj1`. Style: C, chosen
@@ -45,8 +45,27 @@ background to transparent, and writes a 768 × 768 palette PNG with hard pixel b
   768, every merc and captain on its own style C file); `test/asset_manifest.test.mjs` checks the new hashes.
 - Review sheet: [`outputs/portraits-2026-10-09/roster-sheet.png`](outputs/portraits-2026-10-09/roster-sheet.png).
 
+## The Sparrow (v5)
+
+No new generation: the ship is the round-2 mockup `ship-C2-chunky` (run `run_m172wtgwqc3g3jeq5k557f1b1d8fz3t3`,
+$0.073, in the mockup ledger), snapped at 2.7 px per art pixel with 48 colours (309 × 465 art pixels).
+
+- `scripts/measure-sparrow-v5.py` holds every measurement in art pixels (rooms from a wall scan, the corridor, door
+  points on the drawn door lights, work spots, 36 furniture blocks on the big props, the airlock and the four
+  thrusters) and writes the hull image, `src/data/art/sparrowV5Layout.json` and the review overlay
+  [`qa/sparrow-v5-layout.png`](qa/sparrow-v5-layout.png).
+- Hull image: `public/art/ships/v5/sparrow-v5.png`, the art at 5× (world 1545 × 2325), 60 KB, drawn with
+  `image-rendering: pixelated` so the blocks stay hard from the farthest zoom to the nearest.
+- The v4 hull and layout are removed. Ship tests that hard-coded v4 coordinates now read them from the layout
+  (`ship_pathing`, `crew_walk_routes`, `ship_view`); `ship_pathing` also checks that furniture blocks walking and that
+  no work spot is blocked. All 100 room-to-room crew routes connect.
+- Room-side door points sit at least 1.5% inside their room: the walkable floor stops 1% short of every wall, and a
+  door point on that edge let a smoothed path cut a corner (the first layout failed every route into Engineering).
+
 ## Not in this pass
 
-- The splash scene (`vertical-slice/splash-five-crew-v3.png`), the ship sprites crew walk around with
+- The splash scene (`vertical-slice/splash-five-crew-v3.png`), the small crew figures that walk the ship
   (`public/art/crew/`), the enemy ships and the ship thumbnails are still the older art.
+- `test/ship_camera_input.test.mjs` and `test/ship_camera_opening.test.mjs` are in no suite and already failed
+  before this pass (a DOM stub without `classList.add`).
 - Kira's chevron tattoos sit under her right eye, not her left (the round-2 refinement did not move them).

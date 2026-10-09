@@ -10,8 +10,11 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
+const pct = (value) => `${Math.round(value * 100) / 100}%`;
+
+/** CSS clip polygon in percent; rounded so a left + width sum never prints float noise (60.800000000000004%). */
 export function polygonCss(points) {
-  return `polygon(${points.map((point) => `${point.x}% ${point.y}%`).join(', ')})`;
+  return `polygon(${points.map((point) => `${pct(point.x)} ${pct(point.y)}`).join(', ')})`;
 }
 
 export function roomStyle(room) {

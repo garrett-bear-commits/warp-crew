@@ -22,32 +22,50 @@ for (const from of SPARROW_LAYOUT.rooms) {
   }
 }
 
+// Expected points come from the layout, so this holds for whichever Sparrow art is installed.
+const doorOf = (id) => SPARROW_LAYOUT.doors.find((door) => door.roomId === id);
+const roomOf = (id) => SPARROW_LAYOUT.rooms.find((room) => room.id === id);
+const spine = SPARROW_LAYOUT.halls.find((hall) => hall.id === 'spine');
 const authored = pathRooms('sensors', 'engineering');
 const expectedAuthored = [
-  { x: 43.2, y: 42, room: 'sensors', via: 'door-exit' },
-  { x: 50, y: 42, room: null, via: 'spine' },
+  { ...doorOf('sensors').room, room: 'sensors', via: 'door-exit' },
+  { ...doorOf('sensors').spine, room: null, via: 'spine' },
   // Engineering's door is at the top of the bay, where the spine ends (not through the reactor column).
-  { x: 50, y: 73.8, room: null, via: 'spine' },
-  { x: 50, y: 75.6, room: 'engineering', via: 'door-enter' },
+  { ...doorOf('engineering').spine, room: null, via: 'spine' },
+  { ...doorOf('engineering').room, room: 'engineering', via: 'door-enter' },
 ];
 if (JSON.stringify(authored) !== JSON.stringify(expectedAuthored)) {
   throw new Error(`authored route ${JSON.stringify(authored)}`);
 }
+if (doorOf('engineering').room.y <= roomOf('engineering').top) throw new Error('engineering door opens from the top of the bay');
 
 // Strict callers must receive a failure instead of the legacy destination fallback.
-// (The v4 layout has no furniture blockers; off-floor hull plating is the blocked case.)
+// Off-floor hull plating is the blocked case.
+const engineeringSpot = roomOf('engineering').workAnchor;
 if (isWalkablePct(10, 30)) throw new Error('hull plating outside the rooms must not be walkable');
-if (findPath(10, 30, 39.7, 82.3, { strict: true }) !== null) {
+if (findPath(10, 30, engineeringSpot.x, engineeringSpot.y, { strict: true }) !== null) {
   throw new Error('strict path accepted a start on hull plating');
 }
-if (findPath(-100, -100, 39.7, 82.3, { strict: true }) !== null) {
+if (findPath(-100, -100, engineeringSpot.x, engineeringSpot.y, { strict: true }) !== null) {
   throw new Error('strict path accepted an off-hull start');
 }
 
 // Doors are gaps, not walls: the strip between a side room and the spine is
 // walkable only at its door.
-if (!isWalkablePct(44.8, 30)) throw new Error('shields door gap blocked');
-if (isWalkablePct(44.8, 25)) throw new Error('shields wall is walkable away from its door');
+const shields = roomOf('shields');
+const gapX = (shields.left + shields.w + spine.left) / 2;
+if (!isWalkablePct(gapX, doorOf('shields').room.y)) throw new Error('shields door gap blocked');
+if (isWalkablePct(gapX, doorOf('shields').room.y - 4)) throw new Error('shields wall is walkable away from its door');
+
+// Furniture blocks walking, and every room's work spot stays clear of it.
+for (const blocker of SPARROW_LAYOUT.blockers) {
+  const cx = blocker.left + blocker.width / 2;
+  const cy = blocker.top + blocker.height / 2;
+  if (isWalkablePct(cx, cy)) throw new Error(`${blocker.id} does not block walking`);
+}
+for (const room of SPARROW_LAYOUT.rooms) {
+  if (!isWalkablePct(room.workAnchor.x, room.workAnchor.y)) throw new Error(`${room.id} work spot is blocked`);
+}
 
 // Departures and arrivals use the port airlock beside Cargo.
 const { airlock, cargoDeparture } = SPARROW_LAYOUT.anchors;

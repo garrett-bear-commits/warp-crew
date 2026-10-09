@@ -54,17 +54,20 @@ Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) 
 - [x] Art mockup round 1 on Garrett's personal Flora account ($0.33): three directions each for Kira Nyx and the
   Sparrow, snapped to a real pixel grid by `scripts/pixel-snap.py` ([ledger](art/2026-10-09-style-mockup-ledger.md),
   contact sheets in `art/outputs/mockup-2026-10-09/`).
+- [x] Art pass in style C ($3.65 on Flora; [ledger](art/2026-10-09-portrait-pass-ledger.md)): all 50 crew and captain
+  portraits redrawn from their designs, and the Sparrow v5 hull with a newly measured layout (rooms, doors,
+  furniture, airlock, thrusters).
 - [x] Music: four CC0 space-synth tracks (MintoDog, Synth-thetic), one per scene (ship, star map, fight, Siege
   wall), crossfading, with a Music switch in Log > Settings ([credits](../public/audio/music/LICENSE.md)).
 
 **Next:**
 
 - [ ] Garrett:
-  - pick an art direction from the contact sheets (A HD pixel, B painted pixel, C bold arcade; mixing is fine);
   - listen to the music in the QA build (Log > Settings has the switch);
   - react to the universe proposal;
   - play the QA build: fights with moves, the hire banner and reveal, families.
-- [ ] Art round 2 (after the pick): up to 4 images in the chosen direction; cap 10 images and about $5 in all.
+- [ ] Next art (needs a spend OK): the small crew figures on the ship, the six enemy ships, the splash scene and the
+  ship thumbnails in style C.
 - [ ] Step 3, balance:
   - win odds simulated from the real fight on contract cards;
   - wall pools for crews that still stall (some simulated captains now break Veil on arrival, others never);

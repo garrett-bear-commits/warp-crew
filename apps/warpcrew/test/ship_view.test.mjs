@@ -6,7 +6,9 @@ import {
 
 const bridge = SPARROW_LAYOUT.rooms.find((room) => room.id === 'bridge');
 const clip = polygonCss(bridge.hitPolygon);
-if (clip !== 'polygon(34.1% 13.6%, 65.9% 13.6%, 65.9% 21.1%, 34.1% 21.1%)') {
+const r2 = (value) => Math.round(value * 100) / 100;
+const [left, top, right, bottom] = [bridge.left, bridge.top, r2(bridge.left + bridge.w), r2(bridge.top + bridge.h)];
+if (clip !== `polygon(${left}% ${top}%, ${right}% ${top}%, ${right}% ${bottom}%, ${left}% ${bottom}%)` || /\d{5}/.test(clip)) {
   throw new Error(`bridge clip ${clip}`);
 }
 

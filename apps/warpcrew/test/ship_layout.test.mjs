@@ -9,7 +9,7 @@ import {
 } from '../src/data/starterShip.js';
 import { STATIONS } from '../src/systems/stations.js';
 
-const source = JSON.parse(readFileSync(new URL('../src/data/art/sparrowV4Layout.json', import.meta.url), 'utf8'));
+const source = JSON.parse(readFileSync(new URL('../src/data/art/sparrowV5Layout.json', import.meta.url), 'utf8'));
 
 // Rooms follow the v4 art, bow to stern, port before starboard.
 const expectedIds = [

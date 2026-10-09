@@ -1168,7 +1168,8 @@ button:focus-visible {
   pointer-events: none;
   user-select: none;
   z-index: 1;
-  image-rendering: auto;
+  /* Style C pixel art stored at 5x: hard blocks hold up from the farthest zoom to the nearest. */
+  image-rendering: pixelated;
   filter: drop-shadow(0 0 18px rgba(80, 190, 255, 0.10));
 }
 
