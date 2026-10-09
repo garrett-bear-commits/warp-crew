@@ -57,6 +57,35 @@ zoomed in). Zoomed in, one art pixel is about 2 points (6–7 iPhone pixels) for
 - Zoomed in: C is the cleanest (flat clusters, hard outlines, props readable at a glance); A is good but mottled
   where a soft source was snapped; B's texture turns into speckle.
 
-## Round 2
+## Round 2 (4 images, $0.274)
 
-Not started: waiting for Garrett's pick. Up to 4 more images; cap 10 images and about $5 in all.
+Garrett picked **C for portraits and the ship** and approved round 2. All four use GPT Image 2.5 with references
+(`is2i-gpt-image-2-5-flare`, `quality: high`, `resolution: 1k`), so the style carries over from round 1. The ship
+references are a floor plan drawn from the game's own layout (`src/data/art/sparrowV4Layout.json`: room boxes, the
+corridor, doors, the airlock, the thrusters, a distinct floor colour per room; saved as
+`sparrow-floorplan-reference.png`, Flora asset `asset_jd7eewwtp8bm7zdde8n4pnbxc58fzx7a`) plus `raw/ship-C.png`.
+The exact prompts and parameters are in `outputs/mockup-2026-10-09/round2-prompts.json`; each is the round-1 style C
+line and common suffix plus the change named below.
+
+| File (`outputs/mockup-2026-10-09/`) | What | References | Flora run id | Cost | Disposition |
+|---|---|---|---|---|---|
+| `raw/portrait-C2-kira.png` | Kira refined: more headroom, simpler vest, tattoos under her left eye | `raw/portrait-C.png` | `run_m17f1a9bkqzqds5s7qgbdh45y58fzfdx` | $0.064 | Kept. Same character and style, chunkier grid (171 art px across); the tattoos did not move. |
+| `raw/portrait-C2-skarn.png` | Skarn of Glass (Epic, living crystal) in style C | `raw/portrait-C.png` (style only) | `run_m17djqse1qhd4gbt8vtx5fqrsh8fzbmp` | $0.064 | Kept. The style holds on a non-human: same outline, rim light and pixel treatment. |
+| `raw/ship-C2-plan.png` | The Sparrow on the game's floor plan | floor plan + `raw/ship-C.png` | `run_m17a8dckkhxacwns2pjvfyebhs8fymtn` | $0.073 | Rejected for production: it added a fifth row of side rooms, so the game's room boxes do not fit. |
+| `raw/ship-C2-chunky.png` | Same, with bigger pixels and simpler props | floor plan + `raw/ship-C.png` | `run_m172wtgwqc3g3jeq5k557f1b1d8fz3t3` | $0.073 | **Chosen direction.** Four rows plus engineering across the stern, airlock by cargo, each room its own colour; the best fit to the game's boxes and the best read at both zoom limits. |
+
+Flora reported $0.609 spent in all (10 images) and $11.98 left. The 10-image cap is reached.
+
+Checks (local, free): `contact-sheet-round2-portraits.png`, `contact-sheet-round2-ships.png`,
+`layout-check-ships.png` (the game's room boxes over each C ship), `zoom-sheet-ships-round2.png` and
+`zoom-detail-ships-round2.png` (the zoom limits, as before). The round-2 ships came out softer than round 1 (edge
+scores about 1.06 against 1.16), so they are snapped at round 1's grid (2.7 px) with 48 colours; at 40 the
+medbay's red cross turned orange.
+
+## For production
+
+- One art size for every portrait (Kira came out 171 art pixels across, Skarn 222): snap all of them to the same
+  grid so the roster matches side by side.
+- Build the Sparrow from `ship-C2-chunky`, then re-measure its rooms into the layout file (the boxes fit closely
+  but not exactly).
+- Use a style reference (the chosen portrait or ship) on every generation; text alone drifts.

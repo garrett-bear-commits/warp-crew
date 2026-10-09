@@ -1,0 +1,56 @@
+[
+ {
+  "file": "raw/portrait-C2-kira.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/8b37338e-6383-4ac5-82bf-a5a95eda32f7.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Redraw the character in the reference image as a finished roster portrait for a mobile space mercenary game. Keep the same person, face, confident lopsided grin, bleached undercut with signal-orange hair on top, scuffed ear-defender headset, flak vest with yellow-and-black warning stripes over a dark navy flight suit, fingerless gunner's glove, palette, and the exact same bold chunky pixel-art style, pixel size and lighting as the reference (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Refinements: frame her head and shoulders centred with a little empty space above the hair; put the three small signal-orange hazard-chevron tattoos just under her left eye (the right side of the image); simplify the tiny vest details so she reads clearly at small size. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI."
+ },
+ {
+  "file": "raw/portrait-C2-skarn.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/8b37338e-6383-4ac5-82bf-a5a95eda32f7.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Use the reference image only for its art style: the same bold chunky pixel-art look, pixel size, strong dark outline, palette treatment, three-quarter bust framing and lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Draw a completely different character, not the woman in the reference: Skarn of Glass, a living-crystal alien blade-dancer and bodyguard for a space mercenary game. Its body is a lattice of faceted emerald-green crystal shards, its head a sharp crown of crystal spikes with two narrow glowing pale-green eyes and no mouth, inner light glinting through the facets, one long crystal blade-arm resting calmly at its shoulder. Calm, dangerous, faintly amused. Stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI."
+ },
+ {
+  "file": "raw/ship-C2-plan.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/0d56322f-9da1-44fd-8ade-441a6706e964.png",
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/3b0427b3-d7ef-456d-bad3-e473e93b2d2a.png"
+   ],
+   "aspect_ratio": "2:3",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images: the first is the exact floor plan of the Sparrow (the hull outline and where each room sits, its size and its floor colour); the second is the art style to match. Draw the Sparrow, a small mercenary starship for a mobile space crew game, as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL, in exactly the style of the second image: bold chunky pixel art, strong dark outline, punchy saturated palette, worn gunmetal and charcoal hull plating with orange and amber hazard trim, teal and cyan console screens, warm interior lights. Place and size the rooms exactly as in the floor plan: the bridge at the nose with a pilot seat and curved consoles; shields (a glowing blue core) on the left and weapons (missile racks and a gunnery console) on the right; sensors (a holographic scanner table) left and medbay (a bed with a red cross and a cabinet) right; crew quarters (bunks) left and mess (a table and a galley) right; cargo (crates and a lift pad) left and armory (weapon lockers) right; engineering across the whole stern with the reactor in the middle and repair benches either side; one straight central corridor with a door from every room onto it; a small airlock on the left hull beside cargo; four engine nozzles at the bottom. Every room keeps the floor colour shown in the floor plan, so each room reads as its own colour block. Small readable props, empty of people. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI."
+ },
+ {
+  "file": "raw/ship-C2-chunky.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/0d56322f-9da1-44fd-8ade-441a6706e964.png",
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/3b0427b3-d7ef-456d-bad3-e473e93b2d2a.png"
+   ],
+   "aspect_ratio": "2:3",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images: the first is the exact floor plan of the Sparrow (the hull outline and where each room sits, its size and its floor colour); the second is the art style to match. Draw the Sparrow, a small mercenary starship for a mobile space crew game, as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL, in exactly the style of the second image: bold chunky pixel art, strong dark outline, punchy saturated palette, worn gunmetal and charcoal hull plating with orange and amber hazard trim, teal and cyan console screens, warm interior lights. Place and size the rooms exactly as in the floor plan: the bridge at the nose with a pilot seat and curved consoles; shields (a glowing blue core) on the left and weapons (missile racks and a gunnery console) on the right; sensors (a holographic scanner table) left and medbay (a bed with a red cross and a cabinet) right; crew quarters (bunks) left and mess (a table and a galley) right; cargo (crates and a lift pad) left and armory (weapon lockers) right; engineering across the whole stern with the reactor in the middle and repair benches either side; one straight central corridor with a door from every room onto it; a small airlock on the left hull beside cargo; four engine nozzles at the bottom. Every room keeps the floor colour shown in the floor plan, so each room reads as its own colour block. Small readable props, empty of people. Use even bigger pixels than the style reference: the whole ship about 256 art pixels wide, with simpler, larger props and thicker walls, so every room reads at a glance on a small phone screen. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI."
+ }
+]
