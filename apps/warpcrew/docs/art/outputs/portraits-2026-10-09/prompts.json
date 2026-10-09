@@ -1,0 +1,802 @@
+[
+ {
+  "file": "raw/rex.png",
+  "run_id": "run_m17atg43caw0r4vf719dzszynn8fym24",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/e880772c-5ce1-4b59-b911-6e6e61faf7b7.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Rex Vale, a human pilot: tousled brown hair with flight goggles pushed up on his forehead, stubble, an easy confident smile, a worn orange-brown flight jacket. Ex-hauler pilot. Steady hands. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/bolt.png",
+  "run_id": "run_m17ahrgd06qq730vp8as1wkhsn8fy9c6",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/74e72e0a-d100-4777-8912-39604a9b7e1a.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Bolt, a boxy yellow industrial yard droid: chunky yellow armour plates with black hazard edges, a narrow glowing cyan visor slit, a stubby antenna, heavy shoulders. Refurbished yard droid. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/jen.png",
+  "run_id": "run_m17544axk8rd2krgx8xqstzv9s8fzk1q",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/32effaa6-04d9-4710-afd8-0c369a68d16a.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Jen Park, a human gunner: short black hair, a guarded serious look, an olive tactical vest with pouches over a dark shirt. Station security washout. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/moss.png",
+  "run_id": "run_m176c8vrgw9a6ktx87tyzk7zfn8fz4yx",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/76b51f95-b4c5-490e-b641-f27d5a628064.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Moss-3, a white medical droid: a rounded white helmet head with a red cross, a cyan visor, white-and-teal armour, one hand holding a syringe. Clinic chassis, field firmware. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/plip.png",
+  "run_id": "run_m175rkmvrw19g4jvd4rm22g8z58fydpx",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/ba27d01f-fc1b-4a4c-a767-b56d93f528b4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Plip, a round teal alien trader with bubbly, bead-textured skin, several shiny black eyes and a huge friendly grin, a pink beaded necklace. Bubble-skinned haggler from Tidefall. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/tess.png",
+  "run_id": "run_m170chnv2qxaq4k6a06bbk06xh8fzh8q",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/4b8f7db5-837c-4ba5-aa61-c50d44882002.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Tess Vale, a young human pilot: messy sandy-blond hair, a determined look, a bright cyan-blue flight jacket with a high collar. Rex\u2019s cousin. Faster, poorer. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/dax.png",
+  "run_id": "run_m17cw56mzb387ay3yszw2426058fycff",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/2661ed39-84ac-4d70-be1a-414967f77e14.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Dax Rime, a young human gunner: messy dark-brown hair, a cheek scar, a cocky look, a red jacket with brown leather straps. Belt kid with a borrowed turret. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/nub.png",
+  "run_id": "run_m171bncsbghp9r20yn8bvf48rn8fzkhk",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/ec08ec50-928e-4eac-a959-72d81f2d889d.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: NUB-4, a small brass yard droid: a boxy brass head with an orange glowing visor, extra little arms, one holding a sparking welding torch. Four-armed yard helper. Two of them work. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/pip.png",
+  "run_id": "run_m170n0x05dbxat17cy2xv37m9n8fzskf",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/b2308362-f41a-4b40-a53c-51bda765d48f.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Pip Hollow, a human trader: curly orange-red hair, freckles, a sly grin, a long brown coat with bulging pockets. Pocket merchant. Always has a spare crate. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/juno.png",
+  "run_id": "run_m179a2te897at07kva876wdcb98fzbx7",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/e3d6c397-a943-442d-b7f1-ba0f5bbcddf1.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Juno Kett, a young human scout: messy black hair, alert eyes, a green field jacket with satchel straps and a rolled star map. Map-rat. Sleeps in vents. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/greaves.png",
+  "run_id": "run_m17azm7jjycrb59asm75teeq818fzakm",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/9b4b363c-beb0-40c5-bc28-82b5235f5375.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Greaves, a broad human guard: buzzed grey hair, a heavy jaw, a stern tired look, a grey armoured vest. Colony door-guard on a long break. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/syla.png",
+  "run_id": "run_m177amzgy1gwhhn7ee5yy0w26x8fy904",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/aa16c16a-633b-45bf-9d09-38e5ab4154b7.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Syla, a teal crystal-scaled alien merchant: a spiky crystalline head crest, warm amber eyes, a mustard-yellow scarf. Crystal-lattice merchant caste. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/rook.png",
+  "run_id": "run_m177gg3k21wfkw7d1gz91kgs998fzm99",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/0f4d7f2f-a34d-4c87-b4d1-15b58c341f3e.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Rook Halden, a human colony marshal: dark slicked-back hair, stubble, a hard calm stare, a dark navy uniform coat with a gold star badge. Colony marshal on sabbatical. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/nemi.png",
+  "run_id": "run_m17f92q2fkc4gt28cvck8458hx8fz8yf",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/bbcfdf9a-27e8-47f7-9f03-3fb79d9a381d.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Nemi-Vox, a golden insect-like alien scout: smooth amber-gold carapace, long antennae, large glossy dark eyes, a brown hooded cloak. Silicate scout with echolocation. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/cog.png",
+  "run_id": "run_m17cr47q95psf1tm955gn9922n8fzcjr",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/b77cb41e-3667-4b24-a693-2428a237dabd.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Cogwheel, a brass dome-headed droid: a single wide visor across its face, a little antenna, round riveted body, chatty and expressive. Talkative wrench with opinions. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/yara.png",
+  "run_id": "run_m175ed5s74ddhvd877nsd710th8fz2zq",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/cdb81f74-8dde-4876-a76b-9c9e40f99848.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Yara Quell, a human medic: dark curly hair in a bun, warm brown skin, a kind but impatient look, a mint-green medical coat. Haven medic who hates waiting rooms. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/brink.png",
+  "run_id": "run_m17cqavf4as4bynb81cfgh6kh98fy48t",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/7f2e9c99-9d20-4865-a790-26e2eff3c084.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Brink, a pale human scout: short brown hair, tired watchful eyes, a headset with a boom mic, a grey jacket. Listens to dead arrays for fun. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/oso.png",
+  "run_id": "run_m17f2g30qv9a5rm4ky02q2c9b58fy6tz",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/2a2f0bce-2fc7-4742-8999-4c053ea37cf8.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Oso Brack, a big human bouncer: dark skin, short black hair, a calm gentle face, grey heavy armour plates on his shoulders. Reef bouncer. Soft voice, hard elbows. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/orla.png",
+  "run_id": "run_m17aatbms7xgrqaa0ytkt1dw1h8fzz2v",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/54f43c3a-a3c6-4df3-b67e-f41fc2280ccf.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Orla Finch, a human surgeon: blonde hair in a tight bun, a cool no-nonsense look, a white medical coat with pens in the pocket. Ice-lane surgeon. Hates drama, loves sutures. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/tink.png",
+  "run_id": "run_m174gk6a5ta4mr61wk8y7zsb4n8fzbt9",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/d1b87b44-807d-4541-8bc9-9e29243ee0b1.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Tink, a round rust-orange droid: two glowing orange eyes, riveted dented plating, little sparks, warm ember glow. Ember-yard spark. Smells like ozone. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/vorn-first.png",
+  "run_id": "run_m17exa720kkc5swmj8pnvk8drh8fz5h7",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/c0417740-e001-4f69-a10c-d5ac0e53030e.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Vorn, a dark armoured void knight alien: black horned armour, glowing cyan eyes in a shadowed helm, two extra arms folded at its shoulders. Four-armed void knight. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "rejected: drifted to green"
+ },
+ {
+  "file": "raw/vorn.png",
+  "run_id": "run_m172jx5nspb2wbr2374a9g98p18fyvsf",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/c0417740-e001-4f69-a10c-d5ac0e53030e.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Vorn, a void knight alien in jet-black and gunmetal armour with silver edges (no green anywhere): a horned black helm, two glowing cyan eyes in the dark visor, four arms (the upper pair folded across the chest, the lower pair resting on a blade hilt), a tattered dark cape. Four-armed void knight. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/quill.png",
+  "run_id": "run_m17b9e0swh1nbbkqwhzaanm0hx8fzkwr",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/cf2cd60d-bac9-4bfc-9558-cd01e0ee2743.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Quill, a feathered bird-like alien tracker: white and ice-blue feathers, a yellow beak, sharp eyes, flight goggles on its head. Feathered tracker from ice rings. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/isa.png",
+  "run_id": "run_m17degv6dywe36wwnsks9gjx518fzv75",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/d0e66cd4-3bfc-465c-980f-132033b4f452.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Isa Mender, a young human combat surgeon: short dark hair under a teal beanie, a soft smile, a white medical uniform with a red cross. Combat surgeon, soft smile. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/drift.png",
+  "run_id": "run_m172qbxnwyq8d0mw3s9wnay28d8fzw1j",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/316f0776-a8b4-4ebb-b09b-5218f7408624.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Drift, a pale lilac alien pilot: a smooth domed head, large almond eyes, a calm floaty look, a dark flight suit. Gas-giant flyer in a borrowed body. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/hex.png",
+  "run_id": "run_m17036780x86fwkp07mdnbvzh18fyqaj",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/100ec2f7-6f19-440e-afd1-a0dcb7ade4f1.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: HEX-19, a black-and-red naval turret droid: an angular armoured head with a glowing red visor slit, targeting lenses, gun-metal plating. Decommissioned naval turret AI. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/kal.png",
+  "run_id": "run_m17ayz76zm9hxs5zkh06w8py5d8fz52j",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/f2ae1ccd-55e7-48c0-8a55-12ccbee344dc.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Kal Vesper, a human cutter ace: dark hair, a sharp jaw, a navy officer's cap with gold insignia, a navy uniform jacket. Ex-customs cutter ace. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/vex.png",
+  "run_id": "run_m176sazs1fqs6r18e6rprs05498fyyr1",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/00a4adce-0835-4b23-89e3-26401eb65838.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Vex, an icy-blue crystal-skinned alien sharpshooter: spiky crystalline hair, a cool half-smile, a purple patterned jacket. Reef sharpshooter. Hums when aiming. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/moth.png",
+  "run_id": "run_m17exb76kyx2a2gyw1c0e4vhpn8fzpsx",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/4bee17a0-9102-4b40-880d-d622cc8f1d92.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Moth Vale, a human smuggler: slicked dark hair, dark sunglasses, a smug grin, a mustard trench coat. Black-market tourist. White-market invoices. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/reed.png",
+  "run_id": "run_m178aag9a7fxf9q9vranj5razs8fzxqt",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/30755bdb-11f7-4643-8ba3-e8ef9dfb710a.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Reed-7, a slim white humanoid probe droid: a smooth oval faceplate, a soft purple glowing core in its chest, elegant thin limbs. Slim probe-body with a poet core. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/ada.png",
+  "run_id": "run_m17az4jc133z0rvny3bw26qbbd8fyjf0",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/d0df1582-97ec-4aa8-9a0c-b56c1a6e6e9e.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: ADA-7, a small round white medical droid: a cute rounded head with big cyan eyes, a glowing heart on its chest, gentle. Empathy core + combat drugs. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/lora.png",
+  "run_id": "run_m172vsa1st5e0ytbytdc64b0ws8fye6m",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/65e948ec-65ae-4a43-982e-8a7a642ddb86.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Lora Chen, a human fixer: dark skin, long dark hair, a confident knowing look, a gold-brown coat with a fur collar. Ex-cartel fixer gone legitimate. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/wisp.png",
+  "run_id": "run_m17cx6fwjxhmhes1vr4rbnd86x8fzqj5",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/a365a6c1-eb7a-4d92-b63e-86c1c860a5ff.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Wisp, a pale blue cloud-being alien: a soft glowing gaseous body and face, faint eyes, wisps trailing off its edges. Nearly invisible cloud-being. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/rune.png",
+  "run_id": "run_m174fdqybyvx5pyrtv5f2r6vf18fy5se",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/1083f06f-24dc-40c0-be64-5fb0ebd709dd.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Rune Calder, a human hullwright: long brown hair, a beard, a rugged weathered face, a leather work apron with tools and gauges. Forge-moon hullwright. Speaks in gauges. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/ashen.png",
+  "run_id": "run_m173a70yet1177qpa9hrgpb31n8fyma3",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/7318a437-d2ac-4ad3-aee4-7f85f7e33ab5.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Ashen Kade, a human marine: buzzed hair, burn scars across his face, a hard stare, green camouflage armour. Burned marine. Still standing. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/nyx.png",
+  "run_id": "run_m175kt2kkh4ehvvb7e45yz29tn8fzczn",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/ee49aece-8c29-45eb-a3a0-9b538625159b.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Nyx Hollow, a dark-purple alien scout: long pointed ears, big glowing cyan eyes, a black hooded cloak. Maps places that do not stay mapped. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/coil.png",
+  "run_id": "run_m173zfpp0h7b8dm5n16z9m7w998fzm15",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/8be91695-abb2-4e53-ab3c-0224a823c415.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: COIL, a heavy navy-blue drydock droid: a rounded helmet with a gold visor, armoured shoulders, quiet presence. Silent drydock mind. Hates silence now. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/zephyr.png",
+  "run_id": "run_m171g2tvgkk0nn6bp9ep9nkcvs8fyrbc",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/cc0b43cd-6d6b-4a62-85b2-8d6f23a6443f.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Zephyr, a blue-skinned storm-kin alien pilot: wild white hair, glowing blue markings, a reckless grin, a navy flight coat. Storm-kin who laughs at fuel gauges. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/onyx.png",
+  "run_id": "run_m176jqyedzwx1j2x9egb72xs7d8fykfw",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/fe8d6a36-6e8c-4efa-9517-46dd1c56e426.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Captain Onyx, an older human privateer admiral: swept silver hair, a monocle eye implant, a sly smile, a navy captain's coat with gold epaulettes. Retired privateer admiral for hire. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/prism.png",
+  "run_id": "run_m1702w2ew4w6h1rctjaa8gh5z18fyyvj",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/386bfb08-4134-4576-88d0-4fc5b99549cb.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: PRISM, a faceted purple-and-blue crystal droid: a prismatic glowing body with gold trim, light refracting through it. Prototype ship-soul interface. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/solace.png",
+  "run_id": "run_m17bs5a2et2gw8tn1zdqz85hes8fz088",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/9852ec6c-67a3-464e-9986-2068dbd81e7e.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Solace, a human medic legend: a white bob haircut, teal visor glasses, a calm caring look, a white coat with a green cross. The medic other medics call. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/harrow.png",
+  "run_id": "run_m17dfwgbqnfq0xpy21mexf7amd8fz85n",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/4e365cb1-33d0-4eac-8412-60fda7d5dd13.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Harrow, a grizzled older human ace pilot: an eye patch, grey stubble and scars, a black flight coat. Scar ace. One eye, no wasted burns. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/eclipse-first.png",
+  "run_id": "run_m17cjskxazz5y8kznxd7eyk1858fzpg1",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/858af7c1-2f46-4655-a510-a4f277c4da71.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Eclipse, a dark armoured swarm alien: a black-and-purple spiky silhouette, glowing orange eyes, menacing. Swarm gun-form that chose a name. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "rejected: drifted to green"
+ },
+ {
+  "file": "raw/eclipse.png",
+  "run_id": "run_m17afghqzjeq2q9f6w5t8xxqss8fyncz",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/858af7c1-2f46-4655-a510-a4f277c4da71.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Eclipse, a mythic swarm alien made of glossy black and deep violet armoured plates (no green anywhere): a crown of sharp black spines, a smooth faceless head with two burning orange eyes, faint purple light glowing between the plates, menacing and regal. Swarm gun-form that chose a name. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/archon.png",
+  "run_id": "run_m178rthr01ptszkng0r2wtccwd8fzbf6",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/8856bf4c-226d-4cfc-9802-1be75ab39333.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: ARCHON, a golden armoured droid mind: an ornate gold helm with a glowing crystal faceplate, halo-like trim. Halo-forge mind in gold glass. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/voidwake.png",
+  "run_id": "run_m177fprfhzmk3smkskjrvy4dnh8fybwp",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/9700bf28-3c30-41a0-a798-755c4118fe8a.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Voidwake, a deep violet starry alien: skin like a nebula full of tiny stars, glowing eyes, a calm cosmic presence. The lane that learned to sit in a chair. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/captain-cyborg.png",
+  "run_id": "run_m171ncssersw1zr0686b8qdcgs8fyb0f",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/9dc2b065-77d5-4325-b8ca-ee278296345c.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Cyborg Captain, a human captain and pilot: brown hair, stubble, a glowing cyan cybernetic eye with metal face plates, an orange flight jacket. Cyborg-eyed pilot with a steady hand. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/captain-gunner.png",
+  "run_id": "run_m1792m2j6pf371xdzgbd28g9b18fy414",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/239dd427-2869-4b7e-bdea-f810b3d35d4f.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Gunner Captain, a human captain and gunner: black hair with red streaks, a sharp confident look, a red-and-black jacket with a red triangle badge. Sharp-eyed gunner at the weapons station. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/captain-alien.png",
+  "run_id": "run_m17ch54t1fbq30fxv8svvt5g1h8fywh1",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/b0b0d805-c912-44a3-9780-e418a785037e.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Alien Captain, a green-skinned alien captain and scout: large dark eyes, a ridged head, a brown scarf and travel coat. Alien scout who reads the lanes. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ },
+ {
+  "file": "raw/captain-droid.png",
+  "run_id": "run_m174ddngyf1e9hs6meb9hytbe98fzy1s",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/478de2d7-1e4c-4916-b2bf-2d125d9eab09.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the first image only for style: do not copy that woman, her orange hair, headset or striped vest. The second image shows the character to draw: keep their design (species, face, hair, colours, clothing and props) and redraw them in the first image's style as a finished roster portrait for a space mercenary game. The character: Droid Captain, a small orange round droid captain and engineer: two big glowing eyes, riveted plating, a little antenna, plucky. Small droid with a knack for repairs. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "disposition": "installed"
+ }
+]

@@ -11,9 +11,10 @@ assert.deepEqual(Object.keys(ART_VERTICAL_SLICE).sort(), [
   'bolt', 'captain_alien', 'captain_cyborg', 'captain_droid', 'captain_gunner',
   'kira', 'nemi', 'pirate_scout', 'rex', 'splash', 'tink',
 ]);
-const qaCandidates = new Set(['splash', 'captain_cyborg', 'captain_gunner', 'captain_alien', 'captain_droid', 'pirate_scout']);
+// Crew and captain portraits are the approved style C set (2026-10-09); the splash and pirate art are still QA candidates.
+const qaCandidates = new Set(['splash', 'pirate_scout']);
 for (const [name, art] of Object.entries(ART_VERTICAL_SLICE)) {
-  assert.equal(art.status, qaCandidates.has(name) ? 'qa-candidate' : 'provisional', `${name} art review status`);
+  assert.equal(art.status, qaCandidates.has(name) ? 'qa-candidate' : 'style-c', `${name} art review status`);
   assert.ok(art.path.startsWith('/art/'));
   assert.ok(art.fallback.startsWith('/art/'));
   assert.ok(art.width > 0 && art.height > 0);
@@ -28,7 +29,7 @@ for (const id of ['captain_cyborg', 'captain_gunner', 'captain_alien', 'captain_
   assert.ok(art, `${id} has canonical art`);
   assert.notEqual(portraitFor(id), portraitFor('merc_rex'), `${id} must not silently become Rex art`);
   assert.equal(portraitFor(id), art.path, `${id} portrait uses its manifest export`);
-  assert.ok(art.path.startsWith('/art/pixel/vertical-slice/'));
+  assert.ok(art.path.startsWith('/art/pixel/crew-v2/'));
   assert.equal(art.width, art.height, `${id} portrait is square`);
   const bytes = await readFile(new URL(`../public${art.path}`, import.meta.url));
   assert.equal(createHash('sha256').update(bytes).digest('hex'), art.sha256, `${id} source hash`);

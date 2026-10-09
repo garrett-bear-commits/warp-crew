@@ -7,9 +7,12 @@ art pixel, a limited palette and a transparent background (docs/art/2026-10-09-s
 Usage:
     python3 apps/warpcrew/scripts/pixel-snap.py IN.png OUT.png --cell 4.1
     python3 apps/warpcrew/scripts/pixel-snap.py IN.png OUT.png --cell 2.3 --colours 48 --preview OUT-x.png
+    python3 apps/warpcrew/scripts/pixel-snap.py IN.png OUT.png --auto 3.5,8 --out-size 768   # game portraits
 
 OUT.png is written at art-pixel size (e.g. 1024 px / 4.1 = 250 px across). --preview also writes a
-nearest-neighbour upscale back to the input size, for side-by-side review. Requires Python 3, numpy and Pillow.
+nearest-neighbour upscale back to the input size, for side-by-side review. --auto finds the cell size itself
+(the smallest well-scoring size in the range). --out-size writes OUT.png as an N x N palette PNG (nearest-neighbour,
+so every art pixel stays a hard block) instead of at art size. Requires Python 3, numpy and Pillow.
 
 How it works:
  1. Grid: starting from the --cell estimate (eyeball a zoomed crop), the cell size and offset are refined per axis
@@ -114,7 +117,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('input')
     ap.add_argument('output')
-    ap.add_argument('--cell', type=float, required=True, help='estimated art-pixel size in input pixels')
+    ap.add_argument('--cell', type=float, help='estimated art-pixel size in input pixels')
+    ap.add_argument('--auto', help='search this cell range instead, e.g. 3.5,8')
+    ap.add_argument('--out-size', type=int, help='write an N x N palette PNG instead of art size')
     ap.add_argument('--colours', type=int, default=40)
     ap.add_argument('--key', default='0b1220', help='background colour to key out (hex), or "none"')
     ap.add_argument('--key-dist', type=float, default=30)
@@ -123,8 +128,17 @@ def main():
 
     rgb = np.asarray(Image.open(args.input).convert('RGB')).astype(float)
     grey = rgb.mean(axis=2)
-    sx = refine_grid(np.abs(np.diff(grey, axis=1)).sum(axis=0), args.cell)
-    sy = refine_grid(np.abs(np.diff(grey, axis=0)).sum(axis=1), args.cell)
+    gx, gy = np.abs(np.diff(grey, axis=1)).sum(axis=0), np.abs(np.diff(grey, axis=0)).sum(axis=1)
+    if args.auto:
+        lo, hi = (float(v) for v in args.auto.split(','))
+        scored = [((refine_grid(gx, c)[0] + refine_grid(gy, c)[0]) / 2, c) for c in np.arange(lo, hi + 1e-9, 0.25)]
+        best = max(score for score, _ in scored)
+        # Twice the true cell also lines up with every other edge: take the smallest size that scores nearly as well.
+        args.cell = min(c for score, c in scored if score >= best - 0.03)
+    elif args.cell is None:
+        ap.error('give --cell or --auto')
+    sx = refine_grid(gx, args.cell)
+    sy = refine_grid(gy, args.cell)
     cell = (sx[1] + sy[1]) / 2
     small = cell_colours(rgb, cell, sx[2], sy[2])
     snapped = kmeans_palette(small.clip(0, 255), args.colours)
@@ -133,7 +147,15 @@ def main():
     else:
         bg = key_background(snapped, tuple(int(args.key[i:i + 2], 16) for i in (0, 2, 4)), args.key_dist)
     out = Image.fromarray(np.dstack([snapped, np.where(bg, 0, 255)]).astype('uint8'), 'RGBA')
-    out.save(args.output)
+    if args.out_size:
+        big = np.asarray(out.resize((args.out_size, args.out_size), Image.NEAREST)).copy()
+        big[big[:, :, 3] == 0] = 0  # one transparent entry
+        colours, index = np.unique(big.reshape(-1, 4), axis=0, return_inverse=True)
+        pal = Image.fromarray(index.reshape(big.shape[:2]).astype('uint8'), 'P')
+        pal.putpalette(colours[:, :3].astype('uint8').flatten().tolist())
+        pal.save(args.output, optimize=True, transparency=bytes(int(a) for a in colours[:, 3]))
+    else:
+        out.save(args.output)
     if args.preview:
         h, w, _ = rgb.shape
         out.resize((round(out.width * cell), round(out.height * cell)), Image.NEAREST).crop((0, 0, w, h)).save(args.preview)
