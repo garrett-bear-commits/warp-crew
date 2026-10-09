@@ -2,7 +2,8 @@
 
 This repository is Warp Crew (`apps/warpcrew/`) built on `game-core` (everything else). The port is in progress:
 see [`apps/warpcrew/docs/game-core-port.md`](apps/warpcrew/docs/game-core-port.md). The game's own README is
-[`apps/warpcrew/README.md`](apps/warpcrew/README.md).
+[`apps/warpcrew/README.md`](apps/warpcrew/README.md); picking the project up? Start with
+[`apps/warpcrew/docs/HANDOFF.md`](apps/warpcrew/docs/HANDOFF.md).
 
 # Game Foundation v1
 

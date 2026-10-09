@@ -12,3 +12,6 @@ blob-report/
 .vite/
 *.tsbuildinfo
 infra/pgdata/
+
+# Claude Code worktrees (local only)
+.claude/worktrees/

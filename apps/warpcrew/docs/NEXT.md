@@ -4,12 +4,13 @@ Last updated: 2026-10-09
 
 ## Where things are (2026-10-09)
 
-- **Playable QA build:** branch `claude/hud-overhaul` (pushed), published to [GitHub Pages QA](https://garrett-bear-commits.github.io/warp-crew/) (`gh-pages@dc297d9`, source `adacae2`). Offline, mock purchases.
-- **game-core port:** branch `claude/game-core-port` (pushed, `328630f`). The game lives in `apps/warpcrew/`, the core around it. Plan and status: `apps/warpcrew/docs/game-core-port.md` on that branch. Stages 1 (import), 2 (server) and 3 (client) are done and Luna-audited; stage 4 (cut-over) is next.
+- **Work on `main`.** The game-core port was merged into `main` on 2026-10-09 (owner approved). The game is in `apps/warpcrew/`; the core is everything else. Start with [HANDOFF.md](HANDOFF.md).
+- **Port status:** stages 1 (import), 2 (server) and 3 (client) are done and Luna-audited ([game-core-port.md](game-core-port.md)); stage 4 (staging and cut-over) is next, below.
+- **QA build:** [GitHub Pages](https://garrett-bear-commits.github.io/warp-crew/), offline with mock purchases. Its `build.txt` names the source commit; publish steps are in HANDOFF.md.
+- `claude/hud-overhaul` is the frozen pre-port layout; other `claude/*` and `codex/*` branches are merged history.
 - **No real players yet:** Garrett is the only playtester, so the cut-over starts from a fresh database (no data migration).
-- `main` is behind both branches; nothing merges to `main` without Garrett's approval.
 
-## 2026-10-05 FTL-lite fights, weapons, sound, Explore — on `claude/hud-overhaul`
+## 2026-10-05 FTL-lite fights, weapons, sound, Explore
 
 - [x] FTL-lite real-time crew fights (rooms, shields, fires, crew moves, boarders, Overcharge/Board/Rally), guided first fight, fight camera and off-screen fire alerts.
 - [x] Sparrow v4 ship art with furniture pathing; six enemy faction cutaways with enemy crew figures.
@@ -31,7 +32,8 @@ Last updated: 2026-10-09
 - [ ] Garrett: approve `mintSandbox: 'on'` on staging only (recommended) so sandbox purchases grant there; production stays off.
 - [ ] Claude: wire the staging service, build the client with `VITE_WARPCREW_SERVER` pointing at it, add a startup guard refusing sandbox minting in production.
 - [ ] Garrett: phone session inside Jest staging: sign in, play, reload, second device (deeper save wins), buy a gem pack and the starter kit (second buy refused), start and cancel the subscription trial. This also confirms Jest receipts carry `price`/`currency` and subscription lists carry `iat`.
-- [ ] After staging passes: merge `claude/game-core-port` (with Garrett's approval), make it the QA build, delete `apps/warpcrew/server`, retire `claude/hud-overhaul`.
+- [x] Merge `claude/game-core-port` into `main` (done 2026-10-09).
+- [ ] After staging passes: point QA builds at the core server and delete `apps/warpcrew/server`.
 - [ ] Real-money sales (`mintPremium: 'on'`) only at launch, with Garrett's approval.
 - [ ] Other game-core checkouts (Cairndeep, Wild West Demons) still share the `foundation-postgres` container on 55432; Warp Crew uses `warpcrew-postgres` on 55442.
 
