@@ -12,6 +12,12 @@ The Sunnyside strips in public/art/char/ are the rig: base body + hair layers,
      (human / alien / droid) plus gear drawn at 2x against the anchors;
   3. a 1px outer outline, bevel light and body-anchored grime finish it.
 
+Colours: the named ramps below are the fallback. Every look also has a
+portrait palette (scripts/crew-rig/portrait_palettes.json, sampled from its
+portrait by sample_portrait_palettes.py); its hair / skin / top / pants / pad /
+trim / glow colours are turned into five-step ramps with the same shading
+approach, so the figure wears what the portrait wears.
+
 Everything is deterministic: same inputs, byte-identical PNGs.
 
     python3 scripts/crew-rig/build_crew_sheets.py            # all looks
@@ -33,6 +39,7 @@ CHAR = os.path.join(ROOT, 'public', 'art', 'char')
 OUT = os.path.join(ROOT, 'public', 'art', 'crew')
 MANIFEST_JS = os.path.join(ROOT, 'src', 'data', 'crewRigManifest.js')
 CONTACT = os.path.join(ROOT, 'docs', 'qa', 'artifacts', '2026-09-26-crew-rig')
+PALETTES = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'portrait_palettes.json')
 
 SRC_CELL = (96, 64)
 CROP = (36, 13, 24, 28)          # x, y, w, h inside the 96x64 cell
@@ -140,6 +147,74 @@ def hash01(*v):
         h = ((h ^ (n & 0xffffffff)) * 16777619) & 0xffffffff
         h ^= h >> 13
     return (h % 10007) / 10007.0
+
+
+# ---------------------------------------------------------------- portrait palettes
+def load_palettes():
+    if not os.path.exists(PALETTES):
+        return {}
+    with open(PALETTES) as fh:
+        return json.load(fh)
+
+
+def ramp(base, at=2, cool='#070b1c', warm='#fff3dc'):
+    """Five shading steps around one portrait colour, darkest first.
+
+    `base` sits on step `at`. Shadows slide toward a cool near-black, lights
+    toward a warm white, the same way the named ramps lean."""
+    out = []
+    lift = 0.5 if luma(base) >= 90 else 0.3      # near-black stays near-black
+    for i in range(5):
+        if i < at:
+            out.append(mix(base, cool, 0.86 * (at - i) / at))
+        elif i > at:
+            out.append(mix(base, mix(base, warm, lift), (i - at) / (4 - at)))
+        else:
+            out.append(base)
+    return out
+
+
+def luma(h):
+    r, g, b = hexrgb(h)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def tone_step(h, light=3, mid=2, dark=1):
+    """Where on the ramp a portrait colour sits: pale colours high so the
+    shadows can show, near-black ones low so the lights can."""
+    y = luma(h)
+    return light if y >= 150 else dark if y < 70 else mid
+
+
+def glow_ramp(base):
+    """Four glow steps: dim, mid, the colour at full brightness, hot core."""
+    r, g, b = hexrgb(base)
+    top = max(r, g, b, 1)
+    full = '#%02x%02x%02x' % tuple(min(255, int(round(v * 242 / top))) for v in (r, g, b))
+    return [mix(full, '#05070d', 0.74), mix(full, '#05070d', 0.4), full, mix(full, '#ffffff', 0.78)]
+
+
+def palette_ramps(pal):
+    """Turn one look's sampled portrait colours into ramps for resolve()."""
+    ramps = {}
+    if 'skin' in pal:
+        ramps['skin'] = ramp(pal['skin'], 3 if luma(pal['skin']) >= 70 else 2)
+    if 'top' in pal:
+        ramps['suit'] = ramp(pal['top'], tone_step(pal['top']))
+    if 'pants' in pal:
+        ramps['pants'] = ramp(pal['pants'], tone_step(pal['pants']))
+    if 'hair' in pal:
+        ramps['hairx'] = ramp(pal['hair'], tone_step(pal['hair']))
+    if 'pad' in pal:
+        ramps['pad'] = ramp(pal['pad'], tone_step(pal['pad']))
+    if 'trim' in pal:
+        ramps['bone'] = ramp(pal['trim'], tone_step(pal['trim']))
+    if 'fin' in pal or 'trim' in pal or 'skin' in pal:
+        base = pal.get('fin') or pal.get('trim') or pal.get('skin')
+        ramps['fin'] = ramp(base, tone_step(base))
+    if 'glow' in pal:
+        ramps['glow'] = glow_ramp(pal['glow'])
+    return ramps
 
 
 # ---------------------------------------------------------------- inputs
@@ -293,7 +368,7 @@ class Canvas:
         return c is not None and c[0] != 'O'
 
 
-def mat_for(look, family):
+def mat_for(look, family, pal=None):
     suit = 'suit.' + look.get('suit', look.get('cloth', 'slate'))
     if suit not in R:
         suit = 'suit.slate'
@@ -308,6 +383,7 @@ def mat_for(look, family):
         'suit': suit,
         'hair': look.get('rigHairColor', look.get('hairColor', 'black')),
         'glow': look.get('glow', 'cyan' if family != 'human' else 'amber'),
+        'ramps': palette_ramps(pal or {}),
     }
 
 
@@ -794,10 +870,11 @@ def finish(C, A, family, mats, gear):
 def resolve(C, mats, family):
     im = Image.new('RGBA', (CELL_W, CELL_H), (0, 0, 0, 0))
     px = im.load()
-    glow = GLOW[mats['glow']]
-    pants = [mix(a, b, 0.45) for a, b in zip(R[mats['suit']], R['joint'])]
-    fin = R['alien.' + {'violet': 'crimson', 'teal': 'glass', 'sand': 'crimson'}.get(mats['skin'].split('.')[-1], 'teal')] \
-        if family == 'alien' else R['pad']
+    ramps = mats.get('ramps', {})
+    glow = ramps.get('glow') or GLOW[mats['glow']]
+    pants = ramps.get('pants') or [mix(a, b, 0.45) for a, b in zip(ramps.get('suit') or R[mats['suit']], R['joint'])]
+    fin = ramps.get('fin') or (R['alien.' + {'violet': 'crimson', 'teal': 'glass', 'sand': 'crimson'}.get(mats['skin'].split('.')[-1], 'teal')]
+                               if family == 'alien' else R['pad'])
     for y in range(CELL_H):
         for x in range(CELL_W):
             c = C.g[y][x]
@@ -813,17 +890,17 @@ def resolve(C, mats, family):
             elif mat == 'spark':
                 col = ['#6b2a07', '#c45a10', '#ffb347', '#fff1c4'][min(3, lvl)]
             elif mat == 'skin':
-                col = R[mats['skin']][lvl]
+                col = (ramps.get('skin') or R[mats['skin']])[lvl]
             elif mat == 'suit':
-                col = R[mats['suit']][lvl]
+                col = (ramps.get('suit') or R[mats['suit']])[lvl]
             elif mat == 'pants':
                 col = pants[lvl]
             elif mat == 'hairx':
-                col = HAIR.get(mats['hair'], HAIR['black'])[lvl]
+                col = (ramps.get('hairx') or HAIR.get(mats['hair'], HAIR['black']))[lvl]
             elif mat == 'fin':
                 col = fin[lvl]
             else:
-                col = R[mat][lvl]
+                col = (ramps.get(mat) or R[mat])[lvl]
             px[x, y] = hexrgb(col) + (255,)
     return im
 
@@ -839,7 +916,7 @@ def family_of(look, species):
     return fam
 
 
-def render(look_id, look, role, species, anim, frame):
+def render(look_id, look, role, species, anim, frame, pal=None):
     family = family_of(look, species)
     gear = set(look.get('gear', '').split())
     variant = look.get('variant', 'crew' if family == 'human' else 'grey' if family == 'alien' else 'box')
@@ -847,7 +924,7 @@ def render(look_id, look, role, species, anim, frame):
     if hair_style == 'base':
         hair_style = None
     L, hairL, A = label_frame(anim, frame, hair_style)
-    mats = mat_for(look, family)
+    mats = mat_for(look, family, pal)
     C = Canvas()
     paint_base(C, L, hairL, A, family, look, mats, gear)
     body_gear(C, A, family, gear, variant)
@@ -865,6 +942,7 @@ def render(look_id, look, role, species, anim, frame):
 def build(only=None):
     looks = parse_looks()
     roster = parse_roster()
+    palettes = load_palettes()
     missing = sorted(set(roster) - set(looks))
     if missing:
         sys.exit(f'roster templates without a look: {missing}')
@@ -885,7 +963,7 @@ def build(only=None):
         for anim, spec in ANIMS.items():
             sheet = Image.new('RGBA', (CELL_W * spec['frames'], CELL_H), (0, 0, 0, 0))
             for f in range(spec['frames']):
-                im, family, variant = render(look_id, look, info['role'], info['species'], anim, f)
+                im, family, variant = render(look_id, look, info['role'], info['species'], anim, f, palettes.get(look_id))
                 sheet.paste(im, (f * CELL_W, 0))
                 frames_out[(look_id, anim, f)] = im
             if not only or look_id in only:
