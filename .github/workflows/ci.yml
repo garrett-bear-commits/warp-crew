@@ -48,3 +48,30 @@ jobs:
         run: |
           pnpm --filter @foundation/template-game exec playwright install --with-deps chromium webkit
           pnpm test:e2e
+
+  warpcrew:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.30.1 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '24', cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Warp Crew core suite
+        run: pnpm -F @warpcrew/client test
+      - name: Warp Crew loop suite
+        run: pnpm -F @warpcrew/client test:loop
+      - name: Warp Crew ship suite
+        run: pnpm -F @warpcrew/client test:ship
+      - name: Warp Crew first-play suite
+        run: pnpm -F @warpcrew/client test:first-play
+      - name: Warp Crew QA build (GitHub Pages)
+        run: pnpm -F @warpcrew/client build:pages
+      - name: Warp Crew balance suite (regenerates the evidence; fails if the committed evidence is stale)
+        run: |
+          pnpm -F @warpcrew/client test:balance
+          git diff --exit-code -- apps/warpcrew/docs/qa
