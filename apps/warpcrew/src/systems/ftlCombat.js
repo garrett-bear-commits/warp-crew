@@ -11,6 +11,7 @@
 import { STATIONS } from './stations.js';
 import { kitFor } from '../data/crewKits.js';
 import { CREW_CATALOG, catalogById } from '../data/crewRoster.js';
+import { familyTiers } from '../data/families.js';
 
 export const FTL_VERSION = 3;
 export const TICK_MS = 250;
@@ -154,6 +155,10 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
     } : {}),
   }));
   const kitted = fighters.some(hasKit);
+  // Families: the Unbound start with moves part or fully charged; four of the Yards start at 75%.
+  const families = kitted ? familyTiers(fighters.filter(hasKit).map(member => member.kit)) : {};
+  const startCharge = Math.max(50, families.unbound === 2 ? 100 : families.unbound === 1 ? 65 : 0, families.yards === 2 ? 75 : 0);
+  for (const member of fighters) if (hasKit(member)) member.charge = startCharge;
   const load = enemyLoadout(threat, { flagship: flagTier, tier, kits: kitted });
   const levels = shipLevels ? Object.fromEntries(['shields', 'weapons', 'engines', 'sensors']
     .map(key => [key, Math.max(1, Math.min(20, Math.trunc(shipLevels[key] || 1)))])) : null;
@@ -228,6 +233,10 @@ export const fxActive = (state, key) => Number.isInteger(state?.fx?.[key]?.throu
 const bestBonus = (state, role, room = null) => Math.max(0, ...state.crew
   .filter(member => member.role === role && hasKit(member) && (room === null || member.room === room)).map(bonusOf));
 
+/** Family bonus tiers in this fight (two aboard: 1, four: 2), from the kits aboard (crew-matter design §6). */
+export const fightFamilies = state => (kitFight(state) ? familyTiers(state.crew.filter(hasKit).map(member => member.kit)) : {});
+const fam = (state, id) => fightFamilies(state)[id] || 0;
+
 /** Station mastery: 1.0 unmanned; 1.15 manned (+0.15 x grade); 1.3 by the station's role (+0.3 x grade). */
 export function manning(state, roomId) {
   const here = state.crew.filter(member => member.room === roomId);
@@ -237,7 +246,7 @@ export function manning(state, roomId) {
 }
 
 /** Percent chance a player shot crits: the best gunner working the weapons room. */
-export const critChance = state => (kitFight(state) ? bestBonus(state, 'gunner', 'weapons') : 0);
+export const critChance = state => (kitFight(state) ? bestBonus(state, 'gunner', 'weapons') + [0, 0.03, 0.06][fam(state, 'wings')] : 0);
 
 const integrityFactor = integrity => (integrity >= 50 ? 1 : integrity > 0 ? 0.5 : 0);
 
@@ -274,7 +283,8 @@ export function enemyEvasion(state) {
   // Scouts read the enemy's moves (their passive); Static Plot and friends take more off for a while.
   const scout = Math.round(100 * bestBonus(state, 'scout'));
   const down = fxActive(state, 'evasionDown') ? state.fx.evasionDown.amount : 0;
-  return Math.max(0, Math.round(evasion * rooms.engines.integrity / 100) - shipStatsOf(state).accuracyBonus - scout - down);
+  const survey = [0, 5, 10][fam(state, 'survey')];
+  return Math.max(0, Math.round(evasion * rooms.engines.integrity / 100) - shipStatsOf(state).accuracyBonus - scout - down - survey);
 }
 
 /** What an idle captain shoots: shields while they matter, then weapons. */
@@ -509,7 +519,7 @@ function runTick(next, events, t, salt, overcharged) {
   const cap = playerShieldCap(next);
   if (next.shields.layers > cap) next.shields.layers = cap;
   if (next.shields.layers < cap) {
-    const boost = fxActive(next, 'shieldRecharge') ? 1 + next.fx.shieldRecharge.pct / 100 : 1;
+    const boost = (fxActive(next, 'shieldRecharge') ? 1 + next.fx.shieldRecharge.pct / 100 : 1) * [1, 1.1, 1.25][fam(next, 'navy')];
     next.shields.rechargeMs += Math.round(TICK_MS * manning(next, 'shields') * shipStatsOf(next).shieldRechargeMult * boost);
     if (next.shields.rechargeMs >= RULES.shieldRechargeMs) {
       next.shields.layers += 1;
@@ -527,7 +537,7 @@ function runTick(next, events, t, salt, overcharged) {
     es.ionMs = Math.max(0, es.ionMs - TICK_MS);
     if (es.ionMs === 0) events.push({ t, type: 'ion_clear', side: 'enemy' });
   } else if (es.layers < enemyCap) {
-    es.rechargeMs += TICK_MS;
+    es.rechargeMs += Math.round(TICK_MS * [1, 0.9, 0.75][fam(next, 'choirs')]);
     if (es.rechargeMs >= RULES.enemyShieldRechargeMs) {
       es.layers += 1;
       es.rechargeMs = 0;
@@ -599,7 +609,7 @@ function runTick(next, events, t, salt, overcharged) {
       if (sure?.splash) damageRoom(next.enemy.rooms, ENEMY_ADJ[target][seededIndex(next.seed, salt + 88 + shotNo, ENEMY_ADJ[target].length)], roomHit / 2);
       events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'hit', damage: amount,
         ...(crits ? { crit: true } : {}), ...(sure ? { sure: true } : {}) });
-      maybeFire(next, next.enemy.rooms, target, salt + 50 + shotNo, events, at, 'enemy', def.fireChance);
+      maybeFire(next, next.enemy.rooms, target, salt + 50 + shotNo, events, at, 'enemy', crits && fam(next, 'wings') === 2 ? 100 : def.fireChance);
       if (next.enemy.hull <= 0) {
         next.enemy.hull = 0;
         finish(next, 'win', events, at);
@@ -676,7 +686,7 @@ function runTick(next, events, t, salt, overcharged) {
     const r = next.rooms[member.room];
     // Grade makes every crew member a little better at the job; engineers add their repair passive.
     const work = (1 + 0.3 * gradeOf(member)) * haste;
-    const skill = (member.role === 'engineer' ? 1.5 * (1 + bonusOf(member)) : 1) * engineeringBoost * work;
+    const skill = (member.role === 'engineer' ? 1.5 * (1 + bonusOf(member)) : 1) * engineeringBoost * work * [1, 1.15, 1.3][fam(next, 'yards')];
     if (r.fire > 0) {
       r.fire = Math.max(0, r.fire - RULES.crewExtinguishPerSec * work * (member.role === 'engineer' ? 1 + bonusOf(member) : 1) * sec);
       if (r.fire === 0) { r.fireMs = 0; events.push({ t, type: 'fire_out', side: 'player', room: member.room }); }
@@ -925,7 +935,8 @@ export function abilityGainPerBeat(state, member) {
   const kit = memberKit(member);
   if (!kit) return 0;
   const assist = bestBonus(state, 'medic');
-  return Math.max(1, Math.round(100 * (1 + 2 * assist) / abilityChargeBeats(member)));
+  const haven = [1, 1.1, 1.2][fam(state, 'haven')];
+  return Math.max(1, Math.round(100 * (1 + 2 * assist) * haven / abilityChargeBeats(member)));
 }
 
 function chargeAbilities(next) {

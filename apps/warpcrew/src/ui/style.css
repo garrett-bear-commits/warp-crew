@@ -3356,3 +3356,12 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .crew-identity.ascension-1 .portrait { box-shadow: 0 0 0 2px #9fd8ff; }
 .crew-identity.ascension-2 .portrait { box-shadow: 0 0 0 2px #c69bff, 0 0 12px rgba(198, 155, 255, 0.6); }
 .crew-identity.ascension-3 .portrait { box-shadow: 0 0 0 2px #ffc94a, 0 0 16px rgba(255, 201, 74, 0.7); }
+
+/* Families aboard (crew-matter design §6). */
+.family-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.family-chip { display: grid; padding: 4px 8px; border-radius: 8px; border: 1px dashed var(--line); background: rgba(255, 255, 255, 0.03); }
+.family-chip b { font: 700 12px var(--font-display); letter-spacing: 0.03em; }
+.family-chip small { font-size: 11px; color: var(--muted); }
+.family-chip.is-live { border-style: solid; border-color: #6fd3ff; background: rgba(111, 211, 255, 0.08); }
+.family-chip.is-live small { color: #b9f3ff; }
+.dossier-family { margin: 0; font-size: 13px; color: #c8d3de; }

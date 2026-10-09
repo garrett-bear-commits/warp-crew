@@ -22,6 +22,7 @@ import { normalizeAssignments, previewStationAssignment, stationOutputs, STATION
 import { portraitFor, shipArtFor, SPACE_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
 import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP, hireOdds, ascensionStatus } from '../systems/gacha.js';
 import { currentBanner, MARK_COST } from '../data/banners.js';
+import { FAMILIES, familyOf, familyCounts } from '../data/families.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
@@ -972,10 +973,12 @@ function renderCinematic(c) {
 /** The merc's signature move, their line and their story (crew-matter design: the bios finally show). */
 function dossierStory(c) {
   const kit = kitFor(c.templateId, c.role);
+  const family = FAMILIES[familyOf(c.templateId)];
+  const familyLine = family ? `<p class="dossier-family"><span class="modal-kicker">Family</span> ${escapeHtml(family.name)} · two aboard: ${escapeHtml(family.bonus[0])}; four: ${escapeHtml(family.bonus[1])}</p>` : '';
   const move = kit ? `<div class="dossier-move"><span class="modal-kicker">Signature move</span><b>${escapeHtml(kit.move)}</b><p>${escapeHtml(describeKit(kit))}</p></div>` : '';
   const quote = c.quote ? `<blockquote class="dossier-quote">“${escapeHtml(c.quote)}”</blockquote>` : '';
   const history = c.history ? `<p class="dossier-history">${escapeHtml(c.history)}</p>` : '';
-  return move || quote || history ? `<div class="dossier-story">${move}${quote}${history}</div>` : '';
+  return move || quote || history || familyLine ? `<div class="dossier-story">${move}${familyLine}${quote}${history}</div>` : '';
 }
 
 /** Stars, the level cap, shards and the next Ascension step. */
@@ -1429,6 +1432,19 @@ function crewPortrait(c) {
 
 const rarityLabel = id => RARITY[id]?.label || 'Common';
 
+/** Families aboard: two of a family give a bonus, four a bigger one (crew-matter design §6). */
+function renderFamilies(player) {
+  const counts = familyCounts((player.crew || []).map(c => c.templateId));
+  const rows = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!rows.length) return '';
+  return `<div class="family-strip" aria-label="Families aboard">${rows.map(([id, n]) => {
+    const f = FAMILIES[id];
+    const tier = n >= 4 ? 2 : n >= 2 ? 1 : 0;
+    const text = tier ? f.bonus[tier - 1] : `one more for ${f.bonus[0]}`;
+    return `<span class="family-chip${tier ? ' is-live' : ''}"><b>${escapeHtml(f.name)} ×${n}</b><small>${escapeHtml(text)}</small></span>`;
+  }).join('')}</div>`;
+}
+
 /** "Between Jobs": the featured merc, rate-up Rares, hire buttons, Contract Marks, pity and the odds link. */
 function renderHireBanner(player, { free, teachHire, showGems, now }) {
   const g = { ...defaultGacha(), ...(player.gacha || {}) };
@@ -1544,6 +1560,7 @@ export function renderCrew(player, now = trustedNow()) {
         <div><span>Power</span><b>${crewPower(fightingCrew(player))}</b></div>
         <div><span>Open berths</span><b>${open}</b></div>
       </div>
+      ${renderFamilies(player)}
       <div class="station-strip" aria-label="Station output">${Object.entries(outputs).map(([id, output]) => `<div class="station-out"><span>${escapeHtml(output.label)}</span><b>${output.total}</b></div>`).join('')}</div>
     </section>
     ${canHire ? renderHireBanner(player, { free, teachHire, showGems, now }) : ''}

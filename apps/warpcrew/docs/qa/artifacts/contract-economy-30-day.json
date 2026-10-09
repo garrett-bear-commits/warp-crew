@@ -180381,7 +180381,7 @@
                 "threat": 1.41,
                 "success": false,
                 "segment": 42,
-                "dealt": 7,
+                "dealt": 14,
                 "defeated": false,
                 "nearMissLoss": false,
                 "rewards": {
@@ -180391,7 +180391,7 @@
                   "gems": 0,
                   "fuel": 0
                 },
-                "remainingAfter": 81,
+                "remainingAfter": 74,
                 "beaten": false
               }
             ],
@@ -188614,7 +188614,7 @@
             "threat": 1.41,
             "success": false,
             "segment": 42,
-            "dealt": 7,
+            "dealt": 14,
             "defeated": false,
             "nearMissLoss": false,
             "rewards": {
@@ -188624,7 +188624,7 @@
               "gems": 0,
               "fuel": 0
             },
-            "remainingAfter": 81,
+            "remainingAfter": 74,
             "beaten": false
           },
           {

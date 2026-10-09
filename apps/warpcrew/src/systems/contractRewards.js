@@ -1,5 +1,6 @@
 // @ts-nocheck
 /** Shared production payout and combat mutations; preview callers use disposable players. */
+import { familyTiers } from '../data/families.js';
 import { trustedNow } from '../shared/time.js';
 import { WALL_BY_ID, siegeState } from './walls.js';
 import { encounterById, resolveCombatOrder, crewPower, rubberBandPower } from './combat.js';
@@ -145,7 +146,9 @@ function wallRemaining(player, contract, now) {
 export function fightSalvagePct(encounter) {
   if (encounter?.version !== 3 || !Array.isArray(encounter.crew)) return 0;
   const trader = Math.max(0, ...encounter.crew.filter(c => c.role === 'trader' && typeof c.kit === 'string').map(c => Number(c.bonus) || 0));
-  return Math.round(trader * 100 + (Number(encounter.fx?.salvage) || 0));
+  // Haulers' Union aboard: +10% (two) or +25% (four) salvage.
+  const haulers = [0, 10, 25][familyTiers(encounter.crew.filter(c => typeof c.kit === 'string').map(c => c.kit)).haulers || 0];
+  return Math.round(trader * 100 + (Number(encounter.fx?.salvage) || 0) + haulers);
 }
 
 export function resolveSimulatedCombatPayout(player, contract, encounter, now = trustedNow()) {
