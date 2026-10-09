@@ -61,12 +61,12 @@ const returnedLive = commitContractAction(launchedLive, previewContractAction(la
 const returnView = renderActiveContract(sessionModels(returnedLive, {}, now).activeContractView);
 assert.ok(returnView.includes(sessionModels(returnedLive, {}, now).activeContractView.result.rewardLabel));
 assert.doesNotMatch(returnView, /Possible payout now/);
-const tellHtml = renderCombatOrders({ title: 'Pirate Wing', tell: { label: 'Formation tightening', text: 'Three cutters close in.', reason: 'Spend 1F for +12 power.' }, orders: [
+const tellHtml = renderCombatOrders({ title: 'Pirate Wing', tell: { label: 'Formation tightening', text: 'Three cutters close in.', reason: 'Overcharge your guns, then keep hitting their Weapons room.' }, orders: [
   { id: 'brace', name: 'Brace', enabled: true, chanceLabel: '60%', costLabel: '0F extra', consequence: 'Half hull loss' },
   { id: 'burn', name: 'Burn', enabled: true, recommended: true, chanceLabel: '80%', costLabel: '1F extra', consequence: '+12 effective power' },
 ] });
 assert.match(tellHtml, /Formation tightening/);
-assert.match(tellHtml, /Spend 1F for \+12 power/);
+assert.match(tellHtml, /Overcharge your guns, then keep hitting their Weapons room/);
 assert.match(tellHtml, /Burn · Recommended/);
 assert.doesNotMatch(tellHtml, /aria-pressed/);
 

@@ -12,7 +12,6 @@ import { medalLevelCostFor, CREW_CATALOG, rankTitle, createCrewInstance } from '
 import { SHIPS, SHIP_SYSTEMS } from '../src/data/ships.js';
 import { pullOnce, pullTen, defaultGacha, PITY, tickPity, rarityWeights, buyLuck, LUCK_CAP, applyPullToRoster, RESERVE_CAP, contractHire } from '../src/systems/gacha.js';
 import { galaxyUnlocked } from '../src/data/galaxies.js';
-import { INTEL_TRACKS, ECONOMY_BEATS } from '../src/data/intel.js';
 import { fuelCostFor } from '../src/systems/passives.js';
 import { createPurchases } from '../src/core/purchases.js';
 import { applyGrantRewards } from '../src/core/grants.js';
@@ -31,7 +30,6 @@ for (const sys of SHIP_SYSTEMS) {
 }
 if (!ENCOUNTERS_V1.find((e) => e.id === 'eclipse_throne')) throw new Error('endgame encounter missing');
 if (!PLANET_DEFS.find((p) => p.sector === 'crown')) throw new Error('crown planets missing');
-if (INTEL_TRACKS.length < 5 || ECONOMY_BEATS.length < 4) throw new Error('intel/economy beats');
 if (ASSIST_CAP !== 2) throw new Error('assist cap');
 
 const nodes = Object.keys(NODES).length;

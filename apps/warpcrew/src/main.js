@@ -12,9 +12,10 @@ import {
   EXPEDITION_SKIP_GEMS,
   abortPayoutFrac,
 } from './systems/expedition.js';
-import { applyDailyLogin } from './systems/daily.js';
+import { applyDailyLogin, loginBonusLine } from './systems/daily.js';
 import { syncAllNotifications } from './systems/notifications.js';
-import { listShopProducts } from './systems/iap.js';
+import { listShopProducts, PRODUCT_DEFS } from './systems/iap.js';
+import { SHIPS } from './data/ships.js';
 import { repairHull } from './systems/passives.js';
 import {
   init as platformInit,
@@ -131,6 +132,11 @@ function showToast(next) {
   }
 }
 
+/** A shop item's player-facing name, never its internal id. */
+function productName(sku) {
+  return PRODUCT_DEFS[sku]?.name || 'your pack';
+}
+
 function pushLog(msg) {
   log.push(`[${new Date().toLocaleTimeString()}] ${msg}`);
   while (log.length > 50) log.shift();
@@ -227,7 +233,7 @@ async function syncServerOnBoot() {
   const { recovered, pending } = work;
   player = wc.state();
   if (pending.claimed.length || recovered.completed) {
-    pushLog(`Purchases delivered: ${pending.claimed.map(g => g.reason.replace(/^purchase /, '')).join(', ') || `${recovered.completed} restored`}.`);
+    pushLog(`Purchases delivered: ${pending.claimed.map(g => productName(g.reason.replace(/^purchase /, ''))).join(', ') || `${recovered.completed} restored`}.`);
     if ((player.wallet?.gems || 0) > before) showToast({ title: 'Purchase delivered', rewards: { gems: player.wallet.gems - before } });
   }
 }
@@ -305,7 +311,7 @@ function hydratePlayer({ fresh, newCaptain }) {
   if (!isTutorialActive(player) || player.tutorial?.phase === 'done') {
     player = daily.player;
     if (daily.isNewDay) {
-      pushLog(`Login streak day ${daily.bonus.streak}. Bonus: ${JSON.stringify(daily.bonus)}`);
+      pushLog(loginBonusLine(daily.bonus));
       showToast({ title: `Day ${daily.bonus.streak} bonus`, rewards: daily.bonus });
       sfx('coin');
     }
@@ -425,7 +431,7 @@ async function boot() {
 
   const entry = getEntryPayload();
   if (entry?.notification_type) {
-    pushLog(`Opened from notification: ${entry.notification_type}`);
+    pushLog('Opened from a reminder.');
     captureEvent('open_from_notification', entry);
   }
   tab = resolveEntryTab(player, entry, tab);
@@ -607,7 +613,7 @@ function doHire({ gems = false, ten = false } = {}) {
   if (ten) {
     const res = pullTen(player);
     if (!res.ok) {
-      pushLog(res.reason === 'cannot_afford' ? 'Need 900 gems for a 10-pull.' : `10-pull failed: ${res.reason}`);
+      pushLog(res.reason === 'cannot_afford' ? 'Need 900 gems for a 10-pull.' : 'The 10-pull did not go through.');
       return false;
     }
     player = res.player;
@@ -976,7 +982,7 @@ async function handleAction(act, data = {}) {
     }
   } else if (act === 'reserve-call') {
     const res = callUpReserve(player, data.id);
-    if (!res.ok) pushLog(res.reason === 'no_slot' ? 'No open berth.' : `Reserve failed: ${res.reason}`);
+    if (!res.ok) pushLog(res.reason === 'no_slot' ? 'No open berth.' : 'Could not call them up.');
     else {
       player = res.player;
       pushLog(`${res.instance.name} called up.`);
@@ -984,7 +990,7 @@ async function handleAction(act, data = {}) {
     }
   } else if (act === 'reserve-sell') {
     const res = sellReserve(player, data.id);
-    if (!res.ok) pushLog(`Sell failed: ${res.reason}`);
+    if (!res.ok) pushLog('Could not sell them.');
     else {
       player = res.player;
       pushLog(`Sold ${res.instance.name} ${formatReward(res.sold)}.`);
@@ -996,7 +1002,7 @@ async function handleAction(act, data = {}) {
       pushLog(res.reason === 'reserve_full' ? 'Reserve bay is full.'
         : res.reason === 'last_crew' ? 'Keep at least one merc aboard.'
         : res.reason === 'away' ? 'They are on an expedition.'
-        : `Bench failed: ${res.reason}`);
+        : 'Could not bench them.');
     } else {
       player = res.player;
       selectedCrewId = null;
@@ -1009,7 +1015,7 @@ async function handleAction(act, data = {}) {
       pushLog(res.reason === 'cannot_afford' ? `Need ${formatReward(res.cost)} to hire.`
         : res.reason === 'no_slot' ? 'No open berth.'
         : res.reason === 'owned' ? 'Already on the crew.'
-        : `Hire failed: ${res.reason}`);
+        : 'Could not hire them.');
     } else {
       player = res.player;
       pushLog(`Contract: ${res.instance.name} signs on.`);
@@ -1032,14 +1038,14 @@ async function handleAction(act, data = {}) {
     const res = buyHull(player, data.ship, data.currency || 'gems');
     if (!res.ok) {
       pushLog(res.reason === 'cannot_afford'
-        ? `Cannot afford ${data.ship} (${data.currency}).`
+        ? `Not enough ${data.currency === 'credits' ? 'credits' : 'gems'} for the ${SHIPS[data.ship]?.name || 'hull'}.`
         : res.reason === 'chapter_lock'
           ? `Locked until story chapter ${res.need}.`
           : res.reason === 'rep_lock'
             ? `Need ${res.need} reputation.`
             : res.reason === 'hull_lock'
-              ? `Need ${res.need} hull first.`
-              : `Hull buy failed: ${res.reason}`);
+              ? `Need the ${SHIPS[res.need]?.name || 'previous'} hull first.`
+              : 'Could not buy that hull.');
     } else {
       player = res.player;
       pushLog(`Acquired ${res.def.name}! Crew capacity ${res.def.crewSlots}.`);
@@ -1048,13 +1054,13 @@ async function handleAction(act, data = {}) {
     }
   } else if (act === 'hull-switch') {
     const res = switchHull(player, data.ship);
-    if (!res.ok) pushLog(`Switch failed: ${res.reason}`);
+    if (!res.ok) pushLog('Could not switch hulls.');
     else {
       player = res.player;
       const extra = [];
       if (res.parked) extra.push(`${res.parked} benched`);
       if (res.sold?.length) extra.push(`${res.sold.length} sold (bay full)`);
-      pushLog(`Switched active hull to ${data.ship}.${extra.length ? ' ' + extra.join(', ') + '.' : ''}`);
+      pushLog(`Switched to the ${SHIPS[data.ship]?.name || 'new hull'}.${extra.length ? ' ' + extra.join(', ') + '.' : ''}`);
       if (res.sold?.length) showToast({ title: 'Overflow sold', rewards: res.granted });
     }
   } else if (act === 'iap-buy') {
@@ -1068,7 +1074,7 @@ async function handleAction(act, data = {}) {
       render();
       return;
     }
-    pushLog(`Purchasing ${sku}…`);
+    pushLog(`Buying ${productName(sku)}…`);
     // The core server verifies the receipt and mints the pack as a grant; the grant is claimed
     // and applied (src/core/purchases.js), then the Jest purchase is completed.
     const res = await wc.purchases.buy(sku);
@@ -1086,12 +1092,12 @@ async function handleAction(act, data = {}) {
     } else if (!res.ok && res.reason === 'cancelled') {
       pushLog('Purchase cancelled.');
     } else if (!res.ok) {
-      pushLog(`Purchase failed: ${res.reason}`);
+      pushLog('The purchase did not go through.');
       if (res.reason === 'store_unavailable') showToast({ title: 'Store unavailable. Try again later.' });
     } else {
       if (sku === STARTER_OFFER.sku) player = markStarterOffer(player, { purchased: true, seen: true });
       if (sku.startsWith('wc_wall_')) player = markWallPackSeen(player, sku.slice('wc_wall_'.length));
-      pushLog(`Purchased ${sku}. Rewards applied.`);
+      pushLog(`Bought ${productName(sku)}. Rewards are aboard.`);
       showToast({ title: 'Purchase applied' });
       sfx('coin');
       captureEvent('iap_success', { sku });
