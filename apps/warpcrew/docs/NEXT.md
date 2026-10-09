@@ -10,6 +10,11 @@ Last updated: 2026-10-09
 - `claude/hud-overhaul` is the frozen pre-port layout; other `claude/*` and `codex/*` branches are merged history.
 - **No real players yet:** Garrett is the only playtester, so the cut-over starts from a fresh database (no data migration).
 
+## 2026-10-09 deep dive: proposal awaiting Garrett
+
+- [ ] Garrett: answer the questions at the end of [the deep dive and roadmap proposal](design/21-deep-dive-2026-10-09.md) (fairness, fight style, art budget, music, Jest rules, social, universe, timing, staging now or later).
+- [ ] Phase 0 quick fixes once approved: 8 portraits with a baked pink background (Tink, Brink, Greaves, Kal, Moth, NUB-4, Oso, Yara), captain templates in the gacha Common pool, developer text shown to players, stale Brace/Burn/Board fight tells, split UTC/local resets, Warp Crew suites in CI.
+
 ## 2026-10-05 FTL-lite fights, weapons, sound, Explore
 
 - [x] FTL-lite real-time crew fights (rooms, shields, fires, crew moves, boarders, Overcharge/Board/Rally), guided first fight, fight camera and off-screen fire alerts.
