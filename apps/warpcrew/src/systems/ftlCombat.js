@@ -148,6 +148,7 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
       kit: member.kit,
       grade: Math.round(clamp(Number(member.grade) || 0, 0, 1) * 100) / 100,
       bonus: Math.round(clamp(Number(member.bonus) || 0, 0, 2) * 1000) / 1000,
+      tier: Math.trunc(clamp(Number(member.tier) || 0, 0, 3)),
       charge: 50,
     } : {}),
   }));
@@ -877,11 +878,14 @@ function castAbilities(next, events) {
 }
 
 /** Abilities charge every beat; medics aboard speed everyone up (their passive). */
+/** Beats a move takes to charge: the kit's, 2 faster per Ascension step (never under 8). */
+export const abilityChargeBeats = member => Math.max(8, (memberKit(member)?.charge || 14) - 2 * (member.tier || 0));
+
 export function abilityGainPerBeat(state, member) {
   const kit = memberKit(member);
   if (!kit) return 0;
   const assist = bestBonus(state, 'medic');
-  return Math.max(1, Math.round(100 * (1 + 2 * assist) / kit.charge));
+  return Math.max(1, Math.round(100 * (1 + 2 * assist) / abilityChargeBeats(member)));
 }
 
 function chargeAbilities(next) {
@@ -995,7 +999,8 @@ export function validFtlBody(e) {
       && int(c.manualUntil, 0, e.beat + RULES.autoReturnBeats)
       // A kit (signature move) comes with its grade, passive bonus and charge; crew without one carry none of them.
       && (hasKit(c) ? c.kit.length <= 64 && Boolean(kitFor(c.kit, c.role)) && num(c.grade, 0, 1) && num(c.bonus, 0, 2) && int(c.charge, 0, 100)
-        : !['kit', 'grade', 'bonus', 'charge'].some(key => Object.hasOwn(c, key))))) return false;
+          && int(c.tier, 0, 3)
+        : !['kit', 'grade', 'bonus', 'charge', 'tier'].some(key => Object.hasOwn(c, key))))) return false;
   const i = e.intent;
   if (!rec(i) || !(i.target === null || ENEMY_ROOMS.includes(i.target)) || typeof i.hold !== 'boolean' || !rec(i.moves)
     || !Object.entries(i.moves).every(([id, roomId]) => e.crew.some(c => c.id === id) && PLAYER_ROOMS.includes(roomId))) return false;

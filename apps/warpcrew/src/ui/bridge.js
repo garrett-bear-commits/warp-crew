@@ -20,14 +20,14 @@ import {
 import { readyCrew, fightingCrew } from '../systems/player.js';
 import { normalizeAssignments, previewStationAssignment, stationOutputs, STATIONS } from '../systems/stations.js';
 import { portraitFor, shipArtFor, SPACE_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
-import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP, hireOdds } from '../systems/gacha.js';
+import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP, hireOdds, ascensionStatus } from '../systems/gacha.js';
 import { currentBanner, MARK_COST } from '../data/banners.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS, SPARROW_LAYOUT, HULL_PX, roomWorldPoint, canonicalRoomId } from '../data/starterShip.js';
-import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS, catalogById, RARITY } from '../data/crewRoster.js';
+import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS, catalogById, RARITY, levelCap, ASCENSION } from '../data/crewRoster.js';
 import { kitFor, describeKit } from '../data/crewKits.js';
 import { syncCrewLayer, crewAgentAt } from './crewWalk.js';
 import { bindFtlCrewDrag } from './ftlCrewDrag.js';
@@ -880,7 +880,7 @@ function starsHtml(n = 1) {
 
 function identityCard(c, { compact = false } = {}) {
   const station = c.currentJob || c.job || 'Ready for duty';
-  return `<div class="crew-identity${compact ? ' compact' : ''}"><img class="portrait" src="${escapeHtml(portraitFor(c.templateId || c.id, c.role))}" alt="" /><div class="crew-identity-copy"><b>${escapeHtml(c.name)}</b><div class="crew-meta">${escapeHtml(c.role)} · ${escapeHtml(c.rarity || 'Common')} · ${starsHtml(c.stars)}</div><div class="crew-meta">${escapeHtml(station)}</div><div class="crew-meta">Power ${escapeHtml(c.power ?? c.basePower ?? 10)} · Lv ${escapeHtml(c.level ?? 1)}</div></div></div>`;
+  return `<div class="crew-identity${compact ? ' compact' : ''}${c.ascension ? ` ascension-${Math.min(3, c.ascension)}` : ''}"><img class="portrait" src="${escapeHtml(portraitFor(c.templateId || c.id, c.role))}" alt="" /><div class="crew-identity-copy"><b>${escapeHtml(c.name)}</b><div class="crew-meta">${escapeHtml(c.role)} · ${escapeHtml(c.rarity || 'Common')} · ${starsHtml(c.stars)}</div><div class="crew-meta">${escapeHtml(station)}</div><div class="crew-meta">Power ${escapeHtml(c.power ?? c.basePower ?? 10)} · Lv ${escapeHtml(c.level ?? 1)}</div></div></div>`;
 }
 
 export function renderV5Modal(player, { jestLive = false } = {}) {
@@ -978,6 +978,21 @@ function dossierStory(c) {
   return move || quote || history ? `<div class="dossier-story">${move}${quote}${history}</div>` : '';
 }
 
+/** Stars, the level cap, shards and the next Ascension step. */
+function dossierGrowth(player, c) {
+  const status = ascensionStatus(c, player.wallet);
+  const tier = ASCENSION[c.ascension || 0];
+  const why = { needs_5_stars: 'Reach 5 stars first (duplicates star them up).', needs_shards: `Needs ${status.next?.shards} shards (duplicates past 5 stars).`,
+    needs_medals: `Needs ${status.next?.medals} medals.` }[status.reason] || '';
+  return `<div class="dossier-growth">
+    <div><span>Level cap</span><b>${levelCap(c)}</b></div>
+    <div><span>Shards</span><b>${c.shards || 0}${status.next ? ` / ${status.next.shards}` : ''}</b></div>
+    <div><span>Ascension</span><b>${escapeHtml(tier.name || 'None yet')}</b></div>
+    ${status.next ? `<button class="${status.reason ? '' : 'primary'}" data-act="crew-ascend" data-id="${escapeHtml(c.instanceId)}" ${status.reason ? 'disabled' : ''}>Ascend to ${escapeHtml(status.next.name)} · ${status.next.medals} medals</button>
+      <p class="muted">${status.reason ? escapeHtml(why) : 'Their move charges faster, the level cap rises by 10, and they earn a frame.'}</p>` : '<p class="muted">Fully ascended: a Legend.</p>'}
+  </div>`;
+}
+
 function renderDossier(player, id) {
   const c = (player.crew || []).find((x) => x.instanceId === id);
   if (!c) return '';
@@ -993,8 +1008,11 @@ function renderDossier(player, id) {
           <button class="icon-close" data-act="close-crew" aria-label="Close">×</button>
         </div>
         ${dossierStory(c)}
+        ${dossierGrowth(player, c)}
         <div class="row" style="margin-top:10px;flex-direction:column">
-          ${c.status !== 'expedition' ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${lvlCost} medals</button>` : ''}
+          ${c.status !== 'expedition' ? (c.level >= levelCap(c)
+            ? `<button disabled>Level ${c.level} is the cap · ${c.stars < 5 ? 'star up to raise it' : 'ascend to raise it'}</button>`
+            : `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${lvlCost} medals</button>`) : ''}
           <button data-act="rank-up" data-id="${c.instanceId}">Rank up · ${rankCost.medals} med · ${rankCost.credits}cr</button>
           ${!c.isCaptain && c.status !== 'expedition' && (player.crew || []).length > 1 ? `<button data-act="crew-bench" data-id="${c.instanceId}">Bench to reserve</button>` : ''}
         </div>
@@ -1479,7 +1497,7 @@ export function renderHireReveal(reveal) {
   if (!reveal?.results?.length) return '';
   const top = reveal.results.reduce((best, r) => (REVEAL_ORDER.indexOf(r.rarity) > REVEAL_ORDER.indexOf(best) ? r.rarity : best), 'common');
   const big = ['legendary', 'mythic', 'apex'].includes(top);
-  const note = r => (r.kind === 'star' ? `★${r.stars}` : r.kind === 'cap' ? `Max stars · ${escapeHtml(formatReward(r.sold || {}))}`
+  const note = r => (r.kind === 'star' ? `★${r.stars}` : r.kind === 'shard' ? '+1 shard' : r.kind === 'cap' ? `Max stars · ${escapeHtml(formatReward(r.sold || {}))}`
     : r.kind === 'sold' ? `Reserve full · sold` : r.kind === 'reserve' ? 'New · reserve' : 'New');
   const card = (r, i, single) => {
     const t = catalogById(r.templateId);
@@ -1550,7 +1568,8 @@ export function renderCrew(player, now = trustedNow()) {
             <div class="row crew-actions">
               <button class="ghost" data-act="select-crew" data-id="${c.instanceId}">Dossier</button>
               ${isFeatureUnlocked(player, 'gacha') && c.status !== 'expedition'
-                ? `<button class="level-up" data-act="level-crew" data-id="${c.instanceId}">Lv ${c.level + 1} · ${cost} med</button>`
+                ? (c.level >= levelCap(c) ? `<button class="level-up" disabled>Lv ${c.level} · max</button>`
+                  : `<button class="level-up" data-act="level-crew" data-id="${c.instanceId}">Lv ${c.level + 1} · ${cost} med</button>`)
                 : ''}
               ${assignments[c.instanceId] ? `<button class="ghost" data-act="station-assign" data-id="${escapeHtml(c.instanceId)}" data-station="">Leave station</button>` : ''}
               ${isFeatureUnlocked(player, 'gacha') && !c.isCaptain && c.status !== 'expedition' && player.crew.length > 1

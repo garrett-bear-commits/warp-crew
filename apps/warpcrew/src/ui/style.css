@@ -3346,3 +3346,13 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
   .reveal-pod { display: none; }
   .priority-transmission { animation: none; }
 }
+
+/* Dossier: level cap, shards and Ascension. */
+.dossier-growth { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+.dossier-growth > div { display: grid; gap: 2px; padding: 6px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); }
+.dossier-growth span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.dossier-growth b { font: 700 15px var(--font-display); }
+.dossier-growth button, .dossier-growth p { grid-column: 1 / -1; margin: 0; }
+.crew-identity.ascension-1 .portrait { box-shadow: 0 0 0 2px #9fd8ff; }
+.crew-identity.ascension-2 .portrait { box-shadow: 0 0 0 2px #c69bff, 0 0 12px rgba(198, 155, 255, 0.6); }
+.crew-identity.ascension-3 .portrait { box-shadow: 0 0 0 2px #ffc94a, 0 0 16px rgba(255, 201, 74, 0.7); }

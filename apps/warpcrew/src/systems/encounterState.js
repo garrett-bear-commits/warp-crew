@@ -153,6 +153,7 @@ export function fightingCrew(player, now = trustedNow(), { kits = false } = {}) 
     ...(kits && typeof member.templateId === 'string' ? {
       kit: member.templateId,
       grade: crewGrade(member.power),
+      tier: Math.max(0, Math.min(3, Math.trunc(member.ascension || 0))),
       bonus: Math.max(0, Math.min(2, Number(member.passive?.[ROLE_PASSIVE[member.role]]) || 0)),
     } : {}),
   }));

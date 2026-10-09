@@ -18,7 +18,7 @@ import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
 import { buyWeapon, equipWeapon } from './armory.js';
 import { nextUpgradeCost, upgradeSystem, completeShipBuild, skipShipBuild } from './hangar.js';
-import { levelCrew, rankUpCrew } from './gacha.js';
+import { levelCrew, rankUpCrew, ascendCrew } from './gacha.js';
 import { medalLevelCostFor } from '../data/crewRoster.js';
 import { ROOMS } from '../data/starterShip.js';
 import { portraitFor } from '../data/portraits.js';
@@ -684,9 +684,10 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     player = res.player;
     if (v4) player = advanceTutorialV4(player, 'station_assigned');
     if (v5) player = advanceTutorialV5(player, 'station_assigned');
-  } else if (['ship-upgrade', 'level-crew', 'rank-up'].includes(act)) {
+  } else if (['ship-upgrade', 'level-crew', 'rank-up', 'crew-ascend'].includes(act)) {
     if (isTutorialActive(player)) return fail('improvements_locked');
-    const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system, now) : act === 'level-crew' ? levelCrew(player, data.id) : rankUpCrew(player, data.id);
+    const res = act === 'ship-upgrade' ? upgradeSystem(player, data.system, now) : act === 'level-crew' ? levelCrew(player, data.id)
+      : act === 'crew-ascend' ? ascendCrew(player, data.id) : rankUpCrew(player, data.id);
     if (!res.ok) return res;
     player = res.player;
     milestone('improve');

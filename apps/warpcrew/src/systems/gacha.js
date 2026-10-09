@@ -8,6 +8,9 @@ import {
   rankUpCost,
   medalLevelCostFor,
   STARTER_CAPTAINS,
+  ASCENSION,
+  MAX_ASCENSION,
+  levelCap,
 } from '../data/crewRoster.js';
 import { sellContract, reputationRank, canAfford, pay, grant } from './economy.js';
 import { currentBanner, MARK_COST } from '../data/banners.js';
@@ -283,22 +286,12 @@ export function applyPullToRoster(player, instance) {
         instance: next,
       };
     }
-    const sold = sellContract(instance.rarity);
-    const bonus = {
-      credits: Math.floor((sold.credits || 0) * 1.4),
-      medals: Math.floor((sold.medals || 0) * 1.6),
-    };
+    // Past 5 stars a copy becomes one of their shards, for Ascension (never pocket change).
+    const shard = recomputeCrew({ ...owned, copies: (owned.copies || 1) + 1, shards: (owned.shards || 0) + 1 });
     return {
-      player: {
-        ...player,
-        wallet: grant(player.wallet, bonus),
-        crew: crew.map((c) =>
-          c.instanceId === owned.instanceId ? { ...c, copies: (c.copies || 1) + 1 } : c
-        ),
-      },
-      kind: 'cap',
-      instance: owned,
-      sold: bonus,
+      player: { ...player, crew: crew.map((c) => (c.instanceId === owned.instanceId ? shard : c)) },
+      kind: 'shard',
+      instance: shard,
     };
   }
 
@@ -315,12 +308,11 @@ export function applyPullToRoster(player, instance) {
         instance: next,
       };
     }
-    const sold = sellContract(instance.rarity);
+    const shard = recomputeCrew({ ...parked, copies: (parked.copies || 1) + 1, shards: (parked.shards || 0) + 1 });
     return {
-      player: { ...player, wallet: grant(player.wallet, sold) },
-      kind: 'cap',
-      instance: parked,
-      sold,
+      player: { ...player, reserve: reserve.map((c) => (c.instanceId === parked.instanceId ? shard : c)) },
+      kind: 'shard',
+      instance: shard,
     };
   }
 
@@ -565,6 +557,7 @@ export function rankUpCrew(player, instanceId) {
 export function levelCrew(player, instanceId) {
   const c = (player.crew || []).find((x) => x.instanceId === instanceId);
   if (!c) return { ok: false, reason: 'missing' };
+  if ((c.level || 1) >= levelCap(c)) return { ok: false, reason: 'level_cap', cap: levelCap(c) };
   const costMedals = medalLevelCostFor(c);
   const cost = { medals: costMedals };
   if (!canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
@@ -578,6 +571,33 @@ export function levelCrew(player, instanceId) {
     },
     crew: next,
     cost,
+  };
+}
+
+/** The next Ascension step for a crew member, what it costs, and why it is not open yet. */
+export function ascensionStatus(crew, wallet = {}) {
+  const tier = crew?.ascension || 0;
+  const next = ASCENSION[tier + 1] || null;
+  if (!next) return { next: null, reason: 'max' };
+  const reason = (crew.stars || 1) < 5 ? 'needs_5_stars' : (crew.shards || 0) < next.shards ? 'needs_shards'
+    : (wallet.medals || 0) < next.medals ? 'needs_medals' : null;
+  return { next, reason, shards: crew.shards || 0 };
+}
+
+/** Ascend: a 5-star merc spends shards and medals to reach the next tier. */
+export function ascendCrew(player, instanceId) {
+  const c = (player.crew || []).find((x) => x.instanceId === instanceId);
+  if (!c) return { ok: false, reason: 'missing' };
+  const status = ascensionStatus(c, player.wallet);
+  if (!status.next) return { ok: false, reason: 'max_ascension' };
+  if (status.reason) return { ok: false, reason: status.reason, cost: { medals: status.next.medals, shards: status.next.shards } };
+  const next = recomputeCrew({ ...c, ascension: Math.min(MAX_ASCENSION, (c.ascension || 0) + 1), shards: (c.shards || 0) - status.next.shards });
+  return {
+    ok: true,
+    player: { ...player, wallet: pay(player.wallet, { medals: status.next.medals }).wallet,
+      crew: player.crew.map((x) => (x.instanceId === instanceId ? next : x)) },
+    crew: next,
+    tier: ASCENSION[next.ascension],
   };
 }
 

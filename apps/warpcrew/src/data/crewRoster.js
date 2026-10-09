@@ -57,9 +57,29 @@ export function rankUpCost(crew) {
   };
 }
 
-export function crewPowerOf(template, { level = 1, stars = 1, rank = 1 } = {}) {
+export function crewPowerOf(template, { level = 1, stars = 1, rank = 1, ascension = 0 } = {}) {
   const base = template?.basePower || 10;
-  return Math.round(base + (level - 1) * 3 + (stars - 1) * base * 0.12 + (rank - 1) * 2);
+  return Math.round(base + (level - 1) * 3 + (stars - 1) * base * 0.12 + (rank - 1) * 2 + Math.max(0, ascension) * 4);
+}
+
+/**
+ * Ascension (crew-matter design §5): a 5-star merc spends their own shards (duplicates past 5 stars)
+ * and medals to become a Veteran, then Elite, then Legend. Each step: the move charges 2 beats faster,
+ * the level cap rises by 10, +4 power and a portrait frame.
+ */
+export const ASCENSION = Object.freeze([
+  Object.freeze({ tier: 0, name: null }),
+  Object.freeze({ tier: 1, name: 'Veteran', shards: 2, medals: 120 }),
+  Object.freeze({ tier: 2, name: 'Elite', shards: 3, medals: 300 }),
+  Object.freeze({ tier: 3, name: 'Legend', shards: 4, medals: 700 }),
+]);
+export const MAX_ASCENSION = ASCENSION.length - 1;
+
+/** Level cap: 10 at 1 star, +5 per star (30 at 5 stars), +10 per Ascension step. */
+export function levelCap(crew) {
+  const stars = Math.max(1, Math.min(5, crew?.stars || 1));
+  const tier = Math.max(0, Math.min(MAX_ASCENSION, crew?.ascension || 0));
+  return 5 + 5 * stars + 10 * tier;
 }
 
 export function scaledPassive(passive, stars = 1) {
@@ -492,10 +512,13 @@ export function recomputeCrew(c) {
     history: t.history || c.history,
     blurb: t.blurb || c.blurb,
     passive: scaledPassive(t.passive, stars),
-    power: crewPowerOf(t, { level, stars, rank }),
+    power: crewPowerOf(t, { level, stars, rank, ascension: c.ascension || 0 }),
     stars,
     rank,
     level,
+    // Growth fields appear once earned, so older crew records reload unchanged.
+    ...(c.ascension ? { ascension: Math.max(0, Math.min(MAX_ASCENSION, c.ascension)) } : {}),
+    ...(c.shards ? { shards: Math.max(0, Math.trunc(c.shards)) } : {}),
   };
 }
 

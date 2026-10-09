@@ -188,7 +188,7 @@ const once = pullOnce(puller, { free: true, rng: () => 0.99 });
 if (!once.ok) throw new Error('free pull failed');
 const ten = pullTen({ ...once.player, wallet: { ...once.player.wallet, gems: 900 }, crewSlots: 2 }, { rng: () => 0.5 });
 if (!ten.ok || ten.results.length !== 10) throw new Error('10-pull failed');
-const parked = ten.results.filter((r) => r.kind === 'reserve' || r.kind === 'hire' || r.kind === 'star' || r.kind === 'sold' || r.kind === 'cap');
+const parked = ten.results.filter((r) => r.kind === 'reserve' || r.kind === 'hire' || r.kind === 'star' || r.kind === 'sold' || r.kind === 'cap' || r.kind === 'shard');
 if (parked.length !== 10) throw new Error('10-pull kinds');
 if ((ten.player.reserve || []).length > RESERVE_CAP) throw new Error('reserve overflow');
 
