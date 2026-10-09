@@ -20,13 +20,14 @@ import {
 import { readyCrew, fightingCrew } from '../systems/player.js';
 import { normalizeAssignments, previewStationAssignment, stationOutputs, STATIONS } from '../systems/stations.js';
 import { portraitFor, shipArtFor, SPACE_ART, ICONS, NODE_ART, planetArtFor, cinematicArtFor, SPLASH_ART } from '../data/portraits.js';
-import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP } from '../systems/gacha.js';
+import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, luckGemCost, PITY, LUCK_CAP, RESERVE_CAP, hireOdds } from '../systems/gacha.js';
+import { currentBanner, MARK_COST } from '../data/banners.js';
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS, SPARROW_LAYOUT, HULL_PX, roomWorldPoint, canonicalRoomId } from '../data/starterShip.js';
-import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS } from '../data/crewRoster.js';
+import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS, catalogById, RARITY } from '../data/crewRoster.js';
 import { kitFor, describeKit } from '../data/crewKits.js';
 import { syncCrewLayer, crewAgentAt } from './crewWalk.js';
 import { bindFtlCrewDrag } from './ftlCrewDrag.js';
@@ -577,7 +578,8 @@ function patchShell(root, ctx) {
   setSlot(root, 'nav', renderNav(tab, player, expReady, tabs, coachStep, crewAttentionSeen) + (exploreCoach ? renderExploreCoach() : ''));
   // Travel events: the open card (saved) or its result (UI only) sits over every tab.
   const eventModal = !player.flags?.splashSeen ? '' : ctx.activeEventView ? renderEventCard(ctx.activeEventView, { hint: nudges.eventHint }) : ctx.eventResult ? renderEventResult(ctx.eventResult) : '';
-  const baseModal = ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
+  const baseModal = ctx.hireReveal ? renderHireReveal(ctx.hireReveal) : ctx.hireOddsOpen ? renderHireOdds(player, now)
+    : ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
   const wallPack = wallPackState(player, currentWall(player, now));
   const calm = !baseModal.trim() && isHome && !fighting && !player.activeEncounter && !selectedRoom;
@@ -1407,6 +1409,99 @@ function crewPortrait(c) {
   return `<img class="portrait" src="${portraitFor(c.templateId, c.role)}" alt="" width="64" height="64" />`;
 }
 
+const rarityLabel = id => RARITY[id]?.label || 'Common';
+
+/** "Between Jobs": the featured merc, rate-up Rares, hire buttons, Contract Marks, pity and the odds link. */
+function renderHireBanner(player, { free, teachHire, showGems, now }) {
+  const g = { ...defaultGacha(), ...(player.gacha || {}) };
+  const banner = currentBanner(now);
+  const star = catalogById(banner.featured);
+  const kit = kitFor(star.id, star.role);
+  const markCost = MARK_COST[star.rarity];
+  const marksPct = Math.min(100, Math.round(((g.marks || 0) / markCost) * 100));
+  const luckMaxed = (g.luck || 0) >= LUCK_CAP;
+  const rateUp = banner.rateUp.map(id => catalogById(id)).filter(Boolean);
+  return `
+    <section class="panel recruit-panel hire-banner rarity-${escapeHtml(star.rarity)}">
+      <div class="banner-card">
+        <img class="banner-art" src="${escapeHtml(portraitFor(star.id, star.role))}" alt="" />
+        <div class="banner-copy">
+          <span class="modal-kicker">Between jobs · ${banner.daysLeft} day${banner.daysLeft === 1 ? '' : 's'} left</span>
+          <h2>${escapeHtml(star.name)}</h2>
+          <span class="rarity-tag rarity-${escapeHtml(star.rarity)}">${escapeHtml(rarityLabel(star.rarity))}</span> <span class="banner-role">${escapeHtml(star.role)}</span>
+          <p class="banner-pitch">${escapeHtml(banner.pitch)}</p>
+          ${kit ? `<p class="banner-move"><b>${escapeHtml(kit.move)}</b> ${escapeHtml(describeKit(kit))}</p>` : ''}
+        </div>
+      </div>
+      <div class="banner-rateup"><span>Rare hires favour</span>${rateUp.map(t => `<span class="rateup-chip"><img src="${escapeHtml(portraitFor(t.id, t.role))}" alt="" />${escapeHtml(t.name)}</span>`).join('')}</div>
+      <div class="hire-buttons">
+        <button class="primary recruit-main ${teachHire && free ? 'spot-glow' : ''}" data-act="gacha">${free ? 'Free hire' : `Hire · ${GACHA_COSTS.credits.credits}cr`}</button>
+        ${showGems ? `${free ? '' : `<button data-act="gacha-gems">Hire · ${GACHA_COSTS.gems.gems} gems</button>`}
+        <button class="hire-ten" data-act="gacha-10">10 hires · ${GACHA_COSTS.gems10.gems} gems<small>Rare or better guaranteed</small></button>` : ''}
+      </div>
+      <div class="marks-row">
+        <div class="marks-copy"><span>Contract Marks</span><b>${g.marks || 0} / ${markCost}</b></div>
+        <div class="marks-bar" aria-hidden="true"><span style="width:${marksPct}%"></span></div>
+        <button data-act="gacha-marks" ${(g.marks || 0) >= markCost ? 'class="primary"' : 'disabled'}>Hire ${escapeHtml(star.name.replace(/^Captain /, '').split(' ')[0])}</button>
+      </div>
+      <p class="pity-line">${g.featuredGuarantee ? `Next ${escapeHtml(rarityLabel(star.rarity))} hire is ${escapeHtml(star.name)}. ` : ''}Legendary within ${Math.max(1, PITY.legendHard - (g.pityLegend || 0))} hires · Rare within ${Math.max(1, PITY.rareHard - (g.pityRare || 0))}
+        <button type="button" class="link-btn" data-act="hire-odds">Odds</button></p>
+      <details class="luck-meter">
+        <summary>Improve odds · Luck ${g.luck || 0}/${LUCK_CAP}</summary>
+        <div class="row hire-row">
+          <button data-act="buy-luck" data-currency="credits" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckCreditCost(g.luck)}cr`}</button>
+          ${showGems ? `<button data-act="buy-luck" data-currency="gems" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckGemCost(g.luck)}g`}</button>` : ''}
+        </div>
+      </details>
+    </section>`;
+}
+
+/** The odds, in the game (crew-matter design: transparent odds). */
+export function renderHireOdds(player, now = trustedNow()) {
+  const odds = hireOdds(player, now);
+  const star = catalogById(odds.banner.featured);
+  return `<div class="modal-backdrop"><section class="modal panel hire-odds" role="dialog" aria-modal="true" aria-label="Hiring odds">
+    <div class="sheet-head"><h2>Hiring odds</h2><button class="icon-close" data-act="hire-odds-close" aria-label="Close">×</button></div>
+    <table class="odds-table"><tbody>${odds.rows.map(r => `<tr class="rarity-${escapeHtml(r.rarity)}"><th>${escapeHtml(rarityLabel(r.rarity))}</th><td>${r.pct.toFixed(r.pct < 1 ? 2 : 1)}%</td></tr>`).join('')}</tbody></table>
+    <ul class="odds-notes">
+      <li>When a hire is ${escapeHtml(rarityLabel(odds.featured.rarity))}, it is ${escapeHtml(star.name)} ${odds.featured.guaranteed ? '<b>for sure</b> (your last one missed)' : `${odds.featured.sharePct}% of the time; a miss makes the next one certain`}.</li>
+      <li>Rare hires are one of this banner's two favoured Rares ${odds.rateUpSharePct}% of the time.</li>
+      <li>Pity: a Rare or better is guaranteed within ${odds.pity.rare.hard} hires, a Legendary within ${odds.pity.legendary.hard}. Odds climb after ${odds.pity.rare.soft} and ${odds.pity.legendary.soft}.</li>
+      <li>Every hire earns a Contract Mark. ${odds.marks.cost} marks hire ${escapeHtml(star.name)} outright; leftover marks carry over.</li>
+      <li>Reputation and Luck raise these odds, up to 3% for Legendary or better.</li>
+    </ul></section></div>`;
+}
+
+const REVEAL_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'apex'];
+
+/** The reveal: docking pods that light up in their rarity, one big card for a single hire, a grid for ten. */
+export function renderHireReveal(reveal) {
+  if (!reveal?.results?.length) return '';
+  const top = reveal.results.reduce((best, r) => (REVEAL_ORDER.indexOf(r.rarity) > REVEAL_ORDER.indexOf(best) ? r.rarity : best), 'common');
+  const big = ['legendary', 'mythic', 'apex'].includes(top);
+  const note = r => (r.kind === 'star' ? `★${r.stars}` : r.kind === 'cap' ? `Max stars · ${escapeHtml(formatReward(r.sold || {}))}`
+    : r.kind === 'sold' ? `Reserve full · sold` : r.kind === 'reserve' ? 'New · reserve' : 'New');
+  const card = (r, i, single) => {
+    const t = catalogById(r.templateId);
+    const kit = t ? kitFor(t.id, t.role) : null;
+    return `<article class="reveal-card rarity-${escapeHtml(r.rarity)}${r.featured ? ' is-featured' : ''}${single ? ' is-single' : ''}" style="--i:${i}">
+      <div class="reveal-pod" aria-hidden="true"></div>
+      <img src="${escapeHtml(portraitFor(r.templateId, t?.role))}" alt="" />
+      <b>${escapeHtml(r.name)}</b><span class="rarity-tag rarity-${escapeHtml(r.rarity)}">${escapeHtml(rarityLabel(r.rarity))}</span>
+      <small>${r.featured ? 'Featured · ' : ''}${note(r)}</small>
+      ${single && kit ? `<p class="reveal-move"><b>${escapeHtml(kit.move)}</b> ${escapeHtml(describeKit(kit))}</p>` : ''}
+      ${single && t?.quote ? `<q>${escapeHtml(t.quote)}</q>` : ''}
+    </article>`;
+  };
+  const single = reveal.results.length === 1;
+  return `<div class="modal-backdrop hire-reveal-backdrop tier-${escapeHtml(top)}">
+    <section class="hire-reveal" role="dialog" aria-modal="true" aria-label="${single ? 'New hire' : 'New hires'}">
+      ${big ? '<div class="priority-transmission" role="status">Priority transmission</div>' : ''}
+      <div class="reveal-grid${single ? ' is-single' : ''}">${reveal.results.map((r, i) => card(r, i, single)).join('')}</div>
+      <button class="primary" data-act="hire-reveal-close">${single ? 'Welcome aboard' : 'Continue'}</button>
+    </section></div>`;
+}
+
 export function renderCrew(player, now = trustedNow()) {
   const canHire = isFeatureUnlocked(player, 'gacha');
   const free = player.dailyPullAvailable;
@@ -1433,26 +1528,7 @@ export function renderCrew(player, now = trustedNow()) {
       </div>
       <div class="station-strip" aria-label="Station output">${Object.entries(outputs).map(([id, output]) => `<div class="station-out"><span>${escapeHtml(output.label)}</span><b>${output.total}</b></div>`).join('')}</div>
     </section>
-    ${canHire ? `
-    <section class="panel recruit-panel">
-      <h2>Recruit</h2>
-      <button class="primary recruit-main ${teachHire && free ? 'spot-glow' : ''}" data-act="gacha">
-        ${free ? 'Free hire' : 'Hire 500cr'}
-      </button>
-      ${showGems ? `<div class="row hire-row">
-        ${free ? '' : `<button data-act="gacha-gems">Hire ${GACHA_COSTS.gems.gems}g</button>`}
-        <button data-act="gacha-10">10-pull ${GACHA_COSTS.gems10.gems}g</button>
-      </div>` : ''}
-      <details class="luck-meter">
-        <summary>Improve odds · Luck ${g.luck || 0}/${LUCK_CAP}</summary>
-        <div class="muted">Rare guaranteed in ${Math.max(0, PITY.rareHard - (g.pityRare || 0))} hires · pity ${g.pityRare || 0}/${PITY.rareHard}</div>
-        <div class="pity-bar"><span style="width:${pityRarePct}%"></span></div>
-        <div class="row hire-row">
-          <button data-act="buy-luck" data-currency="credits" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckCreditCost(g.luck)}cr`}</button>
-          ${showGems ? `<button data-act="buy-luck" data-currency="gems" ${luckMaxed ? 'disabled' : ''}>${luckMaxed ? 'Luck max' : `Luck +1 · ${luckGemCost(g.luck)}g`}</button>` : ''}
-        </div>
-      </details>
-    </section>` : ''}
+    ${canHire ? renderHireBanner(player, { free, teachHire, showGems, now }) : ''}
     <section class="crew-list">
       ${player.crew.map((c) => {
         const cost = medalLevelCostFor(c);

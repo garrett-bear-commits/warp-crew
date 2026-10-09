@@ -10,16 +10,79 @@ import {
   STARTER_CAPTAINS,
 } from '../data/crewRoster.js';
 import { sellContract, reputationRank, canAfford, pay, grant } from './economy.js';
+import { currentBanner, MARK_COST } from '../data/banners.js';
+import { trustedNow } from '../shared/time.js';
 
-export const RESERVE_CAP = 8;
+/** Room for a collection: 24 mercs wait in reserve (was 8, which auto-sold Epics after a 10-hire). */
+export const RESERVE_CAP = 24;
 
 /** Hires roll from every merc except the starter captains: a captain is chosen once, never pulled. */
 export const RECRUIT_POOL = CREW_CATALOG.filter((c) => !STARTER_CAPTAINS.includes(c.id));
 export const LUCK_CAP = 15;
 
 export function defaultGacha() {
-  return { pityRare: 0, pityLegend: 0, luck: 0, pulls: 0, lastRarity: null, history: [] };
+  return { pityRare: 0, pityLegend: 0, luck: 0, pulls: 0, lastRarity: null, history: [], marks: 0, featuredGuarantee: false };
 }
+
+/**
+ * Reputation and Luck lift the odds, but Legendary-or-better stays special: at most 3% of a hire
+ * (and Mythic plus Apex at most 0.6%) before pity. Base rates are unchanged (crew-matter design).
+ */
+export const RARITY_CAPS = Object.freeze({ legendaryPlus: 0.03, mythicPlus: 0.006 });
+
+function capInflation(w) {
+  // Work in probabilities: cap Mythic+Apex first, then give Legendary whatever room is left under the
+  // Legendary-or-better cap. The mass taken off moves to Rare and Epic, so the odds never invert.
+  const total = Object.values(w).reduce((sum, v) => sum + v, 0);
+  const p = Object.fromEntries(Object.entries(w).map(([k, v]) => [k, v / total]));
+  let freed = 0;
+  const top = p.mythic + p.apex;
+  if (top > RARITY_CAPS.mythicPlus) {
+    const f = RARITY_CAPS.mythicPlus / top;
+    freed += top - RARITY_CAPS.mythicPlus;
+    p.mythic *= f;
+    p.apex *= f;
+  }
+  const room = RARITY_CAPS.legendaryPlus - (p.mythic + p.apex);
+  if (p.legendary > room) {
+    freed += p.legendary - room;
+    p.legendary = room;
+  }
+  if (freed > 0) {
+    const mid = p.rare + p.epic;
+    p.rare += freed * (p.rare / mid);
+    p.epic += freed * (p.epic / mid);
+  }
+  return p;
+}
+
+// --- Seeded hires: each save has its own pull stream, so every result is reproducible. ---
+
+function hashString(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+function mulberry32(a) {
+  let t = a >>> 0;
+  return () => {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** This save's hire seed: kept once made, otherwise derived from the save's own identity. */
+export function hireSeed(player) {
+  const g = player?.gacha || {};
+  if (Number.isInteger(g.seed)) return g.seed;
+  return hashString(`${player?.createdAt ?? ''}|${player?.captainInstanceId ?? player?.crew?.[0]?.instanceId ?? 'crew'}`);
+}
+
+/** The random stream for this save's next hire (hire number n). */
+export const hireRng = (seed, n) => mulberry32(hashString(`${seed}:${n}`));
 
 export function rarityWeights(reputation = 0, luck = 0) {
   let w = {
@@ -47,7 +110,7 @@ export function rarityWeights(reputation = 0, luck = 0) {
   w.mythic *= 1 + L * 0.05;
   w.apex *= 1 + L * 0.055;
   w.common = Math.max(8, w.common / (1 + L * 0.012));
-  return w;
+  return capInflation(w);
 }
 
 export const REP_GATES = [100, 300, 600, 1000, 2000, 3500, 5500];
@@ -102,6 +165,13 @@ function applyPity(rarity, gacha, weights, rng = Math.random) {
   return pick;
 }
 
+const pick = (list, rng) => list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
+
+/**
+ * One hire. With a banner: landing on the featured merc's rarity gives the featured merc half the time
+ * (always, after a miss); landing on Rare gives a rate-up Rare half the time.
+ * `featured` is true/false when the hire landed on the featured rarity, otherwise null.
+ */
 export function pullMerc({
   reputation = 0,
   luck = 0,
@@ -109,6 +179,7 @@ export function pullMerc({
   rng = Math.random,
   guaranteedRarity = null,
   minRarity = null,
+  banner = null,
 } = {}) {
   const weights = rarityWeights(reputation, luck);
   let rarity = guaranteedRarity || applyPity(null, gacha, weights, rng);
@@ -116,9 +187,29 @@ export function pullMerc({
   const pool = RECRUIT_POOL.filter((c) => c.rarity === rarity);
   const fallback = RECRUIT_POOL.filter((c) => c.rarity === 'common');
   const list = pool.length ? pool : fallback;
-  const template = list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
+  const star = banner ? catalogById(banner.featured) : null;
+  let template;
+  let featured = null;
+  if (star && rarity === star.rarity) {
+    const others = list.filter((c) => c.id !== star.id);
+    featured = Boolean(gacha?.featuredGuarantee) || !others.length || rng() < 0.5;
+    template = featured ? star : pick(others, rng);
+  } else if (banner?.rateUp?.length && rarity === 'rare' && rng() < 0.5) {
+    template = catalogById(pick(banner.rateUp, rng)) || pick(list, rng);
+  } else {
+    template = pick(list, rng);
+  }
   const instance = createCrewInstance(template.id, { rng });
-  return { instance, rarity, template };
+  return { instance, rarity, template, featured };
+}
+
+/** After a hire: a featured miss guarantees the next one at that rarity; a hit clears it; every hire is a mark. */
+function afterBannerHire(gacha, featured) {
+  return {
+    ...gacha,
+    marks: (gacha.marks || 0) + 1,
+    featuredGuarantee: featured === true ? false : featured === false ? true : Boolean(gacha.featuredGuarantee),
+  };
 }
 
 export function tickPity(gacha, rarity) {
@@ -249,6 +340,23 @@ export function applyPullToRoster(player, instance) {
     };
   }
 
+  // Reserve full: a rarer new merc takes the place of the weakest one waiting (who is sold instead),
+  // so a good hire is never thrown away for lack of room.
+  const weakest = [...reserve].sort((a, b) => rarityRank(a.rarity) - rarityRank(b.rarity) || (a.power || 0) - (b.power || 0))[0];
+  if (weakest && rarityRank(instance.rarity) > rarityRank(weakest.rarity)) {
+    const bumped = sellContract(weakest.rarity);
+    return {
+      player: {
+        ...player,
+        wallet: grant(player.wallet, bumped),
+        reserve: [...reserve.filter((c) => c.instanceId !== weakest.instanceId), { ...instance, status: 'reserve' }],
+      },
+      kind: 'reserve',
+      instance,
+      bumped: { instance: weakest, sold: bumped },
+    };
+  }
+
   const sold = sellContract(instance.rarity);
   return {
     player: { ...player, wallet: grant(player.wallet, sold) },
@@ -338,20 +446,23 @@ export const GACHA_COSTS = {
   gems10: { gems: 900 },
 };
 
-export function pullOnce(player, { gems = false, free = false, rng = Math.random } = {}) {
+export function pullOnce(player, { gems = false, free = false, rng = null, now = trustedNow() } = {}) {
   const cost = free ? {} : gems ? GACHA_COSTS.gems : GACHA_COSTS.credits;
   if (!free && !canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
   let next = player;
   if (!free) next = { ...next, wallet: pay(next.wallet, cost).wallet };
   else next = { ...next, dailyPullAvailable: false };
-  const gacha = { ...defaultGacha(), ...(next.gacha || {}) };
-  const { instance, rarity } = pullMerc({
+  const seed = hireSeed(next);
+  const gacha = { ...defaultGacha(), ...(next.gacha || {}), seed };
+  const banner = currentBanner(now);
+  const { instance, rarity, featured } = pullMerc({
     reputation: next.wallet.reputation,
     luck: gacha.luck || 0,
     gacha,
-    rng,
+    rng: rng || hireRng(seed, gacha.pulls || 0),
+    banner,
   });
-  next = { ...next, gacha: tickPity(gacha, rarity) };
+  next = { ...next, gacha: afterBannerHire(tickPity(gacha, rarity), featured) };
   const applied = applyPullToRoster(next, instance);
   const source = free ? 'daily' : gems ? 'gems' : 'credits';
   return {
@@ -361,34 +472,76 @@ export function pullOnce(player, { gems = false, free = false, rng = Math.random
     rarity,
     kind: applied.kind,
     sold: applied.sold,
+    featured: featured === true,
+    banner,
     cost,
     free,
   };
 }
 
-export function pullTen(player, { rng = Math.random } = {}) {
+export function pullTen(player, { rng = null, now = trustedNow() } = {}) {
   const cost = GACHA_COSTS.gems10;
   if (!canAfford(player.wallet, cost)) return { ok: false, reason: 'cannot_afford', cost };
   let next = { ...player, wallet: pay(player.wallet, cost).wallet };
+  const seed = hireSeed(next);
+  const banner = currentBanner(now);
   const results = [];
   let rareHit = false;
   for (let i = 0; i < 10; i++) {
-    const gacha = { ...defaultGacha(), ...(next.gacha || {}) };
+    const gacha = { ...defaultGacha(), ...(next.gacha || {}), seed };
     const minRarity = i === 9 && !rareHit ? 'rare' : null;
-    const { instance, rarity } = pullMerc({
+    const { instance, rarity, featured } = pullMerc({
       reputation: next.wallet.reputation,
       luck: gacha.luck || 0,
       gacha,
-      rng,
+      rng: rng || hireRng(seed, gacha.pulls || 0),
       minRarity,
+      banner,
     });
     if (rarityRank(rarity) >= 3) rareHit = true;
-    next = { ...next, gacha: tickPity(gacha, rarity) };
+    next = { ...next, gacha: afterBannerHire(tickPity(gacha, rarity), featured) };
     const applied = applyPullToRoster(next, instance);
     next = { ...applied.player, gacha: recordPull(applied.player.gacha, applied.instance, applied.kind, 'gems10') };
-    results.push({ rarity, kind: applied.kind, instance: applied.instance, sold: applied.sold });
+    results.push({ rarity, kind: applied.kind, instance: applied.instance, sold: applied.sold, featured: featured === true });
   }
-  return { ok: true, player: next, results, cost };
+  return { ok: true, player: next, results, cost, banner };
+}
+
+/** Spend Contract Marks to hire the featured merc outright (a duplicate stars them up). */
+export function redeemMarks(player, now = trustedNow()) {
+  const banner = currentBanner(now);
+  const star = catalogById(banner.featured);
+  const cost = MARK_COST[star?.rarity];
+  const g = { ...defaultGacha(), ...(player.gacha || {}) };
+  if (!star || !cost) return { ok: false, reason: 'no_featured' };
+  if ((g.marks || 0) < cost) return { ok: false, reason: 'not_enough_marks', cost, marks: g.marks || 0 };
+  const seed = hireSeed(player);
+  const instance = createCrewInstance(star.id, { rng: hireRng(seed, `marks:${g.pulls || 0}:${g.marks}`) });
+  const next = { ...player, gacha: { ...g, seed, marks: g.marks - cost } };
+  const applied = applyPullToRoster(next, instance);
+  return {
+    ok: true,
+    player: { ...applied.player, gacha: recordPull(applied.player.gacha, applied.instance, applied.kind, 'marks') },
+    instance: applied.instance, rarity: star.rarity, kind: applied.kind, sold: applied.sold, featured: true, banner, cost,
+  };
+}
+
+/** The odds as shown to players: per-rarity chance now (before pity), the banner split and the pity counters. */
+export function hireOdds(player, now = trustedNow()) {
+  const g = { ...defaultGacha(), ...(player?.gacha || {}) };
+  const weights = rarityWeights(player?.wallet?.reputation || 0, g.luck || 0);
+  const total = Object.values(weights).reduce((sum, v) => sum + v, 0);
+  const banner = currentBanner(now);
+  const star = catalogById(banner.featured);
+  return {
+    rows: Object.entries(weights).map(([rarity, w]) => ({ rarity, pct: Math.round((w / total) * 10000) / 100 })),
+    banner,
+    featured: { templateId: star?.id, rarity: star?.rarity, sharePct: g.featuredGuarantee ? 100 : 50, guaranteed: Boolean(g.featuredGuarantee) },
+    rateUpSharePct: 50,
+    pity: { rare: { count: g.pityRare || 0, soft: PITY.rareSoft, hard: PITY.rareHard },
+      legendary: { count: g.pityLegend || 0, soft: PITY.legendSoft, hard: PITY.legendHard } },
+    marks: { have: g.marks || 0, cost: MARK_COST[star?.rarity] || null },
+  };
 }
 
 export function rankUpCrew(player, instanceId) {

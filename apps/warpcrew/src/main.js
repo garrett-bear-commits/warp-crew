@@ -3,7 +3,7 @@ import { createNewPlayer, migratePlayer, tickCrewStatus } from './systems/player
 import { consumeFreshStart } from './systems/qaFreshStart.js';
 import { claimFuelRegen } from './systems/fuel.js';
 import { prepareSession, sessionModels, persistSessionTransition } from './systems/sessionLoop.js';
-import { pullOnce, pullTen, buyLuck, contractHire, callUpReserve, sellReserve, benchCrew, LUCK_CAP } from './systems/gacha.js';
+import { pullOnce, pullTen, redeemMarks, buyLuck, contractHire, callUpReserve, sellReserve, benchCrew, LUCK_CAP } from './systems/gacha.js';
 import { canAfford, pay, grant, hullRepairOffer, fuelCreditPrice, formatReward, clampFuel } from './systems/economy.js';
 import {
   resolveExpedition,
@@ -75,6 +75,9 @@ let sessionUi = { missionView: 'contracts', reviewedOfferId: null, selectedExped
 let selectedRoom = null;
 let selectedCrewId = null;
 let confirmRestartSave = false;
+/** The hire reveal on screen (pods and cards), and whether the odds sheet is open. UI only, never saved. */
+let hireReveal = null;
+let hireOddsOpen = false;
 /** Cancel-save sheet for the Captain's Commission subscription. */
 let commissionWinback = false;
 /** FTL-lite fight screen: crew picked for a move, and the tap-to-pause state. */
@@ -507,6 +510,8 @@ function render() {
     selectedCrewId,
     confirmRestartSave,
     commissionWinback,
+    hireReveal,
+    hireOddsOpen,
     ftlSelectedCrewId,
     ftlPaused,
     cinematic,
@@ -605,7 +610,22 @@ const guidedBeatScheduler = createGuidedBeatScheduler({
 
 function scheduleGuidedBeat() { guidedBeatScheduler.schedule(); }
 
-function doHire({ gems = false, ten = false } = {}) {
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'apex'];
+
+/** One reveal card per hire: who, how rare, and what happened (new, star up, sold at max stars). */
+const revealEntry = r => ({ templateId: r.instance?.templateId, name: r.instance?.name || 'Merc', rarity: r.rarity,
+  kind: r.kind, stars: r.instance?.stars || 1, sold: r.sold || null, featured: r.featured === true });
+
+/** The reveal sounds like its best card: a click, a beacon, a rally, or a fanfare for Legendary and up. */
+function revealSound(results) {
+  const top = results.reduce((best, r) => Math.max(best, RARITY_ORDER.indexOf(r.rarity)), 0);
+  if (top >= 4) { sfx('win'); sfx('boom', { delay: 0.35 }); }
+  else if (top === 3) sfx('rally');
+  else if (top === 2) sfx('beacon');
+  else sfx('card');
+}
+
+function doHire({ gems = false, ten = false, marks = false } = {}) {
   if (!isFeatureUnlocked(player, 'gacha')) {
     pushLog('Hiring opens after your first gunner signs on.');
     return false;
@@ -613,23 +633,22 @@ function doHire({ gems = false, ten = false } = {}) {
   if (ten) {
     const res = pullTen(player);
     if (!res.ok) {
-      pushLog(res.reason === 'cannot_afford' ? 'Need 900 gems for a 10-pull.' : 'The 10-pull did not go through.');
+      pushLog(res.reason === 'cannot_afford' ? 'Need 900 gems for 10 hires.' : 'The 10 hires did not go through.');
       return false;
     }
     player = res.player;
-    const rare = res.results.filter((r) => ['rare', 'epic', 'legendary', 'mythic', 'apex'].includes(r.rarity)).length;
-    const names = res.results.slice(0, 3).map((r) => r.instance?.name).filter(Boolean).join(', ');
-    pushLog(`10-pull: ${rare} rare+. ${names}${res.results.length > 3 ? '…' : ''}`);
-    showToast({ title: `10-pull · ${rare} rare+` });
-    sfx('coin');
-    captureEvent('gacha_10', { rare });
+    const rare = res.results.filter((r) => RARITY_ORDER.indexOf(r.rarity) >= 2).length;
+    pushLog(`10 hires: ${rare} Rare or better. ${res.results.map(r => r.instance?.name).filter(Boolean).slice(0, 3).join(', ')}…`);
+    hireReveal = { results: res.results.map(revealEntry) };
+    revealSound(res.results);
+    captureEvent('gacha_10', { rare, featured: res.results.filter(r => r.featured).length });
     tab = 'crew';
     return true;
   }
-  const free = !gems && player.dailyPullAvailable;
-  const res = pullOnce(player, { gems, free });
+  const free = !gems && !marks && player.dailyPullAvailable;
+  const res = marks ? redeemMarks(player) : pullOnce(player, { gems, free });
   if (!res.ok) {
-    pushLog(gems ? 'Need 100 gems for a hire.' : 'Need credits for a pull.');
+    pushLog(marks ? `Need ${res.cost || 'more'} Contract Marks.` : gems ? 'Need 100 gems for a hire.' : 'Need credits for a hire.');
     return false;
   }
   player = res.player;
@@ -638,20 +657,12 @@ function doHire({ gems = false, ten = false } = {}) {
     pushLog(`Hired ${name} (${res.rarity}).`);
     const te = noteTutorialEvent(player, 'hired');
     player = te.player;
-    showToast({ title: `${name} signs on` });
-    sfx('coin');
-  } else if (res.kind === 'star') {
-    pushLog(`${name} stars up ★${res.instance.stars} (${res.rarity}).`);
-    showToast({ title: `${name} ★${res.instance.stars}` });
-    sfx('coin');
-  } else if (res.kind === 'reserve') {
-    pushLog(`${name} (${res.rarity}) waits in reserve.`);
-    showToast({ title: `${name} → reserve` });
-  } else {
-    pushLog(`Pulled ${name} (${res.rarity}) — ${res.kind === 'cap' ? 'max stars' : 'no slot'}, sold ${formatReward(res.sold)}.`);
-    showToast({ title: `${name} sold`, rewards: res.sold });
-  }
-  captureEvent('gacha_pull', { rarity: res.rarity, free, gems, kind: res.kind });
+  } else if (res.kind === 'star') pushLog(`${name} stars up ★${res.instance.stars} (${res.rarity}).`);
+  else if (res.kind === 'reserve') pushLog(`${name} (${res.rarity}) waits in reserve.`);
+  else pushLog(`Hired ${name} (${res.rarity}) at max stars: sold for ${formatReward(res.sold)}.`);
+  hireReveal = { results: [revealEntry(res)] };
+  revealSound([res]);
+  captureEvent('gacha_pull', { rarity: res.rarity, free, gems, marks, kind: res.kind, featured: res.featured === true });
   tab = 'crew';
   return true;
 }
@@ -973,6 +984,14 @@ async function handleAction(act, data = {}) {
   } else if (act === 'gacha-10') {
     doHire({ ten: true });
     await refreshNotifs();
+  } else if (act === 'gacha-marks') {
+    doHire({ marks: true });
+  } else if (act === 'hire-reveal-close') {
+    hireReveal = null;
+  } else if (act === 'hire-odds') {
+    hireOddsOpen = true;
+  } else if (act === 'hire-odds-close') {
+    hireOddsOpen = false;
   } else if (act === 'buy-luck') {
     const res = buyLuck(player, data.currency || 'credits');
     if (!res.ok) {

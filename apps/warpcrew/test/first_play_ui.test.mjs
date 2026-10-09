@@ -1,3 +1,4 @@
+import { RESERVE_CAP } from '../src/systems/gacha.js';
 import assert from 'node:assert/strict';
 import { createNewPlayer } from '../src/systems/player.js';
 import { renderV5Modal, renderSessionGuidance, renderNav, renderCrew, renderRoomSheet, renderOverlays, initialSessionCamera, isGuidedSpotlightBlocked } from '../src/ui/bridge.js';
@@ -74,7 +75,7 @@ assert.match(renderShipSequence('crew-arrival', { templateId: 'merc_tink', name:
 const readyCrewTab = { ...fresh, dailyPullAvailable: true, tutorial: { ...fresh.tutorial, phase: 'done', completed: true } };
 assert.match(renderNav('ship', readyCrewTab, false, ['ship', 'crew', 'shop'], null), /nav-badge/);
 assert.doesNotMatch(renderNav('ship', readyCrewTab, false, ['ship', 'crew', 'shop'], null, true), /nav-badge/);
-assert.doesNotMatch(renderNav('ship', { ...readyCrewTab, crewSlots: 1, crew: [gunner], reserve: Array.from({ length: 20 }, (_, i) => ({ instanceId: `r${i}` })) }, false, ['ship', 'crew', 'shop'], null), /nav-badge/);
+assert.doesNotMatch(renderNav('ship', { ...readyCrewTab, crewSlots: 1, crew: [gunner], reserve: Array.from({ length: RESERVE_CAP }, (_, i) => ({ instanceId: `r${i}` })) }, false, ['ship', 'crew', 'shop'], null), /nav-badge/);
 assert.doesNotMatch(renderNav('ship', fresh, false, ['ship', 'shop'], null), /nav-badge/);
 const cargo = ROOMS.find(room => room.id === 'cargo');
 assert.match(renderRoomHotspot({ room: cargo, signal: 'return' }), /attention-dot/);
