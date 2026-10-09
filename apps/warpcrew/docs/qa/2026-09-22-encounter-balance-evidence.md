@@ -426,7 +426,7 @@ Credits, medals and reputation are what explore:* buckets paid (event rewards, f
 | cautious | 990001 | captain_cyborg | spur (100) | 3 | 0 | 6 | 2 | 3 | 4 | 2 | 3 | 0 | 0/0 | none |
 | balanced | 4219 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
 | balanced | 4219 | captain_cyborg | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 2 | 0 | 0/0 | none |
-| balanced | 4219 | captain_cyborg | ember (160) | 19 | 70 | 12 | 3 | 4 | 21 | 3 | 3 | 0 | 0/0 | day 21 (stuck) |
+| balanced | 4219 | captain_cyborg | ember (160) | 19 | 70 | 12 | 3 | 4 | 21 | 3 | 3 | 0 | 1/0 | day 21 (stuck) |
 | balanced | 17031 | captain_gunner | spur (100) | 3 | 0 | 7 | 2 | 3.5 | 4 | 2 | 4 | 0 | 1/0 | none |
 | balanced | 17031 | captain_gunner | veil (130) | 15 | 50 | 62 | 16 | 3.88 | not in 30 | — | 60 | 0 | 0/1 | day 17 (stuck) |
 | balanced | 88421 | captain_alien | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
@@ -455,7 +455,7 @@ Credits, medals and reputation are what explore:* buckets paid (event rewards, f
 | cautious | 88421 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 19 |
 | cautious | 240911 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 1/0/1 | 27 |
 | cautious | 990001 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 23 |
-| balanced | 4219 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 0/0/0 | 26 |
+| balanced | 4219 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/0 | 26 |
 | balanced | 17031 | 80 | 60 | 20 | 0 | 60 | 0 | 0 | 20 | 1/1/0 | 13 |
 | balanced | 88421 | 120 | 60 | 60 | 0 | 120 | 0 | 0 | 0 | 1/2/0 | 22 |
 | balanced | 240911 | 80 | 60 | 20 | 0 | 60 | 0 | 0 | 20 | 1/1/11 | 18 |
@@ -473,7 +473,7 @@ Same runs, but the away team leaves first (the baseline order), so the wall and 
 | Strategy | Order | First wall fell on day | First wall attempts | Walls broken | Near-miss losses (all walls) | Paid Rallies | Gems spent | Hull repair credits | Useful sessions |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | cautious | fights-first | 3 | 3 | 1 | 0 | 0 | 0 | 245 | 23 |
-| cautious | away-first | not in 30 | 77 | 0 | 0 | 0 | 0 | 4025 | 17 |
+| cautious | away-first | not in 30 | 77 | 0 | 1 | 0 | 0 | 4025 | 17 |
 | balanced | fights-first | 3 | 3 | 3 | 0 | 1 | 60 | 1645 | 22 |
 | balanced | away-first | not in 30 | 87 | 0 | 0 | 0 | 0 | 5145 | 10 |
 | ambitious | fights-first | 3 | 3 | 1 | 0 | 0 | 70 | 140 | 23 |

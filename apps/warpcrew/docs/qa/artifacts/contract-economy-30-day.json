@@ -168092,6 +168092,15 @@
                 "ok": true
               },
               {
+                "action": "encounter-order",
+                "fields": {
+                  "acceptanceId": "contract_2026-10-12_risky:41",
+                  "revision": 16,
+                  "order": "rally"
+                },
+                "ok": true
+              },
+              {
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
@@ -168181,7 +168190,7 @@
                 "reputation": 0
               },
               "hull-repair": {
-                "credits": 175,
+                "credits": 140,
                 "fuel": 0,
                 "gems": 0,
                 "medals": 0,
@@ -168377,6 +168386,8 @@
                   "id": "bait_freighter",
                   "choice": "terms"
                 },
+                "downed": 1,
+                "rally": "free",
                 "beats": 17,
                 "threat": 1.2,
                 "success": true,
@@ -168415,13 +168426,13 @@
               "endAt": 1791727200000,
               "completedAt": 1791806400000
             },
-            "gemSpends": [],
-            "repairs": [
+            "gemSpends": [
               {
-                "reason": "wall",
-                "cost": 35,
-                "gained": 25
-              },
+                "sink": "rally",
+                "gems": 0
+              }
+            ],
+            "repairs": [
               {
                 "reason": "wall",
                 "cost": 35,
@@ -168443,17 +168454,17 @@
                 "gained": 25
               }
             ],
-            "fightSteps": 95,
+            "fightSteps": 94,
             "explore": {
               "jumps": [],
               "stopped": "hull_low",
               "startFuel": 2,
-              "startHull": 6
+              "startHull": 40
             },
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 20
+                "credits": 0
               },
               {
                 "system": "shields",
@@ -168477,7 +168488,7 @@
               },
               {
                 "system": "medbay",
-                "credits": 11
+                "credits": 0
               }
             ],
             "drydock": {
@@ -168497,13 +168508,13 @@
             "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 520,
+              "credits": 555,
               "fuel": 2,
               "gems": 105,
               "medals": 725,
               "reputation": 356
             },
-            "endHull": 6,
+            "endHull": 40,
             "injuries": [],
             "pending": {
               "contractStage": null,
@@ -168514,13 +168525,13 @@
             "day": 22,
             "now": 1791892800000,
             "startWallet": {
-              "credits": 520,
+              "credits": 555,
               "fuel": 2,
               "gems": 105,
               "medals": 725,
               "reputation": 356
             },
-            "startHull": 6,
+            "startHull": 40,
             "actions": [
               {
                 "action": "contract-review",
@@ -168748,31 +168759,31 @@
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 146
+                "credits": 111
               },
               {
                 "system": "shields",
-                "credits": 59
+                "credits": 24
               },
               {
                 "system": "cargo",
-                "credits": 92
+                "credits": 57
               },
               {
                 "system": "weapons",
-                "credits": 150
+                "credits": 115
               },
               {
                 "system": "quarters",
-                "credits": 94
+                "credits": 59
               },
               {
                 "system": "sensors",
-                "credits": 93
+                "credits": 58
               },
               {
                 "system": "medbay",
-                "credits": 137
+                "credits": 102
               }
             ],
             "drydock": {
@@ -168792,7 +168803,7 @@
             "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 394,
+              "credits": 429,
               "fuel": 11,
               "gems": 105,
               "medals": 753,
@@ -168809,7 +168820,7 @@
             "day": 23,
             "now": 1791979200000,
             "startWallet": {
-              "credits": 394,
+              "credits": 429,
               "fuel": 11,
               "gems": 105,
               "medals": 753,
@@ -169178,7 +169189,7 @@
             "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 657,
+              "credits": 692,
               "fuel": 9,
               "gems": 105,
               "medals": 761,
@@ -169195,7 +169206,7 @@
             "day": 24,
             "now": 1792065600000,
             "startWallet": {
-              "credits": 657,
+              "credits": 692,
               "fuel": 9,
               "gems": 105,
               "medals": 761,
@@ -169564,7 +169575,7 @@
             "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 700,
+              "credits": 735,
               "fuel": 9,
               "gems": 105,
               "medals": 796,
@@ -169581,7 +169592,7 @@
             "day": 25,
             "now": 1792152000000,
             "startWallet": {
-              "credits": 700,
+              "credits": 735,
               "fuel": 9,
               "gems": 105,
               "medals": 796,
@@ -169911,27 +169922,27 @@
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 85
+                "credits": 50
               },
               {
                 "system": "shields",
-                "credits": 98
+                "credits": 63
               },
               {
                 "system": "cargo",
-                "credits": 138
+                "credits": 103
               },
               {
                 "system": "weapons",
-                "credits": 89
+                "credits": 54
               },
               {
                 "system": "sensors",
-                "credits": 139
+                "credits": 104
               },
               {
                 "system": "medbay",
-                "credits": 76
+                "credits": 41
               }
             ],
             "drydock": {
@@ -169951,7 +169962,7 @@
             "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 455,
+              "credits": 490,
               "fuel": 9,
               "gems": 105,
               "medals": 831,
@@ -169968,7 +169979,7 @@
             "day": 26,
             "now": 1792238400000,
             "startWallet": {
-              "credits": 455,
+              "credits": 490,
               "fuel": 9,
               "gems": 105,
               "medals": 831,
@@ -170257,27 +170268,27 @@
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 316
+                "credits": 281
               },
               {
                 "system": "shields",
-                "credits": 329
+                "credits": 294
               },
               {
                 "system": "cargo",
-                "credits": 369
+                "credits": 334
               },
               {
                 "system": "weapons",
-                "credits": 320
+                "credits": 285
               },
               {
                 "system": "sensors",
-                "credits": 370
+                "credits": 335
               },
               {
                 "system": "medbay",
-                "credits": 424
+                "credits": 389
               }
             ],
             "drydock": {
@@ -170299,7 +170310,7 @@
             "usefulSessionComplete": false,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 224,
+              "credits": 259,
               "fuel": 10,
               "gems": 105,
               "medals": 852,
@@ -170325,7 +170336,7 @@
             "day": 27,
             "now": 1792324800000,
             "startWallet": {
-              "credits": 224,
+              "credits": 259,
               "fuel": 10,
               "gems": 105,
               "medals": 852,
@@ -170638,27 +170649,27 @@
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 564
+                "credits": 529
               },
               {
                 "system": "shields",
-                "credits": 458
+                "credits": 423
               },
               {
                 "system": "cargo",
-                "credits": 498
+                "credits": 463
               },
               {
                 "system": "weapons",
-                "credits": 449
+                "credits": 414
               },
               {
                 "system": "sensors",
-                "credits": 499
+                "credits": 464
               },
               {
                 "system": "medbay",
-                "credits": 553
+                "credits": 518
               }
             ],
             "drydock": {
@@ -170678,7 +170689,7 @@
             "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 95,
+              "credits": 130,
               "fuel": 8,
               "gems": 105,
               "medals": 858,
@@ -170695,7 +170706,7 @@
             "day": 28,
             "now": 1792411200000,
             "startWallet": {
-              "credits": 95,
+              "credits": 130,
               "fuel": 8,
               "gems": 105,
               "medals": 858,
@@ -170746,6 +170757,13 @@
                 "ok": true
               },
               {
+                "action": "ship-upgrade",
+                "fields": {
+                  "system": "shields"
+                },
+                "ok": true
+              },
+              {
                 "action": "exp-choose",
                 "fields": {
                   "planet": "dustfall"
@@ -170760,12 +170778,7 @@
                 "ok": true
               }
             ],
-            "blockedActions": [
-              {
-                "action": "ship-upgrade",
-                "reason": "cannot_afford"
-              }
-            ],
+            "blockedActions": [],
             "rewardsBySource": {
               "daily-login": {
                 "credits": 150,
@@ -170800,6 +170813,13 @@
               "contract-action": {
                 "credits": 0,
                 "fuel": 2,
+                "gems": 0,
+                "medals": 0,
+                "reputation": 0
+              },
+              "ship-upgrade": {
+                "credits": 553,
+                "fuel": 0,
                 "gems": 0,
                 "medals": 0,
                 "reputation": 0
@@ -170869,7 +170889,17 @@
                 "fuel": 0
               }
             },
-            "improvement": null,
+            "improvement": {
+              "system": "shields",
+              "cost": {
+                "credits": 553
+              },
+              "level": 6,
+              "build": {
+                "endAt": 1792418400000,
+                "minutes": 120
+              }
+            },
             "fuel": {
               "gained": 5,
               "spent": 2,
@@ -170878,7 +170908,19 @@
             },
             "wallArrived": null,
             "wallAttempts": [],
-            "improvements": [],
+            "improvements": [
+              {
+                "system": "shields",
+                "cost": {
+                  "credits": 553
+                },
+                "level": 6,
+                "build": {
+                  "endAt": 1792418400000,
+                  "minutes": 120
+                }
+              }
+            ],
             "buildCompleted": {
               "system": "weapons",
               "targetLevel": 5,
@@ -170898,44 +170940,47 @@
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 130
+                "credits": 648
               },
               {
                 "system": "shields",
-                "credits": 24
+                "credits": 542
               },
               {
                 "system": "cargo",
-                "credits": 64
+                "credits": 582
               },
               {
                 "system": "weapons",
-                "credits": 135
+                "credits": 653
               },
               {
                 "system": "sensors",
-                "credits": 65
+                "credits": 583
               },
               {
                 "system": "medbay",
-                "credits": 119
+                "credits": 637
               }
             ],
-            "drydock": null,
+            "drydock": {
+              "system": "shields",
+              "targetLevel": 6,
+              "startedAt": 1792411200000,
+              "endAt": 1792418400000
+            },
             "milestones": {
               "dayKey": "2026-10-19",
               "contract": true,
-              "improve": false,
+              "improve": true,
               "away": true
             },
-            "incompleteMilestones": [
-              "improve"
-            ],
+            "incompleteMilestones": [],
             "usefulAction": true,
-            "usefulSessionComplete": false,
+            "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 529,
+              "credits": 11,
               "fuel": 11,
               "gems": 120,
               "medals": 899,
@@ -170952,7 +170997,7 @@
             "day": 29,
             "now": 1792497600000,
             "startWallet": {
-              "credits": 529,
+              "credits": 11,
               "fuel": 11,
               "gems": 120,
               "medals": 899,
@@ -171003,13 +171048,6 @@
                 "ok": true
               },
               {
-                "action": "ship-upgrade",
-                "fields": {
-                  "system": "shields"
-                },
-                "ok": true
-              },
-              {
                 "action": "travel-to",
                 "fields": {
                   "node": "slag_sea"
@@ -171044,7 +171082,12 @@
                 "ok": true
               }
             ],
-            "blockedActions": [],
+            "blockedActions": [
+              {
+                "action": "ship-upgrade",
+                "reason": "cannot_afford"
+              }
+            ],
             "rewardsBySource": {
               "daily-login": {
                 "credits": 40,
@@ -171086,13 +171129,6 @@
               "contract-action": {
                 "credits": 0,
                 "fuel": 2,
-                "gems": 0,
-                "medals": 0,
-                "reputation": 0
-              },
-              "ship-upgrade": {
-                "credits": 553,
-                "fuel": 0,
                 "gems": 0,
                 "medals": 0,
                 "reputation": 0
@@ -171167,17 +171203,7 @@
                 "fuel": 0
               }
             },
-            "improvement": {
-              "system": "shields",
-              "cost": {
-                "credits": 553
-              },
-              "level": 6,
-              "build": {
-                "endAt": 1792504800000,
-                "minutes": 120
-              }
-            },
+            "improvement": null,
             "fuel": {
               "gained": 2,
               "spent": 3,
@@ -171186,20 +171212,14 @@
             },
             "wallArrived": null,
             "wallAttempts": [],
-            "improvements": [
-              {
-                "system": "shields",
-                "cost": {
-                  "credits": 553
-                },
-                "level": 6,
-                "build": {
-                  "endAt": 1792504800000,
-                  "minutes": 120
-                }
-              }
-            ],
-            "buildCompleted": null,
+            "improvements": [],
+            "buildCompleted": {
+              "system": "shields",
+              "targetLevel": 6,
+              "startedAt": 1792411200000,
+              "endAt": 1792418400000,
+              "completedAt": 1792497600000
+            },
             "gemSpends": [],
             "repairs": [],
             "explore": {
@@ -171229,47 +171249,44 @@
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 160
+                "credits": 125
               },
               {
                 "system": "shields",
-                "credits": 54
+                "credits": 141
               },
               {
                 "system": "cargo",
-                "credits": 94
+                "credits": 59
               },
               {
                 "system": "weapons",
-                "credits": 165
+                "credits": 130
               },
               {
                 "system": "sensors",
-                "credits": 95
+                "credits": 60
               },
               {
                 "system": "medbay",
-                "credits": 149
+                "credits": 114
               }
             ],
-            "drydock": {
-              "system": "shields",
-              "targetLevel": 6,
-              "startedAt": 1792497600000,
-              "endAt": 1792504800000
-            },
+            "drydock": null,
             "milestones": {
               "dayKey": "2026-10-20",
               "contract": true,
-              "improve": true,
+              "improve": false,
               "away": true
             },
-            "incompleteMilestones": [],
+            "incompleteMilestones": [
+              "improve"
+            ],
             "usefulAction": true,
-            "usefulSessionComplete": true,
+            "usefulSessionComplete": false,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 499,
+              "credits": 534,
               "fuel": 10,
               "gems": 120,
               "medals": 955,
@@ -171291,7 +171308,7 @@
             "day": 30,
             "now": 1792584000000,
             "startWallet": {
-              "credits": 499,
+              "credits": 534,
               "fuel": 10,
               "gems": 120,
               "medals": 955,
@@ -171506,13 +171523,7 @@
                 }
               }
             ],
-            "buildCompleted": {
-              "system": "shields",
-              "targetLevel": 6,
-              "startedAt": 1792497600000,
-              "endAt": 1792504800000,
-              "completedAt": 1792584000000
-            },
+            "buildCompleted": null,
             "gemSpends": [],
             "repairs": [],
             "fightSteps": 17,
@@ -171525,27 +171536,27 @@
             "affordabilityGaps": [
               {
                 "system": "engines",
-                "credits": 640
+                "credits": 605
               },
               {
                 "system": "shields",
-                "credits": 656
+                "credits": 621
               },
               {
                 "system": "cargo",
-                "credits": 574
+                "credits": 539
               },
               {
                 "system": "weapons",
-                "credits": 645
+                "credits": 610
               },
               {
                 "system": "sensors",
-                "credits": 575
+                "credits": 540
               },
               {
                 "system": "medbay",
-                "credits": 629
+                "credits": 594
               }
             ],
             "drydock": {
@@ -171565,7 +171576,7 @@
             "usefulSessionComplete": true,
             "fuelStarved": false,
             "endWallet": {
-              "credits": 19,
+              "credits": 54,
               "fuel": 11,
               "gems": 120,
               "medals": 961,
@@ -171593,7 +171604,7 @@
             "reputation": 483
           },
           "sinks": {
-            "credits": 13534,
+            "credits": 13499,
             "fuel": 143,
             "gems": 0,
             "medals": 0,
@@ -171687,7 +171698,7 @@
               "reputation": 0
             },
             "hull-repair": {
-              "credits": 945,
+              "credits": 910,
               "fuel": 0,
               "gems": 0,
               "medals": 0,
@@ -171709,7 +171720,7 @@
             }
           },
           "net": {
-            "credits": -61,
+            "credits": -26,
             "fuel": 3,
             "gems": 120,
             "medals": 961,
@@ -172275,6 +172286,8 @@
               "id": "bait_freighter",
               "choice": "terms"
             },
+            "downed": 1,
+            "rally": "free",
             "beats": 17,
             "threat": 1.2,
             "success": true,
@@ -172355,7 +172368,7 @@
             "losses": 3,
             "nearMissLosses": 0,
             "rallies": {
-              "free": 0,
+              "free": 1,
               "paid": 0
             },
             "bestDayDamage": 160
@@ -172475,11 +172488,11 @@
             "endAt": 1792328400000
           },
           {
-            "day": 29,
+            "day": 28,
             "system": "shields",
             "targetLevel": 6,
-            "startedAt": 1792497600000,
-            "endAt": 1792504800000
+            "startedAt": 1792411200000,
+            "endAt": 1792418400000
           },
           {
             "day": 30,
@@ -172490,7 +172503,7 @@
           }
         ],
         "finalWallet": {
-          "credits": 19,
+          "credits": 54,
           "fuel": 11,
           "gems": 120,
           "medals": 961,
@@ -172593,7 +172606,7 @@
           "completedContracts": 50,
           "completedExpeditions": 26,
           "rallies": {
-            "free": 0,
+            "free": 1,
             "paid": 0,
             "declined": 0
           },
@@ -172609,7 +172622,7 @@
           "wallsBroken": 3,
           "upgradeLevels": 34,
           "drydockBusyDays": 3,
-          "hullRepairCredits": 945,
+          "hullRepairCredits": 910,
           "exploreJumps": 36,
           "exploreEvents": 28,
           "exploreFights": 5,
@@ -239012,7 +239025,7 @@
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 19,
+                  "revision": 20,
                   "acceptanceId": "contract_2026-10-02_risky:15"
                 },
                 "ok": true
@@ -239132,7 +239145,7 @@
                 "id": "mayday_echo",
                 "choice": "answer"
               },
-              "beats": 17,
+              "beats": 18,
               "threat": 1.6
             },
             "expedition": {
@@ -239159,7 +239172,7 @@
             "buildCompleted": null,
             "gemSpends": [],
             "repairs": [],
-            "fightSteps": 19,
+            "fightSteps": 20,
             "explore": {
               "jumps": [],
               "stopped": "hull_low",
@@ -297436,7 +297449,7 @@
                 "action": "contract-claim",
                 "fields": {
                   "action": "claim",
-                  "revision": 19,
+                  "revision": 20,
                   "acceptanceId": "contract_2026-10-02_risky:23"
                 },
                 "ok": true
@@ -297566,7 +297579,7 @@
                 "id": "bait_freighter",
                 "choice": "hunt"
               },
-              "beats": 17,
+              "beats": 18,
               "threat": 1.6
             },
             "expedition": {
@@ -297607,7 +297620,7 @@
             "buildCompleted": null,
             "gemSpends": [],
             "repairs": [],
-            "fightSteps": 19,
+            "fightSteps": 20,
             "explore": {
               "jumps": [],
               "stopped": "hull_low",
@@ -306168,7 +306181,7 @@
           "completedContracts": 110,
           "completedExpeditions": 21,
           "rallies": {
-            "free": 0,
+            "free": 1,
             "paid": 0,
             "declined": 0
           },
@@ -306177,7 +306190,7 @@
           "wallDaysToBreak": null,
           "wallAttempts": 79,
           "wallAttemptsPerAttemptDay": 2.82,
-          "wallNearMissLosses": 0,
+          "wallNearMissLosses": 1,
           "gemsAtWall": 0,
           "gemsEarned": 60,
           "gemsSpent": 0,
@@ -306209,12 +306222,12 @@
             "daysOnBoard": 28,
             "daysToBreak": null,
             "losses": 79,
-            "nearMissLosses": 0,
+            "nearMissLosses": 1,
             "rallies": {
-              "free": 0,
+              "free": 1,
               "paid": 0
             },
-            "bestDayDamage": 44
+            "bestDayDamage": 54
           }
         },
         "gems": {
@@ -306906,7 +306919,7 @@
           "wallsBroken": 0,
           "upgradeLevels": 20,
           "drydockBusyDays": 0,
-          "hullRepairCredits": 4025,
+          "hullRepairCredits": 4095,
           "exploreJumps": 0,
           "exploreEvents": 0,
           "exploreFights": 0,
@@ -306930,13 +306943,13 @@
             "attemptsPerAttemptDay": 2.86,
             "daysOnBoard": 28,
             "daysToBreak": null,
-            "losses": 79,
+            "losses": 78,
             "nearMissLosses": 0,
             "rallies": {
               "free": 1,
               "paid": 0
             },
-            "bestDayDamage": 59
+            "bestDayDamage": 95
           }
         },
         "gems": {
@@ -307028,11 +307041,11 @@
           }
         ],
         "finalWallet": {
-          "credits": 181,
+          "credits": 205,
           "fuel": 4,
           "gems": 60,
-          "medals": 553,
-          "reputation": 270
+          "medals": 562,
+          "reputation": 275
         },
         "systemLevels": {
           "engines": 5,
@@ -307691,7 +307704,7 @@
               "free": 0,
               "paid": 0
             },
-            "bestDayDamage": 78
+            "bestDayDamage": 82
           }
         },
         "gems": {

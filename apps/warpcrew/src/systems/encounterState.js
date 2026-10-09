@@ -159,6 +159,24 @@ export function fightingCrew(player, now = trustedNow(), { kits = false } = {}) 
   }));
 }
 
+/**
+ * A kit fighter must be the crew member they claim to be: same merc and role, and an Ascension tier
+ * they have reached (audit 2026-10-09 #2). Grade is not compared with today's power: power is
+ * recomputed on load, and a fight must never be thrown away because a formula moved (grade stays
+ * bounded 0-1 by the fight validator). A fighter who has since left the roster cannot be checked
+ * and is let through; fights lock the crew tabs anyway.
+ */
+export function kitCrewMatchesRoster(player, encounter) {
+  if (encounter?.version !== FTL_VERSION || !Array.isArray(encounter.crew)) return true;
+  const roster = [...(player?.crew || []), ...(player?.reserve || [])];
+  return encounter.crew.every(member => {
+    if (typeof member.kit !== 'string') return true;
+    const own = roster.find(c => c.instanceId === member.id);
+    if (!own) return true;
+    return own.templateId === member.kit && own.role === member.role && (member.tier || 0) <= (own.ascension || 0);
+  });
+}
+
 /** Abilities cast themselves unless the captain switched Auto off. */
 export const autoAbilities = player => player?.flags?.manualAbilities !== true;
 
@@ -296,7 +314,8 @@ export function validEncounterBody(encounter) {
   return true;
 }
 
-function validSnapshot(encounter, contract, tutorial) {
+function validSnapshot(encounter, contract, tutorial, player = null) {
+  if (player && !kitCrewMatchesRoster(player, encounter)) return false;
   // New-mode entry paths are distress Launch (one route action) and any
   // route choice into a confrontation (Launch plus choice). Every later contract revision is a beat.
   const entryRevision = contract.profile === 'distress' ? 1
@@ -332,7 +351,7 @@ export function normalizeEncounterState(player) {
   if (!contract && player?.activeTravelFight) return player;
   if (!contract) return encounter ? { ...player, activeEncounter: null } : player;
   if (!encounter && contract.encounterMode !== 'crew') return player;
-  if (validSnapshot(encounter, contract, player.tutorial)) return player;
+  if (validSnapshot(encounter, contract, player.tutorial, player)) return player;
   const tutorial = player.tutorial;
   const recoveringGuidedDistress = ((contract.profile === 'distress' && tutorial?.script === 4)
     || tutorial?.script === 5) && tutorial.phase === 'fight' && !tutorial.completed;
@@ -397,7 +416,7 @@ export function stepEncounter(player, encounter, order = null, now = trustedNow(
 export function applyEncounterAction(player, { acceptanceId, revision, order = null } = {}, now = trustedNow()) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
-  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial, player)) {
     return { ok: false, reason: 'invalid_encounter_state', player };
   }
   if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
@@ -421,7 +440,7 @@ export function applyEncounterAction(player, { acceptanceId, revision, order = n
 export function applyEncounterCommand(player, { acceptanceId, revision, command } = {}) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
-  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial, player)) {
     return { ok: false, reason: 'invalid_encounter_state', player };
   }
   if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {
@@ -435,7 +454,7 @@ export function applyEncounterCommand(player, { acceptanceId, revision, command 
 export function recoverEncounter(player, { acceptanceId, revision } = {}) {
   const contract = player?.activeContract;
   const encounter = player?.activeEncounter;
-  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial)) {
+  if (!contract || contract.encounterMode !== 'crew' || !encounter || !validSnapshot(encounter, contract, player.tutorial, player)) {
     return { ok: false, reason: 'invalid_encounter_state', player };
   }
   if (contract.acceptanceId !== acceptanceId || encounter.acceptanceId !== acceptanceId || encounter.revision !== Number(revision)) {

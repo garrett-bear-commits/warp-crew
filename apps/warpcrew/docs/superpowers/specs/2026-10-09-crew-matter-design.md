@@ -41,7 +41,7 @@ Each fighting crew member enters the fight with:
 |---|---|---|
 | `critChance` (gunners) | turned into pre-fight power only | each player shot can crit: ×1.5 hull damage, +10 room damage, a "CRIT" pop |
 | `repairBonus` (engineers) | partly | repair and extinguish speed × (1 + bonus) |
-| `assistCharge` (medics) | old assist path only | every crew member's ability charges faster by this much |
+| `assistCharge` (medics) | old assist path only | every crew member's ability charges × (1 + 2 × bonus) |
 | `tradeCredits` (traders) | trade payouts | fight salvage on a win also gets + this much |
 | `expeditionSuccess` (scouts) | away teams | enemy evasion − (bonus × 100) points |
 | `pirateResist` (security) | pre-fight power | damage to boarders × (1 + bonus × 3); boarder sabotage × (1 − bonus) |

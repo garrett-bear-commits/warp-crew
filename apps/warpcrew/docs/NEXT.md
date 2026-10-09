@@ -10,10 +10,67 @@ Last updated: 2026-10-09
 - `claude/hud-overhaul` is the frozen pre-port layout; other `claude/*` and `codex/*` branches are merged history.
 - **No real players yet:** Garrett is the only playtester, so the cut-over starts from a fresh database (no data migration).
 
-## 2026-10-09 deep dive: proposal awaiting Garrett
+## 2026-10-09 deep dive and the "kick-ass" overhaul (branch `claude/blissful-ptolemy-wxopwr`)
 
-- [ ] Garrett: answer the questions at the end of [the deep dive and roadmap proposal](design/21-deep-dive-2026-10-09.md) (fairness, fight style, art budget, music, Jest rules, social, universe, timing, staging now or later).
-- [ ] Phase 0 quick fixes once approved: 8 portraits with a baked pink background (Tink, Brink, Greaves, Kal, Moth, NUB-4, Oso, Yara), captain templates in the gacha Common pool, developer text shown to players, stale Brace/Burn/Board fight tells, split UTC/local resets, Warp Crew suites in CI.
+Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) on 2026-10-09. His answers:
+- fairness rule kept (open to recs);
+- real-time fights plus an auto-win for cleared fights;
+- art: high-quality stylized retro pixel art, mockup first (one ship, one portrait), using his **personal** Flora account (never textclub), GPT Image 2.5 at low resolution;
+- music: Creative Commons space synth;
+- Jest: gacha allowed (18+), show odds, no rewarded ads, one text notification a day, in-app notices are fine;
+- social later if Jest retains and monetizes;
+- universe: open to suggestions;
+- no launch date;
+- staging (stage 4) waits.
+
+**Done (pushed or local, see git log):**
+
+- [x] Step 0:
+  - re-keyed the 8 pink portraits (regression test);
+  - captains out of the hire pool;
+  - one game day at local midnight (DST-safe);
+  - developer text out of player copy, and the roadmap board removed;
+  - Warp Crew suites and the QA build in CI, with a stale-evidence gate.
+- [x] [Universe proposal](design/22-universe-proposal.md) and the [art mockup brief](art/2026-10-09-style-mockup-brief.md).
+- [x] [Crew-matter design](superpowers/specs/2026-10-09-crew-matter-design.md), step 1 (engine):
+  - kits for all 50 mercs;
+  - real passives;
+  - Auto;
+  - tougher kit-fight enemies;
+  - the validator.
+- [x] Step 2 (fight UI): move buttons, the Auto toggle, the cast banner, CRIT pops.
+- [x] Step 4: level caps by stars, shards, Ascension.
+- [x] Step 5:
+  - the Between Jobs featured banner, rotating every 14 days, with a 50/50 and a guarantee;
+  - Contract Marks;
+  - the odds sheet;
+  - a rarity cap (Legendary or better at most 3%);
+  - seeded hires;
+  - the pod reveal and the 10-hire grid;
+  - a reserve of 24 that never sells a rarer hire.
+- [x] Independent review of the kit engine: 10 findings, all fixed under `test/crew_kits_audit.test.mjs` ([report](audits/2026-10-09-crew-kits-review.md)).
+- [x] Dossier: the move, quote and bio are shown, and the squeezed header is fixed.
+
+**Next:**
+
+- [ ] Garrett:
+  - enable the Flora connector for the session that runs the mockup;
+  - add `media.flora.ai` and the music hosts (`opengameart.org`, `freemusicarchive.org`, `files.freemusicarchive.org`, `incompetech.com`, `archive.org`) to the environment's allowed domains;
+  - react to the universe proposal;
+  - play the QA build: fights with moves, the hire banner and reveal.
+- [ ] Step 6, families: two or four of a family aboard give a bonus (`src/data/families.js` drafted).
+- [ ] Step 3, balance:
+  - win odds simulated from the real fight on contract cards;
+  - wall pools for crews that still stall (some simulated captains now break Veil on arrival, others never);
+  - retire the 82% pull-up for kit fights.
+- [ ] Phase 2:
+  - the universal reward reveal for purchases and chests;
+  - a shop redesign;
+  - a music player;
+  - idle income;
+  - a 28-day login calendar;
+  - daily and weekly chests;
+  - achievements.
 
 ## 2026-10-05 FTL-lite fights, weapons, sound, Explore
 

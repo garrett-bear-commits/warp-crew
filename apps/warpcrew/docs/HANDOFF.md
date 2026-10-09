@@ -11,6 +11,21 @@ foundation: `main` contains the game in `apps/warpcrew/` and the core around it.
 run through the core client and server (stages 1–3 of the port, all audited). Nothing is live: there are no
 players, real-money minting is off, and the next step is a staging server plus a phone test inside Jest.
 
+## 2026-10-09: the overhaul (read first)
+
+After a deep dive Garrett approved a plan to make Warp Crew "AAA": [deep dive](design/21-deep-dive-2026-10-09.md),
+[crew-matter design](superpowers/specs/2026-10-09-crew-matter-design.md), [universe proposal](design/22-universe-proposal.md),
+[art mockup brief](art/2026-10-09-style-mockup-brief.md). Work is on `claude/blissful-ptolemy-wxopwr` (from `main`).
+
+Built so far:
+- Every merc has a signature move in fights, plus real passives and Auto.
+- Hiring has a featured banner with a 50/50, Contract Marks, in-game odds, a rarity cap, seeded hires and a pod
+  reveal.
+- Level caps, shards and Ascension.
+- The step-0 fixes.
+
+The live checklist is in [NEXT.md](NEXT.md). Node 24 is needed (`/opt/nvm`: `nvm use 24` in cloud sessions).
+
 ## Branches and builds
 
 | Ref | What |

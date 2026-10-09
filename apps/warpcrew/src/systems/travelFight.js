@@ -16,7 +16,7 @@ import { ENCOUNTERS_V1, encounterById } from './combat.js';
 import { spendFuel } from './fuel.js';
 import { grant } from './economy.js';
 import { resolveSimulatedCombatPayout, CURRENCIES } from './contractRewards.js';
-import { contractThreat, validEncounterBody, stepEncounter, startCrewFight, fightHullLoss, fightCrewLaunched } from './encounterState.js';
+import { contractThreat, validEncounterBody, stepEncounter, startCrewFight, fightHullLoss, fightCrewLaunched, kitCrewMatchesRoster } from './encounterState.js';
 import { applyFtlCommand, FTL_VERSION } from './ftlCombat.js';
 
 export const TRAVEL_FIGHT_VERSION = 1;
@@ -64,7 +64,8 @@ export function validTravelFight(player) {
     || encounter.seed !== fight.seed || fight.revision !== encounter.beat
     || !Number.isFinite(encounter.enemy?.threat) || Object.hasOwn(encounter.enemy, 'startHull')
     || !validEncounterBody(encounter)
-    || (encounter.version === FTL_VERSION && !fightCrewLaunched(encounter, fight.participantIds))) return false;
+    || (encounter.version === FTL_VERSION && !fightCrewLaunched(encounter, fight.participantIds))
+    || !kitCrewMatchesRoster(player, encounter)) return false;
   if (fight.stage === 'return') {
     return validResult(fight.result)
       && ((encounter.result === 'win' && fight.result.success === true) || (encounter.result === 'loss' && fight.result.success === false))
