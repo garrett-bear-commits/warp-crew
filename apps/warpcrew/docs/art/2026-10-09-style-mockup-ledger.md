@@ -44,6 +44,19 @@ Notes for production:
 - The ships' grids are weak (edge scores about 1.03 for A and B against 1.1–1.35 for the rest), so their snap
   changes more pixels than the portraits'. C has the truest grid.
 
+## Zoom check (local, free)
+
+Garrett picked **C for portraits** and asked which ship holds up best fully zoomed in and fully zoomed out. Each
+snapped ship was rendered on a 390×726-point phone ship view at 3× (iPhone pixels), at the same on-screen sizes as
+today's Sparrow at the game's camera limits (measured: about 252 points wide zoomed out, 729 zoomed in), with
+`image-rendering: pixelated`: `zoom-sheet-ships.png` (whole screens) and `zoom-detail-ships.png` (actual pixels
+zoomed in). Zoomed in, one art pixel is about 2 points (6–7 iPhone pixels) for every variant.
+
+- Zoomed out: C reads best (strongest contrast, the orange trim and engines carry the silhouette, each room is
+  its own colour block); A is clear but darker; B's rooms blend into brown.
+- Zoomed in: C is the cleanest (flat clusters, hard outlines, props readable at a glance); A is good but mottled
+  where a soft source was snapped; B's texture turns into speckle.
+
 ## Round 2
 
 Not started: waiting for Garrett's pick. Up to 4 more images; cap 10 images and about $5 in all.
