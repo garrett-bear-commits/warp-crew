@@ -22,6 +22,10 @@ Built so far:
 - Hiring has a featured banner with a 50/50, Contract Marks, in-game odds, a rarity cap, seeded hires and a pod
   reveal.
 - Level caps, shards and Ascension.
+- Crew families (two or four aboard give a fight bonus).
+- Music: four CC0 tracks, one per scene, with their own switch (`src/ui/music.js`, `src/data/musicManifest.js`,
+  built by `scripts/build-music.mjs`).
+- Art mockup round 1 (Flora, $0.33), waiting for Garrett's pick: [ledger](art/2026-10-09-style-mockup-ledger.md).
 - The step-0 fixes.
 
 The live checklist is in [NEXT.md](NEXT.md). Node 24 is needed (`/opt/nvm`: `nvm use 24` in cloud sessions).

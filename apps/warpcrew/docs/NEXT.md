@@ -50,15 +50,21 @@ Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) 
   - a reserve of 24 that never sells a rarer hire.
 - [x] Independent review of the kit engine: 10 findings, all fixed under `test/crew_kits_audit.test.mjs` ([report](audits/2026-10-09-crew-kits-review.md)).
 - [x] Dossier: the move, quote and bio are shown, and the squeezed header is fixed.
+- [x] Step 6, families: two or four of a family aboard give a fight bonus (`src/data/families.js`).
+- [x] Art mockup round 1 on Garrett's personal Flora account ($0.33): three directions each for Kira Nyx and the
+  Sparrow, snapped to a real pixel grid by `scripts/pixel-snap.py` ([ledger](art/2026-10-09-style-mockup-ledger.md),
+  contact sheets in `art/outputs/mockup-2026-10-09/`).
+- [x] Music: four CC0 space-synth tracks (MintoDog, Synth-thetic), one per scene (ship, star map, fight, Siege
+  wall), crossfading, with a Music switch in Log > Settings ([credits](../public/audio/music/LICENSE.md)).
 
 **Next:**
 
 - [ ] Garrett:
-  - enable the Flora connector for the session that runs the mockup;
-  - add `media.flora.ai` and the music hosts (`opengameart.org`, `freemusicarchive.org`, `files.freemusicarchive.org`, `incompetech.com`, `archive.org`) to the environment's allowed domains;
+  - pick an art direction from the contact sheets (A HD pixel, B painted pixel, C bold arcade; mixing is fine);
+  - listen to the music in the QA build (Log > Settings has the switch);
   - react to the universe proposal;
-  - play the QA build: fights with moves, the hire banner and reveal.
-- [ ] Step 6, families: two or four of a family aboard give a bonus (`src/data/families.js` drafted).
+  - play the QA build: fights with moves, the hire banner and reveal, families.
+- [ ] Art round 2 (after the pick): up to 4 images in the chosen direction; cap 10 images and about $5 in all.
 - [ ] Step 3, balance:
   - win odds simulated from the real fight on contract cards;
   - wall pools for crews that still stall (some simulated captains now break Veil on arrival, others never);
@@ -66,7 +72,6 @@ Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) 
 - [ ] Phase 2:
   - the universal reward reveal for purchases and chests;
   - a shop redesign;
-  - a music player;
   - idle income;
   - a 28-day login calendar;
   - daily and weekly chests;

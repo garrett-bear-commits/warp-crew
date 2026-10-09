@@ -50,6 +50,8 @@ import { playCombat, playEncounterBeat, isBattlePlaying } from './ui/combatView.
 import { createGuidedBeatScheduler } from './ui/guidedBeatScheduler.js';
 import { sfx, unlockSfx } from './ui/juice.js';
 import { toggleSfxMuted, preloadSfx } from './ui/sound.js';
+import { unlockMusic, setMusicScene, toggleMusicMuted } from './ui/music.js';
+import { musicScene } from './data/musicManifest.js';
 import { startStageLoop } from './ui/stageLoop.js';
 import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
@@ -496,6 +498,7 @@ function render() {
     if (prepareSession(tickCrewStatus(player, now), now) !== player && wc.prepare()) player = wc.state();
   }
   const renderNow = trustedNow();
+  setMusicScene(musicScene(player, tab));
   const models = sessionModels(player, { ...sessionUi, pendingCombat }, renderNow);
   sessionUi.contractPreviews = models.contractPreviews;
   renderApp(app, {
@@ -678,7 +681,7 @@ function res0Blocked(sku, now = trustedNow()) {
 }
 
 // Interface sounds for taps. Fight orders and travel make their own sounds from their effects.
-const QUIET_TAP_ACTS = new Set(['encounter-advance', 'encounter-order', 'sfx-toggle', 'travel-to', 'map-select']);
+const QUIET_TAP_ACTS = new Set(['encounter-advance', 'encounter-order', 'sfx-toggle', 'music-toggle', 'travel-to', 'map-select']);
 const CONFIRM_ACTS = new Set(['contract-accept', 'exp-launch', 'exp-start', 'event-choose', 'ship-upgrade', 'level-crew',
   'daily-improve', 'captain-choose', 'tutorial-fight-start', 'combat-order', 'contract-order']);
 const COIN_ACTS = new Set(['contract-claim', 'travel-claim', 'refuel-gems']);
@@ -686,6 +689,7 @@ const COIN_ACTS = new Set(['contract-claim', 'travel-claim', 'refuel-gems']);
 /** Actions from the player's own taps: sound, then the shared handler. */
 async function userAction(act, data = {}) {
   unlockSfx();
+  unlockMusic();
   if (act === 'map-select') sfx('beacon');
   else if (!QUIET_TAP_ACTS.has(act)) sfx(CONFIRM_ACTS.has(act) ? 'confirm' : 'tap');
   const result = await handleAction(act, data);
@@ -730,6 +734,12 @@ async function handleAction(act, data = {}) {
   if (act === 'sfx-toggle') {
     const muted = toggleSfxMuted();
     if (!muted) sfx('tap');
+    render();
+    return;
+  }
+  if (act === 'music-toggle') {
+    toggleMusicMuted();
+    sfx('tap');
     render();
     return;
   }
@@ -1237,6 +1247,8 @@ export function mountWarpCrew(rootEl) {
   startStageLoop();
   // Sound files load after first paint and never hold up boot.
   setTimeout(() => { if (mountId === gen) preloadSfx(); }, 1500);
+  // Audio may only start inside a gesture: any tap counts, tabs and splash included.
+  for (const type of ['click', 'touchend', 'keydown']) rootEl?.addEventListener?.(type, () => { unlockSfx(); unlockMusic(); }, { passive: true });
   boot().catch((err) => {
     if (mountId !== gen) return;
     console.error(err);
