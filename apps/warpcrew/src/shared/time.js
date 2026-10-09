@@ -14,3 +14,17 @@ export function useClock(next) {
 export function trustedNow() {
   return clock ? clock.now() : Date.now();
 }
+
+/**
+ * The game day: the player's local calendar date (YYYY-MM-DD). Every daily reset uses it (login
+ * streak, free hire, Commission perks, contract board, daily plan, siege damage) so they all turn
+ * over together at local midnight.
+ */
+export function localDayKey(now = trustedNow(), offsetDays = 0) {
+  const d = new Date(now);
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + offsetDays);
+  const y = day.getFullYear();
+  const m = String(day.getMonth() + 1).padStart(2, '0');
+  const dd = String(day.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}

@@ -7,10 +7,14 @@ import {
   catalogById,
   rankUpCost,
   medalLevelCostFor,
+  STARTER_CAPTAINS,
 } from '../data/crewRoster.js';
 import { sellContract, reputationRank, canAfford, pay, grant } from './economy.js';
 
 export const RESERVE_CAP = 8;
+
+/** Hires roll from every merc except the starter captains: a captain is chosen once, never pulled. */
+export const RECRUIT_POOL = CREW_CATALOG.filter((c) => !STARTER_CAPTAINS.includes(c.id));
 export const LUCK_CAP = 15;
 
 export function defaultGacha() {
@@ -109,8 +113,8 @@ export function pullMerc({
   const weights = rarityWeights(reputation, luck);
   let rarity = guaranteedRarity || applyPity(null, gacha, weights, rng);
   if (minRarity && rarityRank(rarity) < rarityRank(minRarity)) rarity = minRarity;
-  const pool = CREW_CATALOG.filter((c) => c.rarity === rarity);
-  const fallback = CREW_CATALOG.filter((c) => c.rarity === 'common');
+  const pool = RECRUIT_POOL.filter((c) => c.rarity === rarity);
+  const fallback = RECRUIT_POOL.filter((c) => c.rarity === 'common');
   const list = pool.length ? pool : fallback;
   const template = list[Math.min(list.length - 1, Math.floor(rng() * list.length))];
   const instance = createCrewInstance(template.id, { rng });

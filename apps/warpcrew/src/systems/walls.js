@@ -4,7 +4,7 @@
  * guided-flow captains. Each attempt fights up to 42 hull of the flagship;
  * damage holds until the local daily reset, so coming back wears the wall down.
  */
-import { trustedNow } from '../shared/time.js';
+import { trustedNow, localDayKey } from '../shared/time.js';
 import { NODES, visibleNodes, careerDay } from '../data/sectors.js';
 import { encounterById } from './combat.js';
 
@@ -20,10 +20,7 @@ export const WALL_BY_ID = Object.fromEntries(WALLS.map(wall => [wall.id, wall]))
 export const WALL_THREAT_FLOOR = 1.2;
 export const SIEGE_SEGMENT = 42;
 
-const dayKey = now => {
-  const d = new Date(now);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+const dayKey = now => localDayKey(now);
 
 function hashSeed(value) {
   let hash = 2166136261;

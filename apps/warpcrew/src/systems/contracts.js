@@ -1,7 +1,7 @@
 // @ts-nocheck
 /** Deterministic, saved daily Contract Board. Route mutations belong elsewhere. */
 
-import { trustedNow } from '../shared/time.js';
+import { trustedNow, localDayKey } from '../shared/time.js';
 import { visibleNodes, NODES, STORY_BEATS, gateBlockedByWall } from '../data/sectors.js';
 import { CONTRACT_PROFILES, combatWeight, qualifiesForProfile, storySalvageWeight } from '../data/contracts.js';
 import { encounterById, previewCombatOrder, crewPower, rubberBandPower } from './combat.js';
@@ -19,11 +19,7 @@ import { recordSiege } from './walls.js';
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
 export function contractDayKey(now = trustedNow()) {
-  const d = new Date(now);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return localDayKey(now);
 }
 
 export function careerBand(player) {

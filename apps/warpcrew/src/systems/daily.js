@@ -1,17 +1,16 @@
 // @ts-nocheck
 /** Calendar-day helpers for login streak + daily free gacha reset */
 
-import { trustedNow } from '../shared/time.js';
+import { trustedNow, localDayKey } from '../shared/time.js';
+
+/** The game day (local calendar date); see localDayKey. */
 export function dayKey(now = trustedNow()) {
-  const d = new Date(now);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return localDayKey(now);
 }
 
+/** The calendar day before today, by date rather than 24 hours back (safe across DST). */
 export function yesterdayKey(now = trustedNow()) {
-  return dayKey(now - 86400000);
+  return localDayKey(now, -1);
 }
 
 /**

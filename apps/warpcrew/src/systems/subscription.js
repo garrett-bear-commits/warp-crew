@@ -116,7 +116,7 @@ export function applyEntitlements(player, subscriptions, now = trustedNow(), { i
   return syncCommission({ ...player, commission }, now);
 }
 
-/** Once per UTC day while active: gems and a drydock finish. */
+/** Once per game day (local midnight) while active: gems and a drydock finish. */
 export function claimCommissionDaily(player, now = trustedNow()) {
   if (!commissionActive(player, now)) return { player, granted: null };
   const today = dayKey(now);
