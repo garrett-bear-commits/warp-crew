@@ -28,7 +28,7 @@ export const ART_VERTICAL_SLICE = Object.freeze({
   tink: Object.freeze({
     path: '/art/pixel/crew/tink.png', fallback: '/art/pixel/crew/bolt.png',
     width: 256, height: 256,
-    sha256: 'd9c57bc9dc7e13b6a648986c1af55e628f5dbebd6c9f6f930744c0623c7d80cf',
+    sha256: '962d24952ba48fb91738482f7b5a6aa1bb7dc4b79df6361a58d8e2acf09c15a5',
     status: 'provisional',
   }),
   nemi: Object.freeze({
