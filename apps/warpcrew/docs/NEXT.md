@@ -1,7 +1,39 @@
 # Warp Crew next-work checklist
 
-Last updated: 2026-09-26
-Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
+Last updated: 2026-10-09
+
+## Where things are (2026-10-09)
+
+- **Playable QA build:** branch `claude/hud-overhaul` (pushed), published to [GitHub Pages QA](https://garrett-bear-commits.github.io/warp-crew/) (`gh-pages@dc297d9`, source `adacae2`). Offline, mock purchases.
+- **game-core port:** branch `claude/game-core-port` (pushed, `328630f`). The game lives in `apps/warpcrew/`, the core around it. Plan and status: `apps/warpcrew/docs/game-core-port.md` on that branch. Stages 1 (import), 2 (server) and 3 (client) are done and Luna-audited; stage 4 (cut-over) is next.
+- **No real players yet:** Garrett is the only playtester, so the cut-over starts from a fresh database (no data migration).
+- `main` is behind both branches; nothing merges to `main` without Garrett's approval.
+
+## 2026-10-05 FTL-lite fights, weapons, sound, Explore — on `claude/hud-overhaul`
+
+- [x] FTL-lite real-time crew fights (rooms, shields, fires, crew moves, boarders, Overcharge/Board/Rally), guided first fight, fight camera and off-screen fire alerts.
+- [x] Sparrow v4 ship art with furniture pathing; six enemy faction cutaways with enemy crew figures.
+- [x] Drydock upgrades change fights (shield layers at Shields 6/10, weapon slots at Weapons 4/8, charge, dodge, aim). Weapons-room armory: Ion Blast 650cr, Leto Missile 800cr, Pike Beam 950cr. Flagship and enemy tiers. Luna audit fixed.
+- [x] Kenney CC0 sound effects (35 sounds, 222 KB) with a Sound toggle in Log > Settings.
+- [x] Drag crew onto rooms; one-time Explore map nudge for new captains; the 30-day simulator travels the map.
+- [x] Balance: Explore events pay 60% credits; first Siege wall pool 100 (falls day 3–4 for every simulated captain).
+- [x] [Jest console product list](jest-console-products.md) prepared (11 packs + subscription, staging game only).
+- [ ] Garrett: listen to the sounds on the QA build (enemy laser vs ours, extinguisher hiss, engine drone on launch/jump, mix levels).
+- [ ] Garrett: phone play of the QA build: fights, armory, drag, Explore nudge.
+- [ ] Ambitious simulated captains still earn ~48% of credits from Explore; trim further if real play agrees.
+- [ ] Simulated captains don't buy weapons yet, so balance evidence ignores the armory; add once weapon prices settle.
+- [ ] Not built: `wc_drydock_2`, welcome-back bundle, sale SKUs; client refund (adjustment) handling.
+
+## Next: staging and cut-over (game-core port stage 4)
+
+- [ ] Garrett: create the 12 products on the **staging** Jest game from [jest-console-products.md](jest-console-products.md); send a screenshot to check.
+- [ ] Garrett: paste `JEST_PLAYER_SECRET` into a **new Railway staging service** for the core server (`apps/server`, `GAME_CONFIG=warpcrew`, `GAME_ID`=staging Jest game id, fresh Postgres). Never paste secrets in chat.
+- [ ] Garrett: approve `mintSandbox: 'on'` on staging only (recommended) so sandbox purchases grant there; production stays off.
+- [ ] Claude: wire the staging service, build the client with `VITE_WARPCREW_SERVER` pointing at it, add a startup guard refusing sandbox minting in production.
+- [ ] Garrett: phone session inside Jest staging: sign in, play, reload, second device (deeper save wins), buy a gem pack and the starter kit (second buy refused), start and cancel the subscription trial. This also confirms Jest receipts carry `price`/`currency` and subscription lists carry `iat`.
+- [ ] After staging passes: merge `claude/game-core-port` (with Garrett's approval), make it the QA build, delete `apps/warpcrew/server`, retire `claude/hud-overhaul`.
+- [ ] Real-money sales (`mintPremium: 'on'`) only at launch, with Garrett's approval.
+- [ ] Other game-core checkouts (Cairndeep, Wild West Demons) still share the `foundation-postgres` container on 55432; Warp Crew uses `warpcrew-postgres` on 55442.
 
 ## 2026-09-26 HUD overhaul + crew rig — local branch, not published
 
@@ -16,15 +48,15 @@ Reviewed gameplay baseline: `9b9585ea794120696913216a2763c563a4ba7753`
 - [x] Garrett approved the [combat walls, retention and boarding](superpowers/specs/2026-09-27-combat-walls-retention-design.md) proposals (2026-09-27).
 - [x] Enemy boarders (Scrapper Gang, Ice Raiders, Corsair King; unlock after 8 contracts): warning, landing, sabotage, Repel boarders with a walking defender and red raider sprites. Repelled boarders are win-rate neutral; ignored ones cost ~25 points.
 - [x] One-time New Captain's Kit: first loss or third post-tutorial contract, 48 h real window, pop-up then Shop card, truthful live-price saving. Contents 250 gems / 10 fuel / 50 medals / 800 credits pending sign-off.
-- [ ] Garrett: configure `wc_starter`, `wc_gems_100`, `wc_gems_500`, `wc_fuel_5` in the Jest Developer Console. The connected SDK returns only `gems_100`, `gems_500`, `premium_pass` (prices look like cents), so no game SKU has a Jest price today.
+- [x] Superseded: the SKU list changed; see [jest-console-products.md](jest-console-products.md).
 - [x] Siege walls: five sector flagships gate the next sector for guided-flow captains; per-attempt 42-hull segments of a 100–240 pool at threat ≥1.2; damage holds until local daily reset; takedown pays double + 20 gems and opens the gate.
 - [x] Timed drydock upgrades above level 3 (30m → 8h cap), gem skip (~10/h, min 5), completion notification.
 - [x] Product prices handled as Jest cents.
 - [x] [Monetization plan](superpowers/specs/2026-09-27-monetization-plan.md) approved; step 2 built: gem ladder SKUs, one-time starter kit + wall packs, Rally (first free, then 60 gems), gem fuel refill (50 → 5), drydock tokens.
-- [ ] Next: verified purchase authority (idempotent server grants) and cloud save — required before any live sale. Then create all SKUs in the Jest Developer Console (Chrome).
-- [ ] Later: subscription (7-day trial → $9.99/mo, win-back $5.99/mo × 2), `wc_drydock_2`, welcome-back bundle, sale SKUs. Economy simulator should model wall attempts and gem sinks.
+- [x] Verified purchase authority (idempotent server grants) and cloud save — built (legacy server, now ported to game-core). Creating the SKUs in the Jest console is in "Next: staging and cut-over" above.
+- [x] Subscription built (7-day trial → $9.99/mo, cancel-save $5.99/mo × 2); the simulator models wall attempts and gem sinks. Still not built: `wc_drydock_2`, welcome-back bundle, sale SKUs.
 - [ ] Previously: decide the remaining proposals in [combat walls, retention and boarding](superpowers/specs/2026-09-27-combat-walls-retention-design.md) (daily rhythm, Siege walls, timed upgrades, enemy boarders next, purchase authority first). Explore-map travel fights are still on the old order menu.
-- [ ] Publish to Pages QA only after Garrett's go-ahead. Branch \`claude/hud-overhaul\` is local and unpushed.
+- [x] Pages QA publishing approved by Garrett; `claude/hud-overhaul` is pushed.
 
 ## 2026-09-25 QA save restart — Pages QA live
 
