@@ -120,7 +120,7 @@ button.hud-chip {
 .hud-chip img {
   width: 18px;
   height: 18px;
-  image-rendering: pixelated;
+  image-rendering: auto;
   flex: 0 0 auto;
   opacity: 0.9;
 }
@@ -580,7 +580,7 @@ button.hud-chip {
   height: 18px;
   vertical-align: -3px;
   margin-right: 4px;
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 
 button {
@@ -796,7 +796,7 @@ button:focus-visible {
   width: 32px;
   height: 32px;
   align-self: center;
-  image-rendering: pixelated;
+  image-rendering: auto;
   object-fit: contain;
   border-radius: 50%;
   background: #07090e;
@@ -865,7 +865,7 @@ button:focus-visible {
   width: 44px;
   height: 44px;
   object-fit: contain;
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 .hull-buy {
   display: flex;
@@ -1062,9 +1062,10 @@ button:focus-visible {
 .week-row.done .mark { color: var(--good); }
 .week-row .prog { margin-left: auto; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 
+/* The style C sprites and icons are always drawn smaller than their art: shrinking smoothly keeps their detail,
+   where pixelated drops whole pixel rows. */
 .ship-hull, .ship-thumb, .swarm-art, .planet-art, .stat-ico {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  image-rendering: auto;
 }
 .ship-thumb, .planet-art {
   width: 56px;
@@ -1150,7 +1151,7 @@ button:focus-visible {
 }
 .space-asteroid {
   position: absolute;
-  image-rendering: pixelated;
+  image-rendering: auto;
   object-fit: contain;
 }
 .space-asteroid.a1 { width: 16%; top: 18%; right: 3%; animation: float-a 21s ease-in-out infinite; }
@@ -1661,7 +1662,7 @@ button:focus-visible {
   background: radial-gradient(circle at 32% 50%, #193747 0, #101f31 36%, #090e19 76%);
 }
 .distress-scene::before { content: ''; position: absolute; inset: 0; opacity: .45; background-image: radial-gradient(#8ecade 1px, transparent 1px); background-size: 37px 41px; }
-.distress-scene img { position: relative; z-index: 1; display: block; object-fit: contain; image-rendering: pixelated; }
+.distress-scene img { position: relative; z-index: 1; display: block; object-fit: contain; image-rendering: auto; }
 .distress-trader { width: 92px; height: 120px; filter: drop-shadow(0 0 7px #50b3c6); }
 .distress-pirate { width: 78px; height: 112px; filter: drop-shadow(0 0 8px #b84d4d); }
 .distress-laser { position: absolute; z-index: 2; left: 38%; top: 47%; width: 29%; height: 3px; transform: rotate(-8deg); background: #ff796c; box-shadow: 0 0 10px #ff5348; animation: distress-fire 1.6s steps(2, end) infinite; }
@@ -2395,7 +2396,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
   max-width: 45%;
   object-fit: contain;
   transform: translateY(-50%) rotate(-90deg);
-  image-rendering: pixelated;
+  image-rendering: auto;
   filter: drop-shadow(0 0 10px var(--profile-glow));
 }
 .contract-card h3,
@@ -2776,7 +2777,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
   padding: 6px;
   background: radial-gradient(circle, rgba(88, 225, 255, 0.18), transparent 70%), #060a11;
   border: 1px solid var(--ops-edge-hi);
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 .away-view .mission-card b { font: 700 18px var(--font-display); letter-spacing: 0.03em; }
 .away-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 6px 0; }
@@ -2855,7 +2856,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 /* New Captain's Kit. */
 .kit-contents { list-style: none; margin: 4px 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .kit-contents li { display: grid; justify-items: center; gap: 2px; padding: 8px 4px; background: #060a11; border: 1px solid rgba(255, 181, 71, 0.4); }
-.kit-contents img { width: 26px; height: 26px; image-rendering: pixelated; }
+.kit-contents img { width: 26px; height: 26px; image-rendering: auto; }
 .kit-contents b { font: 700 18px var(--font-display); color: var(--ops-amber-hi); }
 .kit-contents span { font: 700 10px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .kit-saving { margin: 0; font-size: 13px; color: var(--good); }
@@ -2921,7 +2922,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-enemy-hull .ftl-bar { height: 8px; }
 .ftl-enemy-hull small { color: var(--muted); }
 .ftl-enemy-ship { position: relative; width: 100%; max-height: 190px; margin: 4px auto 0; }
-.ftl-enemy-ship img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; pointer-events: none; transition: filter 600ms, transform 900ms var(--ease-out); }
+.ftl-enemy-ship img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; image-rendering: auto; pointer-events: none; transition: filter 600ms, transform 900ms var(--ease-out); }
 .ftl-enemy-bubble { position: absolute; inset: -4% -3%; border-radius: 50%; border: 2px solid rgba(122, 190, 255, 0); pointer-events: none; transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
 .ftl-enemy.is-shielded .ftl-enemy-bubble { border-color: rgba(122, 190, 255, 0.55); box-shadow: inset 0 0 22px rgba(110, 190, 255, 0.25), 0 0 14px rgba(110, 190, 255, 0.2); }
 .ftl-enemy.is-shield-hit .ftl-enemy-bubble { border-color: rgba(190, 230, 255, 1); box-shadow: inset 0 0 30px rgba(150, 215, 255, 0.6), 0 0 24px rgba(150, 215, 255, 0.6); }

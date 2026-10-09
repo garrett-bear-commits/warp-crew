@@ -66,8 +66,11 @@ Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) 
   - listen to the music in the QA build (Log > Settings has the switch);
   - react to the universe proposal;
   - play the QA build: fights with moves, the hire banner and reveal, families.
-- [ ] Next art (needs a spend OK): the small crew figures on the ship, the six enemy ships, the splash scene and the
-  ship thumbnails in style C.
+- [x] The rest of the art in style C ($2.18 on Flora; [ledger](art/2026-10-09-art-pass-2-ledger.md)): the six enemy
+  ships with re-measured target rooms, the splash (the four captains), the six story scenes, the nine hull
+  thumbnails, the pirate fighter and freighter, planets, asteroids, the swarm drone, and the currency and star-map
+  icons. The small walking crew figures are recoloured from the portraits for free (`scripts/crew-rig/`).
+- [ ] Garrett: look at the new art in the QA build (splash, a fight, the star map, the hangar).
 - [ ] Step 3, balance:
   - win odds simulated from the real fight on contract cards;
   - wall pools for crews that still stall (some simulated captains now break Veil on arrival, others never);

@@ -1,11 +1,11 @@
-/** Opening scene QA candidate; crew portraits are the 2026-10-09 style C set (docs/art/2026-10-09-portrait-pass-ledger.md). */
+/** The style C art (2026-10-09): crew portraits (docs/art/2026-10-09-portrait-pass-ledger.md), the opening scene and the pirate fighter (docs/art/2026-10-09-art-pass-2-ledger.md). */
 export const ART_VERTICAL_SLICE = Object.freeze({
   splash: Object.freeze({
-    path: '/art/pixel/vertical-slice/splash-five-crew-v3.png',
-    fallback: '/art/pixel/cinematic/jump.png',
-    width: 941, height: 1672,
-    sha256: 'f716761790dd244c39471bd25e2eeebdd331e6820c89a9f1a47f403fd898982a',
-    status: 'qa-candidate',
+    path: '/art/pixel/vertical-slice/splash-v4.png',
+    fallback: '/art/pixel/cinematic/v2/jump.png',
+    width: 720, height: 1280,
+    sha256: 'd04ad7876c1e834e7afc391f2f30ff0dce2f43fc1ccce6c158b18a97135aa03c',
+    status: 'style-c',
   }),
   rex: Object.freeze({
     path: '/art/pixel/crew-v2/rex.png', fallback: '/art/pixel/crew-v2/jen.png',
@@ -62,9 +62,9 @@ export const ART_VERTICAL_SLICE = Object.freeze({
     status: 'style-c',
   }),
   pirate_scout: Object.freeze({
-    path: '/art/pixel/vertical-slice/pirate-scout-topdown-v1.png', fallback: '/art/space/pirate-scout.png',
-    width: 512, height: 768,
-    sha256: 'f0fb9394355bf89b2570b64fb4bf282446e77a706f15fc00020e6730be8345e9',
-    status: 'qa-candidate',
+    path: '/art/pixel/vertical-slice/pirate-scout-topdown-v2.png', fallback: '/art/pixel/ships/v2/kestrel.png',
+    width: 561, height: 768,
+    sha256: '02f832fcc73df34bbe9897d8483ae5a8bc7983f57accb595170ba1507fff0612',
+    status: 'style-c',
   }),
 });

@@ -27,7 +27,9 @@ Built so far:
   built by `scripts/build-music.mjs`).
 - Art in style C (Garrett's pick): all 50 portraits and the Sparrow v5 hull ([mockup](art/2026-10-09-style-mockup-ledger.md),
   [art pass](art/2026-10-09-portrait-pass-ledger.md)). The ship's geometry lives in `src/data/art/sparrowV5Layout.json`,
-  built by `scripts/measure-sparrow-v5.py`.
+  built by `scripts/measure-sparrow-v5.py`. Everything else the game draws (enemy ships, splash, story scenes, hull
+  thumbnails, space sprites, icons) followed ([ledger](art/2026-10-09-art-pass-2-ledger.md)): installed by
+  `scripts/install-art-pass.py`; enemy target rooms in `scripts/measure-enemies-v2.py`.
 - The step-0 fixes.
 
 The live checklist is in [NEXT.md](NEXT.md). Node 24 is needed (`/opt/nvm`: `nvm use 24` in cloud sessions).

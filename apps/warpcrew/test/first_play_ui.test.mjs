@@ -42,8 +42,8 @@ assert.match(renderSessionGuidance({ ...assigned, tutorial: { ...assigned.tutori
 const distress = { ...assigned, tutorial: { ...assigned.tutorial, phase: 'fight' } };
 const distressScreen = renderOverlays(distress, { isHome: true });
 assert.match(distressScreen, /distress-transmission/);
-assert.match(distressScreen, /trader-freighter-topdown-v1\.png/);
-assert.match(distressScreen, /pirate-scout-topdown-v1\.png/);
+assert.match(distressScreen, /trader-freighter-topdown-v2\.png/);
+assert.match(distressScreen, /pirate-scout-topdown-v2\.png/);
 assert.equal((distressScreen.match(/data-act="tutorial-fight-start"/g) || []).length, 1);
 assert.doesNotMatch(distressScreen, /distress-pair|trader-signal/);
 assert.equal(isGuidedSpotlightBlocked(distress, 'select-room'), true);

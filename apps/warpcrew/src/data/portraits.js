@@ -78,71 +78,66 @@ const ROLE_FALLBACK = {
 };
 
 export const SHIP_ART = {
-  sparrow: artUrl('art/pixel/ships/sparrow.png'),
-  kestrel: artUrl('art/pixel/ships/kestrel.png'),
-  corvette: artUrl('art/pixel/ships/corvette.png'),
-  clipper: artUrl('art/pixel/ships/clipper.png'),
-  frigate: artUrl('art/pixel/ships/frigate.png'),
-  destroyer: artUrl('art/pixel/ships/destroyer.png'),
-  cruiser: artUrl('art/pixel/ships/cruiser.png'),
-  carrier: artUrl('art/pixel/ships/carrier.png'),
-  dreadnought: artUrl('art/pixel/ships/dreadnought.png'),
+  sparrow: artUrl('art/pixel/ships/v2/sparrow.png'),
+  kestrel: artUrl('art/pixel/ships/v2/kestrel.png'),
+  corvette: artUrl('art/pixel/ships/v2/corvette.png'),
+  clipper: artUrl('art/pixel/ships/v2/clipper.png'),
+  frigate: artUrl('art/pixel/ships/v2/frigate.png'),
+  destroyer: artUrl('art/pixel/ships/v2/destroyer.png'),
+  cruiser: artUrl('art/pixel/ships/v2/cruiser.png'),
+  carrier: artUrl('art/pixel/ships/v2/carrier.png'),
+  dreadnought: artUrl('art/pixel/ships/v2/dreadnought.png'),
 };
 
 export const CUTAWAY_ART = artUrl(HULL_IMAGE);
-export const SWARM_ART = artUrl('art/pixel/fx/swarm.png');
+export const SWARM_ART = artUrl('art/pixel/fx/v2/swarm.png');
 
 export const SPACE_ART = {
   hull: CUTAWAY_ART,
-  stars: artUrl('art/space/stars.png'),
-  nebula: artUrl('art/space/nebula.png'),
-  planet: artUrl('art/space/planet.png'),
-  planetHero: artUrl('art/space/planet-hero.png'),
-  planetIce: artUrl('art/space/planet-ice.png'),
-  blackhole: artUrl('art/space/blackhole.png'),
+  planetHero: artUrl('art/space/v2/planet-hero.png'),
+  planetIce: artUrl('art/space/v2/planet-ice.png'),
   pirate: sliceUrl('pirate_scout'),
-  trader: artUrl('art/pixel/vertical-slice/trader-freighter-topdown-v1.png'),
+  trader: artUrl('art/pixel/vertical-slice/trader-freighter-topdown-v2.png'),
   impact: artUrl('art/fx/impact.png'),
-  laser: artUrl('art/fx/laser.png'),
   asteroids: [
-    artUrl('art/space/asteroid-1.png'),
-    artUrl('art/space/asteroid-2.png'),
-    artUrl('art/space/asteroid-3.png'),
-    artUrl('art/space/asteroid-4.png'),
+    artUrl('art/space/v2/asteroid-1.png'),
+    artUrl('art/space/v2/asteroid-2.png'),
+    artUrl('art/space/v2/asteroid-3.png'),
+    artUrl('art/space/v2/asteroid-4.png'),
   ],
 };
 
 export const ICONS = {
-  fuel: artUrl('art/pixel/icons/fuel.png'),
-  gems: artUrl('art/pixel/icons/gems.png'),
-  medals: artUrl('art/pixel/icons/medals.png'),
-  credits: artUrl('art/pixel/icons/credits.png'),
+  fuel: artUrl('art/pixel/icons/v2/fuel.png'),
+  gems: artUrl('art/pixel/icons/v2/gems.png'),
+  medals: artUrl('art/pixel/icons/v2/medals.png'),
+  credits: artUrl('art/pixel/icons/v2/credits.png'),
 };
 
 export const NODE_ART = {
-  a: artUrl('art/pixel/icons/node-wreck.png'),
-  b: artUrl('art/pixel/icons/node-crystal.png'),
-  c: artUrl('art/pixel/icons/node-station.png'),
-  d: artUrl('art/pixel/icons/node-planet.png'),
+  a: artUrl('art/pixel/icons/v2/node-wreck.png'),
+  b: artUrl('art/pixel/icons/v2/node-crystal.png'),
+  c: artUrl('art/pixel/icons/v2/node-station.png'),
+  d: artUrl('art/pixel/icons/v2/node-planet.png'),
 };
 
 export const PLANET_ART = {
-  wreck: artUrl('art/pixel/icons/node-wreck.png'),
-  crystal: artUrl('art/pixel/icons/node-crystal.png'),
-  station: artUrl('art/pixel/icons/node-station.png'),
-  planet: artUrl('art/pixel/icons/node-planet.png'),
-  ice: artUrl('art/space/planet-ice.png'),
-  swarm: artUrl('art/pixel/fx/swarm.png'),
+  wreck: artUrl('art/pixel/icons/v2/node-wreck.png'),
+  crystal: artUrl('art/pixel/icons/v2/node-crystal.png'),
+  station: artUrl('art/pixel/icons/v2/node-station.png'),
+  planet: artUrl('art/pixel/icons/v2/node-planet.png'),
+  ice: artUrl('art/space/v2/planet-ice.png'),
+  swarm: artUrl('art/pixel/fx/v2/swarm.png'),
 };
 
 export const CINEMATIC_ART = {
   splash: sliceUrl('splash'),
-  jump: artUrl('art/pixel/cinematic/jump.png'),
-  hire: artUrl('art/pixel/cinematic/hire.png'),
-  veil: artUrl('art/pixel/cinematic/veil.png'),
-  ember: artUrl('art/pixel/cinematic/ember.png'),
-  hollow: artUrl('art/pixel/cinematic/hollow.png'),
-  crown: artUrl('art/pixel/cinematic/crown.png'),
+  jump: artUrl('art/pixel/cinematic/v2/jump.png'),
+  hire: artUrl('art/pixel/cinematic/v2/hire.png'),
+  veil: artUrl('art/pixel/cinematic/v2/veil.png'),
+  ember: artUrl('art/pixel/cinematic/v2/ember.png'),
+  hollow: artUrl('art/pixel/cinematic/v2/hollow.png'),
+  crown: artUrl('art/pixel/cinematic/v2/crown.png'),
 };
 
 export const SPLASH_ART = CINEMATIC_ART.splash;

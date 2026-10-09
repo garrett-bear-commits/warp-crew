@@ -1,0 +1,571 @@
+[
+ {
+  "name": "enemy-pirate",
+  "file": "raw/enemy-pirate.png",
+  "installs_to": "public/art/enemies/v2/pirate.png",
+  "used_for": "FTL fight: the enemy ship (rooms are targets)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/f272be1d-e460-4dfb-b1d2-648f706e3f32.png"
+   ],
+   "aspect_ratio": "2:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the enemy ship to draw: keep its silhouette, its orientation (nose pointing left, engines on the right), its colours and the size and position of every room, and redraw it in the first image's style as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL. The ship: a pirate raider: charcoal and gunmetal hull with rust-red trim, red running lights and swept spiked fins; a weapons bay with gun racks at the nose, a small helm with a pilot seat, a shields room with a glowing red core, and an engine room with two big red-glowing thrusters at the stern. Keep the gun mounts on the nose edge. Walls between rooms are thick and clear, each room is its own colour block, props are simple and large, empty of people. The whole ship about 300 art pixels long and fills the frame side to side. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17c2fpz425j77yk3nv670ka918fz1dn",
+  "batch": "pilot"
+ },
+ {
+  "name": "enemy-scrapper",
+  "file": "raw/enemy-scrapper.png",
+  "installs_to": "public/art/enemies/v2/scrapper.png",
+  "used_for": "FTL fight: the enemy ship (rooms are targets)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/14f36d6d-e830-404e-8b0d-445b59e093c7.png"
+   ],
+   "aspect_ratio": "2:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the enemy ship to draw: keep its silhouette, its orientation (nose pointing left, engines on the right), its colours and the size and position of every room, and redraw it in the first image's style as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL. The ship: a scrapper junk ship: a patched hull of mismatched rusty orange-brown plates, exposed pipes and welded scrap, amber lights; a weapons bay at the nose, a shields room above and a helm below in the middle, and a big engine room with two orange thrusters at the stern. Keep the gun mounts on the nose edge. Walls between rooms are thick and clear, each room is its own colour block, props are simple and large, empty of people. The whole ship about 300 art pixels long and fills the frame side to side. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m176ysfcnk71sb6m8brmy2nzkx8fzz90",
+  "batch": "main"
+ },
+ {
+  "name": "enemy-swarm",
+  "file": "raw/enemy-swarm.png",
+  "installs_to": "public/art/enemies/v2/swarm.png",
+  "used_for": "FTL fight: the enemy ship (rooms are targets)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/10a80607-043a-4db7-a9c1-804b87955838.png"
+   ],
+   "aspect_ratio": "2:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the enemy ship to draw: keep its silhouette, its orientation (nose pointing left, engines on the right), its colours and the size and position of every room, and redraw it in the first image's style as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL. The ship: an alien swarm hive ship: organic dark violet chitin covered in curved spines, glowing acid-green pods and veins; a weapons chamber of green spore pods at the nose, a shields chamber above and a helm chamber below in the middle, and an engine chamber with acid-green flames at the stern. Keep the gun mounts on the nose edge. Walls between rooms are thick and clear, each room is its own colour block, props are simple and large, empty of people. The whole ship about 300 art pixels long and fills the frame side to side. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17674zj35qmqmbbqkfd2jt1ys8fy8fa",
+  "batch": "main"
+ },
+ {
+  "name": "enemy-ice",
+  "file": "raw/enemy-ice.png",
+  "installs_to": "public/art/enemies/v2/ice.png",
+  "used_for": "FTL fight: the enemy ship (rooms are targets)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/eb83ccce-19b2-41ae-8fbd-1d1e553b73de.png"
+   ],
+   "aspect_ratio": "2:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the enemy ship to draw: keep its silhouette, its orientation (nose pointing left, engines on the right), its colours and the size and position of every room, and redraw it in the first image's style as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL. The ship: an ice raider: a steel-blue hull crusted with frost and jagged icicle spikes, cyan glow; a helm at the nose, a weapons bay, a shields room with a glowing cyan core, and an engine room with twin cyan thrusters at the stern. Keep the gun mounts on the nose edge. Walls between rooms are thick and clear, each room is its own colour block, props are simple and large, empty of people. The whole ship about 300 art pixels long and fills the frame side to side. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m170dg2h1nym2pc6td886ad0dx8fzq0f",
+  "batch": "main"
+ },
+ {
+  "name": "enemy-shade",
+  "file": "raw/enemy-shade.png",
+  "installs_to": "public/art/enemies/v2/shade.png",
+  "used_for": "FTL fight: the enemy ship (rooms are targets)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/b9967698-bf8b-4aaa-bed5-9ab026c14c4c.png"
+   ],
+   "aspect_ratio": "2:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the enemy ship to draw: keep its silhouette, its orientation (nose pointing left, engines on the right), its colours and the size and position of every room, and redraw it in the first image's style as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL. The ship: a shade stealth ship: a sleek angular matte-black hull with glowing magenta seams and vents; a helm at the nose, a weapons bay, a shields room with a glowing magenta core, and an engine room with magenta thrusters at the stern. Keep the gun mounts on the nose edge. Walls between rooms are thick and clear, each room is its own colour block, props are simple and large, empty of people. The whole ship about 300 art pixels long and fills the frame side to side. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17b1j40qrt27nrvkf0rj3yba58fyk3m",
+  "batch": "main"
+ },
+ {
+  "name": "enemy-crown",
+  "file": "raw/enemy-crown.png",
+  "installs_to": "public/art/enemies/v2/crown.png",
+  "used_for": "FTL fight: the enemy ship (rooms are targets)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/fd3b4fa6-cdf9-434a-8363-8381f002ce65.png"
+   ],
+   "aspect_ratio": "2:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the enemy ship to draw: keep its silhouette, its orientation (nose pointing left, engines on the right), its colours and the size and position of every room, and redraw it in the first image's style as a finished top-down orthographic cutaway with the roof removed so every room interior is visible, like FTL. The ship: the Crown flagship, a boss warship: an ornate gilded hull with golden spires, filigree and a spiked crest, amber lights; a weapons bay at the nose, a helm with a throne-like command seat, a shields room with a glowing golden core, and a big engine room with amber thrusters at the stern. Keep the gun mounts on the nose edge. Walls between rooms are thick and clear, each room is its own colour block, props are simple and large, empty of people. The whole ship about 300 art pixels long and fills the frame side to side. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17bbr57a76vvs20pgbxde9mjs8fz70k",
+  "batch": "main"
+ },
+ {
+  "name": "topdown-pirate-scout",
+  "file": "raw/topdown-pirate-scout.png",
+  "installs_to": "public/art/pixel/vertical-slice/pirate-scout-topdown-v2.png",
+  "used_for": "Risky contract card; flight combat",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/8643480c-f9dd-4c5f-8735-3701e8fc1ede.png"
+   ],
+   "aspect_ratio": "2:3",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, and redraw it in the first image's style seen from directly above with its roof on: a small black pirate fighter with swept wings, rust-red stripes, a skull-and-crossbones mark on the nose, a dark cockpit canopy and one glowing engine, nose pointing up. The ship fills the frame. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m170xhdf4g7v3zjseamhebps2h8fyhvs",
+  "batch": "main"
+ },
+ {
+  "name": "topdown-trader",
+  "file": "raw/topdown-trader.png",
+  "installs_to": "public/art/pixel/vertical-slice/trader-freighter-topdown-v2.png",
+  "used_for": "Reliable and distress contract cards",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/019e3484-6321-4a69-95e4-f8d1c00de971.png"
+   ],
+   "aspect_ratio": "2:3",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, and redraw it in the first image's style seen from directly above with its roof on: a long slate-blue cargo freighter with a spine of containers, two cargo pods either side (orange and teal), a small bridge at the nose and engines at the stern, nose pointing up. The ship fills the frame. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m179jtddbk4qjj79pgg8xgqy1n8fztj3",
+  "batch": "main"
+ },
+ {
+  "name": "splash",
+  "file": "raw/splash.png",
+  "installs_to": "public/art/pixel/vertical-slice/splash-v4.png",
+  "used_for": "Opening splash (full screen, first thing a player sees)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/a62ea52c-ae04-4b93-87bc-eea07777fb15.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/836f9d71-b80b-48a7-89b9-3b1d948a53c8.png"
+   ],
+   "aspect_ratio": "9:16",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first shows the composition to keep: a crew standing together in front of the big observation window of a starship bridge, a blue planet, a spiral galaxy and a purple nebula outside, glowing consoles and amber lights either side. The second shows the four characters to draw and the art style to match exactly: bold chunky pixel art, the same pixel size, strong dark outline, punchy saturated palette, warm amber key light, cool cyan rim light, deep violet shadows. Draw these four captains, keeping each one's design, as the crew in the first image's composition, seen from the waist up and facing the viewer with confident looks: the cyborg pilot (cybernetic blue eye, stubble, orange flight jacket) front left, the gunner (black hair with red streaks, red-and-black armoured jacket) front right, the green alien (large dark eyes, brown hooded robe) behind on the left, the round orange droid (two glowing orange eyes, antenna) small in front at the right. The lower quarter of the image is the dark floor of the bridge, plain and empty, for a title and a button. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17d4h6nhf5tcb7p0aewc2dbsd8fyagv",
+  "batch": "pilot"
+ },
+ {
+  "name": "cinematic-jump",
+  "file": "raw/cinematic-jump.png",
+  "installs_to": "public/art/pixel/cinematic/v2/jump.png",
+  "used_for": "First jump story beat",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/88921eef-4449-43e7-8255-4f7c12f310a0.png"
+   ],
+   "aspect_ratio": "16:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, strong dark outline, punchy saturated palette and lighting (warm amber key light, cool cyan rim light, deep violet shadows). Use the first image only for style: do not copy that woman. The second image shows the scene to redraw: keep its composition, camera and colours, and redraw it in the first image's style as a finished widescreen story illustration: two pilots seen from behind in the cockpit of a small starship, looking out through the canopy at a dense orange asteroid field, glowing teal consoles and screens in front of them. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17a0yemt7m3de04qdqbdx4s9n8fz3gc",
+  "batch": "main"
+ },
+ {
+  "name": "cinematic-hire",
+  "file": "raw/cinematic-hire.png",
+  "installs_to": "public/art/pixel/cinematic/v2/hire.png",
+  "used_for": "New hire story beat",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/56e6d2c8-fdcb-43f1-946f-41685b2932d0.png"
+   ],
+   "aspect_ratio": "16:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, strong dark outline, punchy saturated palette and lighting (warm amber key light, cool cyan rim light, deep violet shadows). Use the first image only for style: do not copy that woman. The second image shows the scene to redraw: keep its composition, camera and colours, and redraw it in the first image's style as a finished widescreen story illustration: a pilot in an orange flight jacket walks into a dim starship hangar where two new crew members wait beside cargo crates, teal ceiling lights and a parked ship in the background. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17fyd4vyk92cqx52q45sapm858fzwwh",
+  "batch": "main"
+ },
+ {
+  "name": "cinematic-veil",
+  "file": "raw/cinematic-veil.png",
+  "installs_to": "public/art/pixel/cinematic/v2/veil.png",
+  "used_for": "Veil sector story beat",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/f2c3262b-6bd3-42bc-aa20-3943c574ba0f.png"
+   ],
+   "aspect_ratio": "16:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship. The second image shows the scene to redraw: keep its composition, camera and colours, and redraw it in the first image's style as a finished widescreen story illustration: a small gunmetal starship with orange trim and four cyan-blue engines approaches a huge ancient ring gate glowing teal, in a purple nebula full of stars. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17bq9xvs53j96g8n2wk6b4ats8fym18",
+  "batch": "pilot"
+ },
+ {
+  "name": "cinematic-ember",
+  "file": "raw/cinematic-ember.png",
+  "installs_to": "public/art/pixel/cinematic/v2/ember.png",
+  "used_for": "Ember sector story beat",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/b76cd2b4-2ea5-4242-8b33-cde45b9f77c4.png"
+   ],
+   "aspect_ratio": "16:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship. The second image shows the scene to redraw: keep its composition, camera and colours, and redraw it in the first image's style as a finished widescreen story illustration: a small gunmetal starship with orange trim and cyan-blue engines flies low over a sea of glowing lava toward a dark spired fortress with burning orange windows, under a starry sky. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m170w12k1adaj495amxqxvp2f98fyqfw",
+  "batch": "main"
+ },
+ {
+  "name": "cinematic-hollow",
+  "file": "raw/cinematic-hollow.png",
+  "installs_to": "public/art/pixel/cinematic/v2/hollow.png",
+  "used_for": "Hollow sector story beat",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/c7857178-0559-48a5-a418-babe76d41f33.png"
+   ],
+   "aspect_ratio": "16:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship. The second image shows the scene to redraw: keep its composition, camera and colours, and redraw it in the first image's style as a finished widescreen story illustration: a vast dark cavern of ribbed bone-like arches receding into the distance, lit teal at the far end, one tiny starship silhouette in the middle. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17bbftzt16rpy7c7sp54z4cw58fy0fg",
+  "batch": "main"
+ },
+ {
+  "name": "cinematic-crown",
+  "file": "raw/cinematic-crown.png",
+  "installs_to": "public/art/pixel/cinematic/v2/crown.png",
+  "used_for": "Crown sector story beat",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/d5f263aa-3ec0-407a-a1bf-c11f78494dae.png"
+   ],
+   "aspect_ratio": "16:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship. The second image shows the scene to redraw: keep its composition, camera and colours, and redraw it in the first image's style as a finished widescreen story illustration: a huge golden ring station circling a black sun with a bright white corona like an eclipse, drifting asteroid debris, a small starship approaching. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17805kxjc7sm5vab85a7zxats8fz4x3",
+  "batch": "main"
+ },
+ {
+  "name": "ship-kestrel",
+  "file": "raw/ship-kestrel.png",
+  "installs_to": "public/art/pixel/ships/v2/kestrel.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/3b5051d2-eaf2-41c9-a7df-8caea04eedc5.png"
+   ],
+   "aspect_ratio": "21:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from the side, nose to the left: a sleek dark gunmetal interceptor with swept spiked fins, a cockpit canopy and a bright cyan engine at the right. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m171kxsmr5exm0z2tz2tsgj0h18fyc0a",
+  "batch": "pilot"
+ },
+ {
+  "name": "ship-clipper",
+  "file": "raw/ship-clipper.png",
+  "installs_to": "public/art/pixel/ships/v2/clipper.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/4da3d43e-76f9-47bd-9d66-463851077898.png"
+   ],
+   "aspect_ratio": "21:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from the side, nose to the left: a long slim teal courier ship with a gold racing stripe, a bubble cockpit and twin cyan engines at the right. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17bjj4ejwv9fpdj64gp13nd6n8fzqed",
+  "batch": "main"
+ },
+ {
+  "name": "ship-destroyer",
+  "file": "raw/ship-destroyer.png",
+  "installs_to": "public/art/pixel/ships/v2/destroyer.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/b739e78a-b9f1-4429-9697-c3a1e931973a.png"
+   ],
+   "aspect_ratio": "21:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from the side, nose to the left: an angular grey warship with a turret on top and three orange-glowing engines at the right. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m173e1mb6jd8k50dpw3wry6e718fy1ap",
+  "batch": "main"
+ },
+ {
+  "name": "ship-cruiser",
+  "file": "raw/ship-cruiser.png",
+  "installs_to": "public/art/pixel/ships/v2/cruiser.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/50063488-0927-4ac3-a18a-4fc5ba2ee206.png"
+   ],
+   "aspect_ratio": "21:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from the side, nose to the left: a long navy-blue battle cruiser with antenna spires, fins and big cyan engines at the right. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m175m3h7xap6119f1w2fj0v5gn8fyvs8",
+  "batch": "main"
+ },
+ {
+  "name": "ship-carrier",
+  "file": "raw/ship-carrier.png",
+  "installs_to": "public/art/pixel/ships/v2/carrier.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/8d50a403-2f79-45e7-bf2e-97c2ed013b65.png"
+   ],
+   "aspect_ratio": "21:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from the side: a long blocky charcoal carrier with a glowing cyan hangar bay along its flank and a small tower on top. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m178krcee4e05snnh84y4nnghn8fyszw",
+  "batch": "main"
+ },
+ {
+  "name": "ship-dreadnought",
+  "file": "raw/ship-dreadnought.png",
+  "installs_to": "public/art/pixel/ships/v2/dreadnought.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/7ee168cb-7bc7-4f96-8ed6-636d5edc89a2.png"
+   ],
+   "aspect_ratio": "21:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from the side, nose to the left: a huge brooding brown-black dreadnought bristling with spires and gun towers, a fiery orange engine at the right. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m171wjek1g071tqet3k8ppev4x8fystp",
+  "batch": "main"
+ },
+ {
+  "name": "ship-corvette",
+  "file": "raw/ship-corvette.png",
+  "installs_to": "public/art/pixel/ships/v2/corvette.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/2565ff3d-0b61-46c7-a248-f7b4ba67936a.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from directly above, nose pointing up: a slim navy-blue corvette with side pods and three cyan engines. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17anaznm1x1brjzcbn8y1r9as8fye0v",
+  "batch": "main"
+ },
+ {
+  "name": "ship-frigate",
+  "file": "raw/ship-frigate.png",
+  "installs_to": "public/art/pixel/ships/v2/frigate.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/cf54519e-055f-422c-9d1c-be1c3c50d795.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not copy that ship, its shape, its orientation or its rooms. The second image is the ship to draw: keep its design, silhouette and colours, and redraw it in the first image's style as a hull exterior with the roof on (not a cutaway): seen from directly above, nose pointing up: a broad blue armoured frigate shaped like an arrowhead with four cyan engines. A clean game icon that reads at 44 pixels; the ship fills the frame side to side. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m176kx2zxtmazhs6mzfk34bt358fy1hh",
+  "batch": "main"
+ },
+ {
+  "name": "ship-sparrow",
+  "file": "raw/ship-sparrow.png",
+  "installs_to": "public/art/pixel/ships/v2/sparrow.png",
+  "used_for": "Hangar hull list thumbnail (44 px)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/9b07b1b4-234f-4718-9f0d-5eb6c3150847.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image is a top-down cutaway of the Sparrow, the player's starship. Draw the same ship from directly above with its roof on (no rooms visible): the same hull outline, gunmetal and charcoal plating, the orange and amber hazard trim, the bridge canopy at the nose and the four engine nozzles at the stern, nose pointing up, in exactly the same bold chunky pixel-art style and pixel size. A clean game icon that reads at 44 pixels; the ship fills the frame top to bottom. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17evh3r0df364v1gfcg9f4spd8fzngr",
+  "batch": "last"
+ },
+ {
+  "name": "planet-hero",
+  "file": "raw/planet-hero.png",
+  "installs_to": "public/art/space/v2/planet-hero.png",
+  "used_for": "Space backdrop behind the ship",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/157a9316-4430-42d0-ac2b-92b387be83ff.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not draw a ship. The second image is the subject: a big rust-red cratered rocky planet, lit from the upper left with a dark night side, drawn whole and centred with space around it. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17a6xbxrct7q8ffywkbs6b1yd8fz6p3",
+  "batch": "main"
+ },
+ {
+  "name": "planet-ice",
+  "file": "raw/planet-ice.png",
+  "installs_to": "public/art/space/v2/planet-ice.png",
+  "used_for": "Away-mission destination icon",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/41c66036-f05e-4c95-b799-04138643f367.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not draw a ship. The second image is the subject: a pale icy blue cratered planet with a thin frosty ring around it, drawn whole and centred with space around it. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m171htz85txhg40yktt6g4jevn8fykj7",
+  "batch": "last"
+ },
+ {
+  "name": "asteroids",
+  "file": "raw/asteroids.png",
+  "installs_to": "public/art/space/v2/asteroid-{1..4}.png",
+  "used_for": "Asteroids drifting past in space flight (4 sprites from one image)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/d762f729-ebec-4623-a0c3-5e2756f14175.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not draw a ship. The second image shows the subject: four different grey-brown cratered space rocks in a 2 by 2 grid, each one centred in its own quarter with plenty of empty space around it, none touching. Varied lumpy shapes, lit from the upper left. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m175zqhhcgbmejfc781s9scx498fy5xr",
+  "batch": "last"
+ },
+ {
+  "name": "swarm-fx",
+  "file": "raw/swarm-fx.png",
+  "installs_to": "public/art/pixel/fx/v2/swarm.png",
+  "used_for": "Swarm destination icon",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/4a380d61-6705-4532-9092-4d5e2110af6e.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not draw a ship. The second image is the subject: a swarm drone, a spindly dark-green alien spider machine with long jointed legs and a cluster of glowing green eyes, seen from above, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17bhdxfzxw31mjfbajs9xa90d8fzxsq",
+  "batch": "last"
+ },
+ {
+  "name": "icons-currency",
+  "file": "raw/icons-currency.png",
+  "installs_to": "public/art/pixel/icons/v2/{credits,fuel,gems,medals}.png",
+  "used_for": "Currency icons in the top bar and rewards (4 icons from one image)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/cca1d627-f8d9-4a4f-a4ba-8b6d8c54046c.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not draw a ship. The second image shows the four game currency icons to redraw, in a 2 by 2 grid, each centred in its own quarter with empty space around it: credits (top left, an octagonal silver coin with a teal chip in the centre), fuel (top right, a cyan fuel canister with a yellow lightning bolt), gems (bottom left, a faceted cyan crystal gem), medals (bottom right, a blue shield badge with silver wings and a ribbon). Bold readable game UI icons that read at 20 pixels, thick dark outline, simple shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m173s507ab0vgwasp2swswbna98fz41g",
+  "batch": "pilot"
+ },
+ {
+  "name": "icons-node",
+  "file": "raw/icons-node.png",
+  "installs_to": "public/art/pixel/icons/v2/node-{wreck,crystal,station,planet}.png",
+  "used_for": "Star-map beacons and destinations (4 icons from one image)",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png",
+    "https://media.flora.ai/mcp-uploads/2026/10/9/user_2wVMzFNGU1CIiVeAyorqRGkM4pB/2ce26548-5e57-44e8-b79e-9b483bf65464.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "Two reference images. The first sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use the first image only for style: do not draw a ship. The second image shows the four star-map beacon icons to redraw, in a 2 by 2 grid, each centred in its own quarter with empty space around it: a wreck (top left, dark twisted derelict ship debris with a faint red glow), a crystal field (top right, violet crystals on a dark rock), a station (bottom left, a pale blue-white space station with towers), a planet (bottom right, a brown rocky planet). Bold readable game icons that read at 40 pixels, thick dark outline. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m176x5fr6k0k9dngbgcmfdhe9x8fzdpw",
+  "batch": "last"
+ }
+]

@@ -11,10 +11,9 @@ assert.deepEqual(Object.keys(ART_VERTICAL_SLICE).sort(), [
   'bolt', 'captain_alien', 'captain_cyborg', 'captain_droid', 'captain_gunner',
   'kira', 'nemi', 'pirate_scout', 'rex', 'splash', 'tink',
 ]);
-// Crew and captain portraits are the approved style C set (2026-10-09); the splash and pirate art are still QA candidates.
-const qaCandidates = new Set(['splash', 'pirate_scout']);
+// Everything here is the approved style C art (2026-10-09): portraits, captains, the splash and the pirate fighter.
 for (const [name, art] of Object.entries(ART_VERTICAL_SLICE)) {
-  assert.equal(art.status, qaCandidates.has(name) ? 'qa-candidate' : 'style-c', `${name} art review status`);
+  assert.equal(art.status, 'style-c', `${name} art review status`);
   assert.ok(art.path.startsWith('/art/'));
   assert.ok(art.fallback.startsWith('/art/'));
   assert.ok(art.width > 0 && art.height > 0);

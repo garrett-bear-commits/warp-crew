@@ -25,7 +25,7 @@ const view = { ftl: true, encounterId: 'ice_raiders', acceptanceId: 'a', revisio
     rooms: Object.fromEntries(['weapons', 'shields', 'engines', 'helm'].map(id => [id, { ...room, label: id }])),
     weapons: [{ shots: 2, damage: 8, chargePct: 40, nextPct: 50, targetLabel: 'Helm' }] } };
 const html = renderFtlEnemy(view);
-assert.match(html, /art\/enemies\/ice\.png/);
+assert.match(html, /art\/enemies\/v2\/ice\.png/);
 assert.match(html, /family-ice/);
 const ice = enemyArtFor('ice_raiders').rooms.weapons;
 assert.match(html, new RegExp(`data-enemy-room="weapons"[^]*?|style="left:${ice.left}%;top:${ice.top}%`));

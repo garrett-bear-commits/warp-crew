@@ -169,8 +169,8 @@ async function play(width, height, reduced = false) {
   try {
     await page.until('Boolean(document.querySelector(\'[data-act="splash-dismiss"]:not([disabled])\'))');
     const splash = await page.capture('splash');
-    assert.match(splash.splash, /splash-five-crew-v3\.png$/);
-    assert.equal(splash.artLoaded, 941);
+    assert.match(splash.splash, /splash-v4\.png$/);
+    assert.equal(splash.artLoaded, 720);
     if (splash.save) {
       assert.equal(splash.save.script, 5);
       assert.equal(splash.save.crew.length, 0);

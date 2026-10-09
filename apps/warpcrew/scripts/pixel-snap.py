@@ -113,6 +113,48 @@ def key_background(rgb, key, max_dist):
     return bg
 
 
+def grid_scores(rgb, lo, hi, step=0.25):
+    """(score, cell) for every candidate cell size: the share of edge strength on cell boundaries, both axes."""
+    grey = rgb.mean(axis=2)
+    gx, gy = np.abs(np.diff(grey, axis=1)).sum(axis=0), np.abs(np.diff(grey, axis=0)).sum(axis=1)
+    return [((refine_grid(gx, c)[0] + refine_grid(gy, c)[0]) / 2, c) for c in np.arange(lo, hi + 1e-9, step)]
+
+
+def pick_cell(scored):
+    """The smallest size scoring within 0.03 of the best (twice the true cell also lines up with every other edge)."""
+    best = max(score for score, _ in scored)
+    return min(c for score, c in scored if score >= best - 0.03)
+
+
+def snap(rgb, cell=None, auto=None, colours=40, key='0b1220', key_dist=30):
+    """Snap an RGB float array to its pixel grid: returns (RGBA art-size image, cell, (edge score x, y), keyed share)."""
+    grey = rgb.mean(axis=2)
+    gx, gy = np.abs(np.diff(grey, axis=1)).sum(axis=0), np.abs(np.diff(grey, axis=0)).sum(axis=1)
+    if auto:
+        cell = pick_cell(grid_scores(rgb, *auto))
+    sx = refine_grid(gx, cell)
+    sy = refine_grid(gy, cell)
+    cell = (sx[1] + sy[1]) / 2
+    small = cell_colours(rgb, cell, sx[2], sy[2])
+    snapped = kmeans_palette(small.clip(0, 255), colours)
+    if key == 'none':
+        bg = np.zeros(snapped.shape[:2], bool)
+    else:
+        bg = key_background(snapped, tuple(int(key[i:i + 2], 16) for i in (0, 2, 4)), key_dist)
+    out = Image.fromarray(np.dstack([snapped, np.where(bg, 0, 255)]).astype('uint8'), 'RGBA')
+    return out, cell, (sx[0], sy[0]), bg.mean()
+
+
+def save_palette_png(img, path):
+    """Write an RGBA image as an exact-palette PNG (one transparent entry); hard pixel blocks stay hard."""
+    big = np.asarray(img.convert('RGBA')).copy()
+    big[big[:, :, 3] == 0] = 0  # one transparent entry
+    colours, index = np.unique(big.reshape(-1, 4), axis=0, return_inverse=True)
+    pal = Image.fromarray(index.reshape(big.shape[:2]).astype('uint8'), 'P')
+    pal.putpalette(colours[:, :3].astype('uint8').flatten().tolist())
+    pal.save(path, optimize=True, transparency=bytes(int(a) for a in colours[:, 3]))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('input')
@@ -127,41 +169,21 @@ def main():
     args = ap.parse_args()
 
     rgb = np.asarray(Image.open(args.input).convert('RGB')).astype(float)
-    grey = rgb.mean(axis=2)
-    gx, gy = np.abs(np.diff(grey, axis=1)).sum(axis=0), np.abs(np.diff(grey, axis=0)).sum(axis=1)
-    if args.auto:
-        lo, hi = (float(v) for v in args.auto.split(','))
-        scored = [((refine_grid(gx, c)[0] + refine_grid(gy, c)[0]) / 2, c) for c in np.arange(lo, hi + 1e-9, 0.25)]
-        best = max(score for score, _ in scored)
-        # Twice the true cell also lines up with every other edge: take the smallest size that scores nearly as well.
-        args.cell = min(c for score, c in scored if score >= best - 0.03)
-    elif args.cell is None:
+    if not args.auto and args.cell is None:
         ap.error('give --cell or --auto')
-    sx = refine_grid(gx, args.cell)
-    sy = refine_grid(gy, args.cell)
-    cell = (sx[1] + sy[1]) / 2
-    small = cell_colours(rgb, cell, sx[2], sy[2])
-    snapped = kmeans_palette(small.clip(0, 255), args.colours)
-    if args.key == 'none':
-        bg = np.zeros(snapped.shape[:2], bool)
-    else:
-        bg = key_background(snapped, tuple(int(args.key[i:i + 2], 16) for i in (0, 2, 4)), args.key_dist)
-    out = Image.fromarray(np.dstack([snapped, np.where(bg, 0, 255)]).astype('uint8'), 'RGBA')
+    auto = tuple(float(v) for v in args.auto.split(',')) if args.auto else None
+    out, cell, (score_x, score_y), keyed = snap(rgb, args.cell, auto, args.colours, args.key, args.key_dist)
     if args.out_size:
-        big = np.asarray(out.resize((args.out_size, args.out_size), Image.NEAREST)).copy()
-        big[big[:, :, 3] == 0] = 0  # one transparent entry
-        colours, index = np.unique(big.reshape(-1, 4), axis=0, return_inverse=True)
-        pal = Image.fromarray(index.reshape(big.shape[:2]).astype('uint8'), 'P')
-        pal.putpalette(colours[:, :3].astype('uint8').flatten().tolist())
-        pal.save(args.output, optimize=True, transparency=bytes(int(a) for a in colours[:, 3]))
+        save_palette_png(out.resize((args.out_size, args.out_size), Image.NEAREST), args.output)
     else:
         out.save(args.output)
     if args.preview:
         h, w, _ = rgb.shape
         out.resize((round(out.width * cell), round(out.height * cell)), Image.NEAREST).crop((0, 0, w, h)).save(args.preview)
-    colours = len({tuple(p) for p in snapped[~bg]})
-    print(f'{args.input}: cell {cell:.3f} (edge scores {sx[0]:.2f}/{sy[0]:.2f}), art size {out.width}x{out.height}, '
-          f'{colours} colours, {bg.mean() * 100:.0f}% background keyed')
+    px = np.asarray(out)
+    colours = len(np.unique(px[px[:, :, 3] > 0][:, :3], axis=0))
+    print(f'{args.input}: cell {cell:.3f} (edge scores {score_x:.2f}/{score_y:.2f}), art size {out.width}x{out.height}, '
+          f'{colours} colours, {keyed * 100:.0f}% background keyed')
 
 
 if __name__ == '__main__':

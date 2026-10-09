@@ -1,0 +1,353 @@
+[
+ {
+  "name": "enemy-pirate",
+  "file": "public/art/enemies/v2/pirate.png",
+  "size": [
+   1024,
+   492
+  ],
+  "bytes": 130242
+ },
+ {
+  "name": "enemy-scrapper",
+  "file": "public/art/enemies/v2/scrapper.png",
+  "size": [
+   1024,
+   509
+  ],
+  "bytes": 156286
+ },
+ {
+  "name": "enemy-swarm",
+  "file": "public/art/enemies/v2/swarm.png",
+  "size": [
+   1024,
+   500
+  ],
+  "bytes": 163330
+ },
+ {
+  "name": "enemy-ice",
+  "file": "public/art/enemies/v2/ice.png",
+  "size": [
+   1024,
+   460
+  ],
+  "bytes": 145667
+ },
+ {
+  "name": "enemy-shade",
+  "file": "public/art/enemies/v2/shade.png",
+  "size": [
+   1024,
+   483
+  ],
+  "bytes": 105810
+ },
+ {
+  "name": "enemy-crown",
+  "file": "public/art/enemies/v2/crown.png",
+  "size": [
+   1024,
+   508
+  ],
+  "bytes": 168884
+ },
+ {
+  "name": "topdown-pirate-scout",
+  "file": "public/art/pixel/vertical-slice/pirate-scout-topdown-v2.png",
+  "size": [
+   561,
+   768
+  ],
+  "bytes": 72229
+ },
+ {
+  "name": "topdown-trader",
+  "file": "public/art/pixel/vertical-slice/trader-freighter-topdown-v2.png",
+  "size": [
+   497,
+   768
+  ],
+  "bytes": 81998
+ },
+ {
+  "name": "splash",
+  "file": "public/art/pixel/vertical-slice/splash-v4.png",
+  "size": [
+   720,
+   1280
+  ],
+  "bytes": 407415
+ },
+ {
+  "name": "cinematic-jump",
+  "file": "public/art/pixel/cinematic/v2/jump.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 425222
+ },
+ {
+  "name": "cinematic-hire",
+  "file": "public/art/pixel/cinematic/v2/hire.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 396218
+ },
+ {
+  "name": "cinematic-veil",
+  "file": "public/art/pixel/cinematic/v2/veil.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 345620
+ },
+ {
+  "name": "cinematic-ember",
+  "file": "public/art/pixel/cinematic/v2/ember.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 375417
+ },
+ {
+  "name": "cinematic-hollow",
+  "file": "public/art/pixel/cinematic/v2/hollow.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 351498
+ },
+ {
+  "name": "cinematic-crown",
+  "file": "public/art/pixel/cinematic/v2/crown.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 343769
+ },
+ {
+  "name": "ship-kestrel",
+  "file": "public/art/pixel/ships/v2/kestrel.png",
+  "size": [
+   360,
+   125
+  ],
+  "bytes": 14846
+ },
+ {
+  "name": "ship-clipper",
+  "file": "public/art/pixel/ships/v2/clipper.png",
+  "size": [
+   360,
+   89
+  ],
+  "bytes": 13508
+ },
+ {
+  "name": "ship-destroyer",
+  "file": "public/art/pixel/ships/v2/destroyer.png",
+  "size": [
+   360,
+   116
+  ],
+  "bytes": 14428
+ },
+ {
+  "name": "ship-cruiser",
+  "file": "public/art/pixel/ships/v2/cruiser.png",
+  "size": [
+   360,
+   139
+  ],
+  "bytes": 18338
+ },
+ {
+  "name": "ship-carrier",
+  "file": "public/art/pixel/ships/v2/carrier.png",
+  "size": [
+   360,
+   114
+  ],
+  "bytes": 16350
+ },
+ {
+  "name": "ship-dreadnought",
+  "file": "public/art/pixel/ships/v2/dreadnought.png",
+  "size": [
+   360,
+   139
+  ],
+  "bytes": 19068
+ },
+ {
+  "name": "ship-corvette",
+  "file": "public/art/pixel/ships/v2/corvette.png",
+  "size": [
+   184,
+   360
+  ],
+  "bytes": 24244
+ },
+ {
+  "name": "ship-frigate",
+  "file": "public/art/pixel/ships/v2/frigate.png",
+  "size": [
+   227,
+   360
+  ],
+  "bytes": 33087
+ },
+ {
+  "name": "ship-sparrow",
+  "file": "public/art/pixel/ships/v2/sparrow.png",
+  "size": [
+   193,
+   360
+  ],
+  "bytes": 26922
+ },
+ {
+  "name": "planet-hero",
+  "file": "public/art/space/v2/planet-hero.png",
+  "size": [
+   493,
+   512
+  ],
+  "bytes": 71916
+ },
+ {
+  "name": "planet-ice",
+  "file": "public/art/space/v2/planet-ice.png",
+  "size": [
+   256,
+   193
+  ],
+  "bytes": 19127
+ },
+ {
+  "name": "asteroids",
+  "file": "public/art/space/v2/asteroid-1.png",
+  "size": [
+   128,
+   122
+  ],
+  "bytes": 7651
+ },
+ {
+  "name": "asteroids",
+  "file": "public/art/space/v2/asteroid-2.png",
+  "size": [
+   128,
+   126
+  ],
+  "bytes": 8176
+ },
+ {
+  "name": "asteroids",
+  "file": "public/art/space/v2/asteroid-3.png",
+  "size": [
+   128,
+   93
+  ],
+  "bytes": 6091
+ },
+ {
+  "name": "asteroids",
+  "file": "public/art/space/v2/asteroid-4.png",
+  "size": [
+   125,
+   128
+  ],
+  "bytes": 7460
+ },
+ {
+  "name": "swarm-fx",
+  "file": "public/art/pixel/fx/v2/swarm.png",
+  "size": [
+   256,
+   252
+  ],
+  "bytes": 20177
+ },
+ {
+  "name": "icons-currency",
+  "file": "public/art/pixel/icons/v2/credits.png",
+  "size": [
+   128,
+   126
+  ],
+  "bytes": 7764
+ },
+ {
+  "name": "icons-currency",
+  "file": "public/art/pixel/icons/v2/fuel.png",
+  "size": [
+   89,
+   128
+  ],
+  "bytes": 6437
+ },
+ {
+  "name": "icons-currency",
+  "file": "public/art/pixel/icons/v2/gems.png",
+  "size": [
+   94,
+   128
+  ],
+  "bytes": 5073
+ },
+ {
+  "name": "icons-currency",
+  "file": "public/art/pixel/icons/v2/medals.png",
+  "size": [
+   102,
+   128
+  ],
+  "bytes": 6718
+ },
+ {
+  "name": "icons-node",
+  "file": "public/art/pixel/icons/v2/node-wreck.png",
+  "size": [
+   128,
+   108
+  ],
+  "bytes": 6845
+ },
+ {
+  "name": "icons-node",
+  "file": "public/art/pixel/icons/v2/node-crystal.png",
+  "size": [
+   117,
+   128
+  ],
+  "bytes": 7452
+ },
+ {
+  "name": "icons-node",
+  "file": "public/art/pixel/icons/v2/node-station.png",
+  "size": [
+   128,
+   120
+  ],
+  "bytes": 6765
+ },
+ {
+  "name": "icons-node",
+  "file": "public/art/pixel/icons/v2/node-planet.png",
+  "size": [
+   125,
+   128
+  ],
+  "bytes": 7046
+ }
+]
