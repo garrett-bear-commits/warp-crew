@@ -1818,12 +1818,6 @@ button:focus-visible {
   box-shadow: none;
   flex: 1;
 }
-.intel-card {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-}
-.intel-card:last-child { border-bottom: 0; }
-.intel-card .tag { margin-left: 6px; }
 
 .hull-pips {
   display: flex;

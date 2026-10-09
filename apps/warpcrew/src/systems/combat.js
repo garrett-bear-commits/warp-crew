@@ -171,22 +171,22 @@ export function resolveCombat({
 }
 
 const ENCOUNTER_TELLS = {
-  pirate_scout: { label: 'Targeting engines.', text: "The scout is painting the Sparrow's engines, but its first volley is hurried.", recommendedOrder: 'brace', reason: 'Brace costs no extra fuel and, on failure, halves hull loss and prevents crew injury.' },
-  pirate_wing: { label: 'Formation tightening.', text: 'Three cutters are closing their ragged V around the Sparrow.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
-  scrapper_gang: { label: 'Grapples primed.', text: 'Cutting skiffs are drifting close enough to trade hull for salvage.', recommendedOrder: 'board', reason: 'Risk lower effective power for the higher rounded win payout shown.' },
-  swarm_probe: { label: 'Signal about to jump.', text: 'The probe has finished mapping the ship and is turning for open dark.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
-  swarm_skirmish: { label: 'Pack spreading wide.', text: 'The hunting pack is separating to strike from both sides.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the pack gets through.' },
-  swarm_frigate: { label: 'Core flare rising.', text: 'The remembered frigate is charging a broadside larger than the Sparrow.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury against the heavy shot.' },
-  pirate_ace: { label: 'Attack vector committed.', text: 'The ace has traded distance for one clean firing pass.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
-  ice_raiders: { label: 'Boarding clamps open.', text: 'White-hulled corsairs are matching speed with their clamps exposed.', recommendedOrder: 'board', reason: 'Accept greater failure risk for the higher rounded win payout shown.' },
-  swarm_brood: { label: 'Chitin cloud closing.', text: 'Half-grown probes are thickening around the shield line.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the brood reaches the hull.' },
-  veil_wraith: { label: 'Blind angle moving.', text: 'The contact vanishes whenever sensors or crew look directly at it.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
-  corsair_king: { label: 'Flagship alongside.', text: 'The old captain is presenting a prize broadside and daring a boarding reply.', recommendedOrder: 'board', reason: 'Risk lower effective power for the higher rounded win payout shown.' },
-  eclipse_echo: { label: 'War-form unfolding.', text: 'The echo is opening weapon limbs the Spur was never built to answer.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the war-form fires.' },
-  ember_raider: { label: 'Breach team heating.', text: 'Raiders are welding toward Cargo while their own hull runs exposed.', recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
-  hollow_shade: { label: 'Name forming.', text: "A second line of writing is appearing beneath the crew's name on the hull.", recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the mark completes.' },
-  crown_warden: { label: 'Verdict chambered.', text: 'The Warden has finished its warning and loaded a gold verdict round.', recommendedOrder: 'brace', reason: 'Halve failure hull loss and prevent crew injury if the verdict lands.' },
-  eclipse_throne: { label: 'Halo collapsing inward.', text: "The Throne's halo is drawing every nearby signal toward its core.", recommendedOrder: 'burn', reason: 'Spend 1F for +12 power before the displayed chance reaches its cap.' },
+  pirate_scout: { label: 'Targeting engines.', text: "The scout is painting the Sparrow's engines, but its first volley is hurried.", recommendedOrder: 'brace', reason: 'Hit their Weapons room first and the hurried volleys slow right down.' },
+  pirate_wing: { label: 'Formation tightening.', text: 'Three cutters are closing their ragged V around the Sparrow.', recommendedOrder: 'burn', reason: 'Overcharge your guns, then keep hitting their Weapons room.' },
+  scrapper_gang: { label: 'Grapples primed.', text: 'Cutting skiffs are drifting close enough to trade hull for salvage.', recommendedOrder: 'board', reason: 'Boarders may land: keep security free to meet them.' },
+  swarm_probe: { label: 'Signal about to jump.', text: 'The probe has finished mapping the ship and is turning for open dark.', recommendedOrder: 'burn', reason: 'Thin hull. Overcharge and finish it before it jumps.' },
+  swarm_skirmish: { label: 'Pack spreading wide.', text: 'The hunting pack is separating to strike from both sides.', recommendedOrder: 'brace', reason: 'Hits will land in several rooms. Keep an engineer free for fires.' },
+  swarm_frigate: { label: 'Core flare rising.', text: 'The remembered frigate is charging a broadside larger than the Sparrow.', recommendedOrder: 'brace', reason: 'Big guns. Hold fire to break its shields together, then hit Weapons.' },
+  pirate_ace: { label: 'Attack vector committed.', text: 'The ace has traded distance for one clean firing pass.', recommendedOrder: 'burn', reason: 'Slippery pilot. Hit their Engines room so your shots stop missing.' },
+  ice_raiders: { label: 'Boarding clamps open.', text: 'White-hulled corsairs are matching speed with their clamps exposed.', recommendedOrder: 'board', reason: 'Clamps are out: keep security free, and Board once their hull runs low.' },
+  swarm_brood: { label: 'Chitin cloud closing.', text: 'Half-grown probes are thickening around the shield line.', recommendedOrder: 'brace', reason: 'They go for your shield line. Keep crew in your Shields room.' },
+  veil_wraith: { label: 'Blind angle moving.', text: 'The contact vanishes whenever sensors or crew look directly at it.', recommendedOrder: 'burn', reason: 'Hard to hit. Knock out their Helm room and it stops dodging.' },
+  corsair_king: { label: 'Flagship alongside.', text: 'The old captain is presenting a prize broadside and daring a boarding reply.', recommendedOrder: 'board', reason: 'Boarders may land: keep security free, and Board when his hull is low.' },
+  eclipse_echo: { label: 'War-form unfolding.', text: 'The echo is opening weapon limbs the Spur was never built to answer.', recommendedOrder: 'brace', reason: 'A lot of guns. Man your Shields room and keep an engineer free.' },
+  ember_raider: { label: 'Breach team heating.', text: 'Raiders are welding toward Cargo while their own hull runs exposed.', recommendedOrder: 'burn', reason: 'Their hull is exposed. Overcharge and finish it fast.' },
+  hollow_shade: { label: 'Name forming.', text: "A second line of writing is appearing beneath the crew's name on the hull.", recommendedOrder: 'brace', reason: 'Watch which of your rooms it marks, and have crew there for repairs.' },
+  crown_warden: { label: 'Verdict chambered.', text: 'The Warden has finished its warning and loaded a gold verdict round.', recommendedOrder: 'brace', reason: 'Thick shields. Hold fire to break them together, then hit Weapons.' },
+  eclipse_throne: { label: 'Halo collapsing inward.', text: "The Throne's halo is drawing every nearby signal toward its core.", recommendedOrder: 'burn', reason: 'The big one. Overcharge, break its shields together, then hit Weapons.' },
 };
 
 export const ENCOUNTERS_V1 = [

@@ -14,6 +14,14 @@ export function yesterdayKey(now = trustedNow()) {
   return dayKey(now - 86400000);
 }
 
+/** The log line for a day's login bonus, e.g. "Day 3 login: +15 gems, +150 credits." */
+export function loginBonusLine(bonus) {
+  const parts = ['gems', 'credits', 'medals', 'reputation', 'fuel']
+    .filter((kind) => bonus?.[kind])
+    .map((kind) => `+${bonus[kind]} ${kind}`);
+  return `Day ${bonus?.streak ?? 1} login${parts.length ? `: ${parts.join(', ')}` : ''}.`;
+}
+
 /**
  * Apply daily login + free pull reset.
  * Call once on boot after load.

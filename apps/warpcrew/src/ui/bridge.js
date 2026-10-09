@@ -24,7 +24,6 @@ import { GACHA_COSTS, nextRepGate, CREW_CATALOG, defaultGacha, luckCreditCost, l
 import { passiveLabel, fuelCostFor } from '../systems/passives.js';
 import { sheetFor } from './crewArt.js';
 import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, reputationRank } from '../systems/economy.js';
-import { INTEL_TRACKS } from '../data/intel.js';
 import { planetType } from '../data/planets.js';
 import { ROOMS, SPARROW_LAYOUT, HULL_PX, roomWorldPoint, canonicalRoomId } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS } from '../data/crewRoster.js';
@@ -1421,7 +1420,7 @@ export function renderCrew(player, now = trustedNow()) {
         <div><span>Power</span><b>${crewPower(fightingCrew(player))}</b></div>
         <div><span>Open berths</span><b>${open}</b></div>
       </div>
-      <div class="station-strip" aria-label="Station output (provisional)">${Object.entries(outputs).map(([id, output]) => `<div class="station-out"><span>${escapeHtml(output.label)}</span><b>${output.total}</b></div>`).join('')}</div>
+      <div class="station-strip" aria-label="Station output">${Object.entries(outputs).map(([id, output]) => `<div class="station-out"><span>${escapeHtml(output.label)}</span><b>${output.total}</b></div>`).join('')}</div>
     </section>
     ${canHire ? `
     <section class="panel recruit-panel">
@@ -1676,7 +1675,7 @@ function renderShop(player, shopProducts, now = trustedNow()) {
   return `
     <div class="panel">
       <h2>Hangar</h2>
-      <div class="muted">Credits grind. Gems skip.</div>
+      <div class="muted">Credits buy hulls slowly. Gems buy them now.</div>
       ${hullRows.slice(0, visibleHulls).map((s) => {
         const isOwned = owned.includes(s.id);
         const isActive = shipId === s.id;
@@ -1738,7 +1737,7 @@ function renderShop(player, shopProducts, now = trustedNow()) {
     </div>
     <div class="panel">
       <h2>Buy</h2>
-      <div class="muted">Real money. Gems skip the grind.</div>
+      <div class="muted">Real money for gems. Gems buy time.</div>
       ${renderCommissionCard(player, now)}
       ${starterOfferState(player, now).active ? renderStarterCard(starterOfferState(player, now), starterValue(shopProducts || [])) : ''}
       ${wallPackState(player, currentWall(player, now)).active ? renderWallPack(wallPackState(player, currentWall(player, now)), packValue(wallPackState(player, currentWall(player, now)).sku, shopProducts || [])) : ''}
@@ -1763,11 +1762,11 @@ function renderShop(player, shopProducts, now = trustedNow()) {
 
 export function renderQaSettings() {
   const muted = isSfxMuted();
-  return `<div class="panel qa-settings"><h2>Settings</h2><p class="row"><button type="button" data-act="sfx-toggle" aria-pressed="${muted ? 'false' : 'true'}">Sound: ${muted ? 'Off' : 'On'}</button></p><p class="muted">QA tool · Start the game again on this device.</p><button class="danger" data-act="restart-save">Restart save</button></div>`;
+  return `<div class="panel qa-settings"><h2>Settings</h2><p class="row"><button type="button" data-act="sfx-toggle" aria-pressed="${muted ? 'false' : 'true'}">Sound: ${muted ? 'Off' : 'On'}</button></p><p class="muted">Start the game again on this device.</p><button class="danger" data-act="restart-save">Restart save</button></div>`;
 }
 
 export function renderRestartSaveConfirm() {
-  return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Restart save confirmation"><h2>Restart your save?</h2><p>This erases this browser's Warp Crew progress and starts the tutorial again. Your Jest account stays signed in. This cannot be undone.</p><button class="danger" data-act="restart-save-confirm">Erase progress and restart</button><button data-act="restart-save-cancel">Keep my save</button></section></div>`;
+  return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Restart save confirmation"><h2>Restart your save?</h2><p>This erases this browser's Warp Crew progress and starts you over from the very beginning. Your Jest account stays signed in. This cannot be undone.</p><button class="danger" data-act="restart-save-confirm">Erase progress and restart</button><button data-act="restart-save-cancel">Keep my save</button></section></div>`;
 }
 
 export function renderLog(player, log, goals) {
@@ -1802,17 +1801,7 @@ export function renderLog(player, log, goals) {
           <span>${escapeHtml(b.title)}</span>
           <span class="prog">Ch.${b.chapter}</span>
         </div>
-      `).join('') || '<div class="muted">Jump story nodes to log beats.</div>'}
-    </div>
-    <div class="panel">
-      <h2>Later</h2>
-      ${INTEL_TRACKS.slice(0, 4).map((t) => `
-        <div class="week-row">
-          <span class="mark">○</span>
-          <span>${escapeHtml(t.title)}</span>
-          <span class="prog">${escapeHtml(t.eta)}</span>
-        </div>
-      `).join('')}
+      `).join('') || '<div class="muted">Story beacons you visit show up here.</div>'}
     </div>
     <div class="panel">
       <h2>Log</h2>
