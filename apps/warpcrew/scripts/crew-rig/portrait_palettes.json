@@ -1,0 +1,288 @@
+{
+ "captain_alien": {
+  "skin": "#60845d",
+  "top": "#782f29",
+  "trim": "#fbc66a"
+ },
+ "captain_cyborg": {
+  "glow": "#fb6807",
+  "hair": "#8b3b29",
+  "pants": "#b63a21",
+  "skin": "#df7838",
+  "top": "#bc4821"
+ },
+ "captain_droid": {
+  "glow": "#fb7505",
+  "pad": "#a94830",
+  "skin": "#f6730c",
+  "top": "#c44820"
+ },
+ "captain_gunner": {
+  "hair": "#3a1118",
+  "skin": "#de7543",
+  "top": "#d51029"
+ },
+ "merc_ada": {
+  "glow": "#72f7fc",
+  "skin": "#e9d0b0",
+  "top": "#cea89c"
+ },
+ "merc_archon": {
+  "glow": "#f8aa0c",
+  "skin": "#df671a",
+  "top": "#de7515"
+ },
+ "merc_ashen": {
+  "hair": "#985839",
+  "pad": "#985839",
+  "skin": "#cf523a",
+  "top": "#364734"
+ },
+ "merc_bolt": {
+  "glow": "#fcc20b",
+  "skin": "#f5b115",
+  "top": "#c9872e"
+ },
+ "merc_brink": {
+  "hair": "#803636",
+  "pad": "#3f3c66",
+  "skin": "#f89c4c",
+  "top": "#434168"
+ },
+ "merc_cog": {
+  "glow": "#fbdd2a",
+  "pad": "#784959",
+  "skin": "#ed9a2f",
+  "top": "#ad6437"
+ },
+ "merc_coil": {
+  "glow": "#f9c016",
+  "pad": "#f6af15",
+  "skin": "#1b3187",
+  "top": "#14297c"
+ },
+ "merc_dax": {
+  "hair": "#602b27",
+  "pad": "#970e24",
+  "skin": "#e97d3c",
+  "top": "#ae0e21"
+ },
+ "merc_drift": {
+  "skin": "#b680c4",
+  "top": "#383a58"
+ },
+ "merc_eclipse": {
+  "glow": "#e439f2",
+  "skin": "#3c2b53",
+  "top": "#3f244b",
+  "trim": "#f38a20"
+ },
+ "merc_greaves": {
+  "hair": "#73515f",
+  "pad": "#73515f",
+  "skin": "#e26c3d",
+  "top": "#46476e"
+ },
+ "merc_harrow": {
+  "hair": "#a89a96",
+  "skin": "#d67449",
+  "top": "#3f5143"
+ },
+ "merc_hex": {
+  "glow": "#f84823",
+  "pad": "#f9ba13",
+  "skin": "#615a60",
+  "top": "#50284b"
+ },
+ "merc_isa": {
+  "hair": "#20969b",
+  "pad": "#f5cf3d",
+  "skin": "#fba858",
+  "top": "#d1c1c4"
+ },
+ "merc_jen": {
+  "hair": "#373452",
+  "pants": "#1c2261",
+  "skin": "#fb9649",
+  "top": "#525043"
+ },
+ "merc_juno": {
+  "hair": "#3e344e",
+  "skin": "#f5994c",
+  "top": "#565032"
+ },
+ "merc_kal": {
+  "hair": "#222a6e",
+  "pad": "#f9c918",
+  "skin": "#f99441",
+  "top": "#12246e"
+ },
+ "merc_kira": {
+  "hair": "#fc630a",
+  "pad": "#fbba10",
+  "pants": "#1b2b6a",
+  "skin": "#f19656",
+  "top": "#1b2b6a"
+ },
+ "merc_lora": {
+  "hair": "#372c4d",
+  "skin": "#d26831",
+  "top": "#a45f2b"
+ },
+ "merc_moss": {
+  "glow": "#0099a5",
+  "pad": "#027b91",
+  "skin": "#f4ebc1",
+  "top": "#e6cec6"
+ },
+ "merc_moth": {
+  "hair": "#633538",
+  "skin": "#e47f28",
+  "top": "#a15b10"
+ },
+ "merc_nemi": {
+  "glow": "#ffb830",
+  "skin": "#f79409",
+  "top": "#733838",
+  "trim": "#faa40a"
+ },
+ "merc_nub": {
+  "glow": "#f86e0a",
+  "skin": "#814c49",
+  "top": "#865040"
+ },
+ "merc_nyx": {
+  "glow": "#5c357f",
+  "skin": "#a4769f",
+  "top": "#291758"
+ },
+ "merc_onyx": {
+  "glow": "#f7834c",
+  "hair": "#cbb8ac",
+  "pad": "#f7b81c",
+  "skin": "#e77445",
+  "top": "#3c2f5c"
+ },
+ "merc_orla": {
+  "hair": "#f3b657",
+  "skin": "#faa75a",
+  "top": "#c1d3da"
+ },
+ "merc_oso": {
+  "hair": "#2d3159",
+  "pad": "#2d3159",
+  "skin": "#ab3f1e",
+  "top": "#364069"
+ },
+ "merc_pip": {
+  "hair": "#f44b0f",
+  "skin": "#f59439",
+  "top": "#67342a"
+ },
+ "merc_plip": {
+  "skin": "#54b88f",
+  "top": "#547d8b",
+  "trim": "#faca36"
+ },
+ "merc_prism": {
+  "glow": "#0182fa",
+  "pad": "#d8a83a",
+  "skin": "#9538ce",
+  "top": "#6c48a2"
+ },
+ "merc_quill": {
+  "glow": "#476bc7",
+  "skin": "#b2b1be",
+  "top": "#7588c0",
+  "trim": "#f8f0e8"
+ },
+ "merc_reed": {
+  "glow": "#840ee8",
+  "skin": "#e2cbc3",
+  "top": "#c3a9bd"
+ },
+ "merc_rex": {
+  "hair": "#883324",
+  "pants": "#1c2e78",
+  "skin": "#f68239",
+  "top": "#ab2a16"
+ },
+ "merc_rook": {
+  "hair": "#493c5f",
+  "pad": "#493c5f",
+  "skin": "#f18444",
+  "top": "#1b266e"
+ },
+ "merc_rune": {
+  "hair": "#8d3a24",
+  "pants": "#252e6d",
+  "skin": "#e3702f",
+  "top": "#733834"
+ },
+ "merc_skarn": {
+  "glow": "#f8f044",
+  "skin": "#2b8847",
+  "top": "#196545",
+  "trim": "#fbfcc0"
+ },
+ "merc_solace": {
+  "glow": "#fdbc75",
+  "hair": "#d5c2cc",
+  "pants": "#44708d",
+  "skin": "#fbb06b",
+  "top": "#dac9c7"
+ },
+ "merc_syla": {
+  "glow": "#f9b913",
+  "skin": "#2ab6a7",
+  "top": "#89662a",
+  "trim": "#e8fcb6"
+ },
+ "merc_tess": {
+  "hair": "#cf7d44",
+  "skin": "#f09852",
+  "top": "#105a9f"
+ },
+ "merc_tink": {
+  "glow": "#f1400d",
+  "pad": "#983c3b",
+  "skin": "#d45222",
+  "top": "#aa2f29"
+ },
+ "merc_vex": {
+  "glow": "#0779c6",
+  "skin": "#aef0c1",
+  "top": "#2b1876",
+  "trim": "#087dc8"
+ },
+ "merc_voidwake": {
+  "skin": "#8837e4",
+  "top": "#241e6f",
+  "trim": "#9b1cd6"
+ },
+ "merc_vorn": {
+  "glow": "#2e4a96",
+  "skin": "#3a3a50",
+  "top": "#3a354b",
+  "trim": "#f8a81f"
+ },
+ "merc_wisp": {
+  "glow": "#9fe6ff",
+  "skin": "#a2dfeb",
+  "top": "#5f96dd",
+  "trim": "#d8eeff"
+ },
+ "merc_yara": {
+  "hair": "#642627",
+  "pants": "#206164",
+  "skin": "#ec7938",
+  "top": "#9bc2a3"
+ },
+ "merc_zephyr": {
+  "fin": "#faf2e6",
+  "glow": "#4e60c3",
+  "skin": "#444eae",
+  "top": "#162596",
+  "trim": "#f8b623"
+ }
+}
