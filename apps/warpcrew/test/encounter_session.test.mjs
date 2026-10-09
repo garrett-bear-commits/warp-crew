@@ -365,7 +365,7 @@ test('a failed durable save publishes neither beat state nor effects', () => {
 test('a terminal beat does not enter travel-result logging after its save', () => {
   let player = normal({ staffWeapons: true });
   let result;
-  for (let i = 0; i < 30 && !player.activeEncounter.result; i++) {
+  for (let i = 0; i < 120 && !player.activeEncounter.result; i++) {
     result = sessionAction(player, {}, 'encounter-advance', {
       acceptanceId: player.activeEncounter.acceptanceId,
       revision: player.activeEncounter.revision,

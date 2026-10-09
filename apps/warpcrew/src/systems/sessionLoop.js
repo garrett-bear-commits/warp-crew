@@ -12,7 +12,8 @@ import { listCombatOrders, previewCombatOrder, encounterById, crewPower } from '
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs, STATIONS } from './stations.js';
 import { applyEncounterAction, recoverEncounter, applyEncounterCommand, guidedTargetDone } from './encounterState.js';
-import { FTL_VERSION, PLAYER_WEAPONS, weaponDef, playerChargePerBeat, enemyChargePerBeat, currentTarget, playerEvasion, enemyEvasion, playerShieldCap, enemyShieldCap, ftlTacticStatus, RULES as FTL_RULES, OVERCHARGE } from './ftlCombat.js';
+import { FTL_VERSION, PLAYER_WEAPONS, weaponDef, playerChargePerBeat, enemyChargePerBeat, currentTarget, playerEvasion, enemyEvasion, playerShieldCap, enemyShieldCap, ftlTacticStatus, RULES as FTL_RULES, OVERCHARGE, enemyStartHull, kitFight, memberKit, abilityGainPerBeat } from './ftlCombat.js';
+import { describeKit } from '../data/crewKits.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
 import { buyWeapon, equipWeapon } from './armory.js';
@@ -150,10 +151,16 @@ function ftlEncounterView(player, encounter, { settled, ui = {} }) {
     crew: encounter.crew.map(member => ({ id: member.id, name: crewById[member.id]?.name || 'Crew', role: member.role,
       portrait: crewById[member.id] ? portraitFor(crewById[member.id].templateId, crewById[member.id].role) : null,
       room: encounter.intent.moves?.[member.id] || member.room, station: member.station,
-      moving: Boolean(encounter.intent.moves?.[member.id]), manual: member.manualUntil > encounter.beat })),
+      moving: Boolean(encounter.intent.moves?.[member.id]), manual: member.manualUntil > encounter.beat,
+      // The signature move: its charge now and at the next beat, and whether a tap is already queued.
+      ability: memberKit(member) ? { move: memberKit(member).move, text: describeKit(memberKit(member)),
+        chargePct: member.charge, ready: member.charge >= 100, queued: (encounter.intent.cast || []).includes(member.id),
+        nextPct: !encounter.result && encounter.phase === 'combat' ? Math.min(100, member.charge + abilityGainPerBeat(encounter, member)) : member.charge } : null })),
+    abilities: kitFight(encounter),
+    auto: encounter.intent.auto === true,
     enemy: {
       hull: encounter.enemy.hull,
-      hullMax: encounter.enemy.startHull ?? 42,
+      hullMax: enemyStartHull(encounter),
       shields: { layers: encounter.enemy.shields.layers, max: enemyShieldCap(encounter), full: encounter.enemy.shields.max,
         rechargePct: pct(encounter.enemy.shields.rechargeMs, FTL_RULES.enemyShieldRechargeMs), ionized: (encounter.enemy.shields.ionMs || 0) > 0 },
       evasion: enemyEvasion(encounter),
@@ -545,6 +552,8 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     const result = travel ? applyTravelFightCommand(player, input) : applyEncounterCommand(player, input);
     if (!result.ok) return result;
     player = result.player;
+    // Auto is the captain's standing order: later fights start the same way.
+    if (data.command?.type === 'auto') player = { ...player, flags: { ...(player.flags || {}), manualAbilities: data.command.auto !== true } };
     effect = { kind: 'encounter-command', command: data.command };
   } else if (['encounter-advance', 'encounter-order', 'encounter-recover'].includes(act)) {
     const travel = Boolean(player.activeTravelFight && !player.activeContract);

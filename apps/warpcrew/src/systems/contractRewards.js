@@ -141,6 +141,13 @@ function wallRemaining(player, contract, now) {
 }
 
 /** Construct a prize from a saved crew-run victory without rolling combat again. */
+/** Extra credits (percent) a won kit fight pays: the best trader's passive plus any salvage move. */
+export function fightSalvagePct(encounter) {
+  if (encounter?.version !== 3 || !Array.isArray(encounter.crew)) return 0;
+  const trader = Math.max(0, ...encounter.crew.filter(c => c.role === 'trader' && typeof c.kit === 'string').map(c => Number(c.bonus) || 0));
+  return Math.round(trader * 100 + (Number(encounter.fx?.salvage) || 0));
+}
+
 export function resolveSimulatedCombatPayout(player, contract, encounter, now = trustedNow()) {
   const catalog = encounterById(contract.encounterId);
   const lost = encounter.result === 'loss' && contract.profile !== 'distress';
@@ -171,9 +178,12 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
       ? { ...winRewards, credits: Math.floor((winRewards.credits || 0) * 1.25), medals: Math.floor((winRewards.medals || 0) * 1.25) }
       : winRewards;
   const visits = player?.stats?.visits?.[contract.destinationId] || 0;
-  const rewards = contract.profile === 'distress'
+  const scaled = contract.profile === 'distress'
     ? normalizeCurrencyReward(rawRewards)
     : normalizeCurrencyReward(scaleSitePayout(rawRewards, player, { kind: 'combat', visits }));
+  // Traders aboard (their passive) and salvage moves (Already Sold It) add to a won fight's credits.
+  const salvagePct = lost ? 0 : fightSalvagePct(encounter);
+  const rewards = salvagePct > 0 ? { ...scaled, credits: Math.round(scaled.credits * (1 + salvagePct / 100)) } : scaled;
   // v3 fights run on the ship's own hull; older fights ran on a 30-point fight hull.
   const ftl = encounter.version === 3;
   const hullLoss = Math.max(0, ftl ? encounter.startHull - encounter.hull : 30 - encounter.hull);

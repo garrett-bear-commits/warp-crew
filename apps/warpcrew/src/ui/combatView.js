@@ -14,6 +14,7 @@ const ENEMY_STATION = toWorld({ x: 89.4, y: 13.9 });
 const ENEMY_SPAWN = toWorld({ x: 95.5, y: -5.8 });
 import { STATIONS } from '../systems/stations.js';
 import { RULES as FTL_RULES } from '../systems/ftlCombat.js';
+import { catalogById } from '../data/crewRoster.js';
 
 // Our hull at or under this sounds the alarm when hit (matches the HUD's low-hull tint).
 const HULL_ALARM_AT = FTL_RULES.playerHullMax * 0.3;
@@ -162,10 +163,54 @@ function flashEnemyRoom(roomId, outcome) {
   setTimeout(() => target.classList.remove(cls), 450);
 }
 
+const escHtml = value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+
+/** The cast banner: the crew member's portrait, the move's name and their line (crew-matter design). */
+function showCast(event) {
+  if (typeof document === 'undefined') return;
+  let layer = document.querySelector('.ftl-cast-layer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'ftl-cast-layer';
+    layer.setAttribute('aria-live', 'polite');
+    document.body.appendChild(layer);
+  }
+  const card = document.querySelector(`[data-crew-card="${CSS.escape(String(event.crewId))}"]`);
+  const img = card?.querySelector('img')?.getAttribute('src') || '';
+  const name = card?.querySelector('.ftl-crew-chip span')?.textContent || '';
+  const template = catalogById(event.kit);
+  const el = document.createElement('div');
+  el.className = `ftl-cast rarity-${template?.rarity || 'common'}`;
+  el.innerHTML = `${img ? `<img src="${escHtml(img)}" alt="">` : ''}<b>${escHtml(event.move)}!</b><small>${escHtml(name)}</small>${template?.quote ? `<q>${escHtml(template.quote)}</q>` : ''}`;
+  while (layer.children.length >= 2) layer.firstElementChild.remove();
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), 1700);
+  if (['legendary', 'mythic', 'apex'].includes(template?.rarity)) addTrauma(0.25);
+}
+
+/** A floating word over an enemy room ("CRIT"). */
+function popOver(roomId, text, delayMs = 0) {
+  if (typeof document === 'undefined') return;
+  setTimeout(() => {
+    const el = document.querySelector(`[data-enemy-room="${roomId}"]`);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const pop = document.createElement('div');
+    pop.className = 'ftl-pop';
+    pop.textContent = text;
+    pop.style.left = `${r.left + r.width / 2}px`;
+    pop.style.top = `${r.top + r.height * 0.3}px`;
+    document.body.appendChild(pop);
+    setTimeout(() => pop.remove(), 950);
+  }, delayMs);
+}
+
 export function playFtlBeat(events = []) {
   const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   for (const event of events) {
+    if (event.type === 'ability') { showCast(event); continue; }
     if (event.type !== 'shot') continue;
+    if (event.from === 'player' && event.crit && event.outcome === 'hit') popOver(event.room, 'CRIT!', (event.t || 0) + (reduced ? 0 : 320));
     if (reduced) {
       if (event.from === 'player') flashEnemyRoom(event.room, event.outcome);
       continue;
@@ -197,6 +242,8 @@ function playFtlBeatSounds(events, reduced) {
     else if (event.type === 'boarders_incoming') sfx('clamp');
     else if (event.type === 'boarders_landed') sfx('boarders');
     else if (event.type === 'boarders_repelled') sfx('confirm', at(event));
+    else if (event.type === 'ability') sfx('beacon', at(event));
+    else if (event.type === 'hull_patch' || event.type === 'repair') sfx('confirm', { delay: 0.15 });
     else if (event.type === 'order') sfx(event.order === 'burn' ? 'overcharge' : event.order === 'board' ? 'board' : event.order === 'rally' ? 'rally' : 'confirm');
     else if (event.type === 'boarding') sfx(event.success ? 'boom' : 'hit', { delay: 0.25 });
     else if (event.type === 'downed') { sfx('hull_down', at(event)); sfx('alarm', { delay: at(event).delay + 0.6 }); }
@@ -250,6 +297,7 @@ function drawFtl(g, camera, dt) {
     g.globalCompositeOperation = 'lighter';
     // Each weapon kind has its own bolt: ion a fat blue pulse, missiles an orange slug, beams a long pink line.
     const look = !ally ? ['rgba(255,120,100,0.95)', '#ff6b6b', 3, 30]
+      : shot.weapon === 'ability' ? ['rgba(205,160,255,0.95)', '#b48cff', 6, 26]
       : shot.weapon === 'ion' ? ['rgba(110,170,255,0.95)', '#3aa7ff', 8, 14]
       : shot.weapon === 'missile' ? ['rgba(255,190,110,0.95)', '#ff9a3c', 6, 22]
       : shot.weapon === 'beam' ? ['rgba(255,130,170,0.95)', '#ff6b9a', 4, 90]

@@ -9,6 +9,7 @@
 // advancing time; the next beat applies them.
 
 import { STATIONS } from './stations.js';
+import { kitFor } from '../data/crewKits.js';
 
 export const FTL_VERSION = 3;
 export const TICK_MS = 250;
@@ -82,6 +83,16 @@ export const RULES = Object.freeze({
 });
 
 export const BOARD = Object.freeze({ maxEnemyHull: 21, rewardScale: 1.25 });
+
+/**
+ * Enemies in kit fights are tougher, so a Common crew with Auto abilities wins about as often as a
+ * crew without kits did, and better crews win more (tuned by sim, 2026-10-09).
+ */
+export const ENEMY_HULL = 42;
+export const KIT_ENEMY = Object.freeze({ hull: 55, damageMult: 1.15 });
+/** The enemy's full hull: a wall segment's start, else the default for this kind of fight. */
+export const enemyStartHull = state => (Number.isInteger(state?.enemy?.startHull) ? state.enemy.startHull
+  : state?.fx && typeof state.fx === 'object' ? KIT_ENEMY.hull : ENEMY_HULL);
 export const OVERCHARGE = Object.freeze({ fuel: 1 });
 
 export function seededIndex(seed, salt, size) {
@@ -99,13 +110,13 @@ const room = () => ({ integrity: 100, fire: 0, fireMs: 0 });
  * Enemy loadout from threat (0.6 Favorable … 1.6 Deadly). Siege-wall flagships are tougher:
  * tier 1 (the first wall) always carries a second gun; tier 2 (later walls) also an extra shield layer.
  */
-export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0 } = {}) {
+export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0, kits = false } = {}) {
   const t = clamp(Number(threat) || 1, 0.6, 1.6);
   const tier = flagship === true ? 2 : Math.max(0, Math.min(2, Math.trunc(Number(flagship) || 0)));
   // Enemy tier comes from the ship's class (later sectors): tier 1 fires three-shot volleys,
   // tier 2 also carries an extra shield layer, so upgraded Sparrows still meet a fight.
   const shipTier = Math.max(0, Math.min(2, Math.trunc(Number(enemyTier) || 0)));
-  const damage = Math.max(2, Math.round(-16 + 24 * t));
+  const damage = Math.max(2, Math.round((-16 + 24 * t) * (kits ? KIT_ENEMY.damageMult : 1)));
   const weapons = [{ id: 'cannon', shots: shipTier >= 1 ? 3 : 2, damage, chargeMs: 10000 }];
   if (t >= 1.1 || tier >= 1) weapons.push({ id: 'heavy', shots: 1, damage: Math.round(damage * 1.8), chargeMs: 12000 });
   return {
@@ -122,12 +133,26 @@ export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0 } =
  */
 export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1, crew = [], hull = 100,
   enemyHull = null, remainingBefore = null, tactics = [], boarders = false, guided = false,
-  shipLevels = null, loadout = DEFAULT_LOADOUT, flagship = 0, enemyTier = 0 }) {
+  shipLevels = null, loadout = DEFAULT_LOADOUT, flagship = 0, enemyTier = 0, auto = false }) {
   const s = Number.isFinite(Number(seed)) ? Math.trunc(Number(seed)) : 0;
   const tier = Math.max(0, Math.min(2, Math.trunc(Number(enemyTier) || 0)));
   // One flagship tier for the loadout and the save, so the validator rebuilds the same enemy.
   const flagTier = flagship === true ? 2 : Math.max(0, Math.min(2, Math.trunc(Number(flagship) || 0)));
-  const load = enemyLoadout(threat, { flagship: flagTier, tier });
+  const fighters = crew.map(member => ({
+    id: String(member.id), role: String(member.role || ''),
+    station: PLAYER_ROOMS.includes(member.station) ? member.station : null,
+    room: PLAYER_ROOMS.includes(member.station) ? member.station : null,
+    manualUntil: 0,
+    // A crew member with a kit fights with their signature move (abilities start half charged).
+    ...(typeof member.kit === 'string' && kitFor(member.kit, member.role) ? {
+      kit: member.kit,
+      grade: Math.round(clamp(Number(member.grade) || 0, 0, 1) * 100) / 100,
+      bonus: Math.round(clamp(Number(member.bonus) || 0, 0, 2) * 1000) / 1000,
+      charge: 50,
+    } : {}),
+  }));
+  const kitted = fighters.some(hasKit);
+  const load = enemyLoadout(threat, { flagship: flagTier, tier, kits: kitted });
   const levels = shipLevels ? Object.fromEntries(['shields', 'weapons', 'engines', 'sensors']
     .map(key => [key, Math.max(1, Math.min(20, Math.trunc(shipLevels[key] || 1)))])) : null;
   const stats = shipCombatStats(levels || {});
@@ -135,7 +160,8 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
   const fitted = guns.length ? guns : [...DEFAULT_LOADOUT];
   const missiles = fitted.filter(id => WEAPON_CATALOG[id].kind === 'missile').length;
   const shieldLayers = stats.shieldLayers;
-  const startHull = Number.isInteger(enemyHull) ? clamp(enemyHull, 1, 42) : 42;
+  const fullHull = kitted ? KIT_ENEMY.hull : ENEMY_HULL;
+  const startHull = Number.isInteger(enemyHull) ? clamp(enemyHull, 1, fullHull) : fullHull;
   return {
     version: FTL_VERSION,
     acceptanceId: String(acceptanceId ?? ''),
@@ -157,13 +183,9 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
     weapons: fitted.map(id => ({ id, chargeMs: Math.round(WEAPON_CATALOG[id].chargeMs * 0.2) })),
     ...(levels ? { ship: { levels } } : {}),
     ...(missiles ? { ammo: { missile: missiles * WEAPON_CATALOG.missile.ammo } } : {}),
-    crew: crew.map(member => ({
-      id: String(member.id), role: String(member.role || ''),
-      station: PLAYER_ROOMS.includes(member.station) ? member.station : null,
-      room: PLAYER_ROOMS.includes(member.station) ? member.station : null,
-      manualUntil: 0,
-    })),
-    intent: { target: null, hold: false, moves: {} },
+    crew: fighters,
+    intent: { target: null, hold: false, moves: {}, ...(kitted ? { cast: [], auto: Boolean(auto) } : {}) },
+    ...(kitted ? { fx: {} } : {}),
     enemy: {
       hull: startHull,
       ...(flagTier ? { flagship: flagTier } : {}),
@@ -188,36 +210,68 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
 
 const stationRole = id => STATIONS[id]?.role;
 
-/** 1.0 unmanned, 1.15 manned, 1.3 manned by the station's role. */
+// --- Crew kits (docs/superpowers/specs/2026-10-09-crew-matter-design.md) -----
+// A fight whose crew carry kits has abilities, grade-scaled station mastery and real role passives.
+// A fight without kits (old saves, the guided tutorial fight, engine tests) plays exactly as before.
+
+const hasKit = member => typeof member?.kit === 'string';
+/** Does this fight use crew kits (abilities, mastery, passives)? It started with a kit aboard and carries `fx`. */
+export const kitFight = state => Boolean(state?.fx && typeof state.fx === 'object' && !Array.isArray(state.fx));
+export const memberKit = member => (hasKit(member) ? kitFor(member.kit, member.role) : null);
+const gradeOf = member => (Number.isFinite(member?.grade) ? member.grade : 0);
+const bonusOf = member => (hasKit(member) && Number.isFinite(member?.bonus) ? member.bonus : 0);
+/** Is a timed effect running this beat? */
+export const fxActive = (state, key) => Number.isInteger(state?.fx?.[key]?.through) && state.fx[key].through >= state.beat;
+/** The best role passive aboard (gunner crit, medic assist, scout aim, security guard...). */
+const bestBonus = (state, role, room = null) => Math.max(0, ...state.crew
+  .filter(member => member.role === role && hasKit(member) && (room === null || member.room === room)).map(bonusOf));
+
+/** Station mastery: 1.0 unmanned; 1.15 manned (+0.15 x grade); 1.3 by the station's role (+0.3 x grade). */
 export function manning(state, roomId) {
   const here = state.crew.filter(member => member.room === roomId);
   if (!here.length) return 1;
-  return here.some(member => member.role === stationRole(roomId)) ? 1.3 : 1.15;
+  const role = stationRole(roomId);
+  return Math.max(...here.map(member => (member.role === role ? 1.3 + 0.3 * gradeOf(member) : 1.15 + 0.15 * gradeOf(member))));
 }
+
+/** Percent chance a player shot crits: the best gunner working the weapons room. */
+export const critChance = state => (kitFight(state) ? bestBonus(state, 'gunner', 'weapons') : 0);
 
 const integrityFactor = integrity => (integrity >= 50 ? 1 : integrity > 0 ? 0.5 : 0);
 
+/** Extra shield layers above max from an ability (Four-Arm Oath) while it runs. */
+export const shieldOver = state => (fxActive(state, 'shieldOver') ? state.fx.shieldOver.n : 0);
+
 export function playerShieldCap(state) {
   const integrity = state.rooms.shields.integrity;
-  return integrity >= 50 ? state.shields.max : integrity > 0 ? Math.max(0, state.shields.max - 1) : 0;
+  const base = integrity >= 50 ? state.shields.max : integrity > 0 ? Math.max(0, state.shields.max - 1) : 0;
+  return integrity > 0 ? base + shieldOver(state) : base;
 }
 
 export function enemyShieldCap(state) {
   const { shields, rooms } = state.enemy;
-  return rooms.shields.integrity >= 50 ? shields.max : rooms.shields.integrity > 0 ? Math.max(0, shields.max - 1) : 0;
+  const cap = rooms.shields.integrity >= 50 ? shields.max : rooms.shields.integrity > 0 ? Math.max(0, shields.max - 1) : 0;
+  return Math.max(0, cap - (state.fx?.enemyShieldDown || 0));
 }
 
 /** Percent chance an enemy shot misses the player (engines upgrades add to it). */
 export function playerEvasion(state) {
-  const base = state.crew.some(member => member.room === 'helm') ? (manning(state, 'helm') >= 1.3 ? 15 : 10) : 5;
-  return Math.round((base + shipStatsOf(state).evasionBonus) * state.rooms.helm.integrity / 100);
+  const atHelm = state.crew.filter(member => member.room === 'helm');
+  const pilots = atHelm.filter(member => member.role === stationRole('helm'));
+  // A pilot at the helm: 15, plus up to 10 more by grade. Anyone else: 10. Nobody: 5.
+  const base = !atHelm.length ? 5 : pilots.length ? 15 + Math.round(10 * Math.max(...pilots.map(gradeOf))) : 10;
+  const evade = fxActive(state, 'evade') ? state.fx.evade.bonus : 0;
+  return Math.round((base + shipStatsOf(state).evasionBonus + evade) * state.rooms.helm.integrity / 100);
 }
 
 /** Percent chance a player shot misses (sensors upgrades take from it). */
 export function enemyEvasion(state) {
   const { evasion, rooms } = state.enemy;
   if (rooms.helm.integrity <= 0) return 0;
-  return Math.max(0, Math.round(evasion * rooms.engines.integrity / 100) - shipStatsOf(state).accuracyBonus);
+  // Scouts read the enemy's moves (their passive); Static Plot and friends take more off for a while.
+  const scout = Math.round(100 * bestBonus(state, 'scout'));
+  const down = fxActive(state, 'evasionDown') ? state.fx.evasionDown.amount : 0;
+  return Math.max(0, Math.round(evasion * rooms.engines.integrity / 100) - shipStatsOf(state).accuracyBonus - scout - down);
 }
 
 /** What an idle captain shoots: shields while they matter, then weapons. */
@@ -253,6 +307,16 @@ export function applyFtlCommand(state, command = {}) {
     if (!member) return { ok: false, reason: 'unknown_crew' };
     if (!PLAYER_ROOMS.includes(command.room)) return { ok: false, reason: 'unknown_room' };
     next.intent.moves = { ...next.intent.moves, [member.id]: command.room };
+  } else if (command.type === 'ability') {
+    // Tap a charged portrait: the move goes off at the start of the next beat.
+    const member = next.crew.find(c => c.id === String(command.crewId));
+    if (!member || !hasKit(member)) return { ok: false, reason: 'unknown_crew' };
+    if (member.charge < 100) return { ok: false, reason: 'not_ready' };
+    if (next.intent.cast.includes(member.id)) return { ok: false, reason: 'already_queued' };
+    next.intent.cast = [...next.intent.cast, member.id];
+  } else if (command.type === 'auto') {
+    if (!kitFight(next)) return { ok: false, reason: 'no_abilities' };
+    next.intent.auto = Boolean(command.auto);
   } else return { ok: false, reason: 'unknown_command' };
   return { ok: true, state: next };
 }
@@ -270,7 +334,7 @@ function tacticAvailable(state, name) {
 
 export function boardChance(state) {
   const threat = Number.isFinite(state?.enemy?.threat) ? state.enemy.threat : 1;
-  const finishing = (state?.enemy?.hull ?? 42) <= 10 ? 0.15 : 0;
+  const finishing = (state?.enemy?.hull ?? ENEMY_HULL) <= 10 ? 0.15 : 0;
   // Knocked-out enemy weapons or helm make a boarding party far likelier to hold.
   const crippled = state?.enemy?.rooms && (state.enemy.rooms.weapons.integrity <= 0 || state.enemy.rooms.helm.integrity <= 0) ? 0.1 : 0;
   return Math.max(0.2, Math.min(0.92, Math.round((0.8 - (threat - 1) * 0.7 + finishing + crippled) * 100) / 100));
@@ -282,8 +346,7 @@ export const RALLY_RULE = Object.freeze({ nearMissPct: 0.2 });
 
 export function ftlRallyEligible(state) {
   if (state.rally?.used) return false;
-  const start = Number.isInteger(state.enemy.startHull) ? state.enemy.startHull : 42;
-  return state.enemy.hull > 0 && state.enemy.hull <= start * RALLY_RULE.nearMissPct;
+  return state.enemy.hull > 0 && state.enemy.hull <= enemyStartHull(state) * RALLY_RULE.nearMissPct;
 }
 
 function finish(next, result, events, t, lossReason = null) {
@@ -413,6 +476,8 @@ export function advanceFtlEncounter(state, order = null) {
     }
   }
 
+  if (kitFight(next)) castAbilities(next, events);
+
   dispatchCrew(next);
 
   const overcharged = next.tactics?.burn?.throughBeat >= next.beat;
@@ -421,6 +486,7 @@ export function advanceFtlEncounter(state, order = null) {
     const salt = next.beat * 100 + tick * 10;
     runTick(next, events, t, salt, overcharged);
   }
+  if (kitFight(next) && next.result === null) chargeAbilities(next);
 
   next.eventIndex += events.length;
   return { state: next, events };
@@ -432,7 +498,8 @@ function runTick(next, events, t, salt, overcharged) {
   const cap = playerShieldCap(next);
   if (next.shields.layers > cap) next.shields.layers = cap;
   if (next.shields.layers < cap) {
-    next.shields.rechargeMs += Math.round(TICK_MS * manning(next, 'shields') * shipStatsOf(next).shieldRechargeMult);
+    const boost = fxActive(next, 'shieldRecharge') ? 1 + next.fx.shieldRecharge.pct / 100 : 1;
+    next.shields.rechargeMs += Math.round(TICK_MS * manning(next, 'shields') * shipStatsOf(next).shieldRechargeMult * boost);
     if (next.shields.rechargeMs >= RULES.shieldRechargeMs) {
       next.shields.layers += 1;
       next.shields.rechargeMs = 0;
@@ -469,15 +536,22 @@ function runTick(next, events, t, salt, overcharged) {
   const ready = armed.filter(w => w.chargeMs >= weaponDef(w.id).chargeMs);
   const fireNow = next.intent.hold ? (ready.length === armed.length ? ready : []) : ready;
   const target = currentTarget(next);
+  const kitted = kitFight(next);
+  const fx = next.fx;
+  const extra = kitted ? fx.extraShots || 0 : 0;
+  const crit = critChance(next);
   let shotNo = 0;
   for (const weapon of fireNow) {
     const def = weaponDef(weapon.id);
     weapon.chargeMs = 0;
     if (def.kind === 'missile') next.ammo.missile -= 1;
-    for (let shot = 0; shot < def.shots; shot += 1) {
+    for (let shot = 0; shot < def.shots + extra; shot += 1) {
       const at = t + shotNo * 70;
       shotNo += 1;
-      const shielded = next.enemy.shields.layers > 0;
+      let shielded = next.enemy.shields.layers > 0;
+      // Cold Read: the next shots slip through shields like a missile.
+      const pierced = kitted && shielded && fx.pierce > 0;
+      if (pierced) { fx.pierce -= 1; shielded = false; }
       if (shielded && def.kind === 'beam') {
         // Beams only cut an unshielded hull.
         events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'shield', deflected: true });
@@ -489,20 +563,30 @@ function runTick(next, events, t, salt, overcharged) {
         events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'shield', ...(def.kind === 'ion' ? { ion: true } : {}) });
         continue;
       }
-      if (seededIndex(next.seed, salt + shot + shotNo * 3 + 1, 100) < enemyEvasion(next)) {
+      // Mark Target and friends: the next shots can't miss and hit harder.
+      const sure = kitted && fx.sureHit?.n > 0 ? { ...fx.sureHit } : null;
+      if (sure) fx.sureHit.n -= 1;
+      if (!sure && seededIndex(next.seed, salt + shot + shotNo * 3 + 1, 100) < enemyEvasion(next)) {
         events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'miss' });
         continue;
       }
+      const weak = kitted && fxActive(next, 'weak') && fx.weak.room === target ? fx.weak.mult : 1;
+      const roomMult = (sure ? 1 + (sure.roomPct || 0) / 100 : 1) * weak;
       if (def.kind === 'ion') {
-        damageRoom(next.enemy.rooms, target, def.roomDamage);
+        damageRoom(next.enemy.rooms, target, def.roomDamage * roomMult);
         if (target === 'shields') next.enemy.shields.ionMs = def.ionMs;
         events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'hit', damage: 0, ion: true });
         continue;
       }
-      const amount = Math.min(def.damage, next.enemy.hull);
+      const crits = (sure?.crit || (crit > 0 && seededIndex(next.seed, salt + 77 + shotNo * 7, 1000) < Math.round(crit * 1000)));
+      const amount = Math.min(crits ? Math.round(def.damage * 1.5) : def.damage, next.enemy.hull);
       next.enemy.hull -= amount;
-      damageRoom(next.enemy.rooms, target, def.roomDamage ?? RULES.roomHitDamage + 2 * def.damage);
-      events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'hit', damage: amount });
+      const roomHit = (def.roomDamage ?? RULES.roomHitDamage + 2 * def.damage) * roomMult + (crits ? 10 : 0);
+      damageRoom(next.enemy.rooms, target, roomHit);
+      // A Better Angle: each hit also tears into a neighbouring room.
+      if (sure?.splash) damageRoom(next.enemy.rooms, ENEMY_ADJ[target][seededIndex(next.seed, salt + 88 + shotNo, ENEMY_ADJ[target].length)], roomHit / 2);
+      events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'hit', damage: amount,
+        ...(crits ? { crit: true } : {}), ...(sure ? { sure: true } : {}) });
       maybeFire(next, next.enemy.rooms, target, salt + 50 + shotNo, events, at, 'enemy', def.fireChance);
       if (next.enemy.hull <= 0) {
         next.enemy.hull = 0;
@@ -511,9 +595,13 @@ function runTick(next, events, t, salt, overcharged) {
       }
     }
   }
+  if (kitted && extra && fireNow.length) fx.extraShots = 0;
 
-  // Enemy weapons.
-  const enemyRate = integrityFactor(next.enemy.rooms.weapons.integrity) * (next.enemy.rooms.helm.integrity <= 0 ? 0.75 : 1);
+  // Enemy weapons (a bribe stalls them; Customs Cutter slows them).
+  const stalled = kitted && fxActive(next, 'stall');
+  const slowed = kitted && fxActive(next, 'slow') ? 1 - next.fx.slow.pct / 100 : 1;
+  const enemyRate = stalled ? 0
+    : integrityFactor(next.enemy.rooms.weapons.integrity) * (next.enemy.rooms.helm.integrity <= 0 ? 0.75 : 1) * slowed;
   next.enemy.weapons.forEach((weapon, index) => {
     if (next.result !== null || next.phase !== 'combat') return;
     weapon.progressMs = Math.min(weapon.chargeMs, weapon.progressMs + Math.round(TICK_MS * enemyRate));
@@ -526,13 +614,26 @@ function runTick(next, events, t, salt, overcharged) {
         events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'shield' });
         continue;
       }
-      if (seededIndex(next.seed, salt + 30 + index * 5 + shot, 100) < playerEvasion(next)) {
-        events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'miss' });
+      if (kitted && next.fx.dodgeNext > 0) {
+        next.fx.dodgeNext -= 1;
+        events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'miss', dodge: true });
         continue;
       }
-      next.hull = Math.max(1, next.hull - weapon.damage);
+      if (seededIndex(next.seed, salt + 30 + index * 5 + shot, 100) < playerEvasion(next)) {
+        events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'miss' });
+        // Laugh at Gauges: every dodge feeds the guns.
+        if (kitted && fxActive(next, 'evade') && next.fx.evade.dodgeCharge > 0) chargeWeapons(next, next.fx.evade.dodgeCharge);
+        continue;
+      }
+      const damage = kitted && fxActive(next, 'brace') ? Math.ceil(weapon.damage / 2) : weapon.damage;
+      let hull = Math.max(1, next.hull - damage);
+      // Later: while it runs the hull holds (at the hold line, or where it already was if lower).
+      if (kitted && fxActive(next, 'lastStand')) hull = Math.max(hull, Math.min(next.hull, next.fx.lastStand.hold));
+      const taken = next.hull - hull;
+      next.hull = hull;
       damageRoom(next.rooms, weapon.target, RULES.roomHitDamage + 2 * weapon.damage);
-      events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'hit', damage: weapon.damage });
+      events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'hit', damage: taken,
+        ...(damage < weapon.damage ? { braced: true } : {}) });
       maybeFire(next, next.rooms, weapon.target, salt + 60 + index * 5 + shot, events, at, 'player');
       if (next.hull <= 1) {
         finishLoss(next, events, at, 'Hull breached; retreat with the ship barely holding together.');
@@ -550,15 +651,20 @@ function runTick(next, events, t, salt, overcharged) {
 
   // Player crew: fires first, then boarders, then repairs.
   const engineeringBoost = next.crew.some(c => c.room === 'engineering') ? 1.25 : 1;
+  const haste = kitted && fxActive(next, 'haste') ? next.fx.haste.mult : 1;
+  const door = kitted && fxActive(next, 'holdDoor') ? next.fx.holdDoor.mult : 1;
   for (const member of next.crew) {
     if (!member.room) continue;
     const r = next.rooms[member.room];
-    const skill = (member.role === 'engineer' ? 1.5 : 1) * engineeringBoost;
+    // Grade makes every crew member a little better at the job; engineers add their repair passive.
+    const work = (1 + 0.3 * gradeOf(member)) * haste;
+    const skill = (member.role === 'engineer' ? 1.5 * (1 + bonusOf(member)) : 1) * engineeringBoost * work;
     if (r.fire > 0) {
-      r.fire = Math.max(0, r.fire - RULES.crewExtinguishPerSec * sec);
+      r.fire = Math.max(0, r.fire - RULES.crewExtinguishPerSec * work * sec);
       if (r.fire === 0) { r.fireMs = 0; events.push({ t, type: 'fire_out', side: 'player', room: member.room }); }
     } else if (next.boarders?.phase === 'aboard' && next.boarders.room === member.room) {
-      next.boarders.hp = Math.max(0, next.boarders.hp - (['security', 'gunner'].includes(member.role) ? 9 : 6) * sec);
+      const guard = member.role === 'security' ? 1 + 3 * bonusOf(member) : 1;
+      next.boarders.hp = Math.max(0, next.boarders.hp - (['security', 'gunner'].includes(member.role) ? 9 : 6) * guard * door * work * sec);
       if (next.boarders.hp === 0) {
         next.boarders.phase = 'repelled';
         events.push({ t, type: 'boarders_repelled', room: member.room });
@@ -567,7 +673,9 @@ function runTick(next, events, t, salt, overcharged) {
       r.integrity = Math.min(100, r.integrity + RULES.crewRepairPerSec * skill * sec);
     }
   }
-  if (next.boarders?.phase === 'aboard') damageRoom(next.rooms, next.boarders.room, RULES.boarderSabotagePerSec * sec);
+  if (next.boarders?.phase === 'aboard' && !(kitted && fxActive(next, 'guard'))) {
+    damageRoom(next.rooms, next.boarders.room, RULES.boarderSabotagePerSec * (1 - Math.min(0.8, bestBonus(next, 'security'))) * sec);
+  }
 
   // Enemy crew patch their ship slowly.
   for (const id of ENEMY_ROOMS) {
@@ -578,6 +686,209 @@ function runTick(next, events, t, salt, overcharged) {
     } else if (r.integrity < 100) r.integrity = Math.min(100, r.integrity + next.enemy.repairPerSec * sec);
   }
   for (const r of [...Object.values(next.rooms), ...Object.values(next.enemy.rooms)]) r.integrity = Math.round(r.integrity * 100) / 100;
+}
+
+// --- Abilities ---------------------------------------------------------------
+
+/** Add pct% of each player weapon's full charge (weapons that can fire). */
+function chargeWeapons(next, pct) {
+  for (const weapon of next.weapons) {
+    if (!weaponCanFire(next, weapon)) continue;
+    const full = weaponDef(weapon.id).chargeMs;
+    weapon.chargeMs = Math.min(full, weapon.chargeMs + Math.round(full * pct / 100));
+  }
+}
+
+/** Rooms worst first: burning rooms, then the most damaged. */
+const worstRooms = (state, n) => [...PLAYER_ROOMS]
+  .filter(id => state.rooms[id].fire > 0 || state.rooms[id].integrity < 100)
+  .sort((a, b) => (state.rooms[b].fire > 0) - (state.rooms[a].fire > 0) || state.rooms[a].integrity - state.rooms[b].integrity)
+  .slice(0, n);
+
+const timed = (next, beats) => next.beat + Math.max(1, Math.trunc(beats || 1)) - 1;
+const capped = (value, max) => Math.min(max, Math.max(0, Math.trunc(value)));
+
+/** Apply one crew member's signature move. Returns early if it wins the fight. */
+function applyAbility(next, member, events) {
+  const kit = memberKit(member);
+  const fx = next.fx;
+  const target = currentTarget(next);
+  events.push({ t: 0, type: 'ability', crewId: member.id, kit: member.kit, move: kit.move, effects: kit.effects.map(e => e.type) });
+  for (const e of kit.effects) {
+    switch (e.type) {
+      case 'charge': chargeWeapons(next, e.pct); break;
+      case 'fullCharge': chargeWeapons(next, 100); break;
+      case 'fireNow': chargeWeapons(next, 100); fx.extraShots = capped((fx.extraShots || 0) + (e.extraShots || 0), 3); break;
+      case 'extraShots': fx.extraShots = capped((fx.extraShots || 0) + e.n, 3); break;
+      case 'pierce': fx.pierce = capped((fx.pierce || 0) + e.n, 10); break;
+      case 'sureHit':
+        fx.sureHit = { n: capped((fx.sureHit?.n || 0) + e.n, 10), roomPct: e.roomPct || 0, crit: e.crit === true, splash: e.splash === true };
+        break;
+      case 'freeShot': {
+        for (let shot = 0; shot < (e.shots || 1); shot += 1) {
+          const amount = Math.min(e.damage, next.enemy.hull);
+          next.enemy.hull -= amount;
+          damageRoom(next.enemy.rooms, target, RULES.roomHitDamage + 2 * e.damage);
+          events.push({ t: shot * 70, type: 'shot', from: 'player', weapon: 'ability', crewId: member.id, room: target, outcome: 'hit', damage: amount });
+          if (next.enemy.hull <= 0) { next.enemy.hull = 0; finish(next, 'win', events, shot * 70); return; }
+        }
+        break;
+      }
+      case 'evade': fx.evade = { bonus: e.bonus, through: timed(next, e.beats), dodgeCharge: 0 }; break;
+      case 'dodgeCharge': if (fx.evade) fx.evade.dodgeCharge = e.pct; break;
+      case 'dodgeNext': fx.dodgeNext = capped((fx.dodgeNext || 0) + e.n, 10); break;
+      case 'shieldBurst':
+        if (e.over > 0) fx.shieldOver = { n: Math.min(1, e.over), through: timed(next, e.beats) };
+        next.shields.layers = Math.max(next.shields.layers, playerShieldCap(next));
+        next.shields.rechargeMs = 0;
+        events.push({ t: 0, type: 'shield_up', side: 'player', layers: next.shields.layers, ability: true });
+        break;
+      case 'shieldRecharge': fx.shieldRecharge = { pct: e.pct, through: timed(next, e.beats) }; break;
+      case 'repair': {
+        const rooms = e.rooms === 'all' ? [...PLAYER_ROOMS] : worstRooms(next, e.rooms || 1);
+        for (const id of rooms) {
+          const r = next.rooms[id];
+          if (r.fire > 0) { r.fire = 0; r.fireMs = 0; events.push({ t: 0, type: 'fire_out', side: 'player', room: id }); }
+          r.integrity = Math.min(100, r.integrity + e.amount);
+        }
+        events.push({ t: 0, type: 'repair', rooms, amount: e.amount });
+        break;
+      }
+      case 'extinguish':
+        for (const id of PLAYER_ROOMS) {
+          const r = next.rooms[id];
+          if (r.fire > 0) { r.fire = 0; r.fireMs = 0; events.push({ t: 0, type: 'fire_out', side: 'player', room: id }); }
+        }
+        break;
+      case 'hullPatch': {
+        const before = next.hull;
+        next.hull = Math.min(RULES.playerHullMax, next.hull + e.amount);
+        events.push({ t: 0, type: 'hull_patch', amount: next.hull - before });
+        break;
+      }
+      case 'haste': fx.haste = { mult: e.mult, through: timed(next, e.beats) }; break;
+      case 'allCharge':
+        for (const other of next.crew) if (other !== member && hasKit(other)) other.charge = Math.min(100, other.charge + e.pct);
+        break;
+      case 'stall': fx.stall = { through: Math.max(fx.stall?.through ?? 0, timed(next, e.beats)) }; break;
+      case 'slow': fx.slow = { pct: e.pct, through: timed(next, e.beats) }; break;
+      case 'drain':
+        next.enemy.shields.layers = Math.max(0, next.enemy.shields.layers - e.n);
+        next.enemy.shields.rechargeMs = 0;
+        next.enemy.shields.ionMs = WEAPON_CATALOG.ion.ionMs;
+        events.push({ t: 0, type: 'drain', side: 'enemy', layers: next.enemy.shields.layers });
+        break;
+      case 'shieldMaxDown':
+        fx.enemyShieldDown = capped((fx.enemyShieldDown || 0) + e.n, 2);
+        next.enemy.shields.layers = Math.min(next.enemy.shields.layers, enemyShieldCap(next));
+        break;
+      case 'strike': {
+        damageRoom(next.enemy.rooms, target, e.room);
+        const amount = Math.min(e.hull || 0, next.enemy.hull);
+        next.enemy.hull -= amount;
+        events.push({ t: 0, type: 'strike', side: 'enemy', room: target, damage: amount });
+        if (next.enemy.hull <= 0) { next.enemy.hull = 0; finish(next, 'win', events, 0); return; }
+        break;
+      }
+      case 'offline':
+        next.enemy.rooms[target].integrity = 0;
+        events.push({ t: 0, type: 'strike', side: 'enemy', room: target, damage: 0, offline: true });
+        break;
+      case 'ignite': {
+        const id = e.room === 'weapons' ? 'weapons' : target;
+        if (next.enemy.rooms[id].fire === 0) {
+          next.enemy.rooms[id].fire = 100;
+          next.enemy.rooms[id].fireMs = 0;
+          events.push({ t: 0, type: 'fire_start', side: 'enemy', room: id });
+        }
+        break;
+      }
+      case 'weakRoom': fx.weak = { room: target, mult: e.mult, through: timed(next, e.beats) }; break;
+      case 'evasionDown': fx.evasionDown = { amount: e.amount, through: timed(next, e.beats) }; break;
+      case 'brace': fx.brace = { through: Math.max(fx.brace?.through ?? 0, timed(next, e.beats)) }; break;
+      case 'holdDoor':
+        if (next.boarders?.phase === 'aboard') fx.holdDoor = { mult: e.mult, through: timed(next, e.beats) };
+        else fx.brace = { through: Math.max(fx.brace?.through ?? 0, timed(next, 2)) };
+        break;
+      case 'guard': fx.guard = { through: timed(next, e.beats) }; break;
+      case 'lastStand':
+        if (!fx.lastStandUsed) { fx.lastStand = { hold: e.hold, through: timed(next, e.beats) }; fx.lastStandUsed = true; }
+        break;
+      case 'salvage':
+        if (!fx.salvageUsed) { fx.salvage = Math.min(100, (fx.salvage || 0) + e.pct); fx.salvageUsed = true; }
+        break;
+      case 'rewind':
+        for (const weapon of next.enemy.weapons) weapon.progressMs = 0;
+        events.push({ t: 0, type: 'rewind', side: 'enemy' });
+        break;
+      default: break;
+    }
+  }
+}
+
+const enemyAboutToFire = state => state.enemy.weapons.some(w => w.progressMs >= w.chargeMs * 0.7);
+const gunsAboutToFire = state => state.weapons.some(w => weaponCanFire(state, w) && w.chargeMs >= weaponDef(w.id).chargeMs * 0.7);
+const gunsLow = state => {
+  const armed = state.weapons.filter(w => weaponCanFire(state, w));
+  return armed.length > 0 && armed.reduce((sum, w) => sum + w.chargeMs / weaponDef(w.id).chargeMs, 0) / armed.length < 0.6;
+};
+const roomsHurt = (state, below) => PLAYER_ROOMS.some(id => state.rooms[id].fire > 0 || state.rooms[id].integrity < below);
+
+/** Would this effect help right now? (The Auto policy and scripted captains cast when any effect would.) */
+function effectUseful(state, e, member) {
+  switch (e.type) {
+    case 'charge': case 'fullCharge': case 'fireNow': return gunsLow(state);
+    case 'extraShots': case 'sureHit': case 'weakRoom': case 'evasionDown': return gunsAboutToFire(state);
+    case 'pierce': return gunsAboutToFire(state) && state.enemy.shields.layers > 0;
+    case 'freeShot': case 'strike': case 'offline': case 'ignite': case 'shieldMaxDown': return true;
+    case 'drain': return state.enemy.shields.layers > 0;
+    case 'evade': case 'dodgeNext': case 'brace': case 'stall': case 'slow': case 'rewind': return enemyAboutToFire(state);
+    case 'shieldBurst': case 'shieldRecharge': return state.shields.layers < playerShieldCap(state);
+    case 'repair': case 'extinguish': return roomsHurt(state, 70);
+    case 'hullPatch': return state.hull <= RULES.playerHullMax - e.amount || state.hull < 50;
+    case 'haste': return roomsHurt(state, 80) || state.boarders?.phase === 'aboard';
+    case 'allCharge': return state.crew.some(other => other !== member && hasKit(other) && other.charge < 50);
+    case 'holdDoor': return state.boarders?.phase === 'aboard' || enemyAboutToFire(state);
+    case 'guard': return ['incoming', 'aboard'].includes(state.boarders?.phase);
+    case 'lastStand': return !state.fx?.lastStandUsed && state.hull <= 45;
+    case 'salvage': return !state.fx?.salvageUsed;
+    default: return false;
+  }
+}
+
+export function abilityUseful(state, member) {
+  const kit = memberKit(member);
+  return Boolean(kit) && member.charge >= 100 && kit.effects.some(e => effectUseful(state, e, member));
+}
+
+/** Queued taps first, then (with Auto on) every charged ability that would help now. */
+function castAbilities(next, events) {
+  const queued = [...(next.intent.cast || [])];
+  if (next.intent.auto) {
+    for (const member of next.crew) if (!queued.includes(member.id) && abilityUseful(next, member)) queued.push(member.id);
+  }
+  next.intent.cast = [];
+  for (const id of queued) {
+    const member = next.crew.find(c => c.id === id);
+    if (!member || !hasKit(member) || member.charge < 100 || next.result !== null) continue;
+    member.charge = 0;
+    applyAbility(next, member, events);
+  }
+}
+
+/** Abilities charge every beat; medics aboard speed everyone up (their passive). */
+export function abilityGainPerBeat(state, member) {
+  const kit = memberKit(member);
+  if (!kit) return 0;
+  const assist = bestBonus(state, 'medic');
+  return Math.max(1, Math.round(100 * (1 + 2 * assist) / kit.charge));
+}
+
+function chargeAbilities(next) {
+  for (const member of next.crew) {
+    if (!hasKit(member)) continue;
+    member.charge = Math.min(100, member.charge + abilityGainPerBeat(next, member));
+  }
 }
 
 function burnFires(next, rooms, adjacency, events, t, salt, side) {
@@ -616,6 +927,45 @@ function validShields(shields, maxLayers, rechargeMax) {
     && int(shields.rechargeMs, 0, rechargeMax);
 }
 
+const bool = value => typeof value === 'boolean';
+/** A timed effect: { through, ...params } with each param in range. */
+const timedFx = (value, beat, params = {}) => rec(value) && int(value.through, 0, beat + 30)
+  && Object.keys(value).every(key => key === 'through' || Object.hasOwn(params, key))
+  && Object.entries(params).every(([key, check]) => check(value[key]));
+const FX_RULES = {
+  evade: beat => v => timedFx(v, beat, { bonus: x => num(x, 0, 100), dodgeCharge: x => num(x, 0, 50) }),
+  haste: beat => v => timedFx(v, beat, { mult: x => num(x, 1, 3) }),
+  stall: beat => v => timedFx(v, beat),
+  slow: beat => v => timedFx(v, beat, { pct: x => num(x, 0, 90) }),
+  brace: beat => v => timedFx(v, beat),
+  guard: beat => v => timedFx(v, beat),
+  holdDoor: beat => v => timedFx(v, beat, { mult: x => num(x, 1, 5) }),
+  evasionDown: beat => v => timedFx(v, beat, { amount: x => num(x, 0, 30) }),
+  weak: beat => v => timedFx(v, beat, { room: x => ENEMY_ROOMS.includes(x), mult: x => num(x, 1, 3) }),
+  shieldOver: beat => v => timedFx(v, beat, { n: x => int(x, 1, 1) }),
+  shieldRecharge: beat => v => timedFx(v, beat, { pct: x => num(x, 0, 100) }),
+  lastStand: beat => v => timedFx(v, beat, { hold: x => int(x, 1, RULES.playerHullMax) }),
+  sureHit: () => v => rec(v) && int(v.n, 0, 10) && num(v.roomPct, 0, 100) && bool(v.crit) && bool(v.splash) && Object.keys(v).length === 4,
+  extraShots: () => v => int(v, 0, 3),
+  pierce: () => v => int(v, 0, 10),
+  dodgeNext: () => v => int(v, 0, 10),
+  enemyShieldDown: () => v => int(v, 0, 2),
+  salvage: () => v => num(v, 0, 100),
+  lastStandUsed: () => v => v === true,
+  salvageUsed: () => v => v === true,
+};
+
+/** Ability state of a kit fight: effects in range, taps queued only for charged crew. */
+function validKitState(e) {
+  const fx = e.fx;
+  if (!rec(fx) || !Object.entries(fx).every(([key, value]) => FX_RULES[key] && FX_RULES[key](e.beat)(value))) return false;
+  if (Object.hasOwn(fx, 'lastStand') !== Boolean(fx.lastStandUsed)) return false;
+  if (Object.hasOwn(fx, 'salvage') !== Boolean(fx.salvageUsed)) return false;
+  const { cast, auto } = e.intent;
+  return Array.isArray(cast) && new Set(cast).size === cast.length && typeof auto === 'boolean'
+    && cast.every(id => e.crew.some(c => c.id === id && hasKit(c) && c.charge === 100));
+}
+
 /** Shape and rule checks for a saved v3 fight, independent of what it is bound to. */
 export function validFtlBody(e) {
   if (!rec(e) || e.version !== FTL_VERSION || e.kind !== 'normal' || !Number.isInteger(e.seed)
@@ -630,7 +980,10 @@ export function validFtlBody(e) {
   if (Object.hasOwn(e, 'ship') && !(rec(e.ship) && rec(e.ship.levels)
     && ['shields', 'weapons', 'engines', 'sensors'].every(key => int(e.ship.levels[key], 1, 20)))) return false;
   const stats = shipStatsOf(e);
-  if (!validShields(e.shields, 3, RULES.shieldRechargeMs * 2) || e.shields.max !== stats.shieldLayers || !validRooms(e.rooms, PLAYER_ROOMS)) return false;
+  // Four-Arm Oath may hold one layer above max while it runs.
+  const over = rec(e.fx) && rec(e.fx.shieldOver) && Number.isInteger(e.fx.shieldOver.through) && e.fx.shieldOver.through >= e.beat ? 1 : 0;
+  if (!(rec(e.shields) && int(e.shields.max, 0, 3) && int(e.shields.layers, 0, e.shields.max + over)
+    && int(e.shields.rechargeMs, 0, RULES.shieldRechargeMs * 2)) || e.shields.max !== stats.shieldLayers || !validRooms(e.rooms, PLAYER_ROOMS)) return false;
   if (!Array.isArray(e.weapons) || e.weapons.length < 1 || e.weapons.length > stats.weaponSlots
     || new Set(e.weapons.map(w => w?.id)).size !== e.weapons.length
     || !e.weapons.every(w => rec(w) && WEAPON_CATALOG[w.id] && int(w.chargeMs, 0, WEAPON_CATALOG[w.id].chargeMs))) return false;
@@ -639,17 +992,23 @@ export function validFtlBody(e) {
   if (!Array.isArray(e.crew) || e.crew.length > 24 || new Set(e.crew.map(c => c?.id)).size !== e.crew.length
     || !e.crew.every(c => rec(c) && typeof c.id === 'string' && c.id && typeof c.role === 'string'
       && (c.station === null || PLAYER_ROOMS.includes(c.station)) && (c.room === null || PLAYER_ROOMS.includes(c.room))
-      && int(c.manualUntil, 0, e.beat + RULES.autoReturnBeats))) return false;
+      && int(c.manualUntil, 0, e.beat + RULES.autoReturnBeats)
+      // A kit (signature move) comes with its grade, passive bonus and charge; crew without one carry none of them.
+      && (hasKit(c) ? c.kit.length <= 64 && Boolean(kitFor(c.kit, c.role)) && num(c.grade, 0, 1) && num(c.bonus, 0, 2) && int(c.charge, 0, 100)
+        : !['kit', 'grade', 'bonus', 'charge'].some(key => Object.hasOwn(c, key))))) return false;
   const i = e.intent;
   if (!rec(i) || !(i.target === null || ENEMY_ROOMS.includes(i.target)) || typeof i.hold !== 'boolean' || !rec(i.moves)
     || !Object.entries(i.moves).every(([id, roomId]) => e.crew.some(c => c.id === id) && PLAYER_ROOMS.includes(roomId))) return false;
+  if (Object.hasOwn(e, 'fx') ? !validKitState(e)
+    : (e.crew.some(hasKit) || Object.hasOwn(i, 'cast') || Object.hasOwn(i, 'auto'))) return false;
   const en = e.enemy;
   if (!rec(en) || !num(en.threat, 0.6, 1.6)) return false;
   if (Object.hasOwn(en, 'flagship') && ![1, 2].includes(en.flagship)) return false;
   if (Object.hasOwn(en, 'tier') && ![1, 2].includes(en.tier)) return false;
-  const load = enemyLoadout(en.threat, { flagship: en.flagship || 0, tier: en.tier || 0 });
-  const startHull = Object.hasOwn(en, 'startHull') ? en.startHull : 42;
-  if (!int(startHull, 1, 42) || !int(en.hull, 0, startHull) || en.evasion !== load.evasion || en.repairPerSec !== load.repairPerSec
+  const kits = Object.hasOwn(e, 'fx');
+  const load = enemyLoadout(en.threat, { flagship: en.flagship || 0, tier: en.tier || 0, kits });
+  const startHull = enemyStartHull(e);
+  if (!int(startHull, 1, kits ? KIT_ENEMY.hull : ENEMY_HULL) || !int(en.hull, 0, startHull) || en.evasion !== load.evasion || en.repairPerSec !== load.repairPerSec
     || !validShields(en.shields, 2, RULES.enemyShieldRechargeMs * 2) || en.shields.max !== load.shieldLayers
     || (Object.hasOwn(en.shields, 'ionMs') && !int(en.shields.ionMs, 0, WEAPON_CATALOG.ion.ionMs))
     || !validRooms(en.rooms, ENEMY_ROOMS)) return false;

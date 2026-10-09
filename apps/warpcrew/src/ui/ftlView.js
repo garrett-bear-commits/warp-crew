@@ -113,6 +113,23 @@ function renderTactics(view) {
   }).join('');
 }
 
+/** A crew member's signature move: fills as it charges, glows when ready, tap to use it. */
+function renderAbility(view, member) {
+  const a = member.ability;
+  const state = a.queued ? ' is-queued' : a.ready ? ' is-ready' : '';
+  const label = a.queued ? `${a.move}, going off` : a.ready ? `Use ${a.move}: ${a.text}` : `${a.move} charging, ${Math.round(a.chargePct)} percent: ${a.text}`;
+  return `<button type="button" class="ftl-ability${state}" data-act="encounter-command" data-command-type="ability" data-crew-id="${e(member.id)}" ${identity(view)}
+      ${a.ready && !a.queued && live(view) ? '' : 'disabled'} aria-label="${e(label)}" title="${e(a.text)}">
+      <b>${e(a.move)}</b>${chargeBar(a.chargePct, a.nextPct ?? a.chargePct, 'ability-charge', view.beat)}</button>`;
+}
+
+/** Auto: abilities fire themselves when they would help. Off: the captain taps them. */
+function renderAutoToggle(view) {
+  if (!view.abilities || !live(view)) return '';
+  return `<button type="button" class="ftl-auto${view.auto ? ' is-on' : ''}" data-act="encounter-command" data-command-type="auto" data-auto="${view.auto ? 'false' : 'true'}" ${identity(view)}
+    aria-pressed="${view.auto}" aria-label="${view.auto ? 'Auto abilities on: crew use their moves themselves' : 'Auto abilities off: tap a move to use it'}">Auto<span>${view.auto ? 'On' : 'Off'}</span></button>`;
+}
+
 /** The strip under the ship view: hull, shields, guns, Hold, crew, orders, pause and the result. */
 /** The short line under a weapon's name: what it does, in the fewest words. */
 function weaponTag(w) {
@@ -150,9 +167,12 @@ export function renderFtlControls(view, { selectedCrewId = null, paused = false,
   const weapons = view.weapons.map(w => `<div class="ftl-weapon${w.ready ? ' is-ready' : ''}${w.ammo === 0 ? ' is-empty' : ''}" data-weapon-kind="${e(w.kind || 'laser')}">
       <b>${e(w.name)}</b><small>${e(weaponTag(w))}</small>${chargeBar(w.chargePct, w.nextPct ?? w.chargePct, 'charge', view.beat)}</div>`).join('');
   const selected = view.crew.find(member => member.id === selectedCrewId);
-  const crew = view.crew.map(member => `<button type="button" class="ftl-crew-chip${member.id === selectedCrewId ? ' is-selected' : ''}${member.moving ? ' is-moving' : ''}"
+  const crew = view.crew.map(member => {
+    const chip = `<button type="button" class="ftl-crew-chip${member.id === selectedCrewId ? ' is-selected' : ''}${member.moving ? ' is-moving' : ''}"
       data-act="ftl-select-crew" data-crew-id="${e(member.id)}" aria-pressed="${member.id === selectedCrewId}" aria-label="${e(member.name)}, in ${e(view.rooms[member.room]?.label || 'the corridor')}">
-      ${member.portrait ? `<img src="${e(member.portrait)}" alt="" />` : ''}<span>${e(member.name.split(' ')[0])}</span><small>${e(view.rooms[member.room]?.label || 'Free')}</small></button>`).join('');
+      ${member.portrait ? `<img src="${e(member.portrait)}" alt="" />` : ''}<span>${e(member.name.split(' ')[0])}</span><small>${e(view.rooms[member.room]?.label || 'Free')}</small></button>`;
+    return member.ability ? `<div class="ftl-crew-card" data-crew-card="${e(member.id)}">${chip}${renderAbility(view, member)}</div>` : chip;
+  }).join('');
   const boarders = view.boarders && view.boarders.phase !== 'repelled'
     ? `<p class="ftl-alert" role="status">${view.boarders.phase === 'incoming' ? `Boarding clamps on the hull. Raiders are heading for ${e(view.boarders.roomLabel)}.` : `Raiders in ${e(view.boarders.roomLabel)} · send crew to fight them`}</p>` : '';
   return `<section class="ftl-controls" aria-label="Fight controls">${status}
@@ -160,8 +180,8 @@ export function renderFtlControls(view, { selectedCrewId = null, paused = false,
       <button type="button" class="ftl-hold${view.hold ? ' is-on' : ''}" data-act="encounter-command" data-command-type="hold" data-hold="${view.hold ? 'false' : 'true'}" ${identity(view)} aria-pressed="${view.hold}">${view.hold ? 'Holding' : 'Hold'}<span>${view.hold ? 'Fire together' : 'Fire as ready'}</span></button>
     </div>
     ${boarders}
-    <div class="ftl-crew" role="group" aria-label="Crew">${crew}</div>
-    <p class="ftl-hint">${selected ? `Tap a room on the ship to send ${e(selected.name.split(' ')[0])}.` : 'Drag crew onto a room (or tap crew, then a room) to fight fires or repair.'}</p>
+    <div class="ftl-crew-row">${renderAutoToggle(view)}<div class="ftl-crew" role="group" aria-label="Crew">${crew}</div></div>
+    <p class="ftl-hint">${selected ? `Tap a room on the ship to send ${e(selected.name.split(' ')[0])}.` : view.abilities ? (view.auto ? 'Crew use their moves when they help. Drag crew onto a room to fight fires or repair.' : 'Tap a glowing move to use it. Drag crew onto a room to fight fires or repair.') : 'Drag crew onto a room (or tap crew, then a room) to fight fires or repair.'}</p>
     ${view.tactics?.length ? `<div class="ftl-tactics">${renderTactics(view)}</div>` : ''}
     ${view.retryBeat ? `<p role="alert">Fight progress was not saved.</p><button type="button" class="primary" data-act="encounter-advance" ${identity(view)}>Retry fight progress</button>` : ''}
   </section>`;

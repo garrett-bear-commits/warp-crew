@@ -76,7 +76,9 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   assert.equal(encounter.acceptanceId, fight.fightId);
   // Threat and damage come from the contract power model.
   assert.equal(encounter.enemy.threat, contractThreat(before, { encounterId: 'pirate_scout' }, now));
-  assert.deepEqual(encounter.enemy.weapons.map(w => w.damage), enemyLoadout(encounter.enemy.threat).weapons.map(w => w.damage));
+  // Explore fights bring the crew's kits, so the enemy fights as a kit-fight enemy.
+  assert.ok(encounter.fx && encounter.crew.every(member => typeof member.kit === 'string'), 'the crew fight with their signature moves');
+  assert.deepEqual(encounter.enemy.weapons.map(w => w.damage), enemyLoadout(encounter.enemy.threat, { kits: true }).weapons.map(w => w.damage));
   assert.equal(encounter.hull, before.ship.hull, 'the fight runs on the ship\'s own hull');
   assert.deepEqual(Object.keys(encounter.tactics), unlockedTactics(before));
   assert.equal(validTravelFight(player), true);

@@ -775,7 +775,9 @@ async function handleAction(act, data = {}) {
   if (act === 'encounter-command' && !data.command) {
     const type = data.commandType;
     data = { ...data, command: type === 'hold' ? { type, hold: data.hold === 'true' }
-      : type === 'move' ? { type, crewId: data.crewId, room: data.room } : { type, room: data.room } };
+      : type === 'move' ? { type, crewId: data.crewId, room: data.room }
+      : type === 'ability' ? { type, crewId: data.crewId }
+      : type === 'auto' ? { type, auto: data.auto === 'true' } : { type, room: data.room } };
     if (type === 'move') ftlSelectedCrewId = null;
   }
   if (!player.activeEncounter || player.activeEncounter.result) { ftlSelectedCrewId = null; ftlPaused = false; }

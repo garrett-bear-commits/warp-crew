@@ -135,11 +135,31 @@ export function contractThreat(player, contract, now = trustedNow(), { excludeId
   return Math.max(THREAT_RANGE[0], Math.min(THREAT_RANGE[1], Math.round((enemyPower / playerPower) * 100) / 100));
 }
 
-/** The crew who fight, at their stations (null station = free crew who go where needed). */
-export function fightingCrew(player, now = trustedNow()) {
+/** Each role's one passive (crewRoster passive field) that the fight reads as `bonus`. */
+export const ROLE_PASSIVE = Object.freeze({ gunner: 'critChance', engineer: 'repairBonus', medic: 'assistCharge',
+  trader: 'tradeCredits', scout: 'expeditionSuccess', security: 'pirateResist', pilot: 'fuelCostReduce' });
+
+/** Fight grade 0-1 from effective power: a level-1 Common is about 0.04, a Legendary 0.45, the Apex 0.9. */
+export const crewGrade = power => Math.round(Math.max(0, Math.min(1, ((Number(power) || 0) - 8) / 50)) * 100) / 100;
+
+/**
+ * The crew who fight, at their stations (null station = free crew who go where needed).
+ * With `kits`, each carries their signature move, fight grade and role passive (crew-matter design).
+ */
+export function fightingCrew(player, now = trustedNow(), { kits = false } = {}) {
   const assignments = normalizeAssignments(player);
-  return readyContractCrew(player, now).map(member => ({ id: member.instanceId, role: member.role || '', station: assignments[member.instanceId] || null }));
+  return readyContractCrew(player, now).map(member => ({
+    id: member.instanceId, role: member.role || '', station: assignments[member.instanceId] || null,
+    ...(kits && typeof member.templateId === 'string' ? {
+      kit: member.templateId,
+      grade: crewGrade(member.power),
+      bonus: Math.max(0, Math.min(2, Number(member.passive?.[ROLE_PASSIVE[member.role]]) || 0)),
+    } : {}),
+  }));
 }
+
+/** Abilities cast themselves unless the captain switched Auto off. */
+export const autoAbilities = player => player?.flags?.manualAbilities !== true;
 
 /** Every new normal fight (contract, wall, Explore jump) is an FTL-lite v3 fight. */
 /** Enemy ship class from its catalog power: later-sector ships fight harder (see enemyLoadout). */
@@ -160,7 +180,9 @@ export function startCrewFight(player, { acceptanceId, encounterId, seed, threat
     encounterId,
     seed,
     threat,
-    crew: fightingCrew(player, now),
+    // The guided first fight teaches targeting only; every later fight brings the crew's kits.
+    crew: fightingCrew(player, now, { kits: !guided }),
+    auto: !guided && autoAbilities(player),
     hull: Math.max(1, Math.min(100, Math.round(player.ship?.hull ?? 100))),
     enemyHull,
     remainingBefore,

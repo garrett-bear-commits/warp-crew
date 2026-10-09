@@ -27,6 +27,7 @@ import { hullRepairOffer, formatReward, fuelCreditPrice, systemStat, visitMult, 
 import { planetType } from '../data/planets.js';
 import { ROOMS, SPARROW_LAYOUT, HULL_PX, roomWorldPoint, canonicalRoomId } from '../data/starterShip.js';
 import { medalLevelCostFor, rankTitle, rankUpCost, STARTER_CAPTAINS } from '../data/crewRoster.js';
+import { kitFor, describeKit } from '../data/crewKits.js';
 import { syncCrewLayer, crewAgentAt } from './crewWalk.js';
 import { bindFtlCrewDrag } from './ftlCrewDrag.js';
 import { attachSpace } from './spaceFlight.js';
@@ -966,6 +967,15 @@ function renderCinematic(c) {
     </div>`;
 }
 
+/** The merc's signature move, their line and their story (crew-matter design: the bios finally show). */
+function dossierStory(c) {
+  const kit = kitFor(c.templateId, c.role);
+  const move = kit ? `<div class="dossier-move"><span class="modal-kicker">Signature move</span><b>${escapeHtml(kit.move)}</b><p>${escapeHtml(describeKit(kit))}</p></div>` : '';
+  const quote = c.quote ? `<blockquote class="dossier-quote">“${escapeHtml(c.quote)}”</blockquote>` : '';
+  const history = c.history ? `<p class="dossier-history">${escapeHtml(c.history)}</p>` : '';
+  return move || quote || history ? `<div class="dossier-story">${move}${quote}${history}</div>` : '';
+}
+
 function renderDossier(player, id) {
   const c = (player.crew || []).find((x) => x.instanceId === id);
   if (!c) return '';
@@ -980,6 +990,7 @@ function renderDossier(player, id) {
           <div class="recruit-card dossier-head">${identityCard({ ...c, currentJob: STATIONS[player.stationAssignments?.[c.instanceId]]?.label || 'Ready for duty' })}<div class="muted">${escapeHtml(title)}${passive ? ` · ${escapeHtml(passive)}` : ''}</div></div>
           <button class="icon-close" data-act="close-crew" aria-label="Close">×</button>
         </div>
+        ${dossierStory(c)}
         <div class="row" style="margin-top:10px;flex-direction:column">
           ${c.status !== 'expedition' ? `<button data-act="level-crew" data-id="${c.instanceId}">Level ${c.level + 1} · ${lvlCost} medals</button>` : ''}
           <button data-act="rank-up" data-id="${c.instanceId}">Rank up · ${rankCost.medals} med · ${rankCost.credits}cr</button>

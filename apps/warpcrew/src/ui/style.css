@@ -1817,6 +1817,10 @@ button:focus-visible {
   background: transparent;
   box-shadow: none;
   flex: 1;
+  min-width: 0;
+  /* One column: the identity card owns the row, its title line sits under it. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
 }
 
 .hull-pips {
@@ -2994,7 +2998,7 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 
 /* Controls strip */
 .ftl-controls {
-  display: grid; gap: 6px; margin: 0 8px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin: 0 8px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   border: 1px solid var(--line); border-radius: var(--radius-md) var(--radius-md) 0 0; background: linear-gradient(180deg, #121925, #0a0e15);
 }
 .ftl-status { display: grid; grid-template-columns: 1.4fr auto auto auto; gap: 8px; align-items: center; font-size: 12px; }
@@ -3022,6 +3026,45 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-crew-chip small { font-size: 11px; color: var(--muted); }
 .ftl-crew-chip.is-selected { border-color: #6fd3ff; box-shadow: 0 0 0 2px rgba(111, 211, 255, 0.5); }
 .ftl-crew-chip.is-moving small { color: #6fd3ff; }
+/* Crew moves (crew-matter design): the chip, with its signature move under it. */
+.ftl-crew-row { display: flex; gap: 6px; align-items: stretch; min-width: 0; max-width: 100%; }
+.ftl-crew-row .ftl-crew { flex: 1 1 auto; min-width: 0; }
+.ftl-crew-card { flex: 0 0 auto; display: grid; gap: 4px; width: 112px; }
+.ftl-crew-card .ftl-crew-chip { width: 100%; }
+.ftl-ability { position: relative; display: grid; gap: 3px; align-content: space-between; min-height: 40px; padding: 4px 8px; text-align: left; border-radius: 8px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04); color: var(--muted); }
+.ftl-ability b { font: 700 10.5px/1.15 var(--font-display); letter-spacing: 0.03em; text-transform: uppercase; overflow-wrap: anywhere; }
+.ftl-ability .ftl-bar { height: 5px; }
+.ftl-ability .ftl-bar > span { background: linear-gradient(90deg, #b48cff, #ffd36b); }
+.ftl-ability:disabled { opacity: 1; cursor: default; }
+.ftl-ability.is-ready { color: #ffe39a; border-color: #ffc94a; background: rgba(255, 201, 74, 0.14);
+  box-shadow: 0 0 0 1px rgba(255, 201, 74, 0.35), 0 0 14px rgba(255, 201, 74, 0.45); animation: ftl-ability-ready 1.1s ease-in-out infinite; }
+.ftl-ability.is-queued { color: #fff; border-color: #fff; background: rgba(255, 255, 255, 0.18); animation: none; }
+@keyframes ftl-ability-ready { 50% { box-shadow: 0 0 0 1px rgba(255, 201, 74, 0.6), 0 0 22px rgba(255, 201, 74, 0.7); } }
+.ftl-auto { flex: 0 0 auto; display: grid; place-items: center; align-content: center; width: 50px; padding: 4px; border-radius: 8px;
+  font: 700 12px var(--font-display); text-transform: uppercase; color: var(--muted); }
+.ftl-auto span { font: 600 11px var(--font-sans); text-transform: none; }
+.ftl-auto.is-on { color: #b9f3ff; border-color: #6fd3ff; background: rgba(111, 211, 255, 0.12); }
+/* The cast banner: who, the move, and their line. */
+.ftl-cast-layer { position: fixed; left: 0; right: 0; top: 34%; z-index: 60; pointer-events: none; display: grid; justify-items: start; gap: 6px; padding: 0 12px; }
+.ftl-cast { display: grid; grid-template-columns: 52px 1fr; column-gap: 10px; align-items: center; max-width: min(92vw, 420px); padding: 8px 14px 8px 8px;
+  border-radius: 10px; border: 2px solid #ffc94a; background: linear-gradient(100deg, rgba(20, 16, 40, 0.96), rgba(46, 30, 70, 0.92));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 0 18px rgba(255, 201, 74, 0.35); animation: ftl-cast-in 1.6s cubic-bezier(.2,.9,.25,1) forwards; }
+.ftl-cast img { grid-row: 1 / 4; width: 52px; height: 52px; border-radius: 8px; object-fit: cover; image-rendering: pixelated; background: #0b1220; }
+.ftl-cast b { font: 800 18px var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; color: #ffe39a; text-shadow: 0 2px 0 #5a3a00; }
+.ftl-cast small { font: 600 12px var(--font-sans); color: #c9c3e6; }
+.ftl-cast q { font: italic 500 12px var(--font-sans); color: #eae6ff; }
+.ftl-cast.rarity-legendary, .ftl-cast.rarity-mythic, .ftl-cast.rarity-apex { border-color: #ff8a3d; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 0 26px rgba(255, 138, 61, 0.6); }
+@keyframes ftl-cast-in { 0% { transform: translateX(-110%); opacity: 0; } 12% { transform: translateX(0); opacity: 1; } 80% { transform: translateX(0); opacity: 1; } 100% { transform: translateX(-18px); opacity: 0; } }
+.ftl-pop { position: fixed; z-index: 61; pointer-events: none; font: 900 16px var(--font-display); color: #ffd36b; text-shadow: 0 2px 0 #5a2a00, 0 0 8px rgba(255, 160, 60, 0.8);
+  animation: ftl-pop 0.9s ease-out forwards; }
+@keyframes ftl-pop { 0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; } 20% { transform: translate(-50%, -8px) scale(1.15); opacity: 1; } 100% { transform: translate(-50%, -34px) scale(1); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ftl-ability.is-ready { animation: none; }
+  .ftl-cast { animation: ftl-cast-fade 1.6s linear forwards; }
+  .ftl-pop { animation: ftl-cast-fade 0.9s linear forwards; }
+  @keyframes ftl-cast-fade { 0%, 80% { opacity: 1; } 100% { opacity: 0; } }
+}
 .ftl-tactics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .ftl-tactic { display: grid; min-height: 42px; padding: 4px 8px; font: 700 13px var(--font-display); text-transform: uppercase; }
 .ftl-tactic span { font: 500 11px var(--font-sans); text-transform: none; color: var(--muted); }
@@ -3211,3 +3254,11 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 /* Core client sheets (src/ui/coreOverlay.js): above every game modal. */
 .wc-core-overlay .core-backdrop { z-index: 300; align-items: center; }
 .core-sheet button { display: block; width: 100%; margin-top: 10px; }
+
+/* Dossier: signature move, line and story. */
+.dossier-story { display: grid; gap: 8px; margin-top: 10px; }
+.dossier-move { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255, 201, 74, 0.5); background: rgba(255, 201, 74, 0.08); }
+.dossier-move b { font: 800 15px var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; color: #ffe39a; }
+.dossier-move p { margin: 0; font-size: 14px; }
+.dossier-quote { margin: 0; padding-left: 10px; border-left: 3px solid #6fd3ff; font-style: italic; color: #d8f4ff; }
+.dossier-history { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
