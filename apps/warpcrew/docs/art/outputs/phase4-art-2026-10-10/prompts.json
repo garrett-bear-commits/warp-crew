@@ -1,0 +1,160 @@
+[
+ {
+  "name": "rhea",
+  "file": "raw/rhea.png",
+  "kind": "portrait",
+  "used_for": "Rhea Hollis, the Season 1 event merc (Epic Security, the Yards)",
+  "installs": "public/art/pixel/cast/rhea.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "aspect_ratio": "1:1",
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png"
+   ],
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "One reference image. It sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the reference only for style: do not copy that woman, her orange hair, headset or striped vest. Draw a new character as a finished portrait for a space mercenary game, facing slightly to one side. The character: Rhea Hollis, a broad-shouldered human union boss from the Forge Moon foundries in her late forties: warm brown skin streaked with soot, cropped black hair with one grey streak, a fierce determined grin, a scuffed welding visor pushed up on her forehead, a heavy canvas work jacket with a red union armband, a big riveting hammer resting on one shoulder, a few orange embers drifting near her. Fierce and warm, the person a picket line follows. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220) with nothing behind the character: no furniture, buildings or scenery. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17ae1czt24arh1byf7c4nha9x8g0kr5",
+  "cost": 0.064,
+  "batch": "pilot"
+ },
+ {
+  "name": "fx-explosion",
+  "file": "raw/fx-explosion.png",
+  "kind": "fxsheet",
+  "grid": [
+   4,
+   2
+  ],
+  "used_for": "Fight explosion animation, 8 frames (first-hour design \u00a7D)",
+  "installs": "public/art/fx/explosion-strip.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "aspect_ratio": "1:1",
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw a sprite sheet for a mobile space game: the eight frames of one pixel-art explosion, in a 4 by 2 grid read left to right, top row then bottom row. Every frame is centred in its own equal cell with plenty of empty space around it, none touching, all drawn at the same scale. Frame 1: a small white-hot flash. Frame 2: a bright yellow fireball. Frame 3: a bigger orange fireball with yellow core. Frame 4: the biggest, orange and red with dark edges. Frame 5: breaking up into red fire and grey smoke puffs. Frame 6: mostly dark grey smoke with a few orange embers. Frame 7: thin smoke puffs and sparks. Frame 8: a last wisp of smoke. Bold readable shapes that read at 48 pixels. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette with hue-shifted shading ramps. Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no grid lines, no frame, no UI.",
+  "run_id": "run_m176znbsytkr9anvqadstjs4618g04x0",
+  "cost": 0.064,
+  "batch": "pilot",
+  "cell_range": [
+   5.5,
+   7.5
+  ]
+ },
+ {
+  "name": "wyke",
+  "file": "raw/wyke.png",
+  "kind": "portrait",
+  "used_for": "Overseer Wyke of the Ash Ledger consortium (Season 1 event speaker)",
+  "installs": "public/art/pixel/cast/wyke.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "aspect_ratio": "1:1",
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/0da6dc9d-58fd-4b27-8f07-9cb5c21ea5df.png"
+   ],
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "One reference image. It sets the art style and framing to match exactly: the same bold chunky pixel art with the same pixel size, strong dark outline, punchy saturated palette, the same three-quarter bust framing (head and shoulders centred, a little space above the head) and the same lighting (warm amber key light from the left, cool cyan rim light from the right, deep violet shadows). Use the reference only for style: do not copy that woman, her orange hair, headset or striped vest. Draw a new character as a finished portrait for a space mercenary game, facing slightly to one side. The character: Overseer Wyke, a thin pale human company overseer in his fifties for the Ash Ledger mining consortium: an immaculate ash-grey high-collared coat with silver buttons, slicked-back thinning grey hair, a polite thin-lipped smile that does not reach his eyes, a brass monocle-like eyepiece glowing faint orange over one eye, holding up a slim ledger tablet. Polite, cold and dangerous. Expressive and characterful, stylized, not realistic. Head and shoulders fill the frame, centred. Bold chunky pixel art at a low art resolution, strong dark outline, punchy saturated palette, arcade-era energy. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220) with nothing behind the character: no furniture, buildings or scenery. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17ajrcdegf3hd2kvrvtk6sx758g0xns",
+  "cost": 0.064,
+  "batch": "batch 2"
+ },
+ {
+  "name": "uprising",
+  "file": "raw/uprising.png",
+  "kind": "scene",
+  "used_for": "Season 1 key art: the Ember Uprising (event card, pass header, season title)",
+  "installs": "public/art/pixel/cinematic/v2/uprising.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "aspect_ratio": "16:9",
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png"
+   ],
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use it only for style: do not copy that ship or its scene. Draw a finished widescreen story illustration: the Ember Uprising on the Forge Moon. A huge industrial foundry carved into a red-orange moon, with molten metal pouring from giant crucibles and towering smokestacks. On a catwalk in the foreground silhouettes of foundry workers raise hammers and red union banners with a gear-and-fist emblem; sparks and embers fill the air. Above them a small battered cargo ship with orange hazard trim drifts past dark consortium gunships. Heroic, defiant and warm. Keep the upper third darker and calmer for a title. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m179hmsb2g3019svxfydj2t0gn8g0ra4",
+  "cost": 0.064,
+  "batch": "batch 2"
+ },
+ {
+  "name": "rift",
+  "file": "raw/rift.png",
+  "kind": "scene",
+  "used_for": "The Rift: the endless frontier past the Null Meridian (Rift screen, dive card)",
+  "installs": "public/art/pixel/cinematic/v2/rift.png",
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "aspect_ratio": "16:9",
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/b0618d49-fb53-4eb8-aed8-238ed844463c.png"
+   ],
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outlines, flat colour clusters, worn hull plating with hazard trim and warm interior lights. Use it only for style: do not copy that ship or its scene. Draw a finished widescreen story illustration: the Rift, a vast jagged tear across deep space beyond the last star gate. The tear glows white-cyan at its core and splinters into violet and magenta cracks; broken space-lane beacons and wrecked ships drift along its edges; strange geometric shards float in the light. A small battered cargo ship with orange hazard trim faces it, tiny against the light. Awe and danger. Keep the left third darker and calmer for text. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m175dvfy100z8b009b4szqbfyd8g16je",
+  "cost": 0.064,
+  "batch": "batch 2"
+ },
+ {
+  "name": "season-icons",
+  "file": "raw/season-icons.png",
+  "kind": "icons",
+  "used_for": "Season icons: season point, Forge scrip, Rift depth, event chest",
+  "splits": [
+   "season-point",
+   "scrip",
+   "rift-depth",
+   "event-chest"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "aspect_ratio": "1:1",
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a gold chevron rank badge with a small star (top left), a stamped iron union token with a hammer and gear on it, glowing faintly orange (top right), a fractured cyan crystal shard with a violet crack of light (bottom left), a riveted iron crate with glowing orange ember seams (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17e1djfey1epjmahx7des87258g03fj",
+  "cost": 0.064,
+  "batch": "batch 2"
+ },
+ {
+  "name": "rift-icons",
+  "file": "raw/rift-icons.png",
+  "kind": "icons",
+  "used_for": "Rift boon and choice icons: patch hull, extra shield, faster guns, cash out",
+  "splits": [
+   "boon-patch",
+   "boon-shield",
+   "boon-guns",
+   "boon-cashout"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "aspect_ratio": "1:1",
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a steel hull plate with a glowing green repair wrench (top left), a bright cyan hexagon shield with a plus sign made of light (top right), a twin-barrel ship cannon with orange speed lines (bottom left), a cargo crate with a gold coin stack and an arrow pointing up out of it (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m172excqm0xjvpt16wf965pefn8g1qv0",
+  "cost": 0.064,
+  "batch": "batch 2"
+ }
+]

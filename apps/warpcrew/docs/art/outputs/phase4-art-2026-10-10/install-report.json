@@ -1,0 +1,122 @@
+[
+ {
+  "name": "rhea",
+  "file": "public/art/pixel/cast/rhea.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 23089
+ },
+ {
+  "name": "fx-explosion",
+  "file": "public/art/fx/explosion-strip.png",
+  "size": [
+   344,
+   43
+  ],
+  "bytes": 3760,
+  "frames": 8,
+  "frame": 43,
+  "cell": 6.04
+ },
+ {
+  "name": "wyke",
+  "file": "public/art/pixel/cast/wyke.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 15537
+ },
+ {
+  "name": "uprising",
+  "file": "public/art/pixel/cinematic/v2/uprising.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 375859
+ },
+ {
+  "name": "rift",
+  "file": "public/art/pixel/cinematic/v2/rift.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 295737
+ },
+ {
+  "name": "season-icons",
+  "file": "public/art/pixel/ui/season-point.png",
+  "size": [
+   219,
+   256
+  ],
+  "bytes": 15596
+ },
+ {
+  "name": "season-icons",
+  "file": "public/art/pixel/ui/scrip.png",
+  "size": [
+   254,
+   256
+  ],
+  "bytes": 23480
+ },
+ {
+  "name": "season-icons",
+  "file": "public/art/pixel/ui/rift-depth.png",
+  "size": [
+   179,
+   256
+  ],
+  "bytes": 14747
+ },
+ {
+  "name": "season-icons",
+  "file": "public/art/pixel/ui/event-chest.png",
+  "size": [
+   235,
+   256
+  ],
+  "bytes": 22480
+ },
+ {
+  "name": "rift-icons",
+  "file": "public/art/pixel/ui/boon-patch.png",
+  "size": [
+   256,
+   247
+  ],
+  "bytes": 21524
+ },
+ {
+  "name": "rift-icons",
+  "file": "public/art/pixel/ui/boon-shield.png",
+  "size": [
+   237,
+   256
+  ],
+  "bytes": 17812
+ },
+ {
+  "name": "rift-icons",
+  "file": "public/art/pixel/ui/boon-guns.png",
+  "size": [
+   256,
+   173
+  ],
+  "bytes": 15382
+ },
+ {
+  "name": "rift-icons",
+  "file": "public/art/pixel/ui/boon-cashout.png",
+  "size": [
+   214,
+   256
+  ],
+  "bytes": 18293
+ }
+]
