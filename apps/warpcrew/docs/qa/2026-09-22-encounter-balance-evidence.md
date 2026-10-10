@@ -514,11 +514,11 @@ Same runs, but the away team leaves first (the baseline order), so the wall and 
 | Strategy | Order | First wall fell on day | First wall attempts | Walls broken | Near-miss losses (all walls) | Paid Rallies | Gems spent | Hull repair credits | Useful sessions |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | cautious | fights-first | 3 | 3 | 2 | 0 | 0 | 0 | 245 | 29 |
-| cautious | away-first | 3 | 3 | 2 | 0 | 0 | 0 | 1085 | 29 |
+| cautious | away-first | 3 | 3 | 2 | 0 | 0 | 0 | 595 | 29 |
 | balanced | fights-first | 3 | 3 | 3 | 4 | 1 | 60 | 3570 | 30 |
-| balanced | away-first | 3 | 3 | 1 | 1 | 1 | 60 | 5950 | 26 |
+| balanced | away-first | 3 | 3 | 2 | 1 | 1 | 60 | 5250 | 28 |
 | ambitious | fights-first | 3 | 3 | 4 | 2 | 0 | 130 | 2100 | 30 |
-| ambitious | away-first | 3 | 4 | 3 | 3 | 0 | 110 | 5495 | 25 |
+| ambitious | away-first | 3 | 3 | 3 | 2 | 0 | 115 | 3395 | 28 |
 
 ### Script-3 baseline hull lockout (context for the section above)
 

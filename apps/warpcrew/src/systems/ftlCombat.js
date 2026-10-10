@@ -395,7 +395,18 @@ function maybeFire(next, rooms, id, salt, events, t, side, chance = RULES.fireCh
   }
 }
 
-/** Free crew (and crew a captain moved long ago) go where the ship needs them. */
+/** A room in trouble: burning, boarded or offline. Damaged rooms that still work are not emergencies. */
+const roomInTrouble = (state, id) => state.rooms[id].fire > 0 || state.rooms[id].integrity <= 0
+  || (state.boarders?.phase === 'aboard' && state.boarders.room === id);
+
+/**
+ * Free crew (and crew a captain moved long ago) go where the ship needs them. Station crew stay at their post,
+ * except when every crew member aboard holds a station (nobody is free): then a room in trouble with nobody in
+ * it draws one crew member from a post that is not in trouble itself, the engineer first, then a neighbouring
+ * room, then the first in the fight's crew order. They go home once that room is whole (the go-home rule).
+ * Without this, a crew seated everywhere but Weapons let a burning or boarded Weapons room go offline for good,
+ * and a fight the enemy could not finish never ended (balance pass 2026-10-09).
+ */
 function dispatchCrew(next) {
   const urgency = id => (next.boarders?.phase === 'aboard' && next.boarders.room === id ? 400 : 0)
     + (next.rooms[id].fire > 0 ? 200 + next.rooms[id].fire : 0)
@@ -403,12 +414,24 @@ function dispatchCrew(next) {
   for (const member of next.crew) {
     if (member.manualUntil > next.beat) continue;
     if (member.station) {
-      // Station crew go home once their manual job is done.
+      // Station crew go home once their manual job (or their call to another room) is done.
       if (member.room !== member.station && (member.room === null || urgency(member.room) === 0)) member.room = member.station;
       continue;
     }
     const worst = [...PLAYER_ROOMS].sort((a, b) => urgency(b) - urgency(a))[0];
     if (urgency(worst) > 0) member.room = worst;
+  }
+  if (next.crew.some(member => !member.station)) return;
+  const unattended = PLAYER_ROOMS.filter(id => roomInTrouble(next, id) && !next.crew.some(member => member.room === id))
+    .sort((a, b) => urgency(b) - urgency(a));
+  for (const id of unattended) {
+    const rank = member => (member.role === 'engineer' ? 0 : 2) + (PLAYER_ADJ[id].includes(member.station) ? 0 : 1);
+    const responder = next.crew
+      .map((member, index) => ({ member, index }))
+      .filter(({ member }) => member.manualUntil <= next.beat && member.room === member.station && !roomInTrouble(next, member.station))
+      .sort((a, b) => rank(a.member) - rank(b.member) || a.index - b.index)[0]?.member;
+    if (!responder) break;
+    responder.room = id;
   }
 }
 
