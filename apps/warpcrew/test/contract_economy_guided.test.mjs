@@ -7,6 +7,7 @@ import { WALL_BY_ID, SIEGE_SEGMENT, WALL_TAKEDOWN_GEMS } from '../src/systems/wa
 import { encounterById } from '../src/systems/combat.js';
 import { buildSkipGems, UPGRADE_BUILD } from '../src/systems/hangar.js';
 import { RALLY } from '../src/systems/gemSinks.js';
+import { CHAPTERS } from '../src/data/campaign.js';
 
 const startAt = Date.UTC(2026, 8, 22, 12);
 const sim = (strategy, sessionOrder = 'fights-first', seed = 990001) => simulateFreePlayer30Days({ seed, strategy, startAt, flow: 'guided', sessionOrder });
@@ -17,8 +18,11 @@ function checkRun(run) {
   // Script-5 first session through production transitions; walls apply from career day 3.
   assert.ok(run.days[0].actions.some(a => a.action === 'captain-choose' && a.ok), label);
   assert.ok(run.days[0].actions.some(a => a.action === 'tutorial-register-skip' && a.ok), label);
-  assert.equal(run.walls.spur?.arrivalDay, 3, `${label}: first wall on day 3`);
-  for (const day of run.days.slice(0, 2)) assert.ok(!day.offers.some(o => o.id.startsWith('offer_wall_')), `${label}: no wall before day 3`);
+  // Phase 3: the first wall is chapter 1's boss, on the board once its five story missions are won (never before day 3).
+  const chapterOneDone = Math.max(...CHAPTERS[0].missions.map(id => run.story.won[id] ?? Infinity));
+  assert.ok(Number.isFinite(chapterOneDone), `${label}: chapter 1's missions are all won`);
+  assert.equal(run.walls.spur?.arrivalDay, Math.max(3, chapterOneDone), `${label}: first wall once chapter 1 is done`);
+  for (const day of run.days.slice(0, Math.max(3, chapterOneDone) - 1)) assert.ok(!day.offers.some(o => o.id.startsWith('offer_wall_')), `${label}: no wall before chapter 1 is done`);
 
   // Every day's gem movement is explained by its ledger buckets.
   for (const day of run.days) {
@@ -44,7 +48,7 @@ function checkRun(run) {
 
   // Wall attempts: a segment is at most 42 hull; damage holds within a day and resets on the next.
   assert.ok(run.wallAttempts.length > 0, `${label}: the wall is attempted`);
-  assert.equal(run.wallAttempts[0].day, 3, `${label}: attacked on arrival`);
+  assert.equal(run.wallAttempts[0].day, run.walls.spur.arrivalDay, `${label}: attacked on arrival`);
   let previous = null;
   for (const attempt of run.wallAttempts) {
     const pool = WALL_BY_ID[attempt.wall].pool;
