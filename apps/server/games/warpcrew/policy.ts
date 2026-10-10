@@ -177,7 +177,17 @@ export function isWarpcrewPlayer(v: unknown): v is WarpcrewPlayer {
       Object.entries(l.points).every(
         ([id, n]) =>
           ID.test(id) && Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 60,
-      )
+      ) &&
+      (l.day === undefined ||
+        l.day === null ||
+        (typeof l.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(l.day))) &&
+      (l.today === undefined ||
+        (record(l.today) &&
+          Object.keys(l.today).length <= 100 &&
+          Object.entries(l.today).every(
+            ([id, n]) =>
+              ID.test(id) && Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 10,
+          )))
     ))
       return false;
   }

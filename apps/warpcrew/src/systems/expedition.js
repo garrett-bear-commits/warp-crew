@@ -210,7 +210,7 @@ export function applyExpeditionResult(player, result, { now = trustedNow() } = {
   else if (!result.aborted) nextPlayer = applyCrewInjury(nextPlayer, result.crewInstanceIds, injuryMinutesFor(nextPlayer, 18), now);
   nextPlayer = noteTutorialEvent(nextPlayer, 'expedition_done').player;
   // The away team earns loyalty (Phase 3 §5); the scenes it opens wait on the notice strip.
-  nextPlayer = addLoyalty(nextPlayer, player.crew.filter(c => result.crewInstanceIds.includes(c.instanceId) && !c.isCaptain).map(c => c.templateId), LOYALTY.away).player;
+  nextPlayer = addLoyalty(nextPlayer, player.crew.filter(c => result.crewInstanceIds.includes(c.instanceId) && !c.isCaptain).map(c => c.templateId), LOYALTY.away, { now }).player;
   // The away team earns at its stations only from its return (Phase 2 §4).
   return { ok: true, player: settleIdle(player, nextPlayer, now), result };
 }

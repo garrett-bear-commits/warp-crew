@@ -642,7 +642,7 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
       const res = claimContractReward(player, now);
       if (!res.ok) return res;
       player = { ...res.player, dailyLoop: ensureDailyLoop(before, now).dailyLoop };
-      const bond = settleLoyaltyClaim(player, contract, flyers);
+      const bond = settleLoyaltyClaim(player, contract, flyers, now);
       player = bond.player;
       if (bond.opened.length) events.push(event('bond_scene_opened', { scenes: bond.opened }));
       if (bond.bonus) {

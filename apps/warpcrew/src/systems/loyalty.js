@@ -1,11 +1,13 @@
 // @ts-nocheck
 /**
  * Loyalty (Phase 3 design §5, docs/superpowers/specs/2026-10-10-world-design.md). Each merc earns loyalty by flying:
- * +2 for each contract claimed aboard (won or lost), +1 for each away team. At Trusted and Close a bond scene opens
+ * +1 for each contract claimed aboard (won or lost) and +1 for each away team, at most 2 a game day, so a merc who
+ * flies every day reaches Trusted in about five days, Close in two weeks and their loyalty job in about three. At Trusted and Close a bond scene opens
  * (the notice strip plays it); at the mission threshold their personal loyalty mission joins the board; winning it
  * makes them Loyal: their role passive counts a quarter more and they fight a little sharper. Captains have none.
  *
- * Saved: `loyalty = { points: { [templateId]: 0..60 }, loyal: [templateIds] }`, by template so it survives the reserve.
+ * Saved: `loyalty = { points: { [templateId]: 0..60 }, loyal: [templateIds], day, today: { [templateId]: gained } }`, by
+ * template so it survives the reserve; `today` is what each merc has earned on game day `day`.
  * Scenes seen are in `almanac.seen` (ids bond_<templateId>_1 / _2, loyal_<templateId>_brief / _debrief).
  */
 import { BONDS } from '../data/bonds.js';
@@ -16,9 +18,10 @@ import { grant } from './economy.js';
 import { storyProgress } from './story.js';
 import { referencePower } from './encounterState.js';
 import { ELITE_NAMES } from '../data/factions.js';
+import { dayKey } from './daily.js';
 export { bondTransmission } from './transmissions.js';
 
-export const LOYALTY = Object.freeze({ trusted: 10, close: 25, mission: 40, max: 60, contract: 2, away: 1 });
+export const LOYALTY = Object.freeze({ trusted: 10, close: 25, mission: 40, max: 60, contract: 1, away: 1, dailyCap: 2 });
 /** What a loyalty mission pays on a win, on top of the fight. */
 export const LOYAL_REWARD = Object.freeze({ medals: 15, gems: 10 });
 /** A Loyal merc's role passive counts this much more in fights, and their fight grade rises by LOYAL_GRADE. */
@@ -53,7 +56,11 @@ export function normalizeLoyalty(saved) {
   const points = Object.fromEntries(Object.entries(raw).filter(([id, n]) => ID.test(id) && hasBond(id) && Number.isFinite(n))
     .map(([id, n]) => [id, Math.max(0, Math.min(LOYALTY.max, Math.trunc(n)))]));
   const loyal = Array.isArray(saved.loyal) ? [...new Set(saved.loyal.filter(id => typeof id === 'string' && hasBond(id)))] : [];
-  return { points, loyal };
+  const day = typeof saved.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(saved.day) ? saved.day : null;
+  const rawToday = day && saved.today && typeof saved.today === 'object' && !Array.isArray(saved.today) ? saved.today : {};
+  const today = Object.fromEntries(Object.entries(rawToday).filter(([id, n]) => hasBond(id) && Number.isInteger(n) && n > 0)
+    .map(([id, n]) => [id, Math.min(LOYALTY.dailyCap, n)]));
+  return { points, loyal, ...(day ? { day, today } : {}) };
 }
 
 const recordOf = player => normalizeLoyalty(player?.loyalty);
@@ -89,20 +96,28 @@ export function pendingScenes(player) {
   return [...owned].flatMap(id => openedScenes(player, id).filter(tx => tx.startsWith('bond_') && !seen.has(tx)));
 }
 
-/** Add loyalty to these mercs (captains and unknown templates are skipped). Returns the player and scenes opened. */
-export function addLoyalty(player, templateIds, amount) {
+/**
+ * Add loyalty to these mercs (captains and unknown templates are skipped). With `now`, the daily cap applies (what
+ * play earns); without it, the amount is granted whole. Returns the player and the scenes opened.
+ */
+export function addLoyalty(player, templateIds, amount, { now = null } = {}) {
   const record = recordOf(player);
   const points = { ...record.points };
+  const day = now == null ? record.day : dayKey(now);
+  const today = now != null && record.day === day ? { ...(record.today || {}) } : {};
   const opened = [];
   for (const id of new Set(templateIds)) {
     if (!hasBond(id)) continue;
+    const gain = now == null ? amount : Math.max(0, Math.min(amount, LOYALTY.dailyCap - (today[id] || 0)));
     const before = points[id] || 0;
-    const after = Math.min(LOYALTY.max, before + amount);
+    const after = Math.min(LOYALTY.max, before + gain);
     if (after === before) continue;
     points[id] = after;
+    if (now != null) today[id] = (today[id] || 0) + (after - before);
     for (const [mark, tx] of [[LOYALTY.trusted, `bond_${id}_1`], [LOYALTY.close, `bond_${id}_2`]]) if (before < mark && after >= mark) opened.push(tx);
   }
-  return { player: { ...player, loyalty: { ...record, points } }, opened };
+  const daily = now != null ? { day, today } : record.day ? { day: record.day, today: record.today || {} } : {};
+  return { player: { ...player, loyalty: { points, loyal: record.loyal, ...daily } }, opened };
 }
 
 /** The mercs who flew a contract: crew aboard (not away, not the captain). */
@@ -197,8 +212,8 @@ export function ensureLoyaltyOffer(player) {
  * After a contract claim: everyone aboard earns loyalty; a won loyalty mission makes its merc Loyal, pays its bonus
  * and plays the debrief. Returns the player, scenes opened, the bonus and the transmissions to play now.
  */
-export function settleLoyaltyClaim(player, contract, flyers) {
-  let next = addLoyalty(player, flyers, LOYALTY.contract);
+export function settleLoyaltyClaim(player, contract, flyers, now = null) {
+  let next = addLoyalty(player, flyers, LOYALTY.contract, { now });
   const templateId = contract?.loyalty?.templateId;
   const real = templateId && hasBond(templateId) && String(contract.offerId || '').startsWith(`offer_loyal_${templateId}_`);
   if (!real || contract.result?.success === false || isLoyal(next.player, templateId) || loyaltyPoints(next.player, templateId) < LOYALTY.mission) {

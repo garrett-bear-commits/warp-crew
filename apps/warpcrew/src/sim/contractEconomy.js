@@ -229,6 +229,8 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     run.gemPolicy = guide.gems;
     run.wallFuelReserve = guide.wallFuelReserve;
     run.sessionOrder = sessionOrder;
+    // Phase 3: story and loyalty missions played (mission id -> day won), chapters completed (n -> day).
+    run.story = { won: {}, attempts: 0, chapters: {}, loyal: {} };
     // skips = gem-paid drydock finishes the player chose; still no purchases, ads or force completion.
     run.policy = { ...run.policy, skips: guide.gems === 'all' };
     run.wallAttempts = [];
@@ -252,7 +254,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       actions: [], blockedActions: [], rewardsBySource: {}, costsByAction: {}, completedContracts: 0, completedExpeditions: 0,
       offers: [], contract: null, expedition: null, improvement: null, fuel: { gained: 0, spent: 0, wasted: 0, deferredAtCap: 0 } };
     if (guided) Object.assign(day, { wallArrived: null, wallAttempts: [], improvements: [], buildCompleted: null, gemSpends: [], repairs: [],
-      hires: [], callUps: [], levelUps: [] });
+      hires: [], callUps: [], levelUps: [], story: [] });
     const account = (source, next) => {
       for (const currency of CURRENCIES) {
         const delta = (next.wallet[currency] || 0) - (player.wallet[currency] || 0);
@@ -521,9 +523,32 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       }
       return settled;
     };
+    // Phase 3: a guided captain plays the open story mission (and a ready merc's loyalty job) whenever fuel allows,
+    // keeping the strategy's wall reserve, before and after the day's strategy contract.
+    const special = when => {
+      for (let n = 0; n < 2 && guided && !player.activeContract; n++) {
+        player = prepareSession(player, now);
+        const offer = player.contractBoard.offers.find(o => (o.story || o.loyalty) && !player.contractBoard.completedOfferIds.includes(o.id));
+        if (!offer) return;
+        const cost = reviewContractOffer(player, offer.id).cost.fuel;
+        if (player.wallet.fuel - cost < guide.wallFuelReserve) return;
+        repair('contract');
+        const record = { day: index + 1, when, offerId: offer.id, story: offer.story?.id || null, loyalty: offer.loyalty?.templateId || null, route: null, order: null, outcome: null };
+        if (!(act('contract-review', { offer: offer.id }, 'story:contract-review') && act('contract-accept', { offer: offer.id }, 'story:contract-accept'))) return;
+        const chaptersBefore = (player.campaign?.chapters || []).length;
+        drive(record);
+        record.won = record.outcome?.success === true;
+        day.story.push(record);
+        run.story.attempts += 1;
+        if (record.won && record.story) run.story.won[record.story] = index + 1;
+        if (record.won && record.loyalty && player.loyalty?.loyal?.includes(record.loyalty)) run.story.loyal[record.loyalty] = index + 1;
+        if ((player.campaign?.chapters || []).length > chaptersBefore) for (const ch of player.campaign.chapters) run.story.chapters[ch] ??= index + 1;
+      }
+    };
+    special('before');
     if (!player.activeContract) {
       const offer = rules.profiles.flatMap(profile => player.contractBoard.offers.filter(o => o.profile === profile
-        && !o.wall && !player.contractBoard.completedOfferIds.includes(o.id)))[0];
+        && !o.wall && !o.story && !o.loyalty && !player.contractBoard.completedOfferIds.includes(o.id)))[0];
       if (guided && offer) repair('contract');
       if (guided && offer && player.wallet.fuel < reviewContractOffer(player, offer.id).cost.fuel) refuel('contract');
       if (offer && act('contract-review', { offer: offer.id })) act('contract-accept', { offer: offer.id });
@@ -533,6 +558,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       day.contract = { offerId: player.activeContract.offerId, profile: player.activeContract.profile, route: null, order: null, chance: null, outcome: null };
       drive(day.contract);
     }
+    special('after');
     const buyUpgrades = () => {
       // Guided captains buy every affordable improvement the drydock allows, cheapest first.
       for (let n = 0; n < 12; n++) {
@@ -649,6 +675,8 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         day.wallAttempts.push(record); run.wallAttempts.push(record);
         if (record.beaten && run.walls[wall.id]) run.walls[wall.id].fellOnDay = index + 1;
       }
+      // A wall's fall completes its chapter (Phase 3): note the day.
+      for (const ch of player.campaign?.chapters || []) run.story.chapters[ch] ??= index + 1;
       explore();
       player = prepareSession(player, now);
       noteWalls(day, index);

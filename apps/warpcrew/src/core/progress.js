@@ -93,7 +93,10 @@ export function isWarpcrewPlayer(v) {
         && wl.every((n) => Number.isInteger(n) && n >= 0 && n <= MAX_LIFETIME_COUNTER)))))) return false;
   if (v.loyalty !== undefined && !(record(v.loyalty) && (v.loyalty.loyal === undefined || idList(v.loyalty.loyal, 100))
     && record(v.loyalty.points) && Object.keys(v.loyalty.points).length <= 100
-    && Object.entries(v.loyalty.points).every(([id, n]) => ID.test(id) && Number.isInteger(n) && n >= 0 && n <= 60))) return false;
+    && Object.entries(v.loyalty.points).every(([id, n]) => ID.test(id) && Number.isInteger(n) && n >= 0 && n <= 60)
+    && (v.loyalty.day === undefined || v.loyalty.day === null || (typeof v.loyalty.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.loyalty.day)))
+    && (v.loyalty.today === undefined || (record(v.loyalty.today) && Object.keys(v.loyalty.today).length <= 100
+      && Object.entries(v.loyalty.today).every(([id, n]) => ID.test(id) && Number.isInteger(n) && n >= 0 && n <= 10))))) return false;
   return true;
 }
 

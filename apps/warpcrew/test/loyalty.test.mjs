@@ -77,6 +77,19 @@ describe('loyalty rules', () => {
     assert.deepEqual(openedScenes(res.player, 'merc_rex'), ['bond_merc_rex_1', 'bond_merc_rex_2', 'loyal_merc_rex_brief']);
   });
 
+  it('play earns at most two a day per merc, so the loyalty job takes about three weeks', () => {
+    let p = withRex();
+    for (let n = 0; n < 5; n++) p = addLoyalty(p, ['merc_rex'], LOYALTY.contract, { now }).player;
+    assert.equal(p.loyalty.points.merc_rex, LOYALTY.dailyCap, 'five contracts in a day earn the cap');
+    p = addLoyalty(p, ['merc_rex'], LOYALTY.away, { now }).player;
+    assert.equal(p.loyalty.points.merc_rex, LOYALTY.dailyCap, 'an away team counts towards the same cap');
+    p = addLoyalty(p, ['merc_rex'], LOYALTY.contract, { now: now + 86400000 }).player;
+    assert.equal(p.loyalty.points.merc_rex, LOYALTY.dailyCap + 1, 'a new day earns again');
+    assert.ok(Math.ceil(LOYALTY.mission / LOYALTY.dailyCap) >= 18 && Math.ceil(LOYALTY.mission / LOYALTY.dailyCap) <= 24);
+    assert.ok(isWarpcrewPlayer(migratePlayer(p)));
+    assert.equal(isWarpcrewPlayer({ ...p, loyalty: { ...p.loyalty, today: { merc_rex: 11 } } }), false);
+  });
+
   it('flyers are the crew aboard, not the captain or the away team', () => {
     const p = withRex();
     const away = { ...p, crew: p.crew.map(m => (m.templateId === 'merc_rex' ? { ...m, status: 'expedition' } : m)) };
