@@ -30,7 +30,8 @@ import { ensureWallOffer, currentWall } from './walls.js';
 import { refuelWithGems, RALLY } from './gemSinks.js';
 import { tacticStatus, BURN, repelStatus } from './autoCombat.js';
 import { readyContractCrew } from './contractRewards.js';
-import { contractThreat, threatLabel, pickDefender } from './encounterState.js';
+import { contractThreat, contractFightArgs, threatLabel, pickDefender } from './encounterState.js';
+import { fightOdds, offerFightContract } from './fightOdds.js';
 import { beginTravelFight, applyTravelFightAction, claimTravelFight, applyTravelFightCommand } from './travelFight.js';
 import { arrivalOpensEvent, openTravelEvent, resolveTravelEvent, eventView, routeEventFor, routeChoiceMatches } from './travelEvents.js';
 import { laneCheck, sectorMapModel } from './sectorMap.js';
@@ -268,7 +269,7 @@ function routeEventModel(player, contract, previews, now) {
       const consequence = preview.consequence || {};
       let stakes;
       if (consequence.encounterId) {
-        const threat = threatLabel(contractThreat(player, { encounterId: consequence.encounterId }, now));
+        const threat = threatLabel(contractThreat(player, { encounterId: consequence.encounterId, destinationId: contract.destinationId }, now));
         stakes = `Fight: ${consequence.encounterName} · ${threat} · win ${formatReward(consequence.encounterRewards)}`;
       } else {
         const outcome = choice.route === 'secure' ? contract.secureOutcome : contract.routeOutcome;
@@ -280,26 +281,32 @@ function routeEventModel(player, contract, previews, now) {
     }) };
 }
 
-export function sessionModels(player, ui = {}, now = trustedNow()) {
+/**
+ * Screen models. `fightOdds`: the contract board and review carry win odds played from the real fight
+ * (fightOdds.js). The game's render asks for them; the economy simulator and most tests do not, so a
+ * session action never pays for eight fights per offer.
+ */
+export function sessionModels(player, ui = {}, now = trustedNow(), { fightOdds: withOdds = false } = {}) {
   const contract = player.activeContract;
   const stations = stationOutputs(player, now);
+  // Odds only while the board can be read: no contract, fight or event under way.
+  const odds = withOdds && !contract && !player.activeEncounter && !player.activeEvent;
   const models = { missionView: ui.missionView || 'contracts', dailyPlan: dailyPlan(player, now),
     contractBoard: player.contractBoard ? { ...player.contractBoard, offers: player.contractBoard.offers.map((offer, _, __, bands = boardRewardBands(player, now)) => {
       const rewardBand = bands[offer.id];
-      return { ...offer, rewardBand, primaryReward: rewardBand.label, enabled: rewardBand.available && !player.contractBoard.completedOfferIds.includes(offer.id) };
+      const enabled = rewardBand.available && !player.contractBoard.completedOfferIds.includes(offer.id);
+      return { ...offer, rewardBand, primaryReward: rewardBand.label, enabled, fightOdds: odds && enabled ? fightOdds(player, offer, now) : null };
     }) } : null, activeContractView: null, activeTravelView: null, combatOrders: null, contractReview: null, awayPicker: null, contractPreviews: {},
     activeEventView: eventView(player, now), eventResult: ui.eventResult || null, sectorMap: sectorMapModel(player, ui, now) };
   if (ui.reviewedOfferId) {
     const review = reviewContractOffer(player, ui.reviewedOfferId);
     if (review.ok) {
       const rewardBand = contractRewardBand(player, review.offer, { now });
-      // Fight threat with the crew actually aboard now, for each path that can fight.
-      const content = review.offer.routeContent || {};
-      const fightIds = [...new Set([content.secureOutcome?.kind === 'combat' ? content.secureOutcome.encounter : null,
-        content.routeOutcome?.kind === 'combat' ? content.routeOutcome.encounter : null, content.encounterId].filter(Boolean))];
-      const threats = fightIds.map(encounterId => contractThreat(player, { encounterId }, now));
+      // The toughest fight any route can lead to: its threat, and the odds with the crew actually aboard now.
+      const fight = offerFightContract(review.offer);
       const awayCount = (player.crew || []).filter(member => member.status === 'expedition').length;
-      const fightThreat = threats.length ? { label: threatLabel(Math.max(...threats)), awayCount } : null;
+      const fightThreat = fight ? { label: threatLabel(contractFightArgs(player, fight, now).threat), awayCount,
+        odds: withOdds && !contract ? fightOdds(player, review.offer, now) : null } : null;
       models.contractReview = { ...review, rewardBand, fightThreat, destinationName: NODES[review.offer.destinationId]?.name,
         enabled: rewardBand.available && !contract && !player.contractBoard.completedOfferIds.includes(review.offer.id) };
     }

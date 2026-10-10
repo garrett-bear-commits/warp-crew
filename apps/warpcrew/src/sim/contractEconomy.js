@@ -2,7 +2,11 @@ import { createNewPlayer, tickCrewStatus } from '../systems/player.js';
 import { prepareSession, sessionAction, sessionModels } from '../systems/sessionLoop.js';
 import { claimFuelRegen } from '../systems/fuel.js';
 import { applyDailyLogin } from '../systems/daily.js';
-import { defaultTutorial, isTutorialActive } from '../systems/tutorial.js';
+import { defaultTutorial, isTutorialActive, isFeatureUnlocked, noteTutorialEvent } from '../systems/tutorial.js';
+import { pullOnce, benchCrew, callUpReserve } from '../systems/gacha.js';
+import { readyContractCrew } from '../systems/contractRewards.js';
+import { normalizeAssignments, STATIONS } from '../systems/stations.js';
+import { fightPower } from '../systems/encounterState.js';
 import { resolveExpedition, applyExpeditionResult, visiblePlanets } from '../systems/expedition.js';
 import { nextUpgradeCost, upgradeSystem, buildSkipGems, SHIP_SYSTEMS } from '../systems/hangar.js';
 import { markDailyMilestone } from '../systems/dailyLoop.js';
@@ -11,14 +15,15 @@ import { ftlPolicyStep, FTL_VERSION, MAX_FIGHT_BEATS } from '../systems/ftlComba
 import { reviewContractOffer } from '../systems/contracts.js';
 import { WALLS, siegeState } from '../systems/walls.js';
 import { FUEL_REFILL, RALLY } from '../systems/gemSinks.js';
-import { STARTER_CAPTAINS } from '../data/crewRoster.js';
+import { STARTER_CAPTAINS, levelCap, medalLevelCostFor } from '../data/crewRoster.js';
 import { hullRepairOffer, pay } from '../systems/economy.js';
 import { repairHull, fuelCostFor } from '../systems/passives.js';
 import { laneCheck, riskRead } from '../systems/sectorMap.js';
 
 /** Guided captains patch the hull before a Siege-wall attempt when it is below this. */
 const WALL_REPAIR_BELOW = 60;
-import { NODES, STORY_BEATS } from '../data/sectors.js';
+import { NODES, STORY_BEATS, visibleNodes, gateBlockedByWall } from '../data/sectors.js';
+import { laneNeighbors } from '../data/sectorMaps.js';
 import { eventCandidates, resolveTravelEvent, choiceStatus, eventReward, EVENT_KINDS, EVENT_VERSION } from '../systems/travelEvents.js';
 import { TRAVEL_EVENT_BY_ID } from '../data/events.js';
 
@@ -39,6 +44,25 @@ export const GUIDED_STRATEGIES = {
   cautious: { wallFuelReserve: 3, gems: 'never' },
   balanced: { wallFuelReserve: 1, gems: 'rally-refuel' },
   ambitious: { wallFuelReserve: 0, gems: 'all' },
+};
+/**
+ * Guided-flow crew growth (balance pass 2026-10-09), through production functions only. At the start of every
+ * check-in each strategy takes the free daily hire (gacha pullOnce, as main.js doHire does), calls up a reserve
+ * merc stronger than the weakest non-captain aboard (benchCrew + callUpReserve), and seats crew without a station
+ * on an empty station of their own role (station-assign); the rest stay free for fires and repairs. Medals then
+ * go on level-crew for the fighting crew, strongest first (the strongest whose next level is affordable). Levels
+ * cost only medals and the drydock only credits, so the two never compete for a currency; `levelAt` is when in
+ * the check-in the crew trains:
+ *   before-fights  — cautious and balanced train first, so the day's contract and wall use the new levels.
+ *   after-upgrades — ambitious puts the ship first: its evening drydock spend, then training, so the day's
+ *                    fights run on yesterday's levels.
+ * hires: 'free' for every strategy. None pays 500 credits or 100 gems for a hire: free play makes no purchases,
+ * and a credit hire would starve the drydock.
+ */
+export const CREW_STRATEGIES = {
+  cautious: { levelAt: 'before-fights', hires: 'free' },
+  balanced: { levelAt: 'before-fights', hires: 'free' },
+  ambitious: { levelAt: 'after-upgrades', hires: 'free' },
 };
 export const MAX_WALL_ATTEMPTS_PER_SESSION = 8;
 /**
@@ -63,10 +87,42 @@ function arrivalValue(node) {
   return outcomes.reduce((sum, outcome) => sum + (outcome.kind === 'combat' ? 0 : (outcome.w / total) * creditValue(outcome)), 0);
 }
 
+/** Gate beacons and the story beat at each that opens its sector (sectors.js). */
+export const GATE_OPENS = Object.freeze({ veil_gate: 'veil_opened', ember_gate: 'ember_opened', hollow_mouth: 'hollow_opened', halo_approach: 'crown_opened' });
+
+/**
+ * The first lane hop toward a lit gate whose sector is still closed (shortest path over lit beacons), or null.
+ * Balance pass 2026-10-09: a captain who broke a wall heads for the next sector's gate until it opens, as a
+ * player chasing the next wall would; before, a first gate visit that rolled trade or a fight was never retried.
+ */
+export function gateStep(player, now) {
+  const visible = new Set(visibleNodes(player, now).map(node => node.id));
+  const goals = Object.keys(GATE_OPENS).filter(id => visible.has(id) && !player.flags?.[GATE_OPENS[id]] && !gateBlockedByWall(player, id));
+  if (!goals.length) return null;
+  const start = player.location || 'station_home';
+  const from = { [start]: null };
+  const queue = [start];
+  while (queue.length) {
+    const here = queue.shift();
+    if (goals.includes(here) && here !== start) {
+      let hop = here;
+      while (from[hop] !== start) hop = from[hop];
+      return hop;
+    }
+    for (const next of laneNeighbors(here).sort()) {
+      if (!visible.has(next) || Object.hasOwn(from, next)) continue;
+      from[next] = here;
+      queue.push(next);
+    }
+  }
+  return null;
+}
+
 /** The scripted captain's next jump from where the ship is, or null. */
 export function pickExploreJump(player, strategy, now) {
   const rulesX = EXPLORE_STRATEGIES[strategy];
   const fuel = player.wallet?.fuel ?? 0;
+  const toGate = gateStep(player, now);
   const options = [];
   for (const node of Object.values(NODES)) {
     if (node.id === 'station_home' || !laneCheck(player, node.id, now).ok) continue;
@@ -75,10 +131,22 @@ export function pickExploreJump(player, strategy, now) {
     const risk = riskRead(player, node, now);
     if (risk.threat && rulesX.avoid.includes(risk.threat)) continue;
     const unvisited = !(player.stats?.visits?.[node.id] > 0);
-    const score = (unvisited ? 1000 : 0) + arrivalValue(node) / Math.max(1, cost) - rulesX.fightPrice * risk.fightPct;
+    const score = (node.id === toGate ? 2000 : 0) + (unvisited ? 1000 : 0) + arrivalValue(node) / Math.max(1, cost) - rulesX.fightPrice * risk.fightPct;
     options.push({ id: node.id, fuel: cost, score, threat: risk.threat, fightPct: risk.fightPct });
   }
   return options.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))[0] || null;
+}
+
+/** At a gate's sector-opening event, the choice likeliest to open the sector (then the policy's own pick). */
+export function pickGateChoice(player, ev, policy, now) {
+  const preferred = pickExploreChoice(player, ev, policy, now);
+  const template = TRAVEL_EVENT_BY_ID[ev.templateId];
+  const share = choice => choice.outcomes.reduce((sum, outcome) => sum + (outcome.story ? outcome.w : 0), 0)
+    / (choice.outcomes.reduce((sum, outcome) => sum + outcome.w, 0) || 1);
+  const open = template.choices.filter(choice => choiceStatus(player, choice, now).available);
+  const best = Math.max(0, ...open.map(share));
+  if (!best || (preferred && share(preferred) === best)) return preferred;
+  return open.filter(choice => share(choice) === best).sort((a, b) => a.id.localeCompare(b.id))[0];
 }
 /** contracts.js refuses a launch at or below this hull ('hull_critical'). */
 const HULL_CRITICAL = 8;
@@ -120,13 +188,15 @@ export function reconcileLedger(run) {
   return { ok: Object.keys(differences).length === 0, differences };
 }
 
-export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_START, flow = 'script3', sessionOrder = 'fights-first' }) {
+export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_START, flow = 'script3', sessionOrder = 'fights-first', onDayEnd = null, days = 30 }) {
   const rules = STRATEGIES[strategy];
   if (!rules) throw new Error(`Unknown strategy: ${strategy}`);
   if (!['script3', 'guided'].includes(flow)) throw new Error(`Unknown flow: ${flow}`);
   if (!['fights-first', 'away-first'].includes(sessionOrder)) throw new Error(`Unknown session order: ${sessionOrder}`);
+  if (!Number.isInteger(days) || days < 1 || days > 30) throw new Error(`Unknown run length: ${days}`);
   const guided = flow === 'guided';
   const guide = GUIDED_STRATEGIES[strategy];
+  const crewRules = CREW_STRATEGIES[strategy];
   const rng = createSeededRng(seed);
   // Preserve the approved script-3 baseline for historical 30-day comparisons.
   // flow: 'guided' plays the shipped script-5 first session, so siege walls apply.
@@ -160,12 +230,13 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       if (run.walls[id] && !run.walls[id].packOffer) run.walls[id].packOffer = { day: index + 1, reason: record.reason };
     }
   };
-  for (let index = 0; index < 30; index++) {
+  for (let index = 0; index < days; index++) {
     const now = startAt + index * 86400000;
     const day = { day: index + 1, now, startWallet: wallet(player), startHull: player.ship.hull,
       actions: [], blockedActions: [], rewardsBySource: {}, costsByAction: {}, completedContracts: 0, completedExpeditions: 0,
       offers: [], contract: null, expedition: null, improvement: null, fuel: { gained: 0, spent: 0, wasted: 0, deferredAtCap: 0 } };
-    if (guided) Object.assign(day, { wallArrived: null, wallAttempts: [], improvements: [], buildCompleted: null, gemSpends: [], repairs: [] });
+    if (guided) Object.assign(day, { wallArrived: null, wallAttempts: [], improvements: [], buildCompleted: null, gemSpends: [], repairs: [],
+      hires: [], callUps: [], levelUps: [] });
     const account = (source, next) => {
       for (const currency of CURRENCIES) {
         const delta = (next.wallet[currency] || 0) - (player.wallet[currency] || 0);
@@ -274,6 +345,56 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         else if (!planet) blocked('exp-start', 'no_visible_planet');
       } else blocked('exp-start', 'expedition_active');
     };
+    // Crew growth (CREW_STRATEGIES): medals on level-crew for the fighting crew, strongest first.
+    const train = () => {
+      for (let n = 0; n < 200; n++) {
+        const next = readyContractCrew(player, now).find(member => (member.level || 1) < levelCap(member)
+          && medalLevelCostFor(member) <= (player.wallet.medals || 0));
+        if (!next) return;
+        const level = next.level || 1;
+        if (!act('level-crew', { id: next.instanceId })) return;
+        day.levelUps.push({ id: next.instanceId, templateId: next.templateId, level: level + 1 });
+      }
+    };
+    // The free daily hire, reserve call-ups and empty stations, like a captain on the Crew tab.
+    const growCrew = () => {
+      if (player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha')) {
+        const res = pullOnce(player, { free: true, now });
+        if (!res.ok) blocked('crew-hire', res.reason);
+        else {
+          // main.js doHire notes a new crew member for the tutorial ledger.
+          account('crew-hire', res.kind === 'hire' ? noteTutorialEvent(res.player, 'hired').player : res.player);
+          day.hires.push({ templateId: res.instance.templateId, rarity: res.rarity, kind: res.kind });
+        }
+      }
+      for (let n = 0; n < 8; n++) {
+        const waiting = [...(player.reserve || [])].sort((a, b) => (b.power || 0) - (a.power || 0) || a.instanceId.localeCompare(b.instanceId))[0];
+        if (!waiting) break;
+        const weakest = (player.crew || []).filter(member => member.instanceId !== player.captainInstanceId && !member.isCaptain
+          && member.status !== 'expedition').sort((a, b) => (a.power || 0) - (b.power || 0) || a.instanceId.localeCompare(b.instanceId))[0];
+        const full = (player.crew || []).length >= (player.crewSlots || 2);
+        if (full && !(weakest && (waiting.power || 0) > (weakest.power || 0))) break;
+        const benched = full ? benchCrew(player, weakest.instanceId) : { ok: true, player };
+        const called = benched.ok ? callUpReserve(benched.player, waiting.instanceId) : benched;
+        if (!called.ok) { blocked('crew-call-up', called.reason); break; }
+        account('crew-roster', called.player);
+        day.callUps.push({ in: waiting.templateId, out: full ? weakest.templateId : null });
+      }
+      // Only onto an empty station of their own role: everyone else stays free to fight fires and repair rooms
+      // (stationed crew never leave their post, so a crew seated everywhere lets a burning room burn for good).
+      // A station held by a merc now in reserve counts as empty (assignStation clears them).
+      const seats = normalizeAssignments(player);
+      const taken = new Set((player.crew || []).map(member => seats[member.instanceId]).filter(Boolean));
+      for (const member of player.crew || []) {
+        if (seats[member.instanceId] || member.status !== 'ready' || (member.injuredUntil || 0) > now) continue;
+        const station = Object.keys(STATIONS).find(id => !taken.has(id) && STATIONS[id].role === member.role);
+        if (station && act('station-assign', { id: member.instanceId, station })) taken.add(station);
+      }
+    };
+    if (guided && !isTutorialActive(player)) {
+      growCrew();
+      if (crewRules.levelAt === 'before-fights') train();
+    }
     // fights-first: guided captains fight (contract, then the wall) with the whole crew aboard, then send
     // the away team. away-first keeps the baseline order, so the away party misses every fight that day.
     const awayFirst = !guided || sessionOrder === 'away-first';
@@ -325,6 +446,8 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         } else if (stage === 'confrontation' && player.activeEncounter) {
           // Contract fights are real-time crew fights; every strategy plays disciplined orders.
           record.order = 'crew';
+          // The power model's crew side as the fight starts (the reference-power calibration reads it).
+          record.crewPower = fightPower(player, player.activeEncounter.encounterId, now);
           if (wall) record.remainingBefore = player.activeEncounter.enemy.remainingBefore ?? null;
           let beats = 0;
           const ftl = player.activeEncounter.version === FTL_VERSION;
@@ -414,6 +537,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     // so the gem ledger and the free Rally stay with contracts and walls).
     const fightTravel = record => {
       let beats = 0;
+      if (player.activeEncounter) record.crewPower = fightPower(player, player.activeEncounter.encounterId, now);
       while (player.activeEncounter && !player.activeEncounter.result && beats < MAX_FIGHT_BEATS) {
         let encounter = player.activeEncounter;
         if (encounter.version === FTL_VERSION && encounter.phase !== 'downed') {
@@ -453,7 +577,8 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         if (player.activeEvent) {
           jump.kind = 'event';
           jump.event = player.activeEvent.templateId;
-          const choice = pickExploreChoice(player, player.activeEvent, EXPLORE_EVENT_POLICY[strategy], now);
+          const ev = player.activeEvent;
+          const choice = (ev.base?.kind === 'story' && Object.values(GATE_OPENS).includes(ev.base.flag) ? pickGateChoice : pickExploreChoice)(player, ev, EXPLORE_EVENT_POLICY[strategy], now);
           if (!choice) { log.stopped = 'no_choice'; log.jumps.push(jump); break; }
           jump.choice = choice.id;
           if (!act('event-choose', { eventId: player.activeEvent.eventId, choice: choice.id }, 'explore:event-choose')) { log.stopped = 'refused'; log.jumps.push(jump); break; }
@@ -491,7 +616,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         repair('wall');
         if ((player.ship.hull ?? 100) <= HULL_CRITICAL) { day.wallStopped = 'hull_critical'; break; }
         const wall = WALLS.find(w => w.id === offer.wall.id);
-        const record = { day: index + 1, wall: wall.id, offerId: offer.id, gemsBefore: player.wallet.gems || 0, fuelBefore: player.wallet.fuel,
+        const record = { day: index + 1, wall: wall.id, offerId: offer.id, gemsBefore: player.wallet.gems || 0, fuelBefore: player.wallet.fuel, hullBefore: player.ship.hull ?? 100,
           remainingBefore: null, route: null, order: null };
         if (!(act('contract-review', { offer: offer.id }, 'wall:contract-review') && act('contract-accept', { offer: offer.id }, 'wall:contract-accept'))) break;
         const settled = drive(record, { wall: true });
@@ -507,6 +632,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       player = prepareSession(player, now);
       noteWalls(day, index);
       buyUpgrades();
+      if (crewRules.levelAt === 'after-upgrades') train();
       if (!awayFirst) launchAway();
       if (!day.improvement) blocked('ship-upgrade', player.shipBuild ? 'drydock_busy' : 'cannot_afford');
       const costs = SHIP_SYSTEMS.map(system => ({ system, cost: nextUpgradeCost(player, system) })).filter(x => x.cost);
@@ -534,9 +660,13 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     day.usefulSessionComplete = day.incompleteMilestones.length === 0;
     day.fuelStarved = day.blockedActions.some(a => a.reason === 'not_enough_fuel');
     day.endWallet = wallet(player); day.endHull = player.ship.hull;
+    if (guided) day.crew = { size: player.crew.length, reserve: (player.reserve || []).length,
+      levels: player.crew.map(member => member.level || 1), power: player.crew.reduce((sum, member) => sum + (member.power || 0), 0) };
     day.injuries = player.crew.filter(c => c.status === 'injured').map(c => ({ id: c.instanceId, until: c.injuredUntil }));
     day.pending = { contractStage: player.activeContract?.stage || null, expeditionEndsAt: player.activeExpedition?.endAt || null };
     run.days.push(day);
+    // Calibration and success-test harnesses read the end-of-day save (shorter runs pass days); the run ignores the return.
+    onDayEnd?.(player, day);
   }
   run.finalWallet = wallet(player);
   run.systemLevels = { ...player.ship.systems };
@@ -604,7 +734,26 @@ function summarizeGuided(run) {
     exploreFights: run.explore.fights,
     exploreCredits: run.explore.netCredits,
     exploreCreditShare: run.totals.sources.credits ? Math.round(run.explore.earned.credits / run.totals.sources.credits * 100) : 0,
+    // The free-play targets (crew-matter design §4): fight win rates by day 7 and day 30, credits per day.
+    fightWinPctDay7: fightWinPct(run, 7),
+    fightWinPctDay30: fightWinPct(run, 30),
+    wallWinPct: run.wallAttempts.length ? Math.round(run.wallAttempts.filter(a => a.success).length / run.wallAttempts.length * 100) : null,
+    creditsPerDay: Math.round(run.totals.sources.credits / run.days.length),
+    crewHires: run.days.reduce((sum, d) => sum + d.hires.length, 0),
+    crewLevelUps: run.days.reduce((sum, d) => sum + d.levelUps.length, 0),
+    crewSize: run.finalCrew.length,
+    crewPower: run.finalCrew.reduce((sum, member) => sum + (member.power || 0), 0),
   });
+}
+
+/** Percent of contract and Explore crew fights won from day 1 through `lastDay` (walls are counted apart), or null. */
+function fightWinPct(run, lastDay) {
+  let fights = 0, wins = 0;
+  for (const day of run.days.filter(d => d.day <= lastDay)) {
+    if (day.contract?.order === 'crew' && day.contract.outcome) { fights += 1; wins += day.contract.outcome.success ? 1 : 0; }
+    for (const jump of day.explore?.jumps || []) { fights += jump.fights || 0; wins += jump.fightWins || 0; }
+  }
+  return fights ? Math.round(wins / fights * 100) : null;
 }
 
 /** Explore stats from the day logs and the explore:* ledger buckets. */
@@ -700,7 +849,8 @@ function renderGuidedMarkdown(report) {
     `Added 2026-09-27; the script-3 section above is unchanged. Same seeds, start and one check-in every 24 hours, but each captain plays the shipped script-5 first session (captains rotate by seed: ${[...new Set(runs.map(r => r.captain))].join(', ')}), so siege walls apply. All transitions go through production session actions; wall attempts, Rally, gem refills and drydock skips are ledgered in their own buckets (wall:*, rally, refuel-gems, ship-build-skip, hull-repair).`, '',
     `Session order (fights-first): claim returned away team, patch the hull only if critical (production repair-hull: 25 hull for 35 credits), strategy contract, buy every affordable improvement the drydock allows (levels above 3 start a timed build that completes on a later check-in through prepareSession), attack the wall while it is on the board and fuel minus the attempt cost stays at or above the strategy reserve (at most ${MAX_WALL_ATTEMPTS_PER_SESSION} attempts), buy again, then launch the away team. Wall fights use the same disciplined crew orders as contracts. Gem policies: ${strategies.map(policy).join('; ')}. never = no gem spends (the free first Rally is still taken); rally-refuel = paid Rally on a near miss and a 50-gem refill only when the day's contract or first wall attempt is unaffordable; all = paid Rally, a refill whenever it buys another wall attempt, and every drydock skip it can afford. No purchases, ads or force completion; wall-pack offers are recorded when production triggers them but never bought.`, '',
     `Explore (added 2026-10-05): after the contract and the wall attempts, the captain jumps along lit lanes while fuel minus the jump stays at or above the strategy's Explore reserve and the hull is at or above its floor (${Object.entries(EXPLORE_STRATEGIES).map(([k, v]) => `${k}: reserve ${v.fuelReserve}, up to ${v.maxJumps} jump${v.maxJumps > 1 ? 's' : ''}, hull ≥ ${v.minHull}, avoids ${v.avoid.length ? v.avoid.join('/') : 'nothing'}`).join('; ')}). Unvisited beacons first, then the best expected arrival pay per fuel minus a price on the beacon's fight share. Events are resolved with the strategy's pickExploreChoice policy; Explore fights (beacon or event) use the same disciplined crew captain and concede when downed (Explore never spends the Rally). Explore actions are ledgered in explore:* buckets.`, '',
-    'Not modeled: expedition gem skips; a second check-in the same day. Injuries from a same-instant claim still block that day\'s away launch (empty_party), as in the baseline. Worst: latest wall arrival and fall, most attempts and near-miss losses, largest gem buffer at the wall (least need for a wall pack), fewest gems earned, most gems spent, most repair credits, fewest useful sessions/upgrades/walls.', '',
+    `Crew growth and threat (added 2026-10-09, [balance pass](2026-10-09-balance-pass.md)): every check-in the captain takes the free daily hire (no paid hires), calls up a reserve merc stronger than the weakest non-captain aboard, seats crew without a station on an empty station of their own role (the rest stay free for fires and repairs) and spends medals on crew levels, strongest fighter first (${Object.entries(CREW_STRATEGIES).map(([k, v]) => `${k}: ${v.levelAt}`).join('; ')}). Fight threat comes from the encounter, the sector and a reference crew power by day played, not from the crew aboard. A captain whose next sector is still closed heads for its gate beacon on Explore and takes the event choice likeliest to open it. Fight wins count contract and Explore crew fights (a run with none counts as 100); wall attempts are counted apart.`, '',
+    'Not modeled: expedition gem skips; a second check-in the same day. Injuries from a same-instant claim still block that day\'s away launch (empty_party), as in the baseline. Worst: latest wall arrival and fall, most attempts and near-miss losses, largest gem buffer at the wall (least need for a wall pack), fewest gems earned, most gems spent, most repair credits, fewest useful sessions/upgrades/walls, lowest win rates, credits per day and crew growth.', '',
     '| Strategy | Metric | Median | Worst seed | Worst value |', '|---|---|---:|---:|---:|'];
   for (const strategy of strategies) {
     metricRows(lines, runs.filter(r => r.strategy === strategy), strategy, [
@@ -716,6 +866,13 @@ function renderGuidedMarkdown(report) {
       ['First wall near-miss losses', r => r.metrics.wallNearMissLosses, true],
       ['Gems at first wall arrival', r => r.metrics.gemsAtWall ?? 0, true],
       ['Walls broken / 30 days', r => r.metrics.wallsBroken, false],
+      ['Fight wins, days 1-7 (%)', r => r.metrics.fightWinPctDay7 ?? 100, false],
+      ['Fight wins, days 1-30 (%)', r => r.metrics.fightWinPctDay30 ?? 100, false],
+      ['Wall attempts won (%)', r => r.metrics.wallWinPct ?? 0, false],
+      ['Credits earned per day', r => r.metrics.creditsPerDay, false],
+      ['Free hires', r => r.metrics.crewHires, false],
+      ['Crew levels bought', r => r.metrics.crewLevelUps, false],
+      ['End crew power', r => r.metrics.crewPower, false],
       ['Gems earned', r => r.metrics.gemsEarned, false],
       ['Gems spent', r => r.metrics.gemsSpent, true],
       ['End gems', r => r.finalWallet.gems, true],

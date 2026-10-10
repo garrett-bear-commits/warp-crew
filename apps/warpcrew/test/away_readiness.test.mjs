@@ -34,20 +34,21 @@ assert.deepEqual(readiness.unstaffed, ['Weapons']);
 const picker = sessionModels(player, { selectedExpeditionId: planet.id, selectedExpeditionCrewIds: [hireId] }, now).awayPicker;
 assert.match(renderAwayPicker(picker), /Ship combat power \d+ → <b>\d+<\/b> · 1 aboard · Weapons unstaffed/);
 
-// Contract review states the fight threat with the crew actually aboard.
+// Contract review states the fight's threat and the win odds with the crew actually aboard.
+// Balance pass 2026-10-09: the threat no longer follows the crew aboard (a reference crew sets it); the odds do.
 assert.equal(threatLabel(0.8), 'Favorable');
 assert.equal(threatLabel(1.0), 'Even');
 assert.equal(threatLabel(1.2), 'Dangerous');
 assert.equal(threatLabel(1.5), 'Deadly');
 player = { ...player, wallet: { ...player.wallet, fuel: 10 }, contractBoard: generateContractBoard(player, now) };
 const risky = player.contractBoard.offers.find(offer => offer.profile === 'risky');
-const aboard = sessionModels(player, { reviewedOfferId: risky.id }, now).contractReview;
+const aboard = sessionModels(player, { reviewedOfferId: risky.id }, now, { fightOdds: true }).contractReview;
 const away = sessionModels({ ...player, crew: player.crew.map(member => member.instanceId === hireId ? { ...member, status: 'expedition' } : member) },
-  { reviewedOfferId: risky.id }, now).contractReview;
+  { reviewedOfferId: risky.id }, now, { fightOdds: true }).contractReview;
 assert.ok(aboard.fightThreat && away.fightThreat);
 assert.equal(away.fightThreat.awayCount, 1);
-const order = ['Favorable', 'Even', 'Dangerous', 'Deadly'];
-assert.ok(order.indexOf(away.fightThreat.label) >= order.indexOf(aboard.fightThreat.label), 'sending crew away cannot make the fight safer');
-assert.match(renderContractReview(away), /Fight threat with crew aboard: <b>\w+<\/b> · 1 crew away/);
+assert.equal(away.fightThreat.label, aboard.fightThreat.label, 'the threat is the job\'s, not the crew\'s');
+assert.ok(away.fightThreat.odds.winPct <= aboard.fightThreat.odds.winPct, 'sending crew away cannot make the fight safer');
+assert.match(renderContractReview(away), /Fight: <b>\w+<\/b> · Win odds (about \d+%|over 90%|under 10%) with the crew aboard · 1 crew away/);
 
 console.log('away_readiness.test.mjs OK');

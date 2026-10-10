@@ -517,7 +517,8 @@ function render() {
   }
   const renderNow = trustedNow();
   setMusicScene(musicScene(player, tab));
-  const models = sessionModels(player, { ...sessionUi, pendingCombat }, renderNow);
+  // Contract cards carry win odds played from the real fight (cached by fight setup, so renders stay cheap).
+  const models = sessionModels(player, { ...sessionUi, pendingCombat }, renderNow, { fightOdds: true });
   sessionUi.contractPreviews = models.contractPreviews;
   renderApp(app, {
     ...sessionUi,

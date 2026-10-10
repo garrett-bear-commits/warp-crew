@@ -296,22 +296,22 @@ Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cu
 | cautious | End gems | 60 | 4219 | 60 |
 | cautious | End medals | 334 | 88421 | 340 |
 | cautious | End reputation | 238 | 240911 | 246 |
-| balanced | Useful sessions / 30 | 13 | 4219 | 13 |
+| balanced | Useful sessions / 30 | 14 | 17031 | 12 |
 | balanced | Fuel-starved days | 0 | 4219 | 0 |
-| balanced | Upgrades / 30 days | 18 | 4219 | 17 |
-| balanced | End credits | 105 | 240911 | 246 |
+| balanced | Upgrades / 30 days | 19 | 4219 | 18 |
+| balanced | End credits | 235 | 990001 | 286 |
 | balanced | End fuel | 10 | 17031 | 12 |
 | balanced | End gems | 60 | 4219 | 60 |
-| balanced | End medals | 473 | 240911 | 490 |
-| balanced | End reputation | 159 | 88421 | 161 |
-| ambitious | Useful sessions / 30 | 10 | 240911 | 9 |
+| balanced | End medals | 528 | 240911 | 539 |
+| balanced | End reputation | 186 | 990001 | 189 |
+| ambitious | Useful sessions / 30 | 15 | 4219 | 12 |
 | ambitious | Fuel-starved days | 0 | 4219 | 0 |
-| ambitious | Upgrades / 30 days | 14 | 4219 | 14 |
-| ambitious | End credits | 146 | 240911 | 311 |
-| ambitious | End fuel | 12 | 17031 | 12 |
+| ambitious | Upgrades / 30 days | 19 | 4219 | 18 |
+| ambitious | End credits | 162 | 990001 | 180 |
+| ambitious | End fuel | 10 | 17031 | 12 |
 | ambitious | End gems | 60 | 4219 | 60 |
-| ambitious | End medals | 363 | 990001 | 372 |
-| ambitious | End reputation | 118 | 88421 | 121 |
+| ambitious | End medals | 498 | 240911 | 503 |
+| ambitious | End reputation | 190 | 240911 | 193 |
 
 Conservation: 15/15 runs PASS. Detailed daily ledgers: [JSON](artifacts/contract-economy-30-day.json).
 
@@ -323,73 +323,96 @@ Session order (fights-first): claim returned away team, patch the hull only if c
 
 Explore (added 2026-10-05): after the contract and the wall attempts, the captain jumps along lit lanes while fuel minus the jump stays at or above the strategy's Explore reserve and the hull is at or above its floor (cautious: reserve 3, up to 1 jump, hull ≥ 70, avoids Dangerous/Deadly; balanced: reserve 2, up to 2 jumps, hull ≥ 50, avoids Deadly; ambitious: reserve 1, up to 3 jumps, hull ≥ 35, avoids nothing). Unvisited beacons first, then the best expected arrival pay per fuel minus a price on the beacon's fight share. Events are resolved with the strategy's pickExploreChoice policy; Explore fights (beacon or event) use the same disciplined crew captain and concede when downed (Explore never spends the Rally). Explore actions are ledgered in explore:* buckets.
 
-Not modeled: expedition gem skips; a second check-in the same day. Injuries from a same-instant claim still block that day's away launch (empty_party), as in the baseline. Worst: latest wall arrival and fall, most attempts and near-miss losses, largest gem buffer at the wall (least need for a wall pack), fewest gems earned, most gems spent, most repair credits, fewest useful sessions/upgrades/walls.
+Crew growth and threat (added 2026-10-09, [balance pass](2026-10-09-balance-pass.md)): every check-in the captain takes the free daily hire (no paid hires), calls up a reserve merc stronger than the weakest non-captain aboard, seats crew without a station on an empty station of their own role (the rest stay free for fires and repairs) and spends medals on crew levels, strongest fighter first (cautious: before-fights; balanced: before-fights; ambitious: after-upgrades). Fight threat comes from the encounter, the sector and a reference crew power by day played, not from the crew aboard. A captain whose next sector is still closed heads for its gate beacon on Explore and takes the event choice likeliest to open it. Fight wins count contract and Explore crew fights (a run with none counts as 100); wall attempts are counted apart.
+
+Not modeled: expedition gem skips; a second check-in the same day. Injuries from a same-instant claim still block that day's away launch (empty_party), as in the baseline. Worst: latest wall arrival and fall, most attempts and near-miss losses, largest gem buffer at the wall (least need for a wall pack), fewest gems earned, most gems spent, most repair credits, fewest useful sessions/upgrades/walls, lowest win rates, credits per day and crew growth.
 
 | Strategy | Metric | Median | Worst seed | Worst value |
 |---|---|---:|---:|---:|
-| cautious | Useful sessions / 30 | 23 | 88421 | 19 |
+| cautious | Useful sessions / 30 | 29 | 17031 | 28 |
 | cautious | Fuel-starved days | 0 | 4219 | 0 |
-| cautious | Upgrade days / 30 | 26 | 88421 | 25 |
-| cautious | Upgrade levels / 30 | 30 | 88421 | 29 |
-| cautious | Drydock-busy days | 0 | 240911 | 2 |
+| cautious | Upgrade days / 30 | 27 | 17031 | 26 |
+| cautious | Upgrade levels / 30 | 33 | 17031 | 31 |
+| cautious | Drydock-busy days | 3 | 4219 | 3 |
 | cautious | First wall arrival day | 3 | 4219 | 3 |
-| cautious | First wall fell on day | 3 | 17031 | 4 |
-| cautious | First wall attempts | 3 | 17031 | 6 |
+| cautious | First wall fell on day | 3 | 990001 | 4 |
+| cautious | First wall attempts | 3 | 990001 | 6 |
 | cautious | First wall attempts / attempt day | 3 | 4219 | 3 |
 | cautious | First wall near-miss losses | 0 | 4219 | 0 |
 | cautious | Gems at first wall arrival | 0 | 4219 | 0 |
-| cautious | Walls broken / 30 days | 1 | 17031 | 1 |
-| cautious | Gems earned | 80 | 17031 | 80 |
+| cautious | Walls broken / 30 days | 2 | 17031 | 1 |
+| cautious | Fight wins, days 1-7 (%) | 100 | 4219 | 100 |
+| cautious | Fight wins, days 1-30 (%) | 100 | 4219 | 100 |
+| cautious | Wall attempts won (%) | 100 | 240911 | 86 |
+| cautious | Credits earned per day | 419 | 17031 | 375 |
+| cautious | Free hires | 30 | 4219 | 30 |
+| cautious | Crew levels bought | 32 | 17031 | 29 |
+| cautious | End crew power | 185 | 17031 | 180 |
+| cautious | Gems earned | 100 | 17031 | 80 |
 | cautious | Gems spent | 0 | 4219 | 0 |
-| cautious | End gems | 80 | 4219 | 100 |
-| cautious | Hull repair credits | 245 | 240911 | 1330 |
-| cautious | Explore jumps | 25 | 240911 | 23 |
-| cautious | Explore events | 15 | 17031 | 10 |
-| cautious | Explore fights | 8 | 17031 | 13 |
-| cautious | Explore net credits | 1929 | 88421 | 1671 |
-| cautious | Explore share of credits earned (%) | 17 | 240911 | 15 |
-| balanced | Useful sessions / 30 | 22 | 17031 | 13 |
+| cautious | End gems | 100 | 4219 | 100 |
+| cautious | Hull repair credits | 245 | 990001 | 350 |
+| cautious | Explore jumps | 28 | 990001 | 27 |
+| cautious | Explore events | 14 | 17031 | 13 |
+| cautious | Explore fights | 10 | 4219 | 12 |
+| cautious | Explore net credits | 2045 | 88421 | 1846 |
+| cautious | Explore share of credits earned (%) | 17 | 88421 | 15 |
+| balanced | Useful sessions / 30 | 30 | 17031 | 29 |
 | balanced | Fuel-starved days | 0 | 4219 | 0 |
-| balanced | Upgrade days / 30 | 25 | 17031 | 15 |
-| balanced | Upgrade levels / 30 | 31 | 17031 | 19 |
-| balanced | Drydock-busy days | 2 | 990001 | 4 |
+| balanced | Upgrade days / 30 | 29 | 17031 | 23 |
+| balanced | Upgrade levels / 30 | 38 | 17031 | 27 |
+| balanced | Drydock-busy days | 4 | 4219 | 17 |
 | balanced | First wall arrival day | 3 | 4219 | 3 |
-| balanced | First wall fell on day | 3 | 17031 | 4 |
-| balanced | First wall attempts | 3 | 17031 | 7 |
-| balanced | First wall attempts / attempt day | 3 | 17031 | 3.5 |
+| balanced | First wall fell on day | 3 | 4219 | 3 |
+| balanced | First wall attempts | 3 | 990001 | 4 |
+| balanced | First wall attempts / attempt day | 3 | 990001 | 4 |
 | balanced | First wall near-miss losses | 0 | 4219 | 0 |
 | balanced | Gems at first wall arrival | 0 | 4219 | 0 |
-| balanced | Walls broken / 30 days | 3 | 17031 | 1 |
-| balanced | Gems earned | 120 | 17031 | 80 |
-| balanced | Gems spent | 60 | 88421 | 120 |
-| balanced | End gems | 20 | 4219 | 120 |
-| balanced | Hull repair credits | 1645 | 17031 | 4445 |
-| balanced | Explore jumps | 33 | 17031 | 17 |
-| balanced | Explore events | 26 | 17031 | 12 |
-| balanced | Explore fights | 5 | 88421 | 8 |
-| balanced | Explore net credits | 3316 | 17031 | 1355 |
-| balanced | Explore share of credits earned (%) | 27 | 17031 | 14 |
-| ambitious | Useful sessions / 30 | 23 | 17031 | 5 |
+| balanced | Walls broken / 30 days | 3 | 4219 | 3 |
+| balanced | Fight wins, days 1-7 (%) | 100 | 4219 | 100 |
+| balanced | Fight wins, days 1-30 (%) | 100 | 4219 | 100 |
+| balanced | Wall attempts won (%) | 85 | 240911 | 32 |
+| balanced | Credits earned per day | 619 | 240911 | 505 |
+| balanced | Free hires | 30 | 4219 | 30 |
+| balanced | Crew levels bought | 47 | 17031 | 40 |
+| balanced | End crew power | 238 | 17031 | 192 |
+| balanced | Gems earned | 120 | 4219 | 120 |
+| balanced | Gems spent | 60 | 17031 | 60 |
+| balanced | End gems | 60 | 4219 | 120 |
+| balanced | Hull repair credits | 3570 | 240911 | 5530 |
+| balanced | Explore jumps | 14 | 17031 | 10 |
+| balanced | Explore events | 11 | 17031 | 6 |
+| balanced | Explore fights | 4 | 4219 | 8 |
+| balanced | Explore net credits | 1308 | 17031 | 790 |
+| balanced | Explore share of credits earned (%) | 8 | 17031 | 5 |
+| ambitious | Useful sessions / 30 | 30 | 4219 | 30 |
 | ambitious | Fuel-starved days | 0 | 4219 | 0 |
-| ambitious | Upgrade days / 30 | 26 | 17031 | 5 |
-| ambitious | Upgrade levels / 30 | 32 | 17031 | 10 |
-| ambitious | Drydock-busy days | 0 | 240911 | 1 |
+| ambitious | Upgrade days / 30 | 30 | 17031 | 25 |
+| ambitious | Upgrade levels / 30 | 42 | 17031 | 34 |
+| ambitious | Drydock-busy days | 4 | 990001 | 15 |
 | ambitious | First wall arrival day | 3 | 4219 | 3 |
 | ambitious | First wall fell on day | 3 | 4219 | 3 |
 | ambitious | First wall attempts | 3 | 4219 | 3 |
 | ambitious | First wall attempts / attempt day | 3 | 4219 | 3 |
 | ambitious | First wall near-miss losses | 0 | 4219 | 0 |
 | ambitious | Gems at first wall arrival | 0 | 4219 | 0 |
-| ambitious | Walls broken / 30 days | 1 | 4219 | 1 |
-| ambitious | Gems earned | 80 | 4219 | 80 |
-| ambitious | Gems spent | 70 | 990001 | 110 |
-| ambitious | End gems | 10 | 17031 | 25 |
-| ambitious | Hull repair credits | 140 | 17031 | 6335 |
-| ambitious | Explore jumps | 70 | 17031 | 9 |
-| ambitious | Explore events | 57 | 17031 | 7 |
-| ambitious | Explore fights | 11 | 88421 | 17 |
-| ambitious | Explore net credits | 5473 | 17031 | 784 |
-| ambitious | Explore share of credits earned (%) | 47 | 17031 | 9 |
+| ambitious | Walls broken / 30 days | 4 | 17031 | 3 |
+| ambitious | Fight wins, days 1-7 (%) | 100 | 4219 | 100 |
+| ambitious | Fight wins, days 1-30 (%) | 100 | 4219 | 98 |
+| ambitious | Wall attempts won (%) | 74 | 17031 | 33 |
+| ambitious | Credits earned per day | 649 | 240911 | 569 |
+| ambitious | Free hires | 30 | 4219 | 30 |
+| ambitious | Crew levels bought | 48 | 17031 | 45 |
+| ambitious | End crew power | 237 | 17031 | 228 |
+| ambitious | Gems earned | 140 | 17031 | 120 |
+| ambitious | Gems spent | 130 | 4219 | 135 |
+| ambitious | End gems | 10 | 17031 | 10 |
+| ambitious | Hull repair credits | 2100 | 17031 | 4340 |
+| ambitious | Explore jumps | 42 | 88421 | 35 |
+| ambitious | Explore events | 25 | 17031 | 19 |
+| ambitious | Explore fights | 15 | 4219 | 25 |
+| ambitious | Explore net credits | 5412 | 17031 | 3757 |
+| ambitious | Explore share of credits earned (%) | 20 | 88421 | 15 |
 
 ### Explore per run (fights-first)
 
@@ -397,74 +420,92 @@ Credits, medals and reputation are what explore:* buckets paid (event rewards, f
 
 | Strategy | Seed | Jumps | Days exploring | Events | Fights (won) | Downed | Beacons | Sectors | Fuel | Net credits | Medals | Reputation | Stops |
 |---|---:|---:|---:|---:|---|---:|---:|---|---:|---:|---:|---:|---|
-| cautious | 4219 | 25 | 25 | 18 | 7 (7) | 0 | 14 | spur, veil | 29 | 1986 | 91 | 94 | hull_low 2, max_jumps 25, no_lane 3 |
-| cautious | 17031 | 24 | 24 | 10 | 13 (13) | 0 | 13 | spur | 27 | 1855 | 114 | 76 | hull_low 2, max_jumps 24, no_lane 4 |
-| cautious | 88421 | 25 | 25 | 16 | 7 (7) | 0 | 13 | spur | 30 | 1671 | 95 | 73 | hull_low 1, max_jumps 25, no_lane 4 |
-| cautious | 240911 | 23 | 23 | 15 | 8 (8) | 0 | 13 | spur, veil | 27 | 1929 | 98 | 92 | hull_low 7, max_jumps 23 |
-| cautious | 990001 | 25 | 25 | 15 | 9 (9) | 0 | 13 | spur | 31 | 1957 | 99 | 95 | hull_low 2, max_jumps 25, no_lane 3 |
-| balanced | 4219 | 36 | 19 | 28 | 5 (5) | 0 | 18 | spur, ember, veil | 44 | 3849 | 82 | 165 | hull_low 9, max_jumps 17, no_lane 4 |
-| balanced | 17031 | 17 | 9 | 12 | 5 (5) | 0 | 10 | spur | 22 | 1355 | 43 | 67 | hull_low 20, max_jumps 8, no_lane 2 |
-| balanced | 88421 | 33 | 17 | 26 | 8 (7) | 1 | 16 | spur, ember, veil | 38 | 3316 | 64 | 150 | hull_low 13, max_jumps 16, no_lane 1 |
-| balanced | 240911 | 22 | 11 | 17 | 4 (4) | 0 | 13 | spur | 25 | 1745 | 45 | 88 | hull_low 18, max_jumps 11, no_lane 1 |
-| balanced | 990001 | 34 | 17 | 29 | 5 (5) | 0 | 17 | spur, ember, veil | 41 | 3530 | 66 | 162 | hull_low 10, max_jumps 17, no_lane 3 |
-| ambitious | 4219 | 70 | 24 | 58 | 11 (11) | 0 | 15 | spur, veil | 82 | 5984 | 77 | 312 | hull_low 7, max_jumps 23 |
-| ambitious | 17031 | 9 | 3 | 7 | 2 (2) | 0 | 9 | spur, veil | 13 | 784 | 18 | 45 | hull_low 27, max_jumps 3 |
-| ambitious | 88421 | 73 | 25 | 57 | 17 (16) | 1 | 16 | spur, veil | 80 | 5473 | 112 | 276 | hull_low 6, max_jumps 24 |
-| ambitious | 240911 | 78 | 26 | 64 | 14 (14) | 0 | 16 | spur, veil | 82 | 5959 | 79 | 308 | hull_low 4, max_jumps 26 |
-| ambitious | 990001 | 31 | 11 | 25 | 6 (6) | 0 | 24 | spur, veil, ember | 34 | 3141 | 131 | 161 | fuel_reserve 3, hull_low 17, max_jumps 10 |
+| cautious | 4219 | 28 | 28 | 14 | 12 (12) | 0 | 11 | spur, veil | 36 | 2200 | 152 | 83 | fuel_reserve 1, hull_low 1, max_jumps 28 |
+| cautious | 17031 | 29 | 29 | 13 | 12 (12) | 0 | 8 | spur, veil | 35 | 1973 | 145 | 80 | hull_low 1, max_jumps 29 |
+| cautious | 88421 | 28 | 28 | 16 | 7 (7) | 0 | 11 | spur, veil | 34 | 1846 | 151 | 64 | hull_low 2, max_jumps 28 |
+| cautious | 240911 | 28 | 28 | 16 | 10 (10) | 0 | 11 | spur, veil | 33 | 2132 | 158 | 99 | hull_low 2, max_jumps 28 |
+| cautious | 990001 | 27 | 27 | 14 | 9 (9) | 0 | 11 | spur, veil | 33 | 2045 | 135 | 94 | fuel_reserve 1, hull_low 2, max_jumps 27 |
+| balanced | 4219 | 23 | 12 | 14 | 8 (8) | 0 | 13 | spur, veil, ember, hollow | 30 | 2733 | 139 | 125 | fuel_reserve 4, hull_low 14, max_jumps 11, no_lane 1 |
+| balanced | 17031 | 10 | 5 | 6 | 2 (2) | 0 | 6 | spur, veil, ember | 12 | 790 | 25 | 43 | fuel_reserve 2, hull_low 22, max_jumps 5, no_lane 1 |
+| balanced | 88421 | 32 | 16 | 23 | 4 (4) | 0 | 14 | spur, veil, ember, hollow | 42 | 4062 | 230 | 146 | fuel_reserve 2, hull_low 11, max_jumps 16, no_lane 1 |
+| balanced | 240911 | 14 | 7 | 9 | 4 (4) | 0 | 8 | spur, veil, ember | 16 | 1241 | 56 | 57 | fuel_reserve 1, hull_low 21, max_jumps 7, no_lane 1 |
+| balanced | 990001 | 12 | 6 | 11 | 1 (1) | 0 | 8 | spur, veil, ember, hollow | 19 | 1308 | 55 | 71 | fuel_reserve 7, hull_low 16, max_jumps 6, no_lane 1 |
+| ambitious | 4219 | 70 | 24 | 40 | 25 (24) | 1 | 19 | spur, veil, ember, hollow | 91 | 6979 | 451 | 288 | fuel_reserve 1, hull_low 6, max_jumps 23 |
+| ambitious | 17031 | 37 | 13 | 19 | 15 (15) | 0 | 18 | spur, veil, ember, hollow | 49 | 3757 | 258 | 170 | fuel_reserve 1, hull_low 17, max_jumps 12 |
+| ambitious | 88421 | 35 | 12 | 20 | 13 (13) | 0 | 22 | spur, veil, ember, hollow, crown | 49 | 4245 | 293 | 164 | fuel_reserve 9, hull_low 10, max_jumps 11 |
+| ambitious | 240911 | 71 | 27 | 44 | 23 (22) | 1 | 18 | spur, veil, ember | 83 | 6427 | 426 | 270 | fuel_reserve 2, hull_low 6, max_jumps 22 |
+| ambitious | 990001 | 42 | 14 | 25 | 13 (13) | 0 | 23 | spur, veil, ember, hollow, crown | 61 | 5412 | 417 | 197 | fuel_reserve 7, hull_low 9, max_jumps 14 |
 
 ### Walls per run (fights-first)
 
 | Strategy | Seed | Captain | Wall | Arrival day | Gems at arrival | Attempts | Attempt days | Attempts / attempt day | Fell on day | Days to break | Losses | Near-miss losses | Rally free/paid | Wall-pack offer |
 |---|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
 | cautious | 4219 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
-| cautious | 4219 | captain_cyborg | veil (130) | 24 | 65 | 4 | 1 | 4 | 25 | 2 | 2 | 0 | 0/0 | none |
-| cautious | 17031 | captain_gunner | spur (100) | 3 | 0 | 6 | 2 | 3 | 4 | 2 | 3 | 0 | 1/0 | none |
+| cautious | 4219 | captain_cyborg | veil (130) | 23 | 65 | 4 | 1 | 4 | 24 | 2 | 0 | 0 | 0/0 | none |
+| cautious | 17031 | captain_gunner | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 1/0 | none |
 | cautious | 88421 | captain_alien | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
+| cautious | 88421 | captain_alien | veil (130) | 23 | 65 | 4 | 1 | 4 | 24 | 2 | 0 | 0 | 0/0 | none |
 | cautious | 240911 | captain_droid | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
-| cautious | 240911 | captain_droid | veil (130) | 24 | 65 | 24 | 6 | 4 | not in 30 | — | 22 | 1 | 1/0 | day 26 (stuck) |
-| cautious | 990001 | captain_cyborg | spur (100) | 3 | 0 | 6 | 2 | 3 | 4 | 2 | 3 | 0 | 0/0 | none |
+| cautious | 240911 | captain_droid | veil (130) | 23 | 65 | 4 | 1 | 4 | 24 | 2 | 1 | 0 | 0/0 | none |
+| cautious | 990001 | captain_cyborg | spur (100) | 3 | 0 | 6 | 2 | 3 | 4 | 2 | 1 | 0 | 0/0 | none |
+| cautious | 990001 | captain_cyborg | veil (130) | 23 | 65 | 4 | 1 | 4 | 24 | 2 | 0 | 0 | 0/0 | none |
 | balanced | 4219 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
-| balanced | 4219 | captain_cyborg | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 2 | 0 | 0/0 | none |
-| balanced | 4219 | captain_cyborg | ember (160) | 19 | 70 | 12 | 3 | 4 | 21 | 3 | 3 | 0 | 1/0 | day 21 (stuck) |
-| balanced | 17031 | captain_gunner | spur (100) | 3 | 0 | 7 | 2 | 3.5 | 4 | 2 | 4 | 0 | 1/0 | none |
-| balanced | 17031 | captain_gunner | veil (130) | 15 | 50 | 62 | 16 | 3.88 | not in 30 | — | 60 | 0 | 0/1 | day 17 (stuck) |
+| balanced | 4219 | captain_cyborg | veil (130) | 4 | 20 | 4 | 1 | 4 | 5 | 2 | 1 | 0 | 0/0 | none |
+| balanced | 4219 | captain_cyborg | ember (180) | 14 | 70 | 21 | 5 | 4.2 | 18 | 5 | 2 | 0 | 0/0 | day 16 (stuck) |
+| balanced | 4219 | captain_cyborg | hollow (220) | 20 | 90 | 50 | 10 | 5 | not in 30 | — | 1 | 0 | 0/0 | day 22 (stuck) |
+| balanced | 17031 | captain_gunner | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 1/0 | none |
+| balanced | 17031 | captain_gunner | veil (130) | 4 | 20 | 28 | 7 | 4 | 11 | 8 | 23 | 1 | 0/0 | day 6 (stuck) |
+| balanced | 17031 | captain_gunner | ember (180) | 14 | 70 | 64 | 16 | 4 | 29 | 16 | 36 | 6 | 0/1 | day 16 (stuck) |
 | balanced | 88421 | captain_alien | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
-| balanced | 88421 | captain_alien | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 2 | 0 | 0/0 | none |
-| balanced | 88421 | captain_alien | ember (160) | 19 | 70 | 12 | 3 | 4 | 21 | 3 | 6 | 0 | 0/1 | day 21 (stuck) |
+| balanced | 88421 | captain_alien | veil (130) | 4 | 20 | 4 | 1 | 4 | 5 | 2 | 1 | 1 | 1/0 | day 5 (near_miss) |
+| balanced | 88421 | captain_alien | ember (180) | 7 | 55 | 38 | 10 | 3.8 | 17 | 11 | 5 | 3 | 0/0 | day 9 (stuck) |
+| balanced | 88421 | captain_alien | hollow (220) | 29 | 120 | 5 | 1 | 5 | not in 30 | — | 0 | 0 | 0/0 | none |
 | balanced | 240911 | captain_droid | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
-| balanced | 240911 | captain_droid | veil (130) | 15 | 50 | 64 | 16 | 4 | not in 30 | — | 60 | 10 | 1/1 | day 17 (stuck) |
-| balanced | 990001 | captain_cyborg | spur (100) | 3 | 0 | 7 | 2 | 3.5 | 4 | 2 | 4 | 0 | 0/0 | none |
-| balanced | 990001 | captain_cyborg | veil (130) | 15 | 50 | 4 | 1 | 4 | 15 | 1 | 2 | 0 | 0/0 | none |
-| balanced | 990001 | captain_cyborg | ember (160) | 19 | 70 | 16 | 4 | 4 | 22 | 4 | 10 | 0 | 0/0 | day 21 (stuck) |
+| balanced | 240911 | captain_droid | veil (130) | 4 | 20 | 20 | 5 | 4 | 9 | 6 | 18 | 0 | 1/0 | day 6 (stuck) |
+| balanced | 240911 | captain_droid | ember (180) | 14 | 70 | 65 | 16 | 4.06 | 29 | 16 | 42 | 10 | 0/1 | day 16 (stuck) |
+| balanced | 990001 | captain_cyborg | spur (100) | 3 | 0 | 4 | 1 | 4 | 3 | 1 | 1 | 0 | 0/0 | none |
+| balanced | 990001 | captain_cyborg | veil (130) | 5 | 20 | 4 | 1 | 4 | 6 | 2 | 1 | 0 | 1/0 | none |
+| balanced | 990001 | captain_cyborg | ember (180) | 8 | 55 | 45 | 11 | 4.09 | 19 | 12 | 12 | 2 | 0/0 | day 9 (near_miss) |
+| balanced | 990001 | captain_cyborg | hollow (220) | 20 | 90 | 50 | 10 | 5 | not in 30 | — | 1 | 1 | 0/1 | day 22 (stuck) |
 | ambitious | 4219 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
+| ambitious | 4219 | captain_cyborg | veil (130) | 8 | 25 | 4 | 1 | 4 | 9 | 2 | 1 | 0 | 0/0 | none |
+| ambitious | 4219 | captain_cyborg | ember (180) | 11 | 25 | 14 | 3 | 4.67 | 14 | 4 | 6 | 0 | 1/0 | day 13 (stuck) |
+| ambitious | 4219 | captain_cyborg | hollow (220) | 27 | 10 | 6 | 1 | 6 | 28 | 2 | 0 | 0 | 0/0 | none |
 | ambitious | 17031 | captain_gunner | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 1/0 | none |
-| ambitious | 17031 | captain_gunner | veil (130) | 6 | 15 | 91 | 24 | 3.79 | not in 30 | — | 91 | 0 | 0/0 | day 8 (stuck) |
+| ambitious | 17031 | captain_gunner | veil (130) | 4 | 20 | 22 | 5 | 4.4 | 9 | 6 | 17 | 0 | 0/0 | day 6 (stuck) |
+| ambitious | 17031 | captain_gunner | ember (180) | 11 | 35 | 36 | 8 | 4.5 | 19 | 9 | 33 | 6 | 0/0 | day 12 (near_miss) |
+| ambitious | 17031 | captain_gunner | hollow (220) | 27 | 5 | 15 | 3 | 5 | not in 30 | — | 1 | 1 | 0/0 | day 28 (near_miss) |
 | ambitious | 88421 | captain_alien | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
+| ambitious | 88421 | captain_alien | veil (130) | 4 | 20 | 4 | 1 | 4 | 5 | 2 | 1 | 0 | 1/0 | none |
+| ambitious | 88421 | captain_alien | ember (180) | 6 | 30 | 5 | 1 | 5 | 7 | 2 | 1 | 1 | 0/0 | day 7 (near_miss) |
+| ambitious | 88421 | captain_alien | hollow (220) | 10 | 40 | 76 | 15 | 5.07 | 25 | 16 | 7 | 3 | 0/0 | day 12 (stuck) |
 | ambitious | 240911 | captain_droid | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
+| ambitious | 240911 | captain_droid | veil (130) | 11 | 15 | 10 | 2 | 5 | 13 | 3 | 7 | 0 | 0/0 | day 13 (stuck) |
+| ambitious | 240911 | captain_droid | ember (180) | 26 | 5 | 5 | 1 | 5 | 27 | 2 | 0 | 0 | 0/0 | none |
 | ambitious | 990001 | captain_cyborg | spur (100) | 3 | 0 | 3 | 1 | 3 | 3 | 1 | 0 | 0 | 0/0 | none |
-| ambitious | 990001 | captain_cyborg | veil (130) | 5 | 20 | 8 | 2 | 4 | 8 | 4 | 5 | 0 | 0/0 | day 7 (stuck) |
-| ambitious | 990001 | captain_cyborg | ember (160) | 18 | 35 | 10 | 2 | 5 | 20 | 3 | 7 | 0 | 0/0 | day 20 (stuck) |
+| ambitious | 990001 | captain_cyborg | veil (130) | 4 | 20 | 4 | 1 | 4 | 5 | 2 | 1 | 0 | 1/0 | none |
+| ambitious | 990001 | captain_cyborg | ember (180) | 7 | 35 | 5 | 1 | 5 | 8 | 2 | 0 | 0 | 0/0 | none |
+| ambitious | 990001 | captain_cyborg | hollow (220) | 10 | 20 | 66 | 13 | 5.08 | 23 | 14 | 2 | 2 | 0/0 | day 12 (stuck) |
 
 ### Gem ledger per run (fights-first)
 
 | Strategy | Seed | Earned | Daily login | Wall takedowns | Other | Spent: Rally | Spent: refill | Spent: drydock skip | End gems | Rallies free/paid/declined | Useful sessions |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|
-| cautious | 4219 | 100 | 60 | 40 | 0 | 0 | 0 | 0 | 100 | 0/0/0 | 24 |
-| cautious | 17031 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 1/0/0 | 21 |
-| cautious | 88421 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 19 |
-| cautious | 240911 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 1/0/1 | 27 |
-| cautious | 990001 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 0/0/0 | 23 |
-| balanced | 4219 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/0 | 26 |
-| balanced | 17031 | 80 | 60 | 20 | 0 | 60 | 0 | 0 | 20 | 1/1/0 | 13 |
-| balanced | 88421 | 120 | 60 | 60 | 0 | 120 | 0 | 0 | 0 | 1/2/0 | 22 |
-| balanced | 240911 | 80 | 60 | 20 | 0 | 60 | 0 | 0 | 20 | 1/1/11 | 18 |
-| balanced | 990001 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 0/0/0 | 23 |
-| ambitious | 4219 | 80 | 60 | 20 | 0 | 0 | 0 | 70 | 10 | 0/0/0 | 24 |
-| ambitious | 17031 | 80 | 60 | 20 | 0 | 0 | 50 | 5 | 25 | 1/0/0 | 5 |
-| ambitious | 88421 | 80 | 60 | 20 | 0 | 0 | 0 | 80 | 0 | 0/0/0 | 23 |
-| ambitious | 240911 | 80 | 60 | 20 | 0 | 0 | 0 | 70 | 10 | 0/0/0 | 26 |
-| ambitious | 990001 | 120 | 60 | 60 | 0 | 0 | 0 | 110 | 10 | 1/0/2 | 19 |
+| cautious | 4219 | 100 | 60 | 40 | 0 | 0 | 0 | 0 | 100 | 0/0/0 | 29 |
+| cautious | 17031 | 80 | 60 | 20 | 0 | 0 | 0 | 0 | 80 | 1/0/0 | 28 |
+| cautious | 88421 | 100 | 60 | 40 | 0 | 0 | 0 | 0 | 100 | 0/0/0 | 30 |
+| cautious | 240911 | 100 | 60 | 40 | 0 | 0 | 0 | 0 | 100 | 0/0/0 | 29 |
+| cautious | 990001 | 100 | 60 | 40 | 0 | 0 | 0 | 0 | 100 | 0/0/0 | 29 |
+| balanced | 4219 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 0/0/0 | 30 |
+| balanced | 17031 | 120 | 60 | 60 | 0 | 60 | 0 | 0 | 60 | 1/1/7 | 29 |
+| balanced | 88421 | 120 | 60 | 60 | 0 | 0 | 0 | 0 | 120 | 1/0/4 | 30 |
+| balanced | 240911 | 120 | 60 | 60 | 0 | 60 | 0 | 0 | 60 | 1/1/10 | 30 |
+| balanced | 990001 | 120 | 60 | 60 | 0 | 60 | 0 | 0 | 60 | 1/1/3 | 30 |
+| ambitious | 4219 | 140 | 60 | 80 | 0 | 0 | 0 | 135 | 5 | 1/0/0 | 30 |
+| ambitious | 17031 | 120 | 60 | 60 | 0 | 0 | 0 | 110 | 10 | 1/0/7 | 30 |
+| ambitious | 88421 | 140 | 60 | 80 | 0 | 0 | 0 | 130 | 10 | 1/0/4 | 30 |
+| ambitious | 240911 | 120 | 60 | 60 | 0 | 0 | 0 | 120 | 0 | 0/0/0 | 30 |
+| ambitious | 990001 | 140 | 60 | 80 | 0 | 0 | 0 | 130 | 10 | 1/0/2 | 30 |
 
 ### Session-order sensitivity: away team launched before the fights
 
@@ -472,12 +513,12 @@ Same runs, but the away team leaves first (the baseline order), so the wall and 
 
 | Strategy | Order | First wall fell on day | First wall attempts | Walls broken | Near-miss losses (all walls) | Paid Rallies | Gems spent | Hull repair credits | Useful sessions |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| cautious | fights-first | 3 | 3 | 1 | 0 | 0 | 0 | 245 | 23 |
-| cautious | away-first | not in 30 | 77 | 0 | 1 | 0 | 0 | 4025 | 17 |
-| balanced | fights-first | 3 | 3 | 3 | 0 | 1 | 60 | 1645 | 22 |
-| balanced | away-first | not in 30 | 87 | 0 | 0 | 0 | 0 | 5145 | 10 |
-| ambitious | fights-first | 3 | 3 | 1 | 0 | 0 | 70 | 140 | 23 |
-| ambitious | away-first | not in 30 | 66 | 0 | 0 | 0 | 0 | 4375 | 5 |
+| cautious | fights-first | 3 | 3 | 2 | 0 | 0 | 0 | 245 | 29 |
+| cautious | away-first | 3 | 3 | 2 | 0 | 0 | 0 | 1085 | 29 |
+| balanced | fights-first | 3 | 3 | 3 | 4 | 1 | 60 | 3570 | 30 |
+| balanced | away-first | 3 | 3 | 1 | 1 | 1 | 60 | 5950 | 26 |
+| ambitious | fights-first | 3 | 3 | 4 | 2 | 0 | 130 | 2100 | 30 |
+| ambitious | away-first | 3 | 4 | 3 | 3 | 0 | 110 | 5495 | 25 |
 
 ### Script-3 baseline hull lockout (context for the section above)
 

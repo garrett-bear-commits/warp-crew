@@ -208,7 +208,7 @@ export function outcomeSummary(player, ev, outcome, now = trustedNow()) {
   if (outcome.fight) {
     const encounterId = eventEncounterFor(NODES[ev.nodeId]);
     const crewAboard = readyCrew(player, now).length;
-    bits.push(`Fight: ${encounterById(encounterId).name} · ${crewAboard ? threatLabel(contractThreat(player, { encounterId }, now)) : 'Deadly'}`);
+    bits.push(`Fight: ${encounterById(encounterId).name} · ${crewAboard ? threatLabel(contractThreat(player, { encounterId, destinationId: ev.nodeId }, now)) : 'Deadly'}`);
   }
   if (!bits.length) bits.push('Nothing paid');
   return bits.join(' · ');

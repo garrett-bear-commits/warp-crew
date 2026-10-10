@@ -8,15 +8,22 @@ import { trustedNow, localDayKey } from '../shared/time.js';
 import { NODES, visibleNodes, careerDay } from '../data/sectors.js';
 import { encounterById } from './combat.js';
 
+/**
+ * Pools and threat floors (balance pass 2026-10-09, docs/qa/2026-10-09-balance-pass.md). Damage resets each day,
+ * so a pool is the 42-hull segments one check-in must win in a row: 3 for the Spur, 4 for the Veil, 5 for the
+ * Ember, 6 for the Hollow and 7 for the Crown; later flagships also fight at a higher threat floor (the Hollow
+ * and the Crown are Deadly). Simulated free captains break the Veil about 2 days after reaching it, the Ember
+ * about a week, the Hollow about two weeks.
+ */
 export const WALLS = Object.freeze([
-  { id: 'spur', encounterId: 'corsair_king', destinationId: 'pirate_nest', pool: 100, opens: 'veil_gate', minDay: 3 },
-  { id: 'veil', encounterId: 'swarm_frigate', destinationId: 'swarm_scar', pool: 130, opens: 'ember_gate' },
-  { id: 'ember', encounterId: 'ember_raider', destinationId: 'kiln_reach', pool: 160, opens: 'hollow_mouth' },
-  { id: 'hollow', encounterId: 'hollow_shade', destinationId: 'dark_well', pool: 190, opens: 'halo_approach' },
-  { id: 'crown', encounterId: 'eclipse_throne', destinationId: 'eclipse_crown', pool: 240, opens: null },
-]);
+  { id: 'spur', encounterId: 'corsair_king', destinationId: 'pirate_nest', pool: 100, threatFloor: 1.2, opens: 'veil_gate', minDay: 3 },
+  { id: 'veil', encounterId: 'swarm_frigate', destinationId: 'swarm_scar', pool: 130, threatFloor: 1.2, opens: 'ember_gate' },
+  { id: 'ember', encounterId: 'ember_raider', destinationId: 'kiln_reach', pool: 180, threatFloor: 1.25, opens: 'hollow_mouth' },
+  { id: 'hollow', encounterId: 'hollow_shade', destinationId: 'dark_well', pool: 220, threatFloor: 1.3, opens: 'halo_approach' },
+  { id: 'crown', encounterId: 'eclipse_throne', destinationId: 'eclipse_crown', pool: 270, threatFloor: 1.35, opens: null },
+].map(wall => Object.freeze(wall)));
 export const WALL_BY_ID = Object.fromEntries(WALLS.map(wall => [wall.id, wall]));
-/** A flagship is never easier than Dangerous when the captain first reaches it. */
+/** A flagship is never easier than Dangerous when the captain first reaches it (the first walls' floor). */
 export const WALL_THREAT_FLOOR = 1.2;
 export const SIEGE_SEGMENT = 42;
 
@@ -107,14 +114,14 @@ export function ensureWallOffer(player, now = trustedNow()) {
   return { ...player, ...seen, contractBoard: { ...board, offers } };
 }
 
-/** Encounter setup for a wall attempt: this segment's hull and the threat floor. */
+/** Encounter setup for a wall attempt: this segment's hull and the wall's threat floor. */
 export function wallEncounterSetup(player, contract, threat, now = trustedNow()) {
   const wall = WALL_BY_ID[contract?.wall?.id];
   if (!wall) return null;
   const siege = siegeState(player, wall, now);
   return {
     enemyHull: Math.max(1, Math.min(SIEGE_SEGMENT, siege.remaining)),
-    threat: Math.max(WALL_THREAT_FLOOR, threat),
+    threat: Math.max(wall.threatFloor ?? WALL_THREAT_FLOOR, threat),
     remainingBefore: siege.remaining,
   };
 }
