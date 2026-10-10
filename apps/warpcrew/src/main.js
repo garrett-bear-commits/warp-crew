@@ -42,6 +42,7 @@ import {
   isTutorialActive,
   isTabUnlocked,
   isFeatureUnlocked,
+  missionViews,
   preferredTab,
   skipOrders,
 } from './systems/tutorial.js';
@@ -557,7 +558,9 @@ function render() {
     if (prepareSession(tickCrewStatus(player, now), now) !== player && wc.prepare()) player = wc.state();
   }
   const renderNow = trustedNow();
-  setMusicScene(musicScene(player, tab));
+  // The view the Contracts tab really shows (a locked Explore falls back to the board, as renderMissions does).
+  const shownMissionView = missionViews(player).includes(sessionUi.missionView) ? sessionUi.missionView : 'contracts';
+  setMusicScene(musicScene(player, tab, shownMissionView));
   // Contract cards carry win odds played from the real fight (cached by fight setup, so renders stay cheap).
   const models = sessionModels(player, { ...sessionUi, pendingCombat }, renderNow, { fightOdds: true });
   sessionUi.contractPreviews = models.contractPreviews;
