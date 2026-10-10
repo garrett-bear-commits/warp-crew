@@ -27,7 +27,8 @@ Numbers are starting values for the 30-day sims, not final.
    - Every mission has a briefing and a debrief transmission.
    - A content lint checks every panel: at most 30 words, a known speaker, and no developer words.
 2. **Contracts read differently every day.**
-   - Over 30 days × 15 sim captains, the board shows at least 150 different client-job-twist combinations.
+   - Over 30 days, for Spur and Veil captains in three hulls (180 boards), the board shows at least 150 different
+     cards and at least 40 client-job-twist combinations.
    - No board repeats a client, and every twist appears.
    - Each twist changes the fight or the pay, as written on the card.
 3. **Enemies fight differently.**
@@ -94,6 +95,8 @@ chapter finales instead of a separate system.
 
 **The boss:**
 - The wall offer appears only once the chapter's five missions are done (and its minimum day has come).
+- When the wall falls, its gate opens at once (as built: before, a fallen wall only showed the gate beacon, and the
+  gate still had to be rolled open there, which contradicted "the Veil Gate is open").
 - A transmission plays before the first attempt and another when the wall falls.
 - The fall completes the chapter. A named merc joins the crew (the reveal), and the next chapter's first
   transmission plays.
@@ -150,7 +153,9 @@ changes no existing pick:
 - **Cargo**: 40 nouns, mostly dry jokes ("forty crates of coolant", "a sealed reliquary, do not shake").
 - **Brief**: each client has four brief lines, filled with `{cargo}`, `{place}` and `{enemy}`. They are written in
   the client's voice.
-- **Twist** (about half of risky and strange offers, a quarter of reliable ones):
+- **Twist**, on most risky offers (as built: only risky jobs always fight, so a twist on a reliable or strange job
+  would often never happen; bounty, escort and holdout jobs always carry theirs, the others roll none, rush or two
+  waves):
 
 | Twist | Rule in the fight | Pay |
 |---|---|---|
@@ -198,8 +203,10 @@ characters, with no digits.
 ## 5. Bonds and loyalty
 
 - **Loyalty** is per merc (by template, so it survives the reserve), from 0 to 60.
-  - +2 for each contract or story mission aboard, won or lost;
-  - +1 for each away team.
+  - +1 for each contract or story mission aboard, won or lost;
+  - +1 for each away team;
+  - at most 2 a merc a game day (as built: the first sim run gave the first loyalty job on day 7, because wall
+    attempts count as contracts; with the cap it lands around day 21).
 - **Captains have none.** They are you.
 - **Levels:**
   - **Trusted (10):** bond scene 1, two panels in their voice, from their quote and a new line;
@@ -207,8 +214,9 @@ characters, with no digits.
   - **Loyalty mission (40):** a personal gold card on the board, themed on their origin and faction:
     - the destination is their origin beacon, or one in its sector;
     - the twist fits their role (gunner bounty, medic escort, scout rush, pilot holdout, and so on);
-  - **Loyal:** the mission claimed. Their passive is +25%, their move charges 10% faster, and they get a gold
-    loyal mark and a new bark.
+  - **Loyal:** the mission claimed. Their passive is +25% and their fight grade +0.05 (sharper at their station;
+    as built, instead of a faster move, which would have needed a per-merc charge rule in the fight engine), the
+    dossier shows them as Loyal with their new line, and the job pays 15 medals and 10 gems on top of the fight.
 - **Shown on:** the dossier (bond meter, scenes to replay), a toast when a scene unlocks (the scene plays from the
   notice strip), and the Almanac.
 - **Writing:** 46 mercs × (2 scenes + mission briefing + debrief), about 7,000 words, by writer sub-agents from a

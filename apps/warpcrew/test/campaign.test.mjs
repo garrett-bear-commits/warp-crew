@@ -197,6 +197,16 @@ describe('transmission player and card', () => {
   });
 });
 
+describe('transmission wiring', () => {
+  it('main.js queues every published transmission, with or without an effect (phone QA 2026-10-10)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+    const publish = main.slice(main.indexOf('publish: (result) => {'), main.indexOf('capture: captureEvent'));
+    assert.match(publish, /for \(const id of result\.transmissions \|\| \[\]\) showTransmission\(id\);/);
+    assert.ok(publish.indexOf('showTransmission') < publish.indexOf('publishSessionResult(result)'), 'queued before the render');
+  });
+});
+
 describe('campaign saves', () => {
   it('migrates, cleans and refuses edited values', () => {
     const p = won(fresh(), 'c1_first_job');
