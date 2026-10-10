@@ -80,6 +80,8 @@ export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, n
     location: 'station_home',
     flags: {},
     gacha: defaultGacha(),
+    // Achievement tiers claimed per line (src/systems/achievements.js); progress itself is read from the save.
+    achievements: {},
     loginStreak: 0,
     lastLoginDay: null,
     dailyPullAvailable: true,
@@ -87,6 +89,12 @@ export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, n
     story: { chapter: 0, eclipseIntro: false },
     tutorial: legacy ? defaultTutorialV4() : defaultTutorialV5(),
   };
+}
+
+/** Claimed achievement tiers: whole counts 1..5 by line id; anything else in a saved or edited save is dropped. */
+function claimedTiers(saved) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+  return Object.fromEntries(Object.entries(saved).filter(([id, n]) => /^[a-z_]{1,32}$/.test(id) && Number.isInteger(n) && n >= 1 && n <= 5));
 }
 
 export function migratePlayer(player) {
@@ -129,6 +137,7 @@ export function migratePlayer(player) {
     crewSlots,
     stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) }, contractsByProfile: { ...base.stats.contractsByProfile, ...(player.stats?.contractsByProfile || {}) } },
     dailyLoop: { ...base.dailyLoop, ...(player.dailyLoop || {}) },
+    achievements: claimedTiers(player.achievements),
     story,
     flags,
     tutorial,

@@ -36,6 +36,7 @@ import { arrivalOpensEvent, openTravelEvent, resolveTravelEvent, eventView, rout
 import { laneCheck, sectorMapModel } from './sectorMap.js';
 import { resolveRoutePayout } from './contractRewards.js';
 import { markExploreNudge, noteMapJump } from './exploreNudge.js';
+import { claimAchievement } from './achievements.js';
 
 export function prepareSession(player, now = trustedNow()) {
   let next = ensureDailyLoop(player, now);
@@ -698,6 +699,14 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     if (!res.ok) return fail(res.reason);
     player = res.player;
     if (act === 'weapon-buy') { milestone('improve'); events.push(event('weapon_bought', { weapon: data.weapon, credits: res.cost.credits })); }
+  } else if (act === 'achievement-claim') {
+    if (isTutorialActive(player)) return fail('improvements_locked');
+    const res = claimAchievement(player, data.id);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    events.push(event('achievement_claimed', { id: data.id, tier: res.tier, gems: res.reward.gems || 0 }));
+    effect = { kind: 'reward', source: 'achievement', title: res.line.title, subtitle: `Tier ${res.tier} of ${res.line.tiers.length}`,
+      art: `art/pixel/ui/ach-${res.line.track}.png`, rewards: res.reward };
   } else if (act === 'refuel-gems') {
     const res = refuelWithGems(player);
     if (!res.ok) return fail(res.reason);

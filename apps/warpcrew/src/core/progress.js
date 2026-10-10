@@ -70,5 +70,8 @@ export function isWarpcrewPlayer(v) {
     if (list !== undefined && !(Array.isArray(list) && list.length <= 64 && list.every(crewMember))) return false;
   }
   if (v.ship !== undefined && !record(v.ship)) return false;
+  // Achievement tiers claimed: small whole counts only (an edited save cannot claim a tier twice or past the last).
+  if (v.achievements !== undefined && !(record(v.achievements)
+    && Object.values(v.achievements).every((n) => Number.isInteger(n) && n >= 0 && n <= 5))) return false;
   return true;
 }

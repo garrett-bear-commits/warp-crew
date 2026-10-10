@@ -885,6 +885,10 @@ async function handleAction(act, data = {}) {
           }
         }
         if (effect.kind === 'encounter-beat') playEncounterBeat(effect.events);
+        if (effect.kind === 'reward') {
+          showReward(rewardEntry({ source: effect.source, title: effect.title, subtitle: effect.subtitle,
+            art: effect.art ? artUrl(effect.art) : null, items: rewardItems(effect.rewards) }));
+        }
       },
     });
     if (!committed.ok) {

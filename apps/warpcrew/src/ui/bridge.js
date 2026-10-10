@@ -52,6 +52,7 @@ import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue, wallPackState, packValue, gemLadderValues } from '../systems/offers.js';
 import { productArt } from './rewardReveal.js';
+import { achievementProgress, claimableAchievements, ACHIEVEMENT_TRACKS } from '../systems/achievements.js';
 import { COMMISSION, commissionActive, priceCents, usableTerms } from '../systems/subscription.js';
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS, GEM_LADDER } from '../systems/iap.js';
@@ -721,6 +722,7 @@ export function renderNav(tab, player, expReady, tabs, step, crewAttentionSeen =
     crew: tab !== 'crew' && !crewAttentionSeen && player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha')
       && ((player.crew || []).length < (player.crewSlots || 0) || (player.reserve || []).length < RESERVE_CAP),
     missions: expReady,
+    log: tab !== 'log' && claimableAchievements(player) > 0,
   };
   return renderCommandBar(tab, player, expReady, ids, { spotlight: step?.spotlight || null, badges });
 }
@@ -1895,6 +1897,29 @@ export function renderRestartSaveConfirm() {
   return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Restart save confirmation"><h2>Restart your save?</h2><p>This erases this browser's Warp Crew progress and starts you over from the very beginning. Your Jest account stays signed in. This cannot be undone.</p><button class="danger" data-act="restart-save-confirm">Erase progress and restart</button><button data-act="restart-save-cancel">Keep my save</button></section></div>`;
 }
 
+/** Achievements (Phase 2 design §5): one row per line with its track badge, progress to the next tier and a claim. */
+export function renderAchievements(player) {
+  const lines = achievementProgress(player);
+  const ready = lines.filter(line => line.ready).length;
+  const label = Object.fromEntries(ACHIEVEMENT_TRACKS.map(track => [track.id, track.label]));
+  const rows = [...lines].sort((a, b) => Number(b.ready) - Number(a.ready)).map(line => {
+    const goal = line.next?.goal;
+    const pct = goal ? Math.min(100, Math.round((line.value / goal) * 100)) : 100;
+    const reward = line.next ? formatReward(line.next.reward) : '';
+    return `<li class="ach-row${line.ready ? ' is-ready' : ''}${line.next ? '' : ' is-complete'}">
+      <img src="${artUrl(`art/pixel/ui/ach-${line.track}.png`)}" alt="" />
+      <div class="ach-body">
+        <b>${escapeHtml(line.title)}</b><span class="ach-track">${escapeHtml(label[line.track])}</span>
+        <span class="ach-pips" aria-label="Tier ${line.claimed} of ${line.tiers}">${'●'.repeat(line.claimed)}${'○'.repeat(line.tiers - line.claimed)}</span>
+        ${line.next ? `<div class="ach-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${goal}" aria-valuenow="${Math.min(line.value, goal)}"><span style="width:${pct}%"></span></div>
+        <small>${Math.min(line.value, goal).toLocaleString('en-US')} / ${goal.toLocaleString('en-US')} ${escapeHtml(line.unit)} · ${escapeHtml(reward)}</small>` : '<small>All tiers done</small>'}
+      </div>
+      ${line.ready ? `<button class="primary" data-act="achievement-claim" data-id="${line.id}">Claim</button>` : ''}
+    </li>`;
+  }).join('');
+  return `<div class="panel achievements-panel"><h2>Achievements${ready ? ` · ${ready} to claim` : ''}</h2><ul class="ach-list">${rows}</ul></div>`;
+}
+
 export function renderLog(player, log, goals) {
   const prog = storyProgress(player);
   const goalsDone = goals.goals.filter((g) => g.done).length;
@@ -1905,6 +1930,7 @@ export function renderLog(player, log, goals) {
       const done = ensureDailyLoop(player).dailyLoop[m.id];
       return `<div class="week-row ${done ? 'done' : ''}"><span class="mark">${done ? '●' : '○'}</span><span>${escapeHtml(m.label)}</span><span class="prog">${done ? 'Done' : ''}</span></div>`;
     }).join('')}</div>
+    ${renderAchievements(player)}
     <div class="panel">
       <h2>Career</h2>
       <div class="muted">${escapeHtml(rank.label)} · Ch.${prog.chapter} · ${collected} mercs · ${goalsDone}/${goals.goals.length} week</div>
