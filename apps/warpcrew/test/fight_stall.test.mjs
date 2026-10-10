@@ -112,7 +112,9 @@ test('crew only leave a post when nobody is free and their own room is not in tr
 // Saved by the engine before this fix (scratch generator, 2026-10-10): a day-7 captain, Sparrow shields and
 // engines 6, pilot at Helm and engineer at Shields, on the Reliable contract's push fight against a Scrapper
 // Gang. Boarders took the empty Weapons room at beat 8 and had held it, guns offline, until the save at beat 60;
-// the old engine needed until beat 610 to end it (the crew's moves chipped the enemy down).
+// the old engine needed until beat 610 to end it (the crew's moves chipped the enemy down). Phase 3 added the
+// Scrappers' faction block ({ id: 'scrappers' }; their rule is the boarders the fight already had), which every saved
+// faction fight now carries (audit 2026-10-10 L3).
 const FIXTURE = JSON.parse(readFileSync(new URL('./fixtures/stalled-boarded-weapons-fight.json', import.meta.url), 'utf8'));
 
 test('a fight saved stalled before the fix loads unchanged, ends, and pays out', () => {

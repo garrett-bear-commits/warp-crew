@@ -7,7 +7,7 @@
  */
 import { CLIENTS, CARGO, JOBS, ROLLED_TWISTS, BOUNTY_MODIFIER } from '../data/clients.js';
 import { NODES } from '../data/sectors.js';
-import { factionOf, ELITE_NAMES } from '../data/factions.js';
+import { factionOf, bountyNames } from '../data/factions.js';
 
 const ENEMY_WORD = { corsairs: 'corsairs', scrappers: 'scrappers', swarm: 'Swarm drones', ice: 'Ice Raiders', shades: 'shades', wardens: 'Wardens', eclipse: 'Eclipse echoes' };
 
@@ -66,7 +66,7 @@ export function flavorFor(offer, used = new Set()) {
   let twist = null;
   if (offer.profile === 'risky' && faction) {
     const id = job.twist || weighted(ROLLED_TWISTS, rng).id;
-    if (id === 'bounty') twist = { id, elite: { name: pick(ELITE_NAMES[faction] || ELITE_NAMES.corsairs, rng), modifier: BOUNTY_MODIFIER[faction] || 'veteran' } };
+    if (id === 'bounty') twist = { id, elite: { name: pick(bountyNames(faction), rng), modifier: BOUNTY_MODIFIER[faction] || 'veteran' } };
     else if (id) twist = { id };
   }
   const tokens = { cargo: cargo.long, short: cargo.short, place: node?.name || 'the lane', enemy: ENEMY_WORD[faction] || 'raiders', target: twist?.elite?.name || 'Wanted' };
@@ -79,9 +79,12 @@ export function flavorFor(offer, used = new Set()) {
   };
 }
 
-/** Flavour every daily offer on a board (special offers keep their own words). */
-export function flavorBoard(offers) {
-  const used = new Set();
+/**
+ * Flavour every daily offer on a board (special offers keep their own words). `taken`: clients already on the board
+ * (the open or next story mission's), so no client shows twice (audit 2026-10-10 L8).
+ */
+export function flavorBoard(offers, { taken = [] } = {}) {
+  const used = new Set(taken);
   return offers.map(offer => {
     if (!['reliable', 'risky', 'strange'].includes(offer.profile) || offer.wall || offer.story || offer.loyalty || offer.fixedCopy) return offer;
     const flavor = flavorFor(offer, used);

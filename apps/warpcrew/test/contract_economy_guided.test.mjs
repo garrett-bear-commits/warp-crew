@@ -154,6 +154,19 @@ for (const [i, summary] of p2.entries()) {
 const shares = p2.map(summary => summary.share).sort((a, b) => a - b);
 assert.ok(shares[1] <= 1 / 3, `median Phase 2 share ${Math.round(shares[1] * 100)}%`);
 
+// Phase 3 (2026-10-10 world design, success tests 1, 4 and 7; audit L12): both chapters are finished, the first
+// loyalty job is won in about three weeks, and story and loyalty pay are at most 15% of credits.
+for (const run of runs.slice(0, 3)) {
+  const label = run.strategy;
+  for (const chapter of CHAPTERS) assert.ok(run.story.chapters[chapter.n] <= 30, `${label}: chapter ${chapter.n} done (day ${run.story.chapters[chapter.n]})`);
+  const firstLoyal = Math.min(...Object.values(run.story.loyal));
+  assert.ok(firstLoyal >= 15 && firstLoyal <= 28, `${label}: first loyalty job won on day ${firstLoyal}`);
+  const sources = Object.entries(run.totals.rewardsBySource);
+  const credits = sources.reduce((sum, [, v]) => sum + (v.credits || 0), 0);
+  const story = sources.filter(([source]) => source.startsWith('story:')).reduce((sum, [, v]) => sum + (v.credits || 0), 0);
+  assert.ok(story > 0 && story / credits <= 0.15, `${label}: story and loyalty are ${Math.round((story / credits) * 100)}% of credits`);
+}
+
 // The evidence renderer adds the guided section and keeps the baseline table.
 const report = runEconomySeedSet({ seeds: [4219], startAt });
 const markdown = renderEconomyMarkdown(report);

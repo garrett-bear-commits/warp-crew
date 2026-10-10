@@ -83,9 +83,11 @@ test('a fight saved before the balance pass keeps its threat, loads and plays to
   // The old model stored a crew-matched threat; this one cannot come from the reference model today.
   const oldThreat = 1.37;
   assert.notEqual(p.activeEncounter.enemy.threat, oldThreat);
-  const load = enemyLoadout(oldThreat, { tier: p.activeEncounter.enemy.tier || 0, kits: true });
-  // A save from before the balance pass also predates enemy factions (Phase 3): it carries no faction block.
-  const { faction: _faction, ...oldFight } = p.activeEncounter;
+  // The fight keeps its faction block and twist: every saved faction fight carries them (audit 2026-10-10 L3).
+  const fight = p.activeEncounter;
+  const load = enemyLoadout(oldThreat, { tier: fight.enemy.tier || 0, kits: true, faction: fight.faction?.id || null,
+    elite: fight.twist?.elite ?? null, hitMult: fight.twist?.id === 'holdout' ? 1.2 : 1 });
+  const oldFight = fight;
   const saved = clone({ ...p, activeEncounter: { ...oldFight, enemy: { ...p.activeEncounter.enemy, threat: oldThreat,
     evasion: load.evasion, repairPerSec: load.repairPerSec, shields: { layers: load.shieldLayers, max: load.shieldLayers, rechargeMs: 0 },
     weapons: load.weapons.map((w, i) => ({ ...w, progressMs: p.activeEncounter.enemy.weapons[i]?.progressMs ?? 0, target: p.activeEncounter.enemy.weapons[i]?.target ?? 'helm' })) } } });

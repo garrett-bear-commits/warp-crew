@@ -14,6 +14,7 @@ import { CREW_CATALOG, catalogById } from '../data/crewRoster.js';
 import { familyTiers } from '../data/families.js';
 import { FACTIONS, factionOf, factionHas } from '../data/factions.js';
 import { TWISTS, TWIST_RULES, cleanTwist, validTwist } from '../data/twists.js';
+import { LOYAL_PASSIVE } from '../data/loyaltyRules.js';
 
 export const FTL_VERSION = 3;
 export const TICK_MS = 250;
@@ -1303,11 +1304,15 @@ const FX_RULES = {
   salvageUsed: () => v => v === true,
 };
 
-/** The most each role's passive can be (best in the roster at 5 stars), so a save cannot claim more. */
+/**
+ * The most each role's passive can be (best in the roster at 5 stars, and Loyal), so a save cannot claim more.
+ * Without the Loyal factor a Loyal merc at 3+ stars failed this check and broke every fight they were in (audit
+ * 2026-10-10 H1).
+ */
 const ROLE_PASSIVE_KEY = { gunner: 'critChance', engineer: 'repairBonus', medic: 'assistCharge', trader: 'tradeCredits',
   scout: 'expeditionSuccess', security: 'pirateResist', pilot: 'fuelCostReduce' };
 const ROLE_BONUS_MAX = Object.fromEntries(Object.entries(ROLE_PASSIVE_KEY).map(([role, key]) => [role,
-  Math.round(Math.max(0, ...CREW_CATALOG.filter(t => t.role === role).map(t => Number(t.passive?.[key]) || 0)) * 1.4 * 1000 + 1) / 1000]));
+  Math.round(Math.max(0, ...CREW_CATALOG.filter(t => t.role === role).map(t => Number(t.passive?.[key]) || 0)) * 1.4 * LOYAL_PASSIVE * 1000 + 1) / 1000]));
 
 /** What the kits aboard can produce: each effect's biggest value, so a save cannot carry more (audit #2). */
 function kitCaps(crew) {

@@ -17,16 +17,16 @@ import { encounterById } from './combat.js';
 import { grant } from './economy.js';
 import { storyProgress } from './story.js';
 import { referencePower } from './encounterState.js';
-import { ELITE_NAMES } from '../data/factions.js';
+import { bountyNames } from '../data/factions.js';
 import { dayKey } from './daily.js';
+import { LOYAL_PASSIVE, LOYAL_GRADE } from '../data/loyaltyRules.js';
 export { bondTransmission } from './transmissions.js';
 
 export const LOYALTY = Object.freeze({ trusted: 10, close: 25, mission: 40, max: 60, contract: 1, away: 1, dailyCap: 2 });
 /** What a loyalty mission pays on a win, on top of the fight. */
 export const LOYAL_REWARD = Object.freeze({ medals: 15, gems: 10 });
-/** A Loyal merc's role passive counts this much more in fights, and their fight grade rises by LOYAL_GRADE. */
-export const LOYAL_PASSIVE = 1.25;
-export const LOYAL_GRADE = 0.05;
+/** A Loyal merc's role passive counts LOYAL_PASSIVE more in fights, and their fight grade rises by LOYAL_GRADE. */
+export { LOYAL_PASSIVE, LOYAL_GRADE };
 
 const ID = /^merc_[a-z0-9_]{1,34}$/;
 /** The twist each role's personal job runs (the writing fits it). */
@@ -103,8 +103,11 @@ export function pendingScenes(player) {
 export function addLoyalty(player, templateIds, amount, { now = null } = {}) {
   const record = recordOf(player);
   const points = { ...record.points };
-  const day = now == null ? record.day : dayKey(now);
-  const today = now != null && record.day === day ? { ...(record.today || {}) } : {};
+  // The day's tally starts over only on a later game day: a clock moved back keeps counting against the same cap
+  // (audit 2026-10-10 L2, the same rule as the login calendar).
+  const later = now != null && (!record.day || dayKey(now) > record.day);
+  const day = later ? dayKey(now) : record.day;
+  const today = now != null && !later ? { ...(record.today || {}) } : {};
   const opened = [];
   for (const id of new Set(templateIds)) {
     if (!hasBond(id)) continue;
@@ -120,10 +123,19 @@ export function addLoyalty(player, templateIds, amount, { now = null } = {}) {
   return { player: { ...player, loyalty: { points, loyal: record.loyal, ...daily } }, opened };
 }
 
-/** The mercs who flew a contract: crew aboard (not away, not the captain). */
-export const contractFlyers = player => (player?.crew || [])
-  .filter(member => !member.isCaptain && member.instanceId !== player.captainInstanceId && member.status !== 'expedition')
-  .map(member => member.templateId);
+/**
+ * The mercs who flew a contract: the crew it launched with (`participantIds`), never the captain. Crew injured,
+ * away or hired after the launch did not fly it (audit 2026-10-10 L1). A contract saved without the list (from
+ * before launches recorded it) falls back to the crew aboard.
+ */
+export function contractFlyers(player, contract = player?.activeContract) {
+  const roster = [...(player?.crew || []), ...(player?.reserve || [])];
+  const notCaptain = member => !member.isCaptain && member.instanceId !== player.captainInstanceId;
+  if (Array.isArray(contract?.participantIds)) {
+    return roster.filter(member => contract.participantIds.includes(member.instanceId) && notCaptain(member)).map(member => member.templateId);
+  }
+  return (player?.crew || []).filter(member => notCaptain(member) && member.status !== 'expedition').map(member => member.templateId);
+}
 
 /** The merc whose loyalty card is on offer: the most loyal merc aboard who is ready and not yet Loyal. */
 export function loyaltyCandidate(player) {
@@ -166,7 +178,7 @@ export function loyaltyOffer(player, templateId) {
   const id = `offer_loyal_${templateId}_${attempt}`;
   const encounterId = loyaltyEncounter(player, bond.mission.enemy);
   const twistId = ROLE_TWIST[merc.role] || 'rush';
-  const names = ELITE_NAMES[bond.mission.enemy] || ELITE_NAMES.corsairs;
+  const names = bountyNames(bond.mission.enemy);
   const twist = twistId === 'bounty' ? { id: 'bounty', elite: { name: names[hashSeed(templateId) % names.length], modifier: ELITE_MODIFIER[bond.mission.enemy] || 'veteran' } } : { id: twistId };
   const outcome = { kind: 'combat', encounter: encounterId };
   return {
@@ -192,11 +204,24 @@ export function loyaltyOffer(player, templateId) {
   };
 }
 
-/** Keep the ready merc's loyalty card on the board, below the story card. */
+/** The merc whose loyalty card is on the board now, or null. */
+export function loyaltyCardFor(player) {
+  const completed = new Set(player?.contractBoard?.completedOfferIds || []);
+  return (player?.contractBoard?.offers || []).find(offer => offer.loyalty && !completed.has(offer.id))?.loyalty.templateId || null;
+}
+
+/**
+ * Keep a ready merc's loyalty card on the board, below the story card. The card on show stays until it is played,
+ * even if another merc becomes more loyal meanwhile (audit 2026-10-10 L7).
+ */
 export function ensureLoyaltyOffer(player) {
   const board = player?.contractBoard;
   if (!board || player.activeContract || !(player.tutorial?.completed || player.tutorial?.dismissed)) return player;
-  const candidate = loyaltyCandidate(player);
+  const record = recordOf(player);
+  const owned = new Set([...(player?.crew || []), ...(player?.reserve || [])].filter(m => !m.isCaptain).map(m => m.templateId));
+  const shown = loyaltyCardFor(player);
+  const stillReady = shown && owned.has(shown) && (record.points[shown] || 0) >= LOYALTY.mission && !record.loyal.includes(shown);
+  const candidate = stillReady ? shown : loyaltyCandidate(player);
   const completed = new Set(board.completedOfferIds || []);
   const want = candidate ? loyaltyOffer(player, candidate) : null;
   const kept = board.offers.filter(offer => !offer.loyalty || (want && offer.id === want.id && !completed.has(offer.id)));

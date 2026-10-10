@@ -405,6 +405,14 @@ export function validEncounterBody(encounter) {
  * A fight's twist is the contract's twist, exactly (id and elite), and only a contract fight off the wall
  * carries one. A fight with a twist is new, so it must also carry its encounter's faction.
  */
+/**
+ * Every saved real-time fight against a faction carries its faction block, so an edited save cannot switch a
+ * faction's rule off by deleting it (audit 2026-10-10 L3). Only the guided first fight goes without; there are no
+ * saves from before factions to keep.
+ */
+export const fightCarriesFaction = encounter => encounter?.version !== FTL_VERSION || encounter.guided === true
+  || !factionOf(encounter.encounterId) || Object.hasOwn(encounter, 'faction');
+
 export function fightTwistMatches(encounter, contract) {
   const twist = encounter?.twist;
   const expected = contract?.wall || contract?.profile === 'distress' ? null : cleanTwist(contract?.twist);
@@ -434,6 +442,7 @@ function validSnapshot(encounter, contract, tutorial, player = null) {
     || !validEncounterBody(encounter)
     // v3 fights carry their crew: only crew who launched with the contract can be in it.
     || (encounter.version === FTL_VERSION && !fightCrewLaunched(encounter, contract.participantIds))
+    || !fightCarriesFaction(encounter)
     || !fightTwistMatches(encounter, contract)) return false;
   if (contract.stage === 'return') {
     const settled = (encounter.result === 'win' && contract.result?.success === true)

@@ -77,7 +77,7 @@ export function markSeen(player, ids) {
 
 const campaignOf = player => normalizeCampaign(player?.campaign);
 const chapterByN = n => CHAPTERS.find(ch => ch.n === n) || null;
-export const chapterOfMission = id => chapterByN(MISSIONS[id]?.chapter);
+export const chapterOfMission = id => (Object.hasOwn(MISSIONS, id) ? chapterByN(MISSIONS[id].chapter) : null);
 export const chapterOfWall = wallId => CHAPTERS.find(ch => ch.wall === wallId) || null;
 
 /** The campaign is for captains past the tutorial. */
@@ -133,7 +133,7 @@ const attemptsAt = (player, missionId) => (player?.contractBoard?.completedOffer
 
 /** The story card for a mission (a risky-profile contract: every story mission fights). */
 export function storyOffer(player, missionId) {
-  const mission = MISSIONS[missionId];
+  const mission = Object.hasOwn(MISSIONS, missionId) ? MISSIONS[missionId] : null;
   const node = NODES[mission?.destinationId];
   if (!mission || !node) return null;
   const id = `offer_story_${missionId}_${attemptsAt(player, missionId) + 1}`;
@@ -191,7 +191,7 @@ export function reviewTransmissions(player, offer) {
   if (offer?.story) {
     const chapter = chapterOfMission(offer.story.id);
     if (chapter && chapter.missions[0] === offer.story.id && chapter.open) ids.push(chapter.open);
-    ids.push(MISSIONS[offer.story.id]?.briefing);
+    if (Object.hasOwn(MISSIONS, offer.story.id)) ids.push(MISSIONS[offer.story.id].briefing);
   } else if (offer?.wall) {
     ids.push(chapterOfWall(offer.wall.id)?.bossIntro);
   }
@@ -206,13 +206,17 @@ export function settleStoryClaim(player, contract) {
   const camp = campaignOf(player);
   const missionId = contract?.story?.id;
   // Only a story card's own contract counts as the mission (an edited contract cannot claim one).
-  if (!missionId || !MISSIONS[missionId] || !String(contract.offerId || '').startsWith(`offer_story_${missionId}_`)) {
+  if (!missionId || !Object.hasOwn(MISSIONS, missionId) || !String(contract.offerId || '').startsWith(`offer_story_${missionId}_`)) {
     return { player: { ...player, campaign: { ...camp, since: Math.min(SINCE_MAX, camp.since + 1) } }, bonus: null, transmissions: [] };
   }
   if (contract.result?.success === false || camp.done.includes(missionId)) return { player: { ...player, campaign: camp }, bonus: null, transmissions: [] };
   const mission = MISSIONS[missionId];
   const next = { ...player, wallet: grant(player.wallet, mission.rewards), campaign: { ...camp, done: MISSION_IDS.filter(id => [...camp.done, missionId].includes(id)), since: 0 } };
-  return { player: next, bonus: { ...mission.rewards }, transmissions: [mission.debrief] };
+  // A captain without walls never reviews a boss card: the chapter's boss scene follows its last debrief instead,
+  // so every story entry can be seen (audit 2026-10-10 L11).
+  const chapter = chapterOfMission(missionId);
+  const finale = chapter && !wallsApply(player) && chapterMissionsDone(next, chapter) ? [chapter.bossIntro] : [];
+  return { player: next, bonus: { ...mission.rewards }, transmissions: [mission.debrief, ...finale] };
 }
 
 /**

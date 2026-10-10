@@ -125,11 +125,83 @@ function* players(): Generator<unknown> {
                             },
                     }),
               },
+      // Phase 3 fields (audit 2026-10-10 L12): the campaign, the Almanac and loyalty.
+      campaign:
+        rnd() < 0.5
+          ? undefined
+          : rnd() < 0.1
+            ? pick()
+            : {
+                done: rnd() < 0.7 ? ['c1_first_job'] : rnd() < 0.5 ? ['a', 'a'] : pick(),
+                since: rnd() < 0.7 ? 1 : pick(),
+                ...(rnd() < 0.5 ? {} : { chapters: rnd() < 0.7 ? [1] : [pick()] }),
+              },
+      almanac:
+        rnd() < 0.5
+          ? undefined
+          : rnd() < 0.1
+            ? pick()
+            : {
+                seen: rnd() < 0.7 ? ['c1_open'] : [pick()],
+                ...(rnd() < 0.5 ? {} : { crew: rnd() < 0.7 ? ['merc_rex'] : ['Rex Vale'] }),
+                ...(rnd() < 0.5
+                  ? {}
+                  : { enemies: { pirate_scout: rnd() < 0.7 ? [1, 0] : [pick()] } }),
+              },
+      loyalty:
+        rnd() < 0.5
+          ? undefined
+          : rnd() < 0.1
+            ? pick()
+            : {
+                points: { merc_rex: rnd() < 0.7 ? 12 : pick() },
+                ...(rnd() < 0.5
+                  ? {}
+                  : { loyal: rnd() < 0.7 ? ['merc_rex'] : ['merc_rex', 'merc_rex'] }),
+                ...(rnd() < 0.5
+                  ? {}
+                  : {
+                      day: rnd() < 0.7 ? '2026-10-10' : pick(),
+                      today: { merc_rex: rnd() < 0.7 ? 2 : pick() },
+                    }),
+              },
     };
   }
 }
 
 describe('Warp Crew client progress and summary equal the policy', () => {
+  it('client and server agree on Phase 3 saves (campaign, Almanac, loyalty)', () => {
+    const base = game.createNewPlayer({ captainName: 'Vex', now: 1, rng: () => 0.5 });
+    const good = {
+      ...base,
+      campaign: { done: ['c1_first_job', 'c1_big_mabel'], since: 1, chapters: [1] },
+      almanac: {
+        seen: ['c1_open', 'bond_merc_rex_1'],
+        crew: ['merc_rex'],
+        enemies: { pirate_scout: [3, 1] },
+      },
+      loyalty: { points: { merc_rex: 12 }, loyal: [], day: '2026-10-10', today: { merc_rex: 2 } },
+    };
+    const bad = [
+      { ...good, campaign: { done: ['c1_first_job', 'c1_first_job'], since: 1 } },
+      { ...good, campaign: { done: [], since: 1000 } },
+      { ...good, campaign: { done: [], since: 0, chapters: [0] } },
+      { ...good, almanac: { seen: 'c1_open' } },
+      { ...good, almanac: { seen: [], enemies: { pirate_scout: [1] } } },
+      { ...good, almanac: { seen: [], crew: ['Rex Vale'] } },
+      { ...good, loyalty: { points: { merc_rex: 61 } } },
+      { ...good, loyalty: { points: {}, loyal: ['merc_rex', 'merc_rex'] } },
+      { ...good, loyalty: { points: {}, day: 'today' } },
+      { ...good, loyalty: { points: {}, today: { merc_rex: 11 } } },
+    ];
+    expect(isWarpcrewPlayer(good)).toBe(true);
+    expect(progress.isWarpcrewPlayer(good)).toBe(true);
+    for (const p of bad) {
+      expect(isWarpcrewPlayer(p)).toBe(false);
+      expect(progress.isWarpcrewPlayer(p)).toBe(false);
+    }
+  });
+
   it('client and server agree on Phase 2 saves (calendar, idle clock, achievements)', () => {
     const base = game.createNewPlayer({ captainName: 'Vex', now: 1, rng: () => 0.5 });
     const good = {

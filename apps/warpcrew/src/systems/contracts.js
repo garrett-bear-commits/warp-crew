@@ -16,7 +16,18 @@ import { tacticStatus, repelStatus } from './autoCombat.js';
 import { ftlPolicyStep, FTL_VERSION, MAX_FIGHT_BEATS } from './ftlCombat.js';
 import { recordSiege } from './walls.js';
 import { flavorBoard } from './contractFlavor.js';
+import { campaignState } from './campaign.js';
+import { MISSIONS } from '../data/campaign.js';
+
+/** The clients of the story missions that can show today (the open one and the one after it). */
+function storyClients(player) {
+  const state = campaignState(player);
+  const ids = state.chapter?.missions || [];
+  const at = ids.indexOf(state.upcoming);
+  return at < 0 ? [] : ids.slice(at, at + 2).map(id => MISSIONS[id].client);
+}
 import { cleanTwist } from '../data/twists.js';
+import { factionOf } from '../data/factions.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -138,7 +149,7 @@ export function generateContractBoard(player, now = trustedNow()) {
   // This is a durable claim ledger, including previous local dates. Clock or
   // timezone recovery may revisit a day, but cannot reopen its claimed offers.
   // Phase 3: every daily offer then gets a client, a job, cargo and maybe a twist, on its own seeded stream.
-  return { dayKey: boardDay, offers: flavorBoard(offers), completedOfferIds: [...new Set(player?.contractBoard?.completedOfferIds || [])] };
+  return { dayKey: boardDay, offers: flavorBoard(offers, { taken: storyClients(player) }), completedOfferIds: [...new Set(player?.contractBoard?.completedOfferIds || [])] };
 }
 
 export function ensureContractBoard(player, now = trustedNow()) {
@@ -214,9 +225,13 @@ function snapshotRouteContent(offer, routeSeed) {
     const combats = (node?.outcomes || []).filter(outcome => outcome.kind === 'combat')
       .sort((a, b) => encounterById(a.encounter).power - encounterById(b.encounter).power
         || a.encounter.localeCompare(b.encounter));
+    // Both routes fight the faction the card names: the safer one meets that faction's weakest ship here
+    // (audit 2026-10-10 L4: at seven beacons the weakest ship was another faction's, under the same card).
+    const faction = combats.length ? factionOf(combats.at(-1).encounter)?.id : null;
+    const secure = combats.find(outcome => factionOf(outcome.encounter)?.id === faction) || combats.at(-1);
     if (combats.length) return {
       routeOutcome: { ...combats.at(-1) },
-      secureOutcome: { ...combats[0] },
+      secureOutcome: { ...secure },
       encounterId: combats.at(-1).encounter,
       storyFlag: null,
     };

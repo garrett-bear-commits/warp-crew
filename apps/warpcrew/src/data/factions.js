@@ -67,6 +67,11 @@ export const ELITE_NAMES = Object.freeze({
 
 const ALL_ELITE_NAMES = new Set(Object.values(ELITE_NAMES).flat());
 
+/** Elites the story beats once (chapter 1's Two-Tooth Marrik): never rolled for a daily bounty (audit 2026-10-10 L9). */
+export const STORY_ELITES = Object.freeze(['Two-Tooth Marrik']);
+/** The names a random bounty can roll for this faction. */
+export const bountyNames = factionId => (ELITE_NAMES[factionId] || ELITE_NAMES.corsairs).filter(name => !STORY_ELITES.includes(name));
+
 /** A well-formed elite: exactly { name, modifier }, a known name and a known modifier. */
 export function validElite(elite) {
   return Boolean(elite && typeof elite === 'object' && !Array.isArray(elite)

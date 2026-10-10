@@ -267,6 +267,12 @@ Hollow pools so that:
 - balanced captains break the Ember on days 17-29 again;
 - ambitious captains break the Hollow from day 23.
 
+**As built:** Ember 180 at threat 1.45, Hollow 270 at 1.4, Crown 320 at 1.45.
+- Balanced captains break the Ember on days 15-22 (four of five on 17-22).
+- Ambitious captains first break the Hollow on day 28.
+- Nobody reaches the Crown in 30 days.
+- One balanced captain at day 15 is accepted (audit L12): the next step up made the Ember a fuel wall.
+
 Those are the balance pass's numbers. The rewards still make a daily player faster; the walls just ask a little
 more of them.
 

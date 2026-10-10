@@ -158,6 +158,14 @@ function openTransmission() {
   if (transmissionQueue[0]) sfx('beacon');
 }
 
+/** A session's `reward` effect as a reveal entry: a crew or shard card first, then the currencies. */
+function revealOf(effect) {
+  return rewardEntry({ source: effect.source, title: effect.title, subtitle: effect.subtitle,
+    art: effect.art ? artUrl(effect.art) : null, cta: effect.cta, tier: effect.tier,
+    items: [...(effect.crew ? [{ kind: 'crew', ...effect.crew }] : []), ...(effect.shard ? [{ kind: 'shard', ...effect.shard }] : []),
+      ...rewardItems(effect.rewards)] });
+}
+
 /** Queue a reward reveal (null entries are ignored); the first one sounds as it opens. */
 function showReward(entry) {
   if (!entry) return;
@@ -895,6 +903,8 @@ async function handleAction(act, data = {}) {
         if (result.effect?.kind === 'crew-arrival') holdCrewForArrival(result.player, result.effect.crewInstanceId);
         // Story first: a briefing, debrief or chapter finale plays before any reward flies (Phase 3 §1).
         for (const id of result.transmissions || []) showTransmission(id);
+        // Reveals beyond the action's own effect (a chapter recruit) follow it (audit 2026-10-10 L5).
+        for (const extra of result.reveals || []) queueMicrotask(() => { showReward(revealOf(extra)); render(); });
         if (['launch', 'crew-arrival'].includes(result.effect?.kind)) shipSequence = result.effect.kind === 'crew-arrival'
           ? { kind: 'crew-arrival', member: result.player.crew.find(c => c.instanceId === result.effect.crewInstanceId) }
           : 'launch';
@@ -929,12 +939,7 @@ async function handleAction(act, data = {}) {
           }
         }
         if (effect.kind === 'encounter-beat') playEncounterBeat(effect.events);
-        if (effect.kind === 'reward') {
-          showReward(rewardEntry({ source: effect.source, title: effect.title, subtitle: effect.subtitle,
-            art: effect.art ? artUrl(effect.art) : null, cta: effect.cta, tier: effect.tier,
-            items: [...(effect.crew ? [{ kind: 'crew', ...effect.crew }] : []), ...(effect.shard ? [{ kind: 'shard', ...effect.shard }] : []),
-              ...rewardItems(effect.rewards)] }));
-        }
+        if (effect.kind === 'reward') showReward(revealOf(effect));
       },
     });
     if (!committed.ok) {

@@ -333,7 +333,7 @@ export function sessionModels(player, ui = {}, now = trustedNow(), { fightOdds: 
       const fightThreat = fight ? { label: threatLabel(contractFightArgs(player, fight, now).threat), awayCount,
         odds: withOdds && !contract ? fightOdds(player, review.offer, now) : null } : null;
       // A story card replays its briefing; a chapter boss's wall card replays the finale's opening.
-      const briefingId = review.offer.story ? MISSIONS[review.offer.story.id]?.briefing : review.offer.wall ? chapterOfWall(review.offer.wall.id)?.bossIntro : null;
+      const briefingId = review.offer.story ? (Object.hasOwn(MISSIONS, review.offer.story.id) ? MISSIONS[review.offer.story.id].briefing : null) : review.offer.wall ? chapterOfWall(review.offer.wall.id)?.bossIntro : null;
       models.contractReview = { ...review, rewardBand, fightThreat, briefingId: briefingId || null, destinationName: NODES[review.offer.destinationId]?.name,
         enabled: rewardBand.available && !contract && !player.contractBoard.completedOfferIds.includes(review.offer.id) };
     }
@@ -422,6 +422,8 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
   let effect = null;
   // Story transmissions to play after this action (Phase 3 §1); each is recorded as seen when queued.
   const transmissions = [];
+  // Reward reveals beyond the action's own effect (a chapter recruit), shown after it (audit 2026-10-10 L5).
+  const reveals = [];
   const fail = reason => ({ ok: false, reason, player: before });
   const v4 = player.tutorial?.script === 4 && !player.tutorial.completed;
   const v5 = player.tutorial?.script === 5 && !player.tutorial.completed;
@@ -485,7 +487,9 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
   };
   const boardSeen = () => {
     const board = player.contractBoard;
-    if (!player.activeContract && board?.offers.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: board.offers.map(x => x.destinationId), completedCount: board.offers.filter(x => board.completedOfferIds.includes(x.id)).length }));
+    // The day's three offers; story, loyalty and wall cards sit beside them (audit 2026-10-10 L10).
+    const daily = (board?.offers || []).filter(x => !x.story && !x.loyalty && !x.wall);
+    if (!player.activeContract && daily.length === 3) events.push(event('contract_board_seen', { boardDay: board.dayKey, destinationIds: daily.map(x => x.destinationId), completedCount: daily.filter(x => board.completedOfferIds.includes(x.id)).length }));
   };
   if (act === 'splash-dismiss') {
     player = { ...player, flags: { ...player.flags, splashSeen: true } };
@@ -644,7 +648,7 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
       Object.assign(nextUi, { tab: 'ship', selectedRoom: null, confirmAbandon: null });
     } else if (act === 'contract-claim' || data.action === 'claim') {
       // Everyone aboard for the job earns loyalty (Phase 3 §5), read before the claim changes the roster.
-      const flyers = contractFlyers(player);
+      const flyers = contractFlyers(player, contract);
       const res = claimContractReward(player, now);
       if (!res.ok) return res;
       player = { ...res.player, dailyLoop: ensureDailyLoop(before, now).dailyLoop };
@@ -924,16 +928,15 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     player = chapters.player;
     transmissions.push(...chapters.transmissions);
     for (const recruit of chapters.recruits) events.push(event('story_recruit', { templateId: recruit.templateId, rarity: recruit.rarity, kind: recruit.kind }));
-    const recruit = chapters.recruits[0];
-    if (recruit) effect = { kind: 'reward', source: 'story', title: `${recruit.name} joins the crew`, subtitle: 'Chapter complete', rewards: {}, tier: 'large', cta: 'Welcome aboard',
-      crew: { name: recruit.name, rarity: recruit.rarity, portrait: portraitFor(recruit.templateId) } };
+    for (const recruit of chapters.recruits) reveals.push({ kind: 'reward', source: 'story', title: `${recruit.name} joins the crew`, subtitle: 'Chapter complete', rewards: {}, tier: 'large', cta: 'Welcome aboard',
+      crew: { name: recruit.name, rarity: recruit.rarity, portrait: portraitFor(recruit.templateId) } });
   }
   if (transmissions.length) player = ensureLoyaltyOffer(ensureStoryOffer(markSeen(player, transmissions), now));
   // Daily orders (Phase 2 §3): a star-map jump and a won fight count however they happened.
   if (mapJumps(player) > mapJumps(before)) milestone('jump');
   if ((player.stats?.combatsWon || 0) > (before.stats?.combatsWon || 0)) milestone('win');
   if (before.tutorial?.phase !== player.tutorial?.phase) events.push(event('tutorial_stage', { script: player.tutorial.script, phase: player.tutorial.phase, elapsedSeconds: elapsed(player.createdAt, now) }));
-  return { ok: true, player, ui: nextUi, events, effect, transmissions: [...new Set(transmissions)] };
+  return { ok: true, player, ui: nextUi, events, effect, transmissions: [...new Set(transmissions)], reveals };
 }
 
 export function persistSessionTransition(result, { save, publish, capture, animate }) {

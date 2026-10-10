@@ -144,13 +144,21 @@ export function normalizeContractState(player, { nodes, encounterById }) {
     };
   }
   // A twist is kept only when well formed, and never on a wall or the tutorial job; a bad one drops alone.
-  const { twist, ...kept } = contract;
+  const { twist, story, loyalty, ...kept } = contract;
   const keepTwist = Object.hasOwn(contract, 'twist') && validTwist(twist) && !contract.wall && contract.profile !== 'distress';
+  // Story and loyalty tags are kept only when well formed and named by their own card (audit 2026-10-10 L6).
+  const offerId = String(contract.offerId || '');
+  const keepStory = Boolean(story && typeof story === 'object' && typeof story.id === 'string' && /^c\d+_[a-z_]{1,32}$/.test(story.id)
+    && Number.isInteger(story.chapter) && story.chapter >= 1 && story.chapter <= 10 && offerId.startsWith(`offer_story_${story.id}_`));
+  const keepLoyalty = Boolean(loyalty && typeof loyalty === 'object' && typeof loyalty.templateId === 'string'
+    && /^merc_[a-z0-9_]{1,34}$/.test(loyalty.templateId) && offerId.startsWith(`offer_loyal_${loyalty.templateId}_`));
   return {
     ...player,
     activeContract: {
       ...kept,
       ...(keepTwist ? { twist } : {}),
+      ...(keepStory ? { story: { id: story.id, chapter: story.chapter } } : {}),
+      ...(keepLoyalty ? { loyalty: { templateId: loyalty.templateId } } : {}),
       choiceId: contract.choiceId || null,
       encounterId: contract.encounterId || null,
       orderId: contract.orderId || null,

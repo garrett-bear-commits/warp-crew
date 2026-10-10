@@ -37,7 +37,7 @@ import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatVie
 import { renderRewardReveal } from './rewardReveal.js';
 import { renderTransmission } from './transmission.js';
 import { campaignState, campaignLog } from '../systems/campaign.js';
-import { hasBond, loyaltyLevel, openedScenes, pendingScenes, bondTransmission, LOYALTY } from '../systems/loyalty.js';
+import { hasBond, loyaltyLevel, openedScenes, pendingScenes, bondTransmission, loyaltyCardFor, LOYALTY } from '../systems/loyalty.js';
 import { BONDS } from '../data/bonds.js';
 import { NEXT_CHAPTER } from '../data/campaign.js';
 import { renderAlmanac, renderAlmanacCard } from './almanacView.js';
@@ -1020,7 +1020,7 @@ function dossierBond(player, c) {
     return `<button type="button" class="bond-scene${seen.has(id) ? '' : ' is-new'}" data-act="${seen.has(id) ? 'tx-replay' : 'bond-scene'}" data-id="${escapeHtml(id)}">${escapeHtml(tx.kicker)} · ${escapeHtml(tx.title)}</button>`;
   }).join('');
   const next = level.id === 'loyal' ? `“${escapeHtml(BONDS[c.templateId].bark)}”`
-    : level.id === 'ready' ? 'Their personal job is on the Contract Board.'
+    : level.id === 'ready' ? (loyaltyCardFor(player) === c.templateId ? 'Their personal job is on the Contract Board.' : 'Their personal job comes next, after the one on the board.')
     : `${level.next - level.points} more to ${level.next === LOYALTY.trusted ? 'Trusted' : level.next === LOYALTY.close ? 'Close' : 'their personal job'}. Every contract aboard counts.`;
   return `<div class="dossier-bond${level.id === 'loyal' ? ' is-loyal' : ''}"><span class="modal-kicker">Bond · ${escapeHtml(level.label)}</span>
     <div class="bond-bar" role="meter" aria-label="Loyalty" aria-valuemin="0" aria-valuemax="${LOYALTY.max}" aria-valuenow="${level.points}"><span style="width:${pct}%"></span>
