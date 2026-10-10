@@ -44,6 +44,23 @@ Built so far:
 
   Every claim is a session action (`calendar-claim`, `idle-claim`, `chest-open`, `achievement-claim`) that
   returns a `reward` effect, which `main.js` turns into a reveal. The 30-day sim plays all of them.
+- Phase 3, the world ([report](qa/2026-10-10-phase3-world.md), [design](superpowers/specs/2026-10-10-world-design.md),
+  canon in the [world bible](design/23-world-bible.md)):
+  - **Campaign.** Chapters 1 and 2 (`src/data/campaign.js`, `src/systems/campaign.js`). Story missions are contracts
+    with ids `offer_story_<mission>_<attempt>`. The Spur and Veil walls are the chapter bosses
+    (`campaignAllowsWall`). A wall's fall opens its gate and a named merc joins (`settleChapters`).
+  - **Transmissions.** `src/ui/transmission.js`. A session result carries `transmissions` (ids), which `main.js`
+    queues on publish and records as seen in `almanac.seen`. `src/systems/transmissions.js` looks up any id.
+  - **Loyalty.** `src/data/bonds.js` (46 mercs' scenes and jobs, written by sub-agents from the bios) and
+    `src/systems/loyalty.js` (two a merc a day; loyalty job cards `offer_loyal_<templateId>_<attempt>`).
+  - **Contract generator.** `src/data/clients.js`, `src/systems/contractFlavor.js`, on its own seeded stream per
+    offer.
+  - **Enemy factions, elites and twists.** `src/data/factions.js`, `src/data/twists.js`, and the faction rules in
+    `ftlCombat.js` ([evidence](qa/2026-10-10-faction-mechanics.md)).
+  - **Captain's Almanac.** `src/systems/almanac.js`, `src/ui/almanacView.js`.
+  - **Walls retuned** for the new pace (Ember 180 at 1.45, Hollow 270 at 1.4, Crown 320 at 1.45).
+  - New saved fields: `campaign`, `loyalty`, `almanac`, checked by both validators (`src/core/progress.js` and
+    `apps/server/games/warpcrew/policy.ts`).
 
 The live checklist is in [NEXT.md](NEXT.md). Node 24 is needed (`/opt/nvm`: `nvm use 24` in cloud sessions).
 

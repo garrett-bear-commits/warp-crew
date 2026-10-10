@@ -18,7 +18,7 @@ import { createCrewInstance, catalogById } from '../data/crewRoster.js';
 import { trustedNow } from '../shared/time.js';
 import { grant } from './economy.js';
 import { applyStoryFlag, storyProgress } from './story.js';
-import { applyPullToRoster, recordPull, defaultGacha } from './gacha.js';
+import { applyPullToRoster, recordPull, defaultGacha, hireSeed, hireRng } from './gacha.js';
 import { wallsApply, wallBeaten } from './walls.js';
 import { isTransmissionId } from './transmissions.js';
 
@@ -229,7 +229,8 @@ export function settleChapters(player, now = trustedNow()) {
     if (chapter.gateFlag && !next.flags?.[chapter.gateFlag]) next = applyStoryFlag(next, chapter.gateFlag).player;
     const template = catalogById(chapter.recruit);
     if (template) {
-      const applied = applyPullToRoster(next, createCrewInstance(template.id));
+      // Seeded from the save, so a replay (or the sim) names the same crew member.
+      const applied = applyPullToRoster(next, createCrewInstance(template.id, { rng: hireRng(hireSeed(next), `story:${chapter.n}`) }));
       next = { ...applied.player, gacha: recordPull({ ...defaultGacha(), ...(applied.player.gacha || {}) }, applied.instance, applied.kind, 'story') };
       recruits.push({ templateId: template.id, name: template.name, rarity: template.rarity, kind: applied.kind, instanceId: applied.instance.instanceId });
     }

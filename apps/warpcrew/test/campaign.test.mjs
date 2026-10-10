@@ -124,6 +124,7 @@ describe('chapter completion', () => {
     assert.equal(done.player.flags.veil_opened, true, 'the Veil Gate opens');
     assert.equal(campaignState(done.player).missionId, 'c2_past_the_gate', 'chapter 2 starts at once');
     assert.equal(settleChapters(done.player, now).transmissions.length, 0, 'never twice');
+    assert.equal(settleChapters(p, now).recruits[0].instanceId, done.recruits[0].instanceId, 'the recruit is seeded: a replay names the same crew member');
   });
 
   it('captains without walls finish a chapter when its gate opens', () => {

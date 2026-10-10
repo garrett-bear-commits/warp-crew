@@ -99,7 +99,22 @@ Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) 
 - [x] Independent audit of Phase 2: 2 high, 4 medium and 7 low findings, all fixed under regression tests
   ([report](audits/2026-10-10-phase2-audit.md)).
 - [ ] Phase 2 leftover: the twice-a-day check-in variant of the sim.
-- [ ] Next: Phase 3 (world).
+- [x] Phase 3, the world ([report](qa/2026-10-10-phase3-world.md); art $1.74 of the $5 approved on Flora):
+  - the campaign's chapters 1-2, ten story missions with transmissions, walls as chapter bosses, two story
+    recruits;
+  - the story player (portrait, typed lines, scenes); old gate cinematics moved in, random beats are Discoveries;
+  - loyalty: two bond scenes, a personal job and a line for all 46 mercs;
+  - a contract generator: twelve clients, jobs, cargo, twists (escort, rush, bounty, holdout, two waves);
+  - enemy factions with their own tricks and counters, and named elites
+    ([evidence](qa/2026-10-10-faction-mechanics.md));
+  - the Captain's Almanac and an Archivist achievement;
+  - walls retuned (Ember, Hollow, Crown).
+- [ ] Garrett, from Phase 3:
+  - play the chapter 1 opener, a bond scene, the Almanac and a Shade or corsair fight in the QA build;
+  - story missions are easy (every simulated captain won them all): harder chapter 2, or keep it as a breather?
+  - cautious captains now leave the Spur by day 12-14 (was 24).
+- [ ] Phase 3 leftovers: chapters 3-5; pair bonds; client standing and shops per family.
+- [ ] Next: Phase 4 (live: Season 1, season pass, event map and merc, leaderboards, The Rift).
 
 ## 2026-10-05 FTL-lite fights, weapons, sound, Explore
 
