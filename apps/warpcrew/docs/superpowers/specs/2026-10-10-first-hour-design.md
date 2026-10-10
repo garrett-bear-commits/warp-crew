@@ -269,3 +269,51 @@ procedural version comes first, so the sprites are an upgrade, not a dependency.
    wait. Coming back keeps the song's place. A fight switches at once.
 7. **Every existing suite passes,** the guided sim still finishes its 30 days, and the balance evidence is unchanged
    unless a gate moved and the report says why.
+
+## E. Fight layout A: one battlefield (Garrett's pick, 2026-10-10)
+
+Garrett: "combat on the phone feels cramped". He compared three mockups
+(https://claude.ai/artifact/4xHAbTLScVdYTDHVrFDKVX: A one battlefield, B ships side by side, C focus and minimap)
+and picked **A**.
+
+### What changes in a fight
+
+- **No separate panels.** Both ships sit in one space scene.
+- **The currency bar hides** while a fight runs or waits for its claim. Nav and crew rail are already hidden.
+- **The enemy ship floats at the top of the scene,** full width with a 12-15 px margin, about 175 px tall at 390 px
+  wide (at most a quarter of the screen height).
+  - A slim status pill sits above it: name, threat chip, hull bar, shield pips and evade. Elite, faction, cloak and
+    twist clocks are small chips on that pill.
+  - Pause is an icon button at the top right.
+- **Their rooms are round icon buttons** at the room centres: weapons, helm, shields, engines.
+  - The visual is about 38 px, the tap target at least 44 px.
+  - The targeted room gets an orange ring.
+  - Integrity shows as a small bar or arc on the icon; fire and offline as small marks.
+  - Room names go in aria-labels instead of printed labels.
+- **The whole Sparrow is always visible** between the enemy and the tray, fitted by the fight camera (about
+  234 × 352 px at 390 × 844), inside the shield bubble.
+  - Crew sprites are drawn larger in fights (about 24 px tall) so they stay readable.
+  - Fires, damage and boarders show on their rooms.
+  - Whole-ship view is the default. The zoom toggle stays as an option. Off-screen alerts appear only when zoomed in.
+- **Our status pill sits under our ship:** hull bar, shield pips, evade.
+- **Help is one line in a fading pill** above the tray: four seconds, or until done for the guided first fight. It
+  replaces the help paragraphs.
+- **The tray** (at most about 190 px) has:
+  - weapons as charge-ring buttons (name plus "Ready" or %), then Hold;
+  - crew chips (portrait, name, station);
+  - a ready move as a glow on its crew chip;
+  - Auto;
+  - orders (Burn, Board, Rally) once unlocked, as compact buttons.
+
+  The win, loss and downed panels replace the tray's content.
+- **Other screens:** small phones (360 × 740) scale down to minimum tap sizes. Wide screens keep a centred column of
+  at most 480 px.
+
+### Order of work
+
+- This is presentation only.
+- It lands after §D (the effects): the effects measure positions on render, so they follow the new layout.
+- Tests that pin today's fight markup are updated deliberately, never weakened:
+  - `ftl_polish`, `crew_animation` (crew height in fights);
+  - `encounter_session`, `explore_crew_fight`, `first_play_ui`;
+  - `enemy_art`, `factions`, `crew_kits_ui`, `ftl_crew_drag`.
