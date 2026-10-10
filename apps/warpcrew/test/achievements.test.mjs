@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
-import { ACHIEVEMENTS, ACHIEVEMENT_TRACKS, ACHIEVEMENT_GEM_BUDGET, achievementGemTotal, achievementProgress, claimAchievement,
+import { ACHIEVEMENTS, ACHIEVEMENT_BY_ID, ACHIEVEMENT_TRACKS, ACHIEVEMENT_GEM_BUDGET, achievementGemTotal, achievementProgress, claimAchievement,
   claimableAchievements, normalizeAchievements } from '../src/systems/achievements.js';
 import { sessionAction } from '../src/systems/sessionLoop.js';
 import { isWarpcrewPlayer } from '../src/core/progress.js';
@@ -30,7 +30,7 @@ let player = { ...fresh, stats: { ...fresh.stats, combatsWon: 12 } };
 assert.equal(achievementProgress(player).find(l => l.id === 'victor').ready, true);
 const first = claimAchievement(player, 'victor');
 assert.ok(first.ok);
-assert.equal(first.player.wallet.credits, player.wallet.credits + 300);
+assert.equal(first.player.wallet.credits, player.wallet.credits + ACHIEVEMENT_BY_ID.victor.tiers[0].reward.credits);
 assert.equal(first.player.wallet.medals, player.wallet.medals + 10);
 assert.deepEqual(first.player.achievements, { victor: 1 });
 assert.equal(claimAchievement(first.player, 'victor').reason, 'achievement_not_ready', 'a tier pays once');
@@ -54,7 +54,7 @@ const veteran = { ...done, stats: { ...done.stats, combatsWon: 10 } };
 const claimed = sessionAction(veteran, {}, 'achievement-claim', { id: 'victor' }, { now: Date.UTC(2026, 9, 10) });
 assert.ok(claimed.ok);
 assert.equal(claimed.effect.kind, 'reward');
-assert.deepEqual(claimed.effect.rewards, { credits: 300, medals: 10 });
+assert.deepEqual(claimed.effect.rewards, ACHIEVEMENT_BY_ID.victor.tiers[0].reward);
 assert.deepEqual(claimed.events.find(e => e.event === 'achievement_claimed').fields, { id: 'victor', tier: 1, gems: 0 });
 assert.equal(sessionAction(fresh, {}, 'achievement-claim', { id: 'victor' }).ok, false);
 

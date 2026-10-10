@@ -27,7 +27,7 @@ export function productArt(sku) {
   return PRODUCT_ART[sku] ? artUrl(`art/pixel/ui/${PRODUCT_ART[sku]}.png`) : null;
 }
 /** Rough gem worth of one unit, only to size the moment (gem fuel refill: 50 gems for 5 fuel). */
-const GEM_WORTH = { gems: 1, credits: 0.05, medals: 0.5, fuel: 10, reputation: 1, marks: 5 };
+const GEM_WORTH = { gems: 1, credits: 0.05, medals: 0.5, fuel: 10, reputation: 1, marks: 5, shard: 30 };
 const RARITY_TIER = { common: 'medium', uncommon: 'medium', rare: 'large', epic: 'large', legendary: 'huge', mythic: 'huge', apex: 'huge' };
 export const TIERS = ['small', 'medium', 'large', 'huge'];
 /** The sounds the reveal plays as it opens (sound.js names), quiet to loud. */
@@ -57,11 +57,12 @@ export function rewardTier(items = []) {
 }
 
 /**
- * One queued reveal. items: currency items ({ kind, amount }) and crew cards ({ kind: 'crew', name, rarity, portrait }).
+ * One queued reveal. items: currency items ({ kind, amount }), crew cards ({ kind: 'crew', name, rarity, portrait }) and
+ * shards ({ kind: 'shard', name, portrait, amount }).
  * Returns null when there is nothing to show, so callers can pass any grant.
  */
 export function rewardEntry({ source, title, subtitle = '', items = [], art = null }) {
-  const shown = items.filter(item => item.kind === 'crew' || item.amount > 0);
+  const shown = items.filter(item => item.kind === 'crew' || (item.kind === 'shard' ? item.amount > 0 && item.portrait : item.amount > 0));
   if (!shown.length) return null;
   return { source, title, subtitle, art, items: shown, tier: rewardTier(shown) };
 }
@@ -73,6 +74,8 @@ export function renderRewardReveal(entry) {
   if (!entry) return '';
   const cards = entry.items.map((item, i) => item.kind === 'crew'
     ? `<li class="reward-card is-crew rarity-${esc(item.rarity)}" style="--i:${i}"><img src="${esc(item.portrait)}" alt="" /><b>${esc(item.name)}</b><span>${esc(item.rarity)}</span></li>`
+    : item.kind === 'shard'
+      ? `<li class="reward-card is-crew is-shard" style="--i:${i}"><img src="${esc(item.portrait)}" alt="" /><b>+${item.amount} shard</b><span>${esc(item.name)}</span></li>`
     : `<li class="reward-card" data-reward-kind="${esc(item.kind)}" data-amount="${item.amount}" style="--i:${i}"><img src="${esc(ICON[item.kind])}" alt="" /><b>+${item.amount.toLocaleString('en-US')}</b><span>${esc(LABEL[item.kind])}</span></li>`).join('');
   return `<div class="modal-backdrop reward-backdrop tier-${entry.tier}" data-act="reward-close">
     <section class="reward-reveal tier-${entry.tier}" role="dialog" aria-modal="true" aria-label="${esc(entry.title)}">

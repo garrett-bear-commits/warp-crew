@@ -14,6 +14,7 @@ import {
 } from './systems/expedition.js';
 import { applyDailyLogin } from './systems/daily.js';
 import { calendarState } from './systems/calendar.js';
+import { idleHaul, WELCOME_BACK_MS } from './systems/idle.js';
 import { syncAllNotifications } from './systems/notifications.js';
 import { listShopProducts, PRODUCT_DEFS } from './systems/iap.js';
 import { SHIPS } from './data/ships.js';
@@ -85,6 +86,8 @@ let hireReveal = null;
 let rewardQueue = [];
 /** The login calendar sheet is open (UI only). It opens on the first boot of a day with a square to claim. */
 let calendarOpen = false;
+/** The welcome-back screen is open (UI only): on boot after an hour or more away with income in the hold. */
+let welcomeBackOpen = false;
 let hireOddsOpen = false;
 /** Cancel-save sheet for the Captain's Commission subscription. */
 let commissionWinback = false;
@@ -338,6 +341,8 @@ function hydratePlayer({ fresh, newCaptain }) {
     player = daily.player;
     if (daily.isNewDay) pushLog(`Day ${daily.streak} in a row aboard.`);
     if (calendarState(player, trustedNow()).canClaim) calendarOpen = true;
+    const haul = idleHaul(player, trustedNow());
+    if (haul.ready && haul.awayMs >= WELCOME_BACK_MS) welcomeBackOpen = true;
   } else if (daily.isNewDay) {
     // Hold the day-1 streak without dumping extra currencies into the intro.
     player = {
@@ -535,6 +540,7 @@ function render() {
     hireReveal,
     rewardReveal: rewardQueue[0] || null,
     calendarOpen,
+    welcomeBackOpen,
     hireOddsOpen,
     ftlSelectedCrewId,
     ftlPaused,
@@ -890,7 +896,8 @@ async function handleAction(act, data = {}) {
         if (effect.kind === 'reward') {
           showReward(rewardEntry({ source: effect.source, title: effect.title, subtitle: effect.subtitle,
             art: effect.art ? artUrl(effect.art) : null,
-            items: [...(effect.crew ? [{ kind: 'crew', ...effect.crew }] : []), ...rewardItems(effect.rewards)] }));
+            items: [...(effect.crew ? [{ kind: 'crew', ...effect.crew }] : []), ...(effect.shard ? [{ kind: 'shard', ...effect.shard }] : []),
+              ...rewardItems(effect.rewards)] }));
         }
       },
     });
@@ -925,6 +932,12 @@ async function handleAction(act, data = {}) {
     return;
   }
   if (act === 'calendar-claim') calendarOpen = false;
+  if (act === 'welcome-close') {
+    welcomeBackOpen = false;
+    render();
+    return;
+  }
+  if (act === 'idle-claim') welcomeBackOpen = false;
   if (act === 'reward-close') {
     const cards = rewardCardRects(app);
     rewardQueue.shift();

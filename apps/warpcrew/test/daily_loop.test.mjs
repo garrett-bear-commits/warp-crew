@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createNewPlayer } from '../src/systems/player.js';
-import { ensureDailyLoop, markDailyMilestone, dailyPlan } from '../src/systems/dailyLoop.js';
+import { ensureDailyLoop, markDailyMilestone, dailyPlan, MILESTONES, CHEST_POINTS } from '../src/systems/dailyLoop.js';
 
 // Catches wrong milestone order, duplicate writes, missing completion/reset, and rewards from guidance.
 const now = Date.UTC(2026, 8, 21, 12);
@@ -13,10 +13,21 @@ assert.equal(markDailyMilestone(player, 'contract', now), player);
 assert.equal(dailyPlan(player, now).next.id, 'improve');
 player = markDailyMilestone(player, 'improve', now);
 player = markDailyMilestone(player, 'away', now);
+assert.equal(dailyPlan(player, now).next.id, 'jump');
+assert.equal(dailyPlan(player, now).points, 80);
+assert.equal(dailyPlan(player, now).chestReady, false, '80 points: no chest yet');
+assert.equal(dailyPlan(markDailyMilestone(player, 'win', now), now).chestReady, true, 'the jump can be skipped');
+assert.equal(dailyPlan(markDailyMilestone(player, 'jump', now), now).chestReady, true, 'or the fight');
+const noContract = ['improve', 'away', 'jump', 'win'].reduce((p, id) => markDailyMilestone(p, id, now), ensureDailyLoop(createNewPlayer(), now));
+assert.equal(dailyPlan(noContract, now).chestReady, false, 'never the contract');
+player = markDailyMilestone(player, 'jump', now);
+player = markDailyMilestone(player, 'win', now);
 assert.equal(dailyPlan(player, now).next, null);
-assert.equal(dailyPlan(player, now).completed, 3);
-assert.equal(dailyPlan(player, now).total, 3);
-assert.deepEqual(player.wallet, wallet);
+assert.equal(dailyPlan(player, now).completed, 5);
+assert.equal(dailyPlan(player, now).total, 5);
+assert.deepEqual([dailyPlan(player, now).points, dailyPlan(player, now).goal, dailyPlan(player, now).chestReady], [120, 100, true]);
+assert.equal(MILESTONES.reduce((n, m) => n + m.points, 0), CHEST_POINTS + 20, 'one 20-point order can be skipped');
+assert.deepEqual(player.wallet, wallet, 'orders pay nothing by themselves; the chest pays');
 assert.equal(dailyPlan(ensureDailyLoop(player, now + 86400000), now + 86400000).completed, 0);
-assert.equal(dailyPlan(markDailyMilestone(player, 'invalid', now), now).completed, 3);
+assert.equal(dailyPlan(markDailyMilestone(player, 'invalid', now), now).completed, 5);
 console.log('daily_loop.test.mjs OK');

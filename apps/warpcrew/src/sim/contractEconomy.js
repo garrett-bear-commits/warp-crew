@@ -1,8 +1,11 @@
 import { createNewPlayer, tickCrewStatus } from '../systems/player.js';
 import { prepareSession, sessionAction, sessionModels } from '../systems/sessionLoop.js';
 import { claimFuelRegen } from '../systems/fuel.js';
-import { applyDailyLogin } from '../systems/daily.js';
+import { applyDailyLogin, dayKey } from '../systems/daily.js';
 import { calendarState } from '../systems/calendar.js';
+import { idleHaul } from '../systems/idle.js';
+import { chestState, rollChest, weekKey } from '../systems/chests.js';
+import { achievementProgress } from '../systems/achievements.js';
 import { defaultTutorial, isTutorialActive, isFeatureUnlocked, noteTutorialEvent } from '../systems/tutorial.js';
 import { pullOnce, benchCrew, callUpReserve } from '../systems/gacha.js';
 import { readyContractCrew } from '../systems/contractRewards.js';
@@ -10,7 +13,7 @@ import { normalizeAssignments, STATIONS } from '../systems/stations.js';
 import { fightPower } from '../systems/encounterState.js';
 import { resolveExpedition, applyExpeditionResult, visiblePlanets } from '../systems/expedition.js';
 import { nextUpgradeCost, upgradeSystem, buildSkipGems, SHIP_SYSTEMS } from '../systems/hangar.js';
-import { markDailyMilestone } from '../systems/dailyLoop.js';
+import { markDailyMilestone, dailyPlan, MILESTONES } from '../systems/dailyLoop.js';
 import { repelStatus } from '../systems/autoCombat.js';
 import { ftlPolicyStep, FTL_VERSION, MAX_FIGHT_BEATS } from '../systems/ftlCombat.js';
 import { reviewContractOffer } from '../systems/contracts.js';
@@ -329,6 +332,8 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       const square = calendarState(player, now).reward;
       if (act('calendar-claim', {}, 'calendar')) day.fuel.wasted += Math.max(0, (square.fuel || 0) - (player.wallet.fuel - fuelBefore));
     }
+    // Income while away (Phase 2 §4): one check-in a day, so the hold is full every morning but the first.
+    if (!isTutorialActive(player) && idleHaul(player, now).ready) act('idle-claim', {}, 'idle');
     if (guided) noteWalls(day, index);
     if (player.activeExpedition) {
       const result = resolveExpedition(player.activeExpedition, { now, rng, player });
@@ -656,6 +661,21 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         }
       } else blocked('ship-upgrade', 'cannot_afford');
     }
+    // Phase 2 §3 and §5: achievement tiers earned and the day's chests, as a captain on the Log tab would.
+    if (!isTutorialActive(player)) {
+      for (let n = 0; n < 40; n++) {
+        const line = achievementProgress(player).find(item => item.ready);
+        if (!line || !act('achievement-claim', { id: line.id }, 'achievement')) break;
+      }
+      for (const kind of ['daily', 'weekly']) {
+        if (!chestState(player, now)[kind].ready) continue;
+        const fuelBefore = player.wallet.fuel;
+        const roll = rollChest(player, kind, kind === 'daily' ? dayKey(now) : weekKey(now));
+        if (act('chest-open', { kind }, `chest:${kind}`)) day.fuel.wasted += Math.max(0, (roll.reward.fuel || 0) - (player.wallet.fuel - fuelBefore));
+      }
+    }
+    day.orders = { points: dailyPlan(player, now).points, done: MILESTONES.filter(m => player.dailyLoop?.[m.id] === true).map(m => m.id),
+      chest: player.dailyLoop?.chest === true };
     day.milestones = { ...player.dailyLoop };
     day.incompleteMilestones = ['contract', 'improve', 'away'].filter(key => !player.dailyLoop[key]);
     day.usefulAction = day.completedContracts > 0 || day.completedExpeditions > 0 || Boolean(day.improvement)
@@ -825,7 +845,7 @@ export function renderEconomyMarkdown(report) {
     `Fixed seeds: ${report.seeds.join(', ')}. Start: ${new Date(report.startAt).toISOString()}; exactly 24 hours between check-ins.`, '',
     'Day 1 includes the tutorial, its already accepted first normal offer, and active Dustfall job. Later days choose the strategy-priority offer and first visible expedition with production-recommended crew. Cheapest affordable system wins; equal costs sort by system ID. Free login-calendar gems are earned rewards; no premium grants, purchases, ads, skips, or force completion occur.', '',
     'A useful session completes all three daily milestones (contract, improvement, away launch). A useful action is any claim, upgrade, or away launch. Worst means fewest useful sessions/upgrades, most fuel-starved days, and greatest ending accumulation for each currency separately. Ties use the first listed seed. No target bands or tuning approval are implied.', '',
-    'Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cursor, so this accrual is banked, not permanently discarded. These daily backlog snapshots must not be summed as losses. Wasted fuel counts only discarded login-calendar fuel; wallet sinks count actual deductions.', '',
+    'Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cursor, so this accrual is banked, not permanently discarded. These daily backlog snapshots must not be summed as losses. Wasted fuel counts only discarded login-calendar and chest fuel; wallet sinks count actual deductions.', '',
     '| Strategy | Metric | Median | Worst seed | Worst value |', '|---|---|---:|---:|---:|'];
   for (const strategy of Object.keys(STRATEGIES)) {
     const runs = report.runs.filter(r => r.strategy === strategy);

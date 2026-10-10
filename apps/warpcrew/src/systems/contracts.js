@@ -670,7 +670,7 @@ export function claimContractReward(player, now = trustedNow()) {
   const today = contractDayKey(now);
   const dailyLoop = player?.dailyLoop?.dayKey === today
     ? { ...player.dailyLoop, contract: true }
-    : { dayKey: today, contract: true, improve: false, away: false };
+    : { dayKey: today, contract: true, improve: false, away: false, jump: false, win: false, chest: false };
   nextPlayer = {
     ...nextPlayer,
     wallet,

@@ -4,7 +4,8 @@
  *
  * Eleven lines in six tracks, three tiers each (33 to earn). Progress is read from the save as it is (stats, crew,
  * ship, walls), never from a separate counter, so a reload or a second device cannot double it; the save only keeps
- * how many tiers of each line were claimed. Rewards are medals and credits, with gems on tiers 2 and 3. All gems
+ * how many tiers of each line were claimed. Rewards are medals and credits, with gems on tiers 2 and 3 (credits kept
+ * small so Phase 2 stays under a third of a free captain's credits in the 30-day sim). All gems
  * together stay under ACHIEVEMENT_GEM_BUDGET: the core's rule for client-claimed rewards
  * (packages/contracts/src/achievements.ts), so these can move server-side at the cut-over.
  */
@@ -27,28 +28,28 @@ const HIREABLE = CREW_CATALOG.filter(c => !STARTER_CAPTAINS.includes(c.id)).leng
 /** Each line: what it counts (from the save), and three goals with their rewards. */
 export const ACHIEVEMENTS = [
   { id: 'victor', track: 'combat', title: 'Victor', unit: 'fights won', read: p => p.stats?.combatsWon || 0,
-    tiers: [[10, { credits: 300, medals: 10 }], [50, { credits: 1200, medals: 30, gems: 25 }], [200, { credits: 4000, medals: 80, gems: 75 }]] },
+    tiers: [[10, { credits: 50, medals: 10 }], [50, { credits: 180, medals: 30, gems: 25 }], [200, { credits: 600, medals: 80, gems: 75 }]] },
   { id: 'contractor', track: 'combat', title: 'Contractor', unit: 'contracts done', read: p => p.stats?.contractsCompleted || 0,
-    tiers: [[20, { credits: 400, medals: 10 }], [100, { credits: 1500, medals: 30, gems: 25 }], [300, { credits: 5000, medals: 80, gems: 75 }]] },
+    tiers: [[20, { credits: 60, medals: 10 }], [100, { credits: 220, medals: 30, gems: 25 }], [300, { credits: 750, medals: 80, gems: 75 }]] },
   { id: 'recruiter', track: 'crew', title: 'Recruiter', unit: 'hires', read: p => p.gacha?.pulls || 0,
-    tiers: [[10, { credits: 300, medals: 15 }], [50, { credits: 1000, medals: 40, gems: 25 }], [150, { credits: 3000, medals: 100, gems: 75 }]] },
+    tiers: [[10, { credits: 50, medals: 15 }], [50, { credits: 150, medals: 40, gems: 25 }], [150, { credits: 450, medals: 100, gems: 75 }]] },
   { id: 'mentor', track: 'crew', title: 'Mentor', unit: 'top crew level', read: p => Math.max(0, ...allCrew(p).map(m => m.level || 1)),
-    tiers: [[10, { credits: 400, medals: 20 }], [20, { credits: 1500, medals: 50, gems: 25 }], [30, { credits: 4000, medals: 120, gems: 75 }]] },
+    tiers: [[10, { credits: 60, medals: 20 }], [20, { credits: 220, medals: 50, gems: 25 }], [30, { credits: 600, medals: 120, gems: 75 }]] },
   { id: 'shipwright', track: 'ship', title: 'Shipwright', unit: 'system levels',
     read: p => Object.values(p.ship?.systems || {}).reduce((sum, level) => sum + (Number(level) || 0), 0),
-    tiers: [[10, { credits: 500, medals: 10 }], [25, { credits: 1500, medals: 30, gems: 25 }], [50, { credits: 5000, medals: 80, gems: 75 }]] },
+    tiers: [[10, { credits: 80, medals: 10 }], [25, { credits: 220, medals: 30, gems: 25 }], [50, { credits: 750, medals: 80, gems: 75 }]] },
   { id: 'fleet', track: 'ship', title: 'Fleet', unit: 'hulls owned', read: p => listOwnedHulls(p).length,
-    tiers: [[2, { credits: 500, medals: 15 }], [4, { credits: 2000, medals: 40, gems: 25 }], [6, { credits: 6000, medals: 100, gems: 75 }]] },
+    tiers: [[2, { credits: 80, medals: 15 }], [4, { credits: 300, medals: 40, gems: 25 }], [6, { credits: 900, medals: 100, gems: 75 }]] },
   { id: 'wayfarer', track: 'explore', title: 'Wayfarer', unit: 'jumps', read: p => p.stats?.jumps || 0,
-    tiers: [[25, { credits: 300, medals: 10 }], [100, { credits: 1200, medals: 30, gems: 25 }], [300, { credits: 4000, medals: 80, gems: 75 }]] },
+    tiers: [[25, { credits: 50, medals: 10 }], [100, { credits: 180, medals: 30, gems: 25 }], [300, { credits: 600, medals: 80, gems: 75 }]] },
   { id: 'away_teams', track: 'explore', title: 'Away teams', unit: 'expeditions', read: p => p.stats?.expeditions || 0,
-    tiers: [[5, { credits: 300, medals: 10 }], [25, { credits: 1200, medals: 30, gems: 25 }], [100, { credits: 4000, medals: 80, gems: 75 }]] },
+    tiers: [[5, { credits: 50, medals: 10 }], [25, { credits: 180, medals: 30, gems: 25 }], [100, { credits: 600, medals: 80, gems: 75 }]] },
   { id: 'siege_breaker', track: 'walls', title: 'Siege breaker', unit: 'walls broken', read: p => WALLS.filter(w => p.flags?.[`wall_${w.id}`] === true).length,
-    tiers: [[1, { credits: 800, medals: 30 }], [3, { credits: 3000, medals: 80, gems: 50 }], [5, { credits: 8000, medals: 150, gems: 100 }]] },
+    tiers: [[1, { credits: 120, medals: 30 }], [3, { credits: 450, medals: 80, gems: 50 }], [5, { credits: 1200, medals: 150, gems: 100 }]] },
   { id: 'roster', track: 'collection', title: 'Roster', unit: 'mercs met', read: p => hires(p).size,
-    tiers: [[10, { credits: 400, medals: 15 }], [25, { credits: 1500, medals: 40, gems: 25 }], [HIREABLE, { credits: 6000, medals: 120, gems: 100 }]] },
+    tiers: [[10, { credits: 60, medals: 15 }], [25, { credits: 220, medals: 40, gems: 25 }], [HIREABLE, { credits: 900, medals: 120, gems: 100 }]] },
   { id: 'rare_finds', track: 'collection', title: 'Rare finds', unit: 'Epic or better', read: p => [...hires(p)].filter(id => rank(id) >= RARITY.epic.rank).length,
-    tiers: [[1, { credits: 500, medals: 20 }], [5, { credits: 2000, medals: 50, gems: 25 }], [15, { credits: 6000, medals: 120, gems: 75 }]] },
+    tiers: [[1, { credits: 80, medals: 20 }], [5, { credits: 300, medals: 50, gems: 25 }], [15, { credits: 900, medals: 120, gems: 75 }]] },
 ].map(line => ({ ...line, tiers: line.tiers.map(([goal, reward]) => ({ goal, reward })) }));
 
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map(line => [line.id, line]));

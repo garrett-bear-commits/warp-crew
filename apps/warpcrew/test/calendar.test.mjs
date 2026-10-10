@@ -7,6 +7,7 @@ import { RARITY, catalogById } from '../src/data/crewRoster.js';
 import { sessionAction } from '../src/systems/sessionLoop.js';
 import { renderCalendar, renderNav, renderLog } from '../src/ui/bridge.js';
 import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
+import { isWarpcrewPlayer } from '../src/core/progress.js';
 
 const DAY = 86400000;
 const start = Date.UTC(2026, 9, 10, 12);
@@ -24,7 +25,7 @@ assert.deepEqual(calendarState(player, start), { cycle: 1, claimed: 0, nextDay: 
 let r = claimCalendar(player, { now: start });
 assert.ok(r.ok);
 assert.equal(r.day, 1);
-assert.equal(r.player.wallet.credits, wallet0.credits + 60);
+assert.equal(r.player.wallet.credits, wallet0.credits + CALENDAR_REWARDS[0].credits);
 assert.equal(r.player.wallet.medals, wallet0.medals + 3);
 assert.equal(claimCalendar(r.player, { now: start + 3600000 }).reason, 'calendar_claimed_today');
 player = r.player;
@@ -93,5 +94,11 @@ assert.match(after, /Back tomorrow/);
 assert.match(renderLog(done, [], { goals: [] }), /Day 1 of 28 is ready[\s\S]*data-act="calendar-open"/);
 assert.match(renderNav('ship', done, false, ['ship', 'crew', 'missions', 'shop', 'log']), /nav-badge/);
 assert.doesNotMatch(renderLog(fresh, [], { goals: [] }), /calendar-open/, 'no calendar during the tutorial');
+
+// The save check: a real calendar passes; an edited one (past 28, a fake day) is refused.
+assert.equal(isWarpcrewPlayer(day28.player), true);
+assert.equal(isWarpcrewPlayer({ ...done, calendar: { cycle: 1, claimed: 40, lastDay: null } }), false);
+assert.equal(isWarpcrewPlayer({ ...done, calendar: { cycle: 0, claimed: 3, lastDay: null } }), false);
+assert.equal(isWarpcrewPlayer({ ...done, calendar: { cycle: 1, claimed: 3, lastDay: 'tomorrow' } }), false);
 
 console.log('calendar: OK');

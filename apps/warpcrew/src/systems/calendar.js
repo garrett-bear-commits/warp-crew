@@ -15,14 +15,14 @@ import { pullMerc, applyPullToRoster, recordPull, hireSeed, hireRng, defaultGach
 export const CALENDAR_LENGTH = 28;
 /** Square n (1-based) pays CALENDAR_REWARDS[n - 1]. marks are Contract Marks; hire is the guaranteed hire's floor. */
 export const CALENDAR_REWARDS = [
-  { credits: 60, medals: 3 }, { credits: 80, fuel: 1 }, { credits: 60, medals: 8 }, { credits: 100, fuel: 1 },
-  { credits: 80, medals: 12 }, { credits: 120, reputation: 2 }, { gems: 30, credits: 250, medals: 15 },
-  { credits: 100, medals: 5 }, { credits: 120, fuel: 1 }, { gems: 10, credits: 100 }, { credits: 100, medals: 15 },
-  { credits: 150, fuel: 1 }, { medals: 15, reputation: 3 }, { marks: 10, credits: 300 },
-  { credits: 150, medals: 8 }, { credits: 160, fuel: 1 }, { gems: 10, credits: 150 }, { credits: 120, medals: 20 },
-  { credits: 200, fuel: 2 }, { medals: 20, reputation: 3 }, { gems: 50, credits: 400, medals: 25 },
-  { credits: 200, medals: 10 }, { credits: 220, fuel: 2 }, { gems: 15, credits: 200 }, { credits: 150, medals: 25 },
-  { credits: 250, fuel: 2 }, { medals: 30, reputation: 5 }, { hire: 'epic', gems: 30 },
+  { credits: 30, medals: 3 }, { credits: 40, fuel: 1 }, { credits: 30, medals: 8 }, { credits: 50, fuel: 1 },
+  { credits: 40, medals: 12 }, { credits: 60, reputation: 2 }, { gems: 30, credits: 120, medals: 15 },
+  { credits: 50, medals: 5 }, { credits: 60, fuel: 1 }, { gems: 10, credits: 50 }, { credits: 50, medals: 15 },
+  { credits: 80, fuel: 1 }, { medals: 15, reputation: 3 }, { marks: 10, credits: 150 },
+  { credits: 80, medals: 8 }, { credits: 80, fuel: 1 }, { gems: 10, credits: 80 }, { credits: 60, medals: 20 },
+  { credits: 100, fuel: 2 }, { medals: 20, reputation: 3 }, { gems: 50, credits: 200, medals: 25 },
+  { credits: 100, medals: 10 }, { credits: 110, fuel: 2 }, { gems: 15, credits: 100 }, { credits: 80, medals: 25 },
+  { credits: 120, fuel: 2 }, { medals: 30, reputation: 5 }, { hire: 'epic', gems: 30 },
 ];
 /** The bigger squares, drawn larger on the calendar. */
 export const CALENDAR_MILESTONES = [7, 14, 21, 28];

@@ -73,5 +73,11 @@ export function isWarpcrewPlayer(v) {
   // Achievement tiers claimed: small whole counts only (an edited save cannot claim a tier twice or past the last).
   if (v.achievements !== undefined && !(record(v.achievements)
     && Object.values(v.achievements).every((n) => Number.isInteger(n) && n >= 0 && n <= 5))) return false;
+  // Login calendar (src/systems/calendar.js): whole counts, at most 28 squares, a day key or nothing.
+  if (v.calendar !== undefined && !(record(v.calendar) && Number.isSafeInteger(v.calendar.cycle) && v.calendar.cycle >= 1
+    && Number.isInteger(v.calendar.claimed) && v.calendar.claimed >= 0 && v.calendar.claimed <= 28
+    && (v.calendar.lastDay === null || (typeof v.calendar.lastDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.calendar.lastDay))))) return false;
+  // Income while away (src/systems/idle.js): the clock start is a time; the hold caps what any start can pay.
+  if (v.idle !== undefined && !(record(v.idle) && typeof v.idle.since === 'number' && Number.isFinite(v.idle.since) && v.idle.since > 0)) return false;
   return true;
 }

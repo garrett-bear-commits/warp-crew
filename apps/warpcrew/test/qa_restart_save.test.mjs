@@ -15,7 +15,7 @@ assert.match(log, /data-act="restart-save"/);
 // The Log tab is for players: no roadmap board, no developer or QA labels.
 assert.doesNotMatch(log, /<h2>Later<\/h2>/);
 assert.doesNotMatch(log, /LiveOps|Mid-core|Season Spine|Fast follow|not shipped|\bSKUs?\b|\bIAP\b|roadmap|QA tool|tutorial/i);
-assert.match(log, /<h2>Daily plan/);
+assert.match(log, /<h2>Daily orders/);
 assert.match(log, /<h2>Story<\/h2>/);
 assert.match(log, /<h2>Log<\/h2>/);
 

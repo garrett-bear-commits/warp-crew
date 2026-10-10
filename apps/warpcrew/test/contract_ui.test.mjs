@@ -83,7 +83,8 @@ const route = renderActiveContract({ title: 'Quiet Freight', stage: 'choice', st
 for (const text of ['Route choice', 'Lower variance payout', 'Combat ahead', 'data-revision="3"']) assert.ok(route.includes(text), text);
 assert.match(route, /data-action="push"[^>]*disabled/);
 assert.equal(renderDailyPlan({ complete: true }), '');
-assert.ok(renderDailyPlan({ completed: 1, next: { label: 'Improve', act: 'goto-crew' } }).includes('1/3'));
+assert.ok(renderDailyPlan({ completed: 1, points: 30, goal: 100, next: { label: 'Improve', act: 'goto-crew' } }).includes('30/100 · Improve'));
+assert.match(renderDailyPlan({ complete: true, chestReady: true }), /data-act="chest-open" data-kind="daily"/, 'a finished day still shows the chest to open');
 
 // Catches HTML/attribute injection through view model text, ids and labels; no mutation.
 const poison = '\"><img src=x onerror=alert(1)>';

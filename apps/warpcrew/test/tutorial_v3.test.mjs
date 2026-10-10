@@ -14,7 +14,7 @@ assert.equal(fresh.version, 7, 'save version');
 assert.equal(fresh.tutorial.phase, 'distress');
 assert.equal(fresh.contractBoard, null);
 assert.equal(fresh.activeContract, null);
-assert.deepEqual(fresh.dailyLoop, { dayKey: null, contract: false, improve: false, away: false });
+assert.deepEqual(fresh.dailyLoop, { dayKey: null, contract: false, improve: false, away: false, jump: false, win: false, chest: false });
 assert.equal(fresh.stats.contractsCompleted, 0);
 assert.deepEqual(fresh.stats.contractsByProfile, { reliable: 0, risky: 0, strange: 0 });
 

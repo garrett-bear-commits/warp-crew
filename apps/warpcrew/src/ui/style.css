@@ -3459,3 +3459,53 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .panel.calendar-row img { width: 44px; height: 44px; object-fit: contain; }
 .panel.calendar-row h2 { margin: 0 0 2px; }
 .panel.calendar-row button { min-height: 40px; }
+
+/* Income while away (Phase 2 design §4): the hold chip on the ship and the welcome-back screen. */
+.hold-chip { position: absolute; left: 10px; bottom: 10px; z-index: 6; display: grid; grid-template-columns: 26px auto 40px auto;
+  align-items: center; gap: 6px; min-height: 40px; padding: 4px 10px 4px 6px; border-radius: 0; clip-path: var(--ops-chamfer-sm);
+  background: var(--ops-grad); border: 1px solid var(--ops-edge); font: 700 13px var(--font-display); color: var(--muted);
+  font-variant-numeric: tabular-nums; }
+.hold-chip img { width: 26px; height: 26px; object-fit: contain; }
+.hold-chip .hold-pct { font-size: 11px; color: var(--muted); }
+.hold-chip.is-ready { color: var(--ops-amber-hi, #ffd36b); }
+.hold-chip.is-full { box-shadow: 0 0 12px -2px rgba(255, 211, 107, 0.8); animation: hold-pulse 1.8s ease-in-out infinite; }
+.hold-chip:disabled { opacity: 0.75; }
+.hold-bar { position: relative; display: block; height: 6px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.hold-bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #c98a2b, #ffd36b); }
+@keyframes hold-pulse { 50% { box-shadow: 0 0 18px 0 rgba(255, 211, 107, 0.95); } }
+.modal-backdrop.welcome-backdrop { z-index: 56; align-items: center; }
+.welcome-sheet { width: min(400px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; display: grid; gap: 8px; padding: 0 0 14px;
+  border-radius: var(--radius-lg); background: linear-gradient(180deg, #122039, #0b1220); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  text-align: center; font-family: var(--font-sans); }
+.welcome-sheet > :not(.welcome-art) { margin-left: 14px; margin-right: 14px; }
+.welcome-art { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.welcome-sheet h2 { margin: 0; font: 800 22px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
+.welcome-sheet p { margin: 0; }
+.welcome-haul { list-style: none; padding: 0; margin: 4px 14px; display: flex; justify-content: center; gap: 18px; font-size: 15px; }
+.welcome-haul li { display: flex; align-items: center; gap: 6px; }
+.welcome-haul img { width: 28px; height: 28px; }
+.welcome-haul b { font: 800 20px var(--font-display); color: #ffd36b; }
+.welcome-hold { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font: 700 12px var(--font-display); color: var(--muted); }
+.welcome-hold .hold-bar { height: 8px; }
+.welcome-sheet .primary { min-height: 48px; }
+@media (prefers-reduced-motion: reduce) { .hold-chip.is-full { animation: none; } }
+
+/* Daily orders and chests (Phase 2 design §3). */
+.orders-bar { height: 8px; margin: 2px 0 6px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.orders-bar span { display: block; height: 100%; background: linear-gradient(90deg, #c98a2b, #ffd36b); }
+.chest-row { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 10px; margin-top: 10px; }
+.chest-row img { width: 48px; height: 48px; object-fit: contain; }
+.chest-row b { display: block; font: 700 14px var(--font-display); letter-spacing: 0.04em; }
+.chest-row small { color: var(--muted); }
+.chest-row button { min-height: 40px; }
+.chest-row.is-ready img { filter: drop-shadow(0 0 8px rgba(255, 211, 107, 0.85)); animation: chest-bob 1.6s ease-in-out infinite; }
+.chest-pips { letter-spacing: 2px; color: #ffd36b; white-space: nowrap; }
+.chest-odds { margin: 4px 0 0 58px; font-size: 13px; color: var(--muted); }
+.chest-odds summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+.chest-odds p { margin: 2px 0; }
+.chest-odds ul { list-style: none; margin: 2px 0; padding: 0; display: grid; gap: 2px; }
+.chest-odds li { display: flex; justify-content: space-between; gap: 8px; }
+.chest-odds li b { color: var(--text); font-variant-numeric: tabular-nums; }
+.wc-shell.tab-home .daily-plan-chip.is-chest { color: #ffd36b; font-weight: 800; }
+@keyframes chest-bob { 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .chest-row.is-ready img { animation: none; } }

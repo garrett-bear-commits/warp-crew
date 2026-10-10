@@ -186,7 +186,12 @@ export function renderAwayPicker(model = {}) {
   </section></div>`;
 }
 
+/** The hub's orders chip: points toward the daily chest and the next order, or the chest itself once it is ready. */
 export function renderDailyPlan(model = {}) {
-  if (model.complete || !model.next) return '';
-  return `<button type="button" class="daily-plan-chip" data-act="${e(model.next.act)}" aria-label="${e(`${model.completed || 0} of 3 daily milestones, next: ${model.next.label}`)}">${e(model.completed || 0)}/3 · ${e(model.next.label)}</button>`;
+  if (model.chestReady) return '<button type="button" class="daily-plan-chip is-chest" data-act="chest-open" data-kind="daily" aria-label="Daily orders done. Open the daily chest">Daily chest ready · Open</button>';
+  // Once the chest is open (or its points are in) the rest of the day's orders pay nothing more: no chip.
+  if (model.complete || !model.next || model.chestOpened || (model.points || 0) >= (model.goal || 100)) return '';
+  const points = model.points || 0;
+  const goal = model.goal || 100;
+  return `<button type="button" class="daily-plan-chip" data-act="${e(model.next.act)}"${model.next.view ? ` data-view="${e(model.next.view)}"` : ''} aria-label="${e(`Daily orders ${points} of ${goal} points, next: ${model.next.label}`)}">${e(points)}/${e(goal)} · ${e(model.next.label)}</button>`;
 }

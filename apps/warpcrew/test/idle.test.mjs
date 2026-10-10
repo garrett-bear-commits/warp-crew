@@ -4,6 +4,9 @@ import { createNewPlayer } from '../src/systems/player.js';
 import { idleRates, idleHaul, claimIdle, startIdleClock, holdHours, IDLE_RATES, HOLD_HOURS } from '../src/systems/idle.js';
 import { assignStation } from '../src/systems/stations.js';
 import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
+import { prepareSession, sessionAction } from '../src/systems/sessionLoop.js';
+import { isWarpcrewPlayer } from '../src/core/progress.js';
+import { renderHoldChip, renderWelcomeBack } from '../src/ui/bridge.js';
 
 const HOUR = 3600000;
 const t0 = Date.UTC(2026, 9, 10, 8);
@@ -34,6 +37,7 @@ const four = idleHaul(player, t0 + 4 * HOUR);
 assert.equal(four.credits, Math.floor(rates.credits * 4));
 assert.equal(four.full, false);
 assert.equal(idleHaul(player, t0 - 5 * HOUR).credits, 0);
+assert.equal(startIdleClock(player, t0 - 5 * HOUR).idle.since, t0 - 5 * HOUR, 'a clock that ran backwards restarts at now');
 
 // The hold caps it: 30 hours away pays the same as 8.
 const long = idleHaul(player, t0 + 30 * HOUR);
@@ -51,5 +55,40 @@ assert.equal(claimIdle(claimed.player, t0 + 30 * HOUR + 60000).reason, 'hold_emp
 const empty = { ...player, stationAssignments: {} };
 assert.equal(idleHaul(empty, t0 + 8 * HOUR).credits, 0);
 assert.equal(idleHaul(empty, t0 + 8 * HOUR).ready, false);
+
+// The clock starts when the tutorial ends (prepareSession), never during it.
+const intro = createNewPlayer({ tutorialScript: 5, now: t0, rng: () => 0.5 });
+assert.equal(prepareSession(intro, t0).idle, undefined, 'no clock during the tutorial');
+const fresh = completeFreshTutorial();
+assert.equal(prepareSession({ ...fresh, idle: undefined }, t0).idle.since, t0, 'the clock starts after the tutorial');
+
+// Collected through the session: a reward reveal with the hold art; nothing to collect is refused.
+const viaSession = sessionAction(player, {}, 'idle-claim', {}, { now: t0 + 9 * HOUR });
+assert.ok(viaSession.ok, viaSession.reason);
+assert.deepEqual([viaSession.effect.kind, viaSession.effect.source, viaSession.effect.title], ['reward', 'idle', 'Welcome back, Captain']);
+assert.equal(viaSession.effect.rewards.credits, long.credits);
+assert.match(viaSession.effect.subtitle, /8 h at your stations · hold full/);
+assert.equal(viaSession.player.idle.since, t0 + 9 * HOUR);
+assert.equal(sessionAction(viaSession.player, {}, 'idle-claim', {}, { now: t0 + 9 * HOUR + 60000 }).reason, 'hold_empty');
+const quick = sessionAction(player, {}, 'idle-claim', {}, { now: t0 + 30 * 60000 });
+assert.equal(quick.effect.title, 'Hold collected', 'a short break is just a collection');
+assert.match(quick.effect.subtitle, /^30 min at your stations · hold 6% full$/);
+assert.equal(sessionAction(intro, {}, 'idle-claim', {}, { now: t0 }).ok, false, 'locked during the tutorial');
+
+// The ship's hold chip and the welcome-back screen.
+assert.match(renderHoldChip(player, t0 + 4 * HOUR), /data-act="idle-claim"[\s\S]*50%/);
+assert.match(renderHoldChip(player, t0 + 9 * HOUR), /is-full/);
+assert.equal(renderHoldChip(intro, t0), '', 'no chip during the tutorial');
+assert.doesNotMatch(renderHoldChip(player, t0 + 60000), /data-act="idle-claim"/, 'nothing to collect yet');
+const welcome = renderWelcomeBack(player, t0 + 9 * HOUR);
+assert.match(welcome, /Welcome back, Captain/);
+assert.match(welcome, /welcome-back\.png/);
+assert.match(welcome, /data-act="idle-claim"/);
+assert.match(welcome, new RegExp(`${long.credits.toLocaleString('en-US')}`));
+
+// The save check refuses an edited clock.
+assert.equal(isWarpcrewPlayer(player), true);
+assert.equal(isWarpcrewPlayer({ ...player, idle: { since: 'yesterday' } }), false);
+assert.equal(isWarpcrewPlayer({ ...player, idle: { since: -5 } }), false);
 
 console.log('idle: OK');

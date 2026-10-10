@@ -39,6 +39,9 @@ import { resolveRoutePayout } from './contractRewards.js';
 import { markExploreNudge, noteMapJump } from './exploreNudge.js';
 import { claimAchievement } from './achievements.js';
 import { claimCalendar } from './calendar.js';
+import { startIdleClock, claimIdle, formatHoldSpan, holdPercent, WELCOME_BACK_MS } from './idle.js';
+import { openDailyChest, openWeeklyChest } from './chests.js';
+import { mapJumps } from './exploreNudge.js';
 
 export function prepareSession(player, now = trustedNow()) {
   let next = ensureDailyLoop(player, now);
@@ -54,6 +57,8 @@ export function prepareSession(player, now = trustedNow()) {
   next = completeShipBuild(next, now).player;
   next = dockRepair(next, now);
   next = syncCommission(next, now);
+  // Income while away starts once the tutorial is over (Phase 2 §4).
+  if (!isTutorialActive(next)) next = startIdleClock(next, now);
   return evaluateStarterOffer(next, now);
 }
 
@@ -718,6 +723,27 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     effect = { kind: 'reward', source: 'calendar', title: `Day ${res.day} of 28`, subtitle: hire ? `${hire.name} joins the crew` : 'Login calendar',
       art: res.hired ? 'art/pixel/ui/merc-pod.png' : null, rewards: res.reward, crew: hire };
     if (res.hired) player = prepareSession(player, now);
+  } else if (act === 'idle-claim') {
+    if (isTutorialActive(player)) return fail('tutorial_contract_required');
+    const res = claimIdle(player, now);
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    const { hours, full, awayMs } = res.haul;
+    events.push(event('idle_claimed', { minutes: Math.round(hours * 60), credits: res.reward.credits || 0, medals: res.reward.medals || 0, full }));
+    effect = { kind: 'reward', source: 'idle', title: awayMs >= WELCOME_BACK_MS ? 'Welcome back, Captain' : 'Hold collected',
+      subtitle: `${formatHoldSpan(hours)} at your stations · hold ${full ? 'full' : `${holdPercent(res.haul)}% full`}`,
+      art: 'art/pixel/ui/hold.png', rewards: res.reward };
+  } else if (act === 'chest-open') {
+    if (isTutorialActive(player)) return fail('tutorial_contract_required');
+    const res = data.kind === 'weekly' ? openWeeklyChest(player, { now }) : openDailyChest(player, { now });
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    events.push(event('chest_opened', { kind: res.kind, gems: res.reward.gems || 0, shard: Boolean(res.shard) }));
+    const merc = res.shard ? [...(player.crew || []), ...(player.reserve || [])].find(m => m.instanceId === res.shard.instanceId) : null;
+    effect = { kind: 'reward', source: 'chest', title: res.kind === 'weekly' ? 'Weekly chest' : 'Daily chest',
+      subtitle: res.kind === 'weekly' ? 'Five daily chests this week' : "Today's orders done",
+      art: `art/pixel/ui/chest-${res.kind}-open.png`, rewards: res.reward,
+      shard: merc ? { name: merc.name || catalogById(merc.templateId)?.name || 'Crew', portrait: portraitFor(merc.templateId), amount: res.shard.amount } : null };
   } else if (act === 'achievement-claim') {
     if (isTutorialActive(player)) return fail('improvements_locked');
     const res = claimAchievement(player, data.id);
@@ -821,6 +847,9 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     if (ui.pendingCombat?.tutorialFight) return fail('tutorial_contract_required');
     nextUi.pendingCombat = null;
   } else return null;
+  // Daily orders (Phase 2 §3): a star-map jump and a won fight count however they happened.
+  if (mapJumps(player) > mapJumps(before)) milestone('jump');
+  if ((player.stats?.combatsWon || 0) > (before.stats?.combatsWon || 0)) milestone('win');
   if (before.tutorial?.phase !== player.tutorial?.phase) events.push(event('tutorial_stage', { script: player.tutorial.script, phase: player.tutorial.phase, elapsedSeconds: elapsed(player.createdAt, now) }));
   return { ok: true, player, ui: nextUi, events, effect };
 }

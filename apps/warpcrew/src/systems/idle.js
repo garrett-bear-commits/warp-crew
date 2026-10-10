@@ -12,7 +12,8 @@ import { grant } from './economy.js';
 import { trustedNow } from '../shared/time.js';
 
 const HOUR = 3600000;
-export const IDLE_RATES = { creditsPerStation: 12, roleBonus: 4, perCrewLevel: 0.5, engineeringMedalsPerHour: 0.5 };
+// Tuned in the 30-day sim: three staffed stations at level 1 earn about one contract's credits in 8 hours.
+export const IDLE_RATES = { creditsPerStation: 5, roleBonus: 2, perCrewLevel: 0.25, engineeringMedalsPerHour: 0.5 };
 export const HOLD_HOURS = { base: 8, perCargoLevel: 1, max: 16 };
 /** Less than this and there is nothing to collect yet (no claim screen for a quick tab switch). */
 export const IDLE_MIN_MS = 5 * 60000;
@@ -52,9 +53,13 @@ export function idleHaul(player, now = trustedNow()) {
   return { hours, capHours: cap, full: ms >= cap * HOUR, credits, medals, ready: ms >= IDLE_MIN_MS && credits + medals > 0, awayMs: Math.max(0, now - since) };
 }
 
-/** Start the clock (after the tutorial) without paying anything. */
+/**
+ * Start the clock (after the tutorial) without paying anything. A clock that ran backwards (a start time later than
+ * now) restarts at now, so the hold never waits on a time that has not come yet; that only ever loses income.
+ */
 export function startIdleClock(player, now = trustedNow()) {
-  if (Number.isFinite(Number(player?.idle?.since))) return player;
+  const since = Number(player?.idle?.since);
+  if (player?.idle && Number.isFinite(since) && since <= now) return player;
   return { ...player, idle: { since: now } };
 }
 
@@ -64,4 +69,17 @@ export function claimIdle(player, now = trustedNow()) {
   if (!haul.ready) return { ok: false, reason: Number.isFinite(Number(player?.idle?.since)) ? 'hold_empty' : 'idle_not_started' };
   const reward = { ...(haul.credits ? { credits: haul.credits } : {}), ...(haul.medals ? { medals: haul.medals } : {}) };
   return { ok: true, reward, haul, player: { ...player, wallet: grant(player.wallet, reward), idle: { since: now } } };
+}
+
+/** "8 h", "2 h 15 min", "30 min": how long the stations ran, for the claim screens. */
+export function formatHoldSpan(hours) {
+  const minutes = Math.floor(Math.max(0, hours) * 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
+}
+
+/** How full the hold is, 0..100. */
+export function holdPercent(haul) {
+  return haul.full ? 100 : Math.round((haul.hours / haul.capHours) * 100);
 }

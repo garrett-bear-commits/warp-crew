@@ -54,6 +54,8 @@ import { starterOfferState, starterValue, wallPackState, packValue, gemLadderVal
 import { productArt } from './rewardReveal.js';
 import { achievementProgress, claimableAchievements, ACHIEVEMENT_TRACKS } from '../systems/achievements.js';
 import { calendarState, CALENDAR_REWARDS, CALENDAR_MILESTONES, CALENDAR_LENGTH } from '../systems/calendar.js';
+import { idleHaul, formatHoldSpan, holdPercent } from '../systems/idle.js';
+import { chestState, chestOdds } from '../systems/chests.js';
 import { COMMISSION, commissionActive, priceCents, usableTerms } from '../systems/subscription.js';
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS, GEM_LADDER } from '../systems/iap.js';
@@ -587,6 +589,7 @@ function patchShell(root, ctx) {
   const eventModal = !player.flags?.splashSeen ? '' : ctx.activeEventView ? renderEventCard(ctx.activeEventView, { hint: nudges.eventHint }) : ctx.eventResult ? renderEventResult(ctx.eventResult) : '';
   const baseModal = ctx.hireReveal ? renderHireReveal(ctx.hireReveal) : ctx.hireOddsOpen ? renderHireOdds(player, now)
     : ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal
+    || (ctx.welcomeBackOpen && player.flags?.splashSeen && !isTutorialActive(player) && idleHaul(player, now).ready ? renderWelcomeBack(player, now) : '')
     || (ctx.calendarOpen && player.flags?.splashSeen && !isTutorialActive(player) ? renderCalendar(player, now) : '') || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
   const wallPack = wallPackState(player, currentWall(player, now));
@@ -724,7 +727,7 @@ export function renderNav(tab, player, expReady, tabs, step, crewAttentionSeen =
     crew: tab !== 'crew' && !crewAttentionSeen && player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha')
       && ((player.crew || []).length < (player.crewSlots || 0) || (player.reserve || []).length < RESERVE_CAP),
     missions: expReady,
-    log: tab !== 'log' && (claimableAchievements(player) > 0 || (!isTutorialActive(player) && calendarState(player).canClaim)),
+    log: tab !== 'log' && (claimableAchievements(player) > 0 || (!isTutorialActive(player) && (calendarState(player).canClaim || chestState(player).daily.ready || chestState(player).weekly.ready))),
   };
   return renderCommandBar(tab, player, expReady, ids, { spotlight: step?.spotlight || null, badges });
 }
@@ -792,6 +795,7 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
   const showHangar = isFeatureUnlocked(player, 'hangar');
   return `
       ${!selectedRoom && showHangar ? `<button class="ship-chip" data-act="select-room" data-room="hangar">${escapeHtml(def.name)}</button>` : ''}
+      ${isHome && !selectedRoom && !player.activeEncounter ? renderHoldChip(player, now) : ''}
       ${isHome && !selectedRoom && !isTutorialActive(player) ? renderSessionGuidance(player, now) : ''}
       ${room ? renderRoomSheet(player, room, fuel, now) : ''}
       ${selectedRoom === 'hangar' && showHangar ? renderHangarSheet(player) : ''}
@@ -1899,6 +1903,40 @@ export function renderRestartSaveConfirm() {
   return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Restart save confirmation"><h2>Restart your save?</h2><p>This erases this browser's Warp Crew progress and starts you over from the very beginning. Your Jest account stays signed in. This cannot be undone.</p><button class="danger" data-act="restart-save-confirm">Erase progress and restart</button><button data-act="restart-save-cancel">Keep my save</button></section></div>`;
 }
 
+/** The ship's hold (Phase 2 §4): what the stations earned while you were away, and a tap to collect it. */
+export function renderHoldChip(player, now = trustedNow()) {
+  if (isTutorialActive(player) || !player?.idle) return '';
+  const haul = idleHaul(player, now);
+  const pct = holdPercent(haul);
+  const amount = haul.credits ? `+${haul.credits.toLocaleString('en-US')}` : 'Hold';
+  const label = haul.ready ? `Collect the hold: ${haul.credits} credits${haul.medals ? `, ${haul.medals} medals` : ''}, ${pct}% full` : `Hold ${pct}% full`;
+  return `<button type="button" class="hold-chip${haul.full ? ' is-full' : ''}${haul.ready ? ' is-ready' : ''}" ${haul.ready ? 'data-act="idle-claim"' : 'disabled'} aria-label="${escapeHtml(label)}">
+    <img src="${artUrl('art/pixel/ui/hold.png')}" alt="" /><span class="hold-amt">${escapeHtml(amount)}</span>
+    <span class="hold-bar" aria-hidden="true"><i style="width:${pct}%"></i></span><span class="hold-pct">${haul.full ? 'Full' : `${pct}%`}</span>
+  </button>`;
+}
+
+/** Welcome back, Captain: after an hour or more away, the haul and how full the hold got. */
+export function renderWelcomeBack(player, now = trustedNow()) {
+  const haul = idleHaul(player, now);
+  const pct = holdPercent(haul);
+  const lines = [haul.credits ? `<li><img src="${ICONS.credits}" alt="" /><b>+${haul.credits.toLocaleString('en-US')}</b> credits</li>` : '',
+    haul.medals ? `<li><img src="${ICONS.medals}" alt="" /><b>+${haul.medals.toLocaleString('en-US')}</b> medals</li>` : ''].join('');
+  return `<div class="modal-backdrop welcome-backdrop">
+    <section class="welcome-sheet" role="dialog" aria-modal="true" aria-label="Welcome back">
+      <img class="welcome-art" src="${artUrl('art/pixel/cinematic/v2/welcome-back.png')}" alt="" />
+      <span class="modal-kicker">Away ${escapeHtml(formatHoldSpan((haul.awayMs || 0) / 3600000))}</span>
+      <h2>Welcome back, Captain</h2>
+      <p>Your crew kept the stations running for ${escapeHtml(formatHoldSpan(haul.hours))}.</p>
+      <ul class="welcome-haul">${lines}</ul>
+      <div class="welcome-hold"><span>Hold</span><span class="hold-bar"><i style="width:${pct}%"></i></span><b>${haul.full ? 'Full' : `${pct}%`}</b></div>
+      ${haul.full ? `<p class="muted">A full hold stops earning. It holds ${haul.capHours} hours; each Cargo level adds 1.</p>` : ''}
+      <button class="primary" data-act="idle-claim">Collect</button>
+      <button data-act="welcome-close">Later</button>
+    </section>
+  </div>`;
+}
+
 /** The login calendar sheet (Phase 2 design §2): 28 squares, today's glowing, the day-28 hire pod. */
 export function renderCalendar(player, now = trustedNow()) {
   const state = calendarState(player, now);
@@ -1953,34 +1991,59 @@ export function renderAchievements(player) {
   return `<div class="panel achievements-panel"><h2>Achievements${ready ? ` · ${ready} to claim` : ''}</h2><ul class="ach-list">${rows}</ul></div>`;
 }
 
+/** A chest's "Possible contents": the fixed part and each bonus with its odds (Jest's rule for random rewards). */
+function renderChestOdds(kind) {
+  const odds = chestOdds(kind);
+  return `<details class="chest-odds"><summary>Possible contents</summary>
+    <p>Always: ${odds.fixed.map(item => escapeHtml(item.label)).join(', ')}.</p>
+    <p>Plus one of:</p><ul>${odds.bonus.map(item => `<li><span>${escapeHtml(item.label)}</span><b>${item.chance}%</b></li>`).join('')}</ul>
+  </details>`;
+}
+
+/** The day's orders (Phase 2 §3): five tasks worth points toward the daily chest, and the weekly chest. */
+export function renderOrders(player, now = trustedNow()) {
+  const plan = dailyPlan(player, now);
+  const state = ensureDailyLoop(player, now).dailyLoop;
+  const chests = chestState(player, now);
+  const pct = Math.min(100, Math.round((plan.points / plan.goal) * 100));
+  const rows = DAILY_MILESTONES.map(m => {
+    const done = state[m.id] === true;
+    return `<div class="week-row ${done ? 'done' : ''}"><span class="mark">${done ? '●' : '○'}</span><span>${escapeHtml(m.label)}</span><span class="prog">${done ? 'Done' : `+${m.points}`}</span></div>`;
+  }).join('');
+  const tutorial = isTutorialActive(player);
+  const daily = chests.daily;
+  const weekly = chests.weekly;
+  const dailyAction = tutorial ? '' : daily.ready ? '<button class="primary" data-act="chest-open" data-kind="daily">Open</button>'
+    : daily.opened ? '<span class="muted">Opened · new orders tomorrow</span>' : `<span class="muted">${Math.min(plan.points, plan.goal)} / ${plan.goal} points</span>`;
+  const weeklyAction = tutorial ? '' : weekly.ready ? '<button class="primary" data-act="chest-open" data-kind="weekly">Open</button>'
+    : weekly.opened ? '<span class="muted">Opened · next one from Monday</span>' : `<span class="muted">${weekly.count} / ${weekly.goal} daily chests</span>`;
+  return `<div class="panel orders-panel">
+    <h2>Daily orders · ${Math.min(plan.points, plan.goal)}/${plan.goal}</h2>
+    <div class="orders-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${plan.goal}" aria-valuenow="${Math.min(plan.points, plan.goal)}"><span style="width:${pct}%"></span></div>
+    ${rows}
+    <div class="chest-row${daily.ready ? ' is-ready' : ''}"><img src="${artUrl(daily.opened ? 'art/pixel/ui/chest-daily-open.png' : 'art/pixel/ui/chest-daily.png')}" alt="" />
+      <div><b>Daily chest</b><small>Free with ${plan.goal} points of orders</small></div>${dailyAction}</div>
+    ${renderChestOdds('daily')}
+    <div class="chest-row${weekly.ready ? ' is-ready' : ''}"><img src="${artUrl(weekly.opened ? 'art/pixel/ui/chest-weekly-open.png' : 'art/pixel/ui/chest-weekly.png')}" alt="" />
+      <div><b>Weekly chest</b><small>Open ${weekly.goal} daily chests this week (Monday to Sunday) <span class="chest-pips" aria-label="${weekly.count} of ${weekly.goal}">${'●'.repeat(weekly.count)}${'○'.repeat(weekly.goal - weekly.count)}</span></small></div>${weeklyAction}</div>
+    ${renderChestOdds('weekly')}
+  </div>`;
+}
+
 export function renderLog(player, log, goals) {
   const prog = storyProgress(player);
-  const goalsDone = goals.goals.filter((g) => g.done).length;
   const collected = new Set((player.crew || []).map((c) => c.templateId)).size;
   const rank = reputationRank(player.wallet.reputation || 0);
   const cal = calendarState(player);
   return `
-    ${isTutorialActive(player) ? '' : `<div class="panel calendar-row"><img src="${artUrl(cal.canClaim ? 'art/pixel/ui/chest-daily.png' : 'art/pixel/ui/chest-daily-open.png')}" alt="" />
+    ${isTutorialActive(player) ? '' : `<div class="panel calendar-row"><img src="${artUrl('art/pixel/ui/merc-pod.png')}" alt="" />
       <div><h2>Login calendar</h2><span class="muted">${cal.canClaim ? `Day ${cal.nextDay} of ${CALENDAR_LENGTH} is ready` : `Day ${cal.claimed} of ${CALENDAR_LENGTH} claimed · back tomorrow`}</span></div>
       <button class="${cal.canClaim ? 'primary' : ''}" data-act="calendar-open">${cal.canClaim ? 'Claim' : 'View'}</button></div>`}
-    <div class="panel"><h2>Daily plan · ${dailyPlan(player).completed}/3</h2>${DAILY_MILESTONES.map(m => {
-      const done = ensureDailyLoop(player).dailyLoop[m.id];
-      return `<div class="week-row ${done ? 'done' : ''}"><span class="mark">${done ? '●' : '○'}</span><span>${escapeHtml(m.label)}</span><span class="prog">${done ? 'Done' : ''}</span></div>`;
-    }).join('')}</div>
+    ${renderOrders(player)}
     ${renderAchievements(player)}
     <div class="panel">
       <h2>Career</h2>
-      <div class="muted">${escapeHtml(rank.label)} · Ch.${prog.chapter} · ${collected} mercs · ${goalsDone}/${goals.goals.length} week</div>
-    </div>
-    <div class="panel">
-      <h2>Week</h2>
-      ${goals.goals.map((g) => `
-        <div class="week-row ${g.done ? 'done' : ''}">
-          <span class="mark">${g.done ? '●' : '○'}</span>
-          <span>${escapeHtml(g.label)}</span>
-          <span class="prog">${escapeHtml(g.progress)}</span>
-        </div>
-      `).join('')}
+      <div class="muted">${escapeHtml(rank.label)} · Ch.${prog.chapter} · ${collected} mercs</div>
     </div>
     <div class="panel">
       <h2>Story</h2>

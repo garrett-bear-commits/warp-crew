@@ -107,7 +107,7 @@ assert.equal(player.dailyLoop.away, true);
 assert.equal(ui.tab, 'ship');
 assert.equal(ordersStep({ ...player, tutorial: { ...player.tutorial, ordersBeat: 'exp' } }), null);
 assert.equal(sessionHint(player, {}), null);
-assert.match(renderSessionGuidance(player), /1\/3|2\/3/);
+assert.match(renderSessionGuidance(player), /\b55\/100 · /);
 assert.doesNotMatch(renderSessionGuidance(player), /class="coach"/);
 assert.equal(events.some(x => x.event === 'travel'), false);
 assert.deepEqual(events.filter(x => x.event === 'tutorial_stage').map(x => x.fields.phase), ['launch', 'order', 'return', 'recruit', 'choose', 'away', 'done']);
@@ -118,7 +118,9 @@ assert.equal(player.dailyLoop.improve, false);
 player = { ...player, wallet: { ...player.wallet, credits: 10000 } };
 act('ship-upgrade', { system: 'engines' });
 assert.equal(player.dailyLoop.improve, true);
-assert.equal(renderSessionGuidance(player), '');
+// Five daily orders now: after contract, away team and an upgrade the chip points at the star map.
+assert.match(renderSessionGuidance(player), /data-view="explore"[^>]*>80\/100 · Make a jump on the star map/);
+assert.equal(renderSessionGuidance({ ...player, dailyLoop: { ...player.dailyLoop, jump: true, win: true, chest: true } }), '');
 act('ship-upgrade', { system: 'engines' });
 assert.equal(events.filter(x => x.event === 'daily_plan_progress' && x.fields.milestone === 'improve').length, 1);
 
@@ -149,7 +151,10 @@ for (let i = 0; i < 200 && !player.activeEncounter.result; i++) {
   act(order ? 'encounter-order' : 'encounter-advance', { acceptanceId: player.activeEncounter.acceptanceId, revision: player.activeEncounter.revision, order });
 }
 assert.equal(player.activeTravelFight.stage, 'return');
-assert.equal(events.at(-1).event, 'combat');
+// The winning beat ends the fight, then counts the day's "win a fight" order.
+assert.equal(events.findLast(x => x.event !== 'daily_plan_progress').event, 'combat');
+assert.equal(player.dailyLoop.win, true);
+assert.deepEqual(events.at(-1).fields.milestone, 'win');
 act('travel-claim', { acceptanceId: player.activeTravelFight.fightId, revision: player.activeTravelFight.revision });
 assert.equal(player.activeTravelFight, null);
 assert.equal(player.location, 'lane_a');

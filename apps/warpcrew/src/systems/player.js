@@ -76,7 +76,7 @@ export function createNewPlayer({ captainName = 'Captain', tutorialScript = 5, n
     contractBoard: null,
     activeContract: null,
     activeEncounter: null,
-    dailyLoop: { dayKey: null, contract: false, improve: false, away: false },
+    dailyLoop: { dayKey: null, contract: false, improve: false, away: false, jump: false, win: false, chest: false },
     location: 'station_home',
     flags: {},
     gacha: defaultGacha(),
