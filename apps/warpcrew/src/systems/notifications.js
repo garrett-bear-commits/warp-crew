@@ -8,6 +8,7 @@
  *  - wc_expedition_done
  *  - wc_daily_pull
  *  - wc_comeback_d1 / d3
+ *  - wc_hold_full (income while away; skipped on a day another timed notice already lands, see holdFullAt)
  */
 
 import { trustedNow } from '../shared/time.js';
@@ -18,6 +19,9 @@ import {
 } from '../shared/platform.js';
 import { fuelStatus } from './fuel.js';
 import { MS_PER_HOUR } from '../shared/timer.js';
+import { idleHaul, idleRates } from './idle.js';
+import { dayKey } from './daily.js';
+import { isTutorialActive } from './tutorial.js';
 
 export const NOTIF_IDS = {
   fuelFull: 'wc_fuel_full',
@@ -26,6 +30,7 @@ export const NOTIF_IDS = {
   comebackD1: 'wc_comeback_d1',
   comebackD3: 'wc_comeback_d3',
   shipBuildDone: 'wc_ship_build_done',
+  holdFull: 'wc_hold_full',
 };
 
 async function safeSchedule(opts) {
@@ -44,18 +49,38 @@ async function safeUnschedule(id) {
   }
 }
 
-/** Call whenever fuel state changes or on boot after claim. */
-export async function syncFuelFullNotification(player, now = trustedNow()) {
+/** When the tank will be full (ms), or null when it already is. Clamped to Jest's exact window (~7 days). */
+export function fuelFullAt(player, now = trustedNow()) {
   const st = fuelStatus(player, now);
-  await safeUnschedule(NOTIF_IDS.fuelFull);
-  if (st.isFull || st.current >= st.max) return;
-
-  // Exact schedule when we expect tank full
+  if (st.isFull || st.current >= st.max) return null;
   const unitsNeeded = st.max - st.current;
   const rate = st.ratePerHour || 1;
   const msUntilFull = (unitsNeeded / rate) * MS_PER_HOUR;
-  // Clamp to Jest exact window (~7 days); fuel full is hours
-  const scheduledAt = new Date(now + Math.max(60_000, Math.min(msUntilFull, 6.5 * 24 * MS_PER_HOUR)));
+  return now + Math.max(60_000, Math.min(msUntilFull, 6.5 * 24 * MS_PER_HOUR));
+}
+
+/**
+ * When the hold fills (ms), or null: no clock yet, nobody earning, already full, or another timed notice (fuel
+ * full, away team back, drydock done) lands on the same game day, so this never adds a second message that day.
+ */
+export function holdFullAt(player, now = trustedNow()) {
+  if (isTutorialActive(player) || !player?.idle) return null;
+  const haul = idleHaul(player, now);
+  if (haul.full) return null;
+  const rates = idleRates(player, now);
+  if (!rates.credits && !rates.medals) return null;
+  const at = Math.max(now + 60_000, Number(player.idle.since) + haul.capHours * MS_PER_HOUR);
+  const others = [fuelFullAt(player, now), player.activeExpedition?.endAt, player.shipBuild?.endAt].filter(Number.isFinite);
+  if (others.some(t => dayKey(t) === dayKey(at))) return null;
+  return at;
+}
+
+/** Call whenever fuel state changes or on boot after claim. */
+export async function syncFuelFullNotification(player, now = trustedNow()) {
+  await safeUnschedule(NOTIF_IDS.fuelFull);
+  const fullAt = fuelFullAt(player, now);
+  if (!fullAt) return;
+  const scheduledAt = new Date(fullAt);
 
   await safeSchedule({
     identifier: NOTIF_IDS.fuelFull,
@@ -159,11 +184,27 @@ export async function syncComebackSeries(player) {
   });
 }
 
+/** The hold is full: income stops until the captain collects it. */
+export async function syncHoldFullNotification(player, now = trustedNow()) {
+  await safeUnschedule(NOTIF_IDS.holdFull);
+  const at = holdFullAt(player, now);
+  if (!at) return;
+  await safeSchedule({
+    identifier: NOTIF_IDS.holdFull,
+    scheduledAt: new Date(at),
+    priority: 'medium',
+    body: 'The hold is full, Captain. Your crew has credits waiting.',
+    ctaText: 'Collect',
+    entryPayload: { notification_type: 'hold_full', notification_template: 'wc_hold_full_v1' },
+  });
+}
+
 /** Full resync — call on boot and after major state changes. */
 export async function syncAllNotifications(player, now = trustedNow()) {
   await syncFuelFullNotification(player, now);
   await syncExpeditionNotification(player, now);
   await syncShipBuildNotification(player, now);
+  await syncHoldFullNotification(player, now);
   await syncDailyPullNotification(player);
   await syncComebackSeries(player);
   if (!isReal()) {

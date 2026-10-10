@@ -6,7 +6,7 @@ import { createNewPlayer } from '../src/systems/player.js';
 import { markDailyMilestone, MILESTONES } from '../src/systems/dailyLoop.js';
 import { CHESTS, WEEKLY_CHEST_GOAL, chestOdds, chestState, weekKey, rollChest, openDailyChest, openWeeklyChest } from '../src/systems/chests.js';
 import { sessionAction } from '../src/systems/sessionLoop.js';
-import { renderOrders, renderNav } from '../src/ui/bridge.js';
+import { renderOrders, renderNav, renderNoticeStrip } from '../src/ui/bridge.js';
 import { renderDailyPlan } from '../src/ui/contractView.js';
 import { dailyPlan } from '../src/systems/dailyLoop.js';
 import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
@@ -95,5 +95,13 @@ assert.match(renderDailyPlan(dailyPlan(markDailyMilestone(completeFreshTutorial(
 assert.match(renderDailyPlan(dailyPlan(MILESTONES.slice(0, 3).reduce((p, m) => markDailyMilestone(p, m.id, monday), completeFreshTutorial()), monday)),
   /data-act="mission-view" data-view="explore"/);
 assert.doesNotMatch(renderOrders(fresh, monday), /data-act="chest-open"/, 'no chest button during the tutorial');
+
+// The hub notice strip: the ready chest (and anything else waiting), nothing during the tutorial or once opened.
+const calDone = { cycle: 1, claimed: 1, lastDay: '2026-10-12' };
+assert.match(renderNoticeStrip({ ...player, calendar: calDone }, monday), /data-act="chest-open" data-kind="daily"/);
+assert.match(renderNoticeStrip({ ...player, calendar: { cycle: 1, claimed: 1, lastDay: '2026-10-11' } }, monday), /data-act="calendar-open"/);
+assert.equal(renderNoticeStrip(done(fresh), monday), '');
+assert.doesNotMatch(renderNoticeStrip({ ...opened.player, calendar: calDone }, monday), /chest-open/);
+assert.match(renderNoticeStrip({ ...weekly.player, calendar: calDone, stats: { ...weekly.player.stats, combatsWon: 10 } }, monday + 4 * DAY), /data-tab="log"/, 'an achievement to claim opens the Log');
 
 console.log('chests: OK');

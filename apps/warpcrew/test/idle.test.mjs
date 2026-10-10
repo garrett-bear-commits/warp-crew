@@ -7,6 +7,7 @@ import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 import { prepareSession, sessionAction } from '../src/systems/sessionLoop.js';
 import { isWarpcrewPlayer } from '../src/core/progress.js';
 import { renderHoldChip, renderWelcomeBack } from '../src/ui/bridge.js';
+import { holdFullAt, fuelFullAt, NOTIF_IDS } from '../src/systems/notifications.js';
 
 const HOUR = 3600000;
 const t0 = Date.UTC(2026, 9, 10, 8);
@@ -90,5 +91,17 @@ assert.match(welcome, new RegExp(`${long.credits.toLocaleString('en-US')}`));
 assert.equal(isWarpcrewPlayer(player), true);
 assert.equal(isWarpcrewPlayer({ ...player, idle: { since: 'yesterday' } }), false);
 assert.equal(isWarpcrewPlayer({ ...player, idle: { since: -5 } }), false);
+
+// "Hold full" text notice: when the hold fills, never during the tutorial or once full, and never on a day another
+// timed notice already lands (Jest sends at most one a day).
+assert.equal(NOTIF_IDS.holdFull, 'wc_hold_full');
+const tankFull = { ...player, activeExpedition: null, shipBuild: null, wallet: { ...player.wallet, fuel: player.fuelMax || 10 } };
+assert.equal(fuelFullAt(tankFull, t0), null);
+assert.equal(holdFullAt(tankFull, t0 + HOUR), t0 + 8 * HOUR, 'fills 8 hours after the clock started');
+assert.equal(holdFullAt(tankFull, t0 + 9 * HOUR), null, 'already full');
+assert.equal(holdFullAt(intro, t0), null, 'no notice during the tutorial');
+assert.equal(holdFullAt({ ...tankFull, stationAssignments: {} }, t0 + HOUR), null, 'nobody earning');
+assert.equal(holdFullAt({ ...tankFull, activeExpedition: { endAt: t0 + 7 * HOUR } }, t0 + HOUR), null, 'the away team notice that day wins');
+assert.equal(holdFullAt({ ...tankFull, activeExpedition: { endAt: t0 + 30 * HOUR } }, t0 + HOUR), t0 + 8 * HOUR, 'a notice on another day does not block it');
 
 console.log('idle: OK');

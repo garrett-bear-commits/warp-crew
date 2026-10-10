@@ -795,7 +795,7 @@ export function renderOverlays(player, { step, selectedRoom, fuel, now, tab, isH
   const showHangar = isFeatureUnlocked(player, 'hangar');
   return `
       ${!selectedRoom && showHangar ? `<button class="ship-chip" data-act="select-room" data-room="hangar">${escapeHtml(def.name)}</button>` : ''}
-      ${isHome && !selectedRoom && !player.activeEncounter ? renderHoldChip(player, now) : ''}
+      ${isHome && !selectedRoom && !player.activeEncounter ? renderHoldChip(player, now) + renderNoticeStrip(player, now) : ''}
       ${isHome && !selectedRoom && !isTutorialActive(player) ? renderSessionGuidance(player, now) : ''}
       ${room ? renderRoomSheet(player, room, fuel, now) : ''}
       ${selectedRoom === 'hangar' && showHangar ? renderHangarSheet(player) : ''}
@@ -1901,6 +1901,27 @@ export function renderQaSettings() {
 
 export function renderRestartSaveConfirm() {
   return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Restart save confirmation"><h2>Restart your save?</h2><p>This erases this browser's Warp Crew progress and starts you over from the very beginning. Your Jest account stays signed in. This cannot be undone.</p><button class="danger" data-act="restart-save-confirm">Erase progress and restart</button><button data-act="restart-save-cancel">Keep my save</button></section></div>`;
+}
+
+/**
+ * The hub's notice strip (Phase 2 §7): one button per thing waiting to be collected, newest kind last. The hold has
+ * its own chip (it pulses when full), so it is not repeated here; the wall pack shows only while its offer is live.
+ */
+export function renderNoticeStrip(player, now = trustedNow()) {
+  if (isTutorialActive(player)) return '';
+  const items = [];
+  const cal = calendarState(player, now);
+  if (cal.canClaim) items.push({ attrs: 'data-act="calendar-open"', icon: 'art/pixel/ui/merc-pod.png', label: `Login calendar: day ${cal.nextDay} is ready` });
+  const chests = chestState(player, now);
+  if (chests.daily.ready) items.push({ attrs: 'data-act="chest-open" data-kind="daily"', icon: 'art/pixel/ui/chest-daily.png', label: 'Daily chest ready' });
+  if (chests.weekly.ready) items.push({ attrs: 'data-act="chest-open" data-kind="weekly"', icon: 'art/pixel/ui/chest-weekly.png', label: 'Weekly chest ready' });
+  const ready = achievementProgress(player).find(line => line.ready);
+  if (ready) items.push({ attrs: 'data-tab="log"', icon: `art/pixel/ui/ach-${ready.track}.png`, label: `Achievement to claim: ${ready.title}` });
+  const wall = currentWall(player, now);
+  const pack = wallPackState(player, wall);
+  if (pack.active) items.push({ attrs: 'data-act="goto-shop"', icon: `art/pixel/ui/wall-${pack.wallId}.png`, label: `${pack.wallId[0].toUpperCase()}${pack.wallId.slice(1)} wall pack in the shop` });
+  if (!items.length) return '';
+  return `<nav class="notice-strip" aria-label="Ready to collect">${items.map(item => `<button type="button" class="notice-btn" ${item.attrs} aria-label="${escapeHtml(item.label)}" title="${escapeHtml(item.label)}"><img src="${artUrl(item.icon)}" alt="" /><i class="notice-dot" aria-hidden="true"></i></button>`).join('')}</nav>`;
 }
 
 /** The ship's hold (Phase 2 §4): what the stations earned while you were away, and a tap to collect it. */

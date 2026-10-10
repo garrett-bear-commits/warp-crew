@@ -49,7 +49,7 @@ for (const source of ['commission', 'purchase', 'expedition']) {
 }
 // Session claims (the login calendar, achievements) return a reward effect that main.js turns into a reveal.
 const session = readFileSync(new URL('../src/systems/sessionLoop.js', import.meta.url), 'utf8');
-for (const source of ['calendar', 'achievement']) assert.match(session, new RegExp(`kind: 'reward', source: '${source}'`), `${source} returns a reward effect`);
+for (const source of ['calendar', 'achievement', 'chest', 'idle']) assert.match(session, new RegExp(`kind: 'reward', source: '${source}'`), `${source} returns a reward effect`);
 assert.match(main, /effect\.kind === 'reward'[\s\S]{0,400}showReward\(/, 'reward effects raise a reveal');
 assert.doesNotMatch(main, /showToast\(\{ title: `Day \$\{daily\.bonus\.streak\} bonus`/, 'the login bonus is no longer a toast');
 
