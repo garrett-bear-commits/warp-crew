@@ -33,7 +33,7 @@ const twistLine = (offer) => {
 const PAY_LABEL = { credits: 'credits', medals: 'medals', gems: 'gems', reputation: 'rep', fuel: 'fuel' };
 const storyPay = (offer) => {
   const bits = Object.entries(offer.storyRewards || {}).filter(([, n]) => n > 0).map(([key, n]) => `+${n} ${PAY_LABEL[key] || key}`);
-  return bits.length ? `<p class="contract-story-pay">Story pay on a win: <b>${e(bits.join(' · '))}</b></p>` : '';
+  return bits.length ? `<p class="contract-story-pay">${offer.loyalty ? 'Their thanks on a win' : 'Story pay on a win'}: <b>${e(bits.join(' · '))}</b></p>` : '';
 };
 /** A story card's client, or a chapter boss's finale label. */
 const clientBanner = (offer) => {
@@ -42,8 +42,8 @@ const clientBanner = (offer) => {
   return `<div class="contract-client"><img src="${e(who.portrait)}" alt="" /><span><b>${e(who.name)}</b><small>${e(who.from || '')}</small></span></div>`;
 };
 const bossOf = (offer) => (offer.wall ? CHAPTERS.find(ch => ch.wall === offer.wall.id) : null);
-const cardLabel = (offer) => offer.story ? `Story · Chapter ${offer.story.chapter}` : bossOf(offer) ? `Chapter ${bossOf(offer).n} finale` : profileLabel(offer);
-const cardIcon = (offer) => (offer.story ? '★' : profileIcon(offer));
+const cardLabel = (offer) => offer.story ? `Story · Chapter ${offer.story.chapter}` : offer.loyalty ? 'Loyalty' : bossOf(offer) ? `Chapter ${bossOf(offer).n} finale` : profileLabel(offer);
+const cardIcon = (offer) => (offer.story ? '★' : offer.loyalty ? '♥' : profileIcon(offer));
 const rewardLabel = (offer) => offer.rewardBand?.label || offer.primaryReward || offer.rewardLabel || 'Reward unavailable';
 const trait = (value) => value ? `<p class="contract-consequence contract-favored"><b>Favored: ${e(value.label)}</b>${value.why ? `<span> · ${e(value.why)}</span>` : ''}</p>` : '';
 const reason = (value) => value ? `<p class="contract-consequence">${e(value)}</p>` : '';
@@ -71,7 +71,7 @@ export function renderContractBoard(model = {}) {
     const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${cardLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, Possible payout now: ${rewardLabel(offer)}${odds ? `, Fight ${odds.label}, ${odds.text}` : ''}`;
     const art = offer.client ? null : PROFILE_ART[offer.profile];
     const siege = offer.wall ? renderSiegeMeter(offer.wall) : '';
-    return `<article class="contract-card${offer.completed ? ' is-completed' : ''}${offer.wall ? ' is-wall' : ''}${offer.story ? ' is-story' : ''}" data-profile="${e(offer.story ? 'story' : offer.wall ? 'wall' : offer.profile)}">
+    return `<article class="contract-card${offer.completed ? ' is-completed' : ''}${offer.wall ? ' is-wall' : ''}${offer.story ? ' is-story' : ''}${offer.loyalty ? ' is-loyalty' : ''}" data-profile="${e(offer.story ? 'story' : offer.loyalty ? 'loyalty' : offer.wall ? 'wall' : offer.profile)}">
       <div class="contract-banner">
         <p class="contract-profile"><span aria-hidden="true">${cardIcon(offer)}</span> ${e(cardLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
         ${art ? `<img class="contract-art" src="${e(art)}" alt="" />` : ''}${clientBanner(offer)}

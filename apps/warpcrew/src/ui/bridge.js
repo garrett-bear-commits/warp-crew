@@ -37,6 +37,8 @@ import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatVie
 import { renderRewardReveal } from './rewardReveal.js';
 import { renderTransmission } from './transmission.js';
 import { campaignState, campaignLog } from '../systems/campaign.js';
+import { hasBond, loyaltyLevel, openedScenes, pendingScenes, bondTransmission, LOYALTY } from '../systems/loyalty.js';
+import { BONDS } from '../data/bonds.js';
 import { NEXT_CHAPTER } from '../data/campaign.js';
 import { unlockSfx } from './juice.js';
 import { isSfxMuted } from './sound.js';
@@ -1005,6 +1007,25 @@ function dossierStory(c) {
   return move || quote || history || familyLine ? `<div class="dossier-story">${move}${familyLine}${quote}${history}</div>` : '';
 }
 
+/** Loyalty (Phase 3 §5): the bond meter, the scenes it has opened (to play or replay) and the Loyal line. */
+function dossierBond(player, c) {
+  if (c.isCaptain || !hasBond(c.templateId)) return '';
+  const level = loyaltyLevel(player, c.templateId);
+  const pct = Math.round((level.points / LOYALTY.max) * 100);
+  const seen = new Set(player.almanac?.seen || []);
+  const scenes = openedScenes(player, c.templateId).map(id => {
+    const tx = bondTransmission(id);
+    return `<button type="button" class="bond-scene${seen.has(id) ? '' : ' is-new'}" data-act="${seen.has(id) ? 'tx-replay' : 'bond-scene'}" data-id="${escapeHtml(id)}">${escapeHtml(tx.kicker)} · ${escapeHtml(tx.title)}</button>`;
+  }).join('');
+  const next = level.id === 'loyal' ? `“${escapeHtml(BONDS[c.templateId].bark)}”`
+    : level.id === 'ready' ? 'Their personal job is on the Contract Board.'
+    : `${level.next - level.points} more to ${level.next === LOYALTY.trusted ? 'Trusted' : level.next === LOYALTY.close ? 'Close' : 'their personal job'}. Every contract aboard counts.`;
+  return `<div class="dossier-bond${level.id === 'loyal' ? ' is-loyal' : ''}"><span class="modal-kicker">Bond · ${escapeHtml(level.label)}</span>
+    <div class="bond-bar" role="meter" aria-label="Loyalty" aria-valuemin="0" aria-valuemax="${LOYALTY.max}" aria-valuenow="${level.points}"><span style="width:${pct}%"></span>
+      ${[LOYALTY.trusted, LOYALTY.close, LOYALTY.mission].map(mark => `<i style="left:${Math.round((mark / LOYALTY.max) * 100)}%"></i>`).join('')}</div>
+    <p class="muted">${next}</p>${scenes ? `<div class="bond-scenes">${scenes}</div>` : ''}</div>`;
+}
+
 /** Stars, the level cap, shards and the next Ascension step. */
 function dossierGrowth(player, c) {
   const status = ascensionStatus(c, player.wallet);
@@ -1035,6 +1056,7 @@ function renderDossier(player, id) {
           <button class="icon-close" data-act="close-crew" aria-label="Close">×</button>
         </div>
         ${dossierStory(c)}
+        ${dossierBond(player, c)}
         ${dossierGrowth(player, c)}
         <div class="row" style="margin-top:10px;flex-direction:column">
           ${c.status !== 'expedition' ? (c.level >= levelCap(c)
@@ -1927,6 +1949,12 @@ export function renderNoticeStrip(player, now = trustedNow()) {
   if (chests.weekly.ready) items.push({ attrs: 'data-act="chest-open" data-kind="weekly"', icon: 'art/pixel/ui/chest-weekly.png', label: 'Weekly chest ready' });
   const ready = achievementProgress(player).find(line => line.ready);
   if (ready) items.push({ attrs: 'data-tab="log"', icon: `art/pixel/ui/ach-${ready.track}.png`, label: `Achievement to claim: ${ready.title}` });
+  // A bond scene a merc has opened (Phase 3 §5): one at a time, the oldest first.
+  const scene = pendingScenes(player)[0];
+  if (scene) {
+    const merc = catalogById(scene.split('_').slice(1, -1).join('_'));
+    items.push({ attrs: `data-act="bond-scene" data-id="${escapeHtml(scene)}"`, icon: 'art/pixel/ui/loyalty.png', label: `${merc?.name || 'Your crew'} wants a word` });
+  }
   const wall = currentWall(player, now);
   const pack = wallPackState(player, wall);
   if (pack.active) items.push({ attrs: 'data-act="goto-shop"', icon: `art/pixel/ui/wall-${pack.wallId}.png`, label: `${pack.wallId[0].toUpperCase()}${pack.wallId.slice(1)} wall pack in the shop` });

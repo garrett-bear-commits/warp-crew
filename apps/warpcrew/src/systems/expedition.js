@@ -9,6 +9,7 @@ import { scaleSitePayout, grant } from './economy.js';
 import { noteTutorialEvent } from './tutorial.js';
 import { galaxyUnlocked } from '../data/galaxies.js';
 import { settleIdle } from './idle.js';
+import { addLoyalty, LOYALTY } from './loyalty.js';
 
 /** Test cadence — set to 360 for launch (6h) */
 export const TEST_EXPEDITION_MINUTES = 15;
@@ -208,6 +209,8 @@ export function applyExpeditionResult(player, result, { now = trustedNow() } = {
   if (result.success) nextPlayer = grantCrewXp(nextPlayer, result.crewInstanceIds, 18);
   else if (!result.aborted) nextPlayer = applyCrewInjury(nextPlayer, result.crewInstanceIds, injuryMinutesFor(nextPlayer, 18), now);
   nextPlayer = noteTutorialEvent(nextPlayer, 'expedition_done').player;
+  // The away team earns loyalty (Phase 3 §5); the scenes it opens wait on the notice strip.
+  nextPlayer = addLoyalty(nextPlayer, player.crew.filter(c => result.crewInstanceIds.includes(c.instanceId) && !c.isCaptain).map(c => c.templateId), LOYALTY.away).player;
   // The away team earns at its stations only from its return (Phase 2 §4).
   return { ok: true, player: settleIdle(player, nextPlayer, now), result };
 }

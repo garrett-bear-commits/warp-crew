@@ -3592,3 +3592,15 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .campaign-ticks { display: flex; gap: 6px; }
 .campaign-ticks i { width: 12px; height: 12px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); }
 .campaign-ticks i.on { background: #f1b66b; box-shadow: 0 0 6px rgba(241, 182, 107, 0.6); }
+
+/* Phase 3: loyalty in the dossier and on the board. */
+.dossier-bond { display: grid; gap: 6px; margin-top: 10px; padding: 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); }
+.dossier-bond.is-loyal { border-color: #f1b66b; }
+.bond-bar { position: relative; height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.bond-bar span { display: block; height: 100%; background: linear-gradient(90deg, #ff8fa3, #f1b66b); }
+.bond-bar i { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(4, 8, 16, 0.8); }
+.bond-scenes { display: flex; flex-wrap: wrap; gap: 6px; }
+.bond-scene { min-height: 44px; font-size: 14px; }
+.bond-scene.is-new { border-color: #ff8fa3; box-shadow: 0 0 10px -2px #ff8fa3; }
+.contract-card.is-loyalty { border-color: #ff8fa3; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 22px -8px #ff8fa3; }
+.contract-card.is-loyalty .contract-profile { color: #ff8fa3; }

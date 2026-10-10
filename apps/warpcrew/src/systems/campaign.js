@@ -20,6 +20,7 @@ import { grant } from './economy.js';
 import { applyStoryFlag, storyProgress } from './story.js';
 import { applyPullToRoster, recordPull, defaultGacha } from './gacha.js';
 import { wallsApply, wallBeaten } from './walls.js';
+import { isTransmissionId } from './transmissions.js';
 
 const MISSION_IDS = Object.keys(MISSIONS);
 const SINCE_MAX = 999;
@@ -63,12 +64,12 @@ export function validCampaign(saved) {
 /** Transmission ids the captain has been shown (played or queued). */
 export function seenTransmissions(player) {
   const seen = player?.almanac?.seen;
-  return Array.isArray(seen) ? seen.filter(id => Object.hasOwn(TRANSMISSIONS, id)) : [];
+  return Array.isArray(seen) ? seen.filter(isTransmissionId) : [];
 }
 
 /** Record transmissions as shown, once each (the Almanac replays them). */
 export function markSeen(player, ids) {
-  const fresh = ids.filter(id => Object.hasOwn(TRANSMISSIONS, id));
+  const fresh = ids.filter(isTransmissionId);
   if (!fresh.length) return player;
   const seen = [...new Set([...seenTransmissions(player), ...fresh])].slice(-SEEN_MAX);
   return { ...player, almanac: { ...(player.almanac || {}), seen } };
@@ -242,9 +243,7 @@ export function settleChapters(player, now = trustedNow()) {
 }
 
 /** A transmission ready to show: speakers resolved by the UI; this is the data. */
-export function transmissionById(id) {
-  return Object.hasOwn(TRANSMISSIONS, id) ? { id, ...TRANSMISSIONS[id] } : null;
-}
+export { transmissionById } from './transmissions.js';
 
 /** The Log and the Almanac: chapters with their missions and what is done. */
 export function campaignLog(player) {

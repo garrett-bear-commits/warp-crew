@@ -3,14 +3,14 @@
  * The Captain's Almanac's saved part (Phase 3 design §6): `almanac = { seen: [transmission ids] }`, growing in step 6
  * with the crew and enemy records. Places and discoveries are read from what the save already holds.
  */
-import { TRANSMISSIONS } from '../data/campaign.js';
+import { isTransmissionId } from './transmissions.js';
 
 export const ALMANAC_SEEN_MAX = 400;
 
 /** A clean saved Almanac: known transmission ids once each. */
 export function normalizeAlmanac(saved) {
   if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return { seen: [] };
-  const seen = Array.isArray(saved.seen) ? [...new Set(saved.seen.filter(id => typeof id === 'string' && Object.hasOwn(TRANSMISSIONS, id)))] : [];
+  const seen = Array.isArray(saved.seen) ? [...new Set(saved.seen.filter(isTransmissionId))] : [];
   return { ...saved, seen: seen.slice(-ALMANAC_SEEN_MAX) };
 }
 

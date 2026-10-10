@@ -44,6 +44,7 @@ import { openDailyChest, openWeeklyChest } from './chests.js';
 import { mapJumps } from './exploreNudge.js';
 import { ensureStoryOffer, reviewTransmissions, settleStoryClaim, settleChapters, markSeen, chapterOfWall } from './campaign.js';
 import { MISSIONS } from '../data/campaign.js';
+import { ensureLoyaltyOffer, settleLoyaltyClaim, contractFlyers, openedScenes, pendingScenes } from './loyalty.js';
 
 export function prepareSession(player, now = trustedNow()) {
   let next = ensureDailyLoop(player, now);
@@ -57,6 +58,8 @@ export function prepareSession(player, now = trustedNow()) {
   if (!early) next = ensureWallOffer(next, now);
   // Phase 3: the open story mission's card sits at the top of the board.
   if (!early) next = ensureStoryOffer(next, now);
+  // A merc ready for their loyalty job gets a card too (Phase 3 §5).
+  if (!early) next = ensureLoyaltyOffer(next);
   if (!early) next = evaluateWallPackOffer(next, currentWall(next, now), now);
   const building = next;
   next = completeShipBuild(next, now).player;
@@ -557,9 +560,16 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     if (!review.ok || player.activeContract || player.contractBoard.completedOfferIds.includes(data.offer)) return fail(review.reason || 'offer_unavailable');
     nextUi.reviewedOfferId = data.offer;
     transmissions.push(...reviewTransmissions(player, review.offer));
+    if (review.offer.loyalty && !(player.almanac?.seen || []).includes(`loyal_${review.offer.loyalty.templateId}_brief`)) transmissions.push(`loyal_${review.offer.loyalty.templateId}_brief`);
     events.push(event('contract_reviewed', { offerId: data.offer, profile: review.offer.profile, destination: review.offer.destinationId, fuel: review.cost.fuel, traitMatch: traitMatch(player, review.favoredTrait) }));
     tutorial('contract_reviewed', { offerId: data.offer });
   } else if (act === 'contract-review-close') nextUi.reviewedOfferId = null;
+  else if (act === 'bond-scene') {
+    // A bond scene the captain's crew has opened (the notice strip and the dossier play them).
+    const owned = [...(player.crew || []), ...(player.reserve || [])].map(m => m.templateId);
+    if (!owned.some(id => openedScenes(player, id).includes(data.id))) return fail('scene_locked');
+    transmissions.push(data.id);
+  }
   else if (act === 'contract-accept') {
     if (player.activeTravelFight) return fail('travel_fight_active');
     if (player.activeEvent) return fail('event_active');
@@ -624,9 +634,21 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
       events.push(fromAnalytics(res.analytics));
       Object.assign(nextUi, { tab: 'ship', selectedRoom: null, confirmAbandon: null });
     } else if (act === 'contract-claim' || data.action === 'claim') {
+      // Everyone aboard for the job earns loyalty (Phase 3 §5), read before the claim changes the roster.
+      const flyers = contractFlyers(player);
       const res = claimContractReward(player, now);
       if (!res.ok) return res;
       player = { ...res.player, dailyLoop: ensureDailyLoop(before, now).dailyLoop };
+      const bond = settleLoyaltyClaim(player, contract, flyers);
+      player = bond.player;
+      if (bond.opened.length) events.push(event('bond_scene_opened', { scenes: bond.opened }));
+      if (bond.bonus) {
+        transmissions.push(...bond.transmissions);
+        events.push(event('loyalty_mission_won', { templateId: bond.loyalId }));
+        const merc = player.crew.find(m => m.templateId === bond.loyalId) || player.reserve?.find(m => m.templateId === bond.loyalId);
+        effect = { kind: 'reward', source: 'loyalty', title: `${merc?.name || 'Your merc'} is Loyal`, subtitle: 'Their passive counts a quarter more', rewards: bond.bonus, tier: 'large', cta: 'Continue',
+          crew: merc ? { name: merc.name, rarity: merc.rarity, portrait: portraitFor(merc.templateId, merc.role) } : undefined };
+      }
       // A won story mission pays its bonus and plays its debrief; any other claim counts towards the next one.
       const story = settleStoryClaim(player, contract);
       player = story.player;
@@ -892,7 +914,7 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     if (recruit) effect = { kind: 'reward', source: 'story', title: `${recruit.name} joins the crew`, subtitle: 'Chapter complete', rewards: {}, tier: 'large', cta: 'Welcome aboard',
       crew: { name: recruit.name, rarity: recruit.rarity, portrait: portraitFor(recruit.templateId) } };
   }
-  if (transmissions.length) player = ensureStoryOffer(markSeen(player, transmissions), now);
+  if (transmissions.length) player = ensureLoyaltyOffer(ensureStoryOffer(markSeen(player, transmissions), now));
   // Daily orders (Phase 2 §3): a star-map jump and a won fight count however they happened.
   if (mapJumps(player) > mapJumps(before)) milestone('jump');
   if ((player.stats?.combatsWon || 0) > (before.stats?.combatsWon || 0)) milestone('win');

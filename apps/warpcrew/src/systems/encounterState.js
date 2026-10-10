@@ -11,6 +11,7 @@ import { RALLY } from './gemSinks.js';
 import { isCanonicalGuidedContract } from './contractState.js';
 import { startFtlEncounter, advanceFtlEncounter, applyFtlCommand, validFtlBody, FTL_VERSION, OVERCHARGE } from './ftlCombat.js';
 import { shipLoadout } from './armory.js';
+import { loyalEdge } from './loyalty.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
 const numberIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
@@ -201,11 +202,12 @@ export function fightingCrew(player, now = trustedNow(), { kits = false } = {}) 
   const assignments = normalizeAssignments(player);
   return readyContractCrew(player, now).map(member => ({
     id: member.instanceId, role: member.role || '', station: assignments[member.instanceId] || null,
+    // A Loyal merc (Phase 3 §5) fights a little sharper and their role passive counts a quarter more.
     ...(kits && typeof member.templateId === 'string' ? {
       kit: member.templateId,
-      grade: crewGrade(member.power),
+      grade: Math.min(1, Math.round((crewGrade(member.power) + loyalEdge(player, member.templateId).grade) * 100) / 100),
       tier: Math.max(0, Math.min(3, Math.trunc(member.ascension || 0))),
-      bonus: Math.max(0, Math.min(2, Number(member.passive?.[ROLE_PASSIVE[member.role]]) || 0)),
+      bonus: Math.max(0, Math.min(2, (Number(member.passive?.[ROLE_PASSIVE[member.role]]) || 0) * loyalEdge(player, member.templateId).passive)),
     } : {}),
   }));
 }

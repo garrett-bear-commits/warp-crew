@@ -17,6 +17,7 @@ import { settleIdle, normalizeIdle } from './idle.js';
 import { normalizeCalendar } from './calendar.js';
 import { normalizeCampaign } from './campaign.js';
 import { normalizeAlmanac } from './almanac.js';
+import { normalizeLoyalty } from './loyalty.js';
 import { normalizeEncounterState } from './encounterState.js';
 import { normalizeTravelFightState } from './travelFight.js';
 import { normalizeEventState } from './travelEvents.js';
@@ -148,6 +149,7 @@ export function migratePlayer(player) {
     // Phase 3: the campaign and the Almanac, cleaned the same way.
     campaign: player.campaign === undefined ? undefined : normalizeCampaign(player.campaign),
     almanac: player.almanac === undefined ? undefined : normalizeAlmanac(player.almanac),
+    loyalty: player.loyalty === undefined ? undefined : normalizeLoyalty(player.loyalty),
     story,
     flags,
     tutorial,
