@@ -151,6 +151,15 @@ function enemyRoomX(roomId) {
   return r.left + r.width / 2 - box.left;
 }
 
+/** Where the escort freighter sits on screen (canvas space), for volleys aimed at it. */
+function escortPoint(miss = false) {
+  const el = typeof document !== 'undefined' ? document.querySelector('[data-escort] img') : null;
+  const box = canvas?.getBoundingClientRect();
+  if (!el || !box) return { x: w * 0.8, y: -24 };
+  const r = el.getBoundingClientRect();
+  return { x: r.left + r.width / 2 - box.left + (miss ? 60 : 0), y: r.top + r.height / 2 - box.top };
+}
+
 function flashEnemyRoom(roomId, outcome) {
   const el = document.querySelector(`[data-enemy-room="${roomId}"]`);
   const panel = document.querySelector('.ftl-enemy');
@@ -189,14 +198,19 @@ function showCast(event) {
 }
 
 /** A floating word over an enemy room ("CRIT"). */
-function popOver(roomId, text, delayMs = 0) {
+function popOver(roomId, text, delayMs = 0, cls = '') {
+  popAt(`[data-enemy-room="${roomId}"]`, text, delayMs, cls);
+}
+
+/** A floating word over any element of the fight screen (a ship room, the enemy hull, the freighter). */
+function popAt(selector, text, delayMs = 0, cls = '') {
   if (typeof document === 'undefined') return;
   setTimeout(() => {
-    const el = document.querySelector(`[data-enemy-room="${roomId}"]`);
+    const el = document.querySelector(selector);
     if (!el) return;
     const r = el.getBoundingClientRect();
     const pop = document.createElement('div');
-    pop.className = 'ftl-pop';
+    pop.className = `ftl-pop${cls ? ` ${cls}` : ''}`;
     pop.textContent = text;
     pop.style.left = `${r.left + r.width / 2}px`;
     pop.style.top = `${r.top + r.height * 0.3}px`;
@@ -205,8 +219,47 @@ function popOver(roomId, text, delayMs = 0) {
   }, delayMs);
 }
 
+/** A big word across the fight for the moments that change it: CLOAKED, WAVE 2, FREIGHTER LOST. */
+function showBanner(text, cls = '') {
+  if (typeof document === 'undefined') return;
+  let layer = document.querySelector('.ftl-banner-layer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'ftl-banner-layer';
+    layer.setAttribute('aria-live', 'polite');
+    document.body.appendChild(layer);
+  }
+  const el = document.createElement('div');
+  el.className = `ftl-big-banner${cls ? ` ${cls}` : ''}`;
+  el.textContent = text;
+  while (layer.children.length >= 1) layer.firstElementChild.remove();
+  layer.appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+/** Pops and banners for the faction and twist events of one beat (shown with or without motion). */
+function showMechanicEvents(events) {
+  let cloakedMiss = false;
+  for (const event of events) {
+    const at = event.t || 0;
+    if (event.type === 'cloak' && event.on) showBanner('Cloaked', 'is-cloak');
+    else if (event.type === 'cloak' && event.broken) popOver('helm', 'CLOAK BROKEN', 0, 'is-good');
+    else if (event.type === 'cloak_failed') popOver('helm', 'NO CLOAK', 0, 'is-good');
+    else if (event.type === 'regrow') popAt('.ftl-enemy-hull', `REGROW +${event.amount}`, at, 'is-regrow');
+    else if (event.type === 'ion_lock') popAt(`[data-ship-room="${event.room}"]`, 'FROZEN', at, 'is-frost');
+    else if (event.type === 'ion_thaw') popAt(`[data-ship-room="${event.room}"]`, 'THAWED', at, 'is-good');
+    else if (event.type === 'wave') showBanner('Wave 2', 'is-wave');
+    else if (event.type === 'escort_lost') showBanner('Freighter lost', 'is-bad');
+    else if (event.type === 'holdout_done') showBanner('Held out', 'is-good');
+    else if (event.type === 'shot' && event.from === 'enemy' && event.weapon === 'missile') popOver('weapons', 'MISSILE', at, 'is-missile');
+    else if (event.type === 'shot' && event.from === 'enemy' && event.room === 'escort' && event.outcome === 'hit') popAt('[data-escort]', `-${event.damage}`, at + 300, 'is-bad');
+    else if (event.type === 'shot' && event.from === 'player' && event.cloaked && !cloakedMiss) { cloakedMiss = true; popOver(event.room, 'MISS: CLOAKED', at, 'is-cloak'); }
+  }
+}
+
 export function playFtlBeat(events = []) {
   const reduced = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  showMechanicEvents(events);
   for (const event of events) {
     if (event.type === 'ability') { showCast(event); continue; }
     if (event.type !== 'shot') continue;
@@ -222,7 +275,8 @@ export function playFtlBeat(events = []) {
 }
 
 const shotSound = shot => shot.from === 'player'
-  ? (['heavy', 'missile', 'beam'].includes(shot.weapon) ? 'shot_heavy' : 'shot_burst') : 'shot_enemy';
+  ? (['heavy', 'missile', 'beam'].includes(shot.weapon) ? 'shot_heavy' : 'shot_burst')
+  : shot.weapon === 'missile' ? 'missile' : shot.weapon === 'drones' ? 'drones' : shot.weapon === 'ion' ? 'ion_shot' : 'shot_enemy';
 const landSound = shot => shot.outcome === 'shield' || shot.ion ? 'shield'
   : shot.outcome === 'hit' ? (shot.from === 'player' ? 'hit_enemy' : 'hit') : null;
 
@@ -249,6 +303,14 @@ function playFtlBeatSounds(events, reduced) {
     else if (event.type === 'downed') { sfx('hull_down', at(event)); sfx('alarm', { delay: at(event).delay + 0.6 }); }
     else if (event.type === 'result' && event.result === 'win') { sfx('boom', at(event)); sfx('win', { delay: at(event).delay + 0.35 }); }
     else if (event.type === 'result' && event.result === 'loss') sfx('hull_down', at(event));
+    // Factions and twists: the existing Kenney clips under their own names (sfxManifest.js).
+    else if (event.type === 'cloak') sfx(event.on ? 'cloak' : 'decloak', at(event));
+    else if (event.type === 'cloak_failed') sfx('confirm', at(event));
+    else if (event.type === 'regrow') sfx('regrow', at(event));
+    else if (event.type === 'ion_lock') sfx('ion_lock', at(event));
+    else if (event.type === 'wave') sfx('wave', at(event));
+    else if (event.type === 'escort_lost') sfx('boom', at(event));
+    else if (event.type === 'holdout_done') sfx('win', at(event));
   }
   // Hull critical: one alarm when a hit lands while the hull is low (the alarm's own gap keeps it from nagging).
   const enc = crewEncounter;
@@ -265,8 +327,10 @@ function drawFtl(g, camera, dt) {
     if (!shot.voiced) { shot.voiced = true; sfx(shotSound(shot)); }
     const ally = shot.from === 'player';
     const from = ally ? ship('weapons') : { x: enemyRoomX('weapons'), y: -24 };
-    const to = ally ? { x: enemyRoomX(shot.room), y: -24 }
-      : shot.outcome === 'miss' ? { x: ship(shot.room).x + 70, y: h + 30 } : ship(shot.room);
+    // Escort: volleys at the freighter fly to its strip under the enemy ship.
+    const to = !ally && shot.room === 'escort' ? escortPoint(shot.outcome === 'miss')
+      : ally ? { x: enemyRoomX(shot.room), y: -24 }
+        : shot.outcome === 'miss' ? { x: ship(shot.room).x + 70, y: h + 30 } : ship(shot.room);
     if (progress >= 1) {
       if (!shot.done) {
         shot.done = true;
@@ -296,7 +360,11 @@ function drawFtl(g, camera, dt) {
     g.save();
     g.globalCompositeOperation = 'lighter';
     // Each weapon kind has its own bolt: ion a fat blue pulse, missiles an orange slug, beams a long pink line.
-    const look = !ally ? ['rgba(255,120,100,0.95)', '#ff6b6b', 3, 30]
+    // Enemy missiles are a fat orange slug, drones a spray of short green darts, ion a blue pulse.
+    const look = !ally ? (shot.weapon === 'missile' ? ['rgba(255,170,90,0.98)', '#ff7a2a', 7, 26]
+      : shot.weapon === 'drones' ? ['rgba(170,240,120,0.95)', '#9fd35a', 3, 8]
+        : shot.weapon === 'ion' ? ['rgba(110,170,255,0.95)', '#3aa7ff', 8, 14]
+          : ['rgba(255,120,100,0.95)', '#ff6b6b', 3, 30])
       : shot.weapon === 'ability' ? ['rgba(205,160,255,0.95)', '#b48cff', 6, 26]
       : shot.weapon === 'ion' ? ['rgba(110,170,255,0.95)', '#3aa7ff', 8, 14]
       : shot.weapon === 'missile' ? ['rgba(255,190,110,0.95)', '#ff9a3c', 6, 22]

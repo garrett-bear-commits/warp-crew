@@ -4,6 +4,7 @@
 import { ROOMS } from '../data/starterShip.js';
 import { roomStyle } from './shipView.js';
 import { enemyArtFor } from '../data/art/enemyArt.js';
+import { SPACE_ART } from '../data/portraits.js';
 
 const e = value => String(value ?? '')
   .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
@@ -17,6 +18,8 @@ const ICON_PATHS = {
   fire: '<path d="M12 3c1 4 5 5 5 10a5 5 0 01-10 0c0-3 2-4 2-7 1 1 2 2 3 3 0-2-1-4 0-6z"/>',
   boarders: '<circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M14 20c0-3 1.5-5 4-5s3 2 3 5"/>',
   reticle: '<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>',
+  frost: '<path d="M12 2v20M4 6l16 12M20 6L4 18"/><path d="M9 3l3 3 3-3M9 21l3-3 3 3"/>',
+  clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>',
 };
 export const icon = (name, cls = '') => `<svg class="ftl-icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON_PATHS[name] || ''}</svg>`;
 
@@ -66,22 +69,67 @@ export function renderFtlEnemy(view) {
       ${enemyCrewFigure(id, room)}<span class="ftl-room-tag">${icon(id)}<b>${e(room.label)}</b></span>${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${targeted ? icon('reticle', 'reticle') : ''}
     </button>`;
   }).join('');
-  const guns = enemy.weapons.map(w => `<div class="ftl-enemy-gun${w.chargePct >= 70 ? ' is-hot' : ''}">
-      <span>${w.shots}×${w.damage} → ${e(w.targetLabel)}</span>${chargeBar(w.chargePct, w.nextPct ?? w.chargePct, 'charge enemy', view.beat)}</div>`).join('');
-  return `<section class="ftl-enemy family-${e(art.family)}${enemy.shields.layers > 0 ? ' is-shielded' : ''}${view.result === 'win' ? ' is-destroyed' : ''}" aria-label="Enemy ship">
+  const guns = enemy.weapons.map(w => `<div class="ftl-enemy-gun gun-${e(w.kind || 'laser')}${w.chargePct >= 70 ? ' is-hot' : ''}${w.target === 'escort' ? ' is-at-escort' : ''}">
+      <span>${e(gunLabel(w))} → ${e(w.targetLabel)}</span>${chargeBar(w.chargePct, w.nextPct ?? w.chargePct, 'charge enemy', view.beat)}</div>`).join('');
+  const m = view.mechanics || {};
+  const cloaked = Boolean(m.cloak?.cloaked) && live(view);
+  const state = `${cloaked ? ' is-cloaked' : ''}${m.harmonics?.active && enemy.shields.layers > 0 ? ' is-harmonic' : ''}${m.regrow?.active ? ' is-regrowing' : ''}${m.twist?.wave === 2 ? ' is-wave-2' : ''}`;
+  return `<section class="ftl-enemy family-${e(art.family)}${enemy.shields.layers > 0 ? ' is-shielded' : ''}${view.result === 'win' ? ' is-destroyed' : ''}${state}" aria-label="Enemy ship">
     <header class="ftl-enemy-head">
       <b>${e(view.enemyName)}</b>${view.threatLabel ? `<span class="ftl-threat" data-threat="${e(view.threatLabel.toLowerCase())}">${e(view.threatLabel)}</span>` : ''}
       <span class="ftl-enemy-shields" aria-label="Enemy shields ${enemy.shields.layers} of ${enemy.shields.full}">${pips(enemy.shields.layers, enemy.shields.max, enemy.shields.full)}${enemy.shields.ionized ? '<i class="ftl-ionized">Ionized</i>' : ''}</span>
     </header>
+    ${renderEnemyTags(view)}
     <div class="ftl-enemy-hull"><span>Hull</span>${bar(hullPct, 'hull enemy')}<b>${e(enemy.hull)}</b><small>Evade ${e(enemy.evasion)}%</small></div>
+    ${m.regrow && live(view) ? `<p class="ftl-regrow${m.regrow.burning ? ' is-burning' : ''}" role="status">${m.regrow.burning ? 'Burning: no regrowth' : m.regrow.left > 0 ? `Regrows 1 a second · ${e(m.regrow.left)} left` : 'Done regrowing'}</p>` : ''}
     <div class="ftl-enemy-ship" style="aspect-ratio:${art.aspect}">
       <img src="${art.image}" alt="" draggable="false" />
       <span class="ftl-enemy-bubble" aria-hidden="true"></span>
       ${rooms}
+      ${cloaked ? `<span class="ftl-banner is-cloak" role="status"><b>Cloaked</b> ${e(m.cloak.beatsLeft)}s</span>` : ''}
+      ${m.twist?.wave === 2 && live(view) ? '<span class="ftl-wave-tag">Wave 2</span>' : ''}
     </div>
     <div class="ftl-enemy-guns">${guns}</div>
-    ${live(view) ? `<p class="ftl-hint${teaching ? ' is-teaching' : ''}">${teaching ? 'Tap their <b>Weapons</b> room. Knock out their guns and the trader is safe.' : view.targetChosen ? 'Tap a room to change target' : 'Tap a room to target it'}</p>` : ''}
+    ${renderEscort(view)}
+    ${live(view) ? `<p class="ftl-hint${teaching ? ' is-teaching' : ''}${cloaked ? ' is-cloak-hint' : ''}">${teaching ? 'Tap their <b>Weapons</b> room. Knock out their guns and the trader is safe.'
+      : cloaked ? (view.hold ? 'Cloaked: shots miss. Holding keeps your guns charged.' : 'Cloaked: shots miss. Tap <b>Hold</b> to keep your charge.')
+        : m.cloak && m.cloak.nextIn != null && m.cloak.nextIn <= 2 && !m.cloak.helmBroken ? 'They cloak in a moment. Hit their <b>Helm</b> below half to stop it.'
+          : view.targetChosen ? 'Tap a room to change target' : 'Tap a room to target it'}</p>` : ''}
   </section>`;
+}
+
+/** An enemy gun's line: missiles, drones and ion say what they are. */
+function gunLabel(w) {
+  if (w.kind === 'missile') return `Missile ${w.damage}`;
+  if (w.kind === 'drones') return `Drones ${w.shots}×${w.damage}`;
+  if (w.kind === 'ion') return 'Ion';
+  return `${w.shots}×${w.damage}`;
+}
+
+/** Small chips under the enemy's name: faction, elite, harmonics, wave and the twist's clock. */
+function renderEnemyTags(view) {
+  const m = view.mechanics || {};
+  const tags = [];
+  if (m.faction) tags.push(`<span class="ftl-tag tag-faction" title="${e(m.faction.mechanic)}">${e(m.faction.chip)}</span>`);
+  if (view.elite) tags.push(`<span class="ftl-tag tag-elite" title="${e(view.elite.rule)}">${e(view.elite.name)} · ${e(view.elite.label)}</span>`);
+  if (m.harmonics) tags.push(`<span class="ftl-tag tag-harmonic${m.harmonics.active ? ' is-on' : ''}">${m.harmonics.active ? 'Harmonics on' : 'Harmonics broken'}</span>`);
+  if (m.twist?.waves) tags.push(`<span class="ftl-tag tag-wave">Wave ${e(m.twist.wave)} of ${e(m.twist.waves)}</span>`);
+  if (m.twist?.clock && live(view)) {
+    const c = m.twist.clock;
+    const label = c.kind === 'rush' ? (c.left > 0 ? `Rush ${c.left}s` : 'Rush missed') : `Hold out ${c.left}s`;
+    tags.push(`<span class="ftl-tag tag-clock clock-${e(c.kind)}${c.left <= 5 ? ' is-low' : ''}" role="timer">${icon('clock')}${e(label)}</span>`);
+  }
+  if (m.cloak && !m.cloak.cloaked && m.cloak.helmBroken && live(view)) tags.push('<span class="ftl-tag tag-cloak-off">Helm wrecked: no cloak</span>');
+  return tags.length ? `<div class="ftl-enemy-tags">${tags.join('')}</div>` : '';
+}
+
+/** Escort: the freighter flying beside you, its hull, and whether a gun is on it. */
+function renderEscort(view) {
+  const escort = view.mechanics?.twist?.escort;
+  if (!escort) return '';
+  const pct = Math.round((escort.hull / escort.max) * 100);
+  return `<div class="ftl-escort${escort.targeted && !escort.lost && live(view) ? ' is-targeted' : ''}${escort.lost ? ' is-lost' : ''}" data-escort aria-label="Freighter hull ${escort.hull} of ${escort.max}">
+    <img src="${e(SPACE_ART.trader)}" alt="" draggable="false" /><span>${escort.lost ? 'Freighter lost' : escort.targeted && live(view) ? 'Freighter · under their guns' : 'Freighter'}</span>${bar(pct, 'hull escort')}<b>${e(escort.hull)}</b></div>`;
 }
 
 /** Markers on the Sparrow's rooms: damage, fire, boarders, incoming fire, and move targets for the selected (or dragged) crew. */
@@ -93,8 +141,10 @@ export function renderFtlShipMarkers(view, { selectedCrewId = null, dragging = f
     const shipRoom = ROOMS.find(candidate => candidate.id === room.roomId);
     if (!shipRoom) return '';
     const boarded = view.boarders?.phase === 'aboard' && view.boarders.room === room.id;
-    const status = `${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${boarded ? icon('boarders', 'boarders') : ''}${incoming.has(room.id) && live(view) ? icon('reticle', 'incoming') : ''}`;
-    const marker = `<div class="ftl-room-marker${room.offline ? ' is-offline' : room.damaged ? ' is-damaged' : ''}${room.fire ? ' is-burning' : ''}" style="left:${shipRoom.labelAnchor.x}%;top:${shipRoom.labelAnchor.y}%" aria-hidden="true">${status}</div>`;
+    // Ion (Ice Raiders): a frozen room, with the seconds left until it thaws.
+    const frozen = view.mechanics?.ion?.locks?.[room.id];
+    const status = `${room.integrity < 100 ? bar(room.integrity, 'integrity') : ''}${room.fire ? icon('fire', 'fire') : ''}${boarded ? icon('boarders', 'boarders') : ''}${incoming.has(room.id) && live(view) ? icon('reticle', 'incoming') : ''}${frozen ? `<b class="ftl-frost">${icon('frost')}${e(frozen)}s</b>` : ''}`;
+    const marker = `<div class="ftl-room-marker${room.offline ? ' is-offline' : room.damaged ? ' is-damaged' : ''}${room.fire ? ' is-burning' : ''}${frozen ? ' is-frozen' : ''}" data-ship-room="${e(room.id)}" style="left:${shipRoom.labelAnchor.x}%;top:${shipRoom.labelAnchor.y}%" aria-hidden="true">${status}</div>`;
     const move = selected ? `<button type="button" class="ftl-move-target${dragging ? ' is-drop-target' : ''}" style="${roomStyle(shipRoom)}" data-act="encounter-command" data-command-type="move" data-crew-id="${e(selected.id)}" data-room="${e(room.id)}" ${identity(view)} aria-label="Send ${e(selected.name)} to ${e(shipRoom.label)}"><span>${e(shipRoom.label)}</span></button>` : '';
     return marker + move;
   }).join('');
@@ -139,12 +189,21 @@ function weaponTag(w) {
   return `${w.shots}×${w.damage}`;
 }
 
+const ROOM_NAMES = { helm: 'the helm', shields: 'Shields', weapons: 'Weapons', engineering: 'Engineering' };
+/** One short line when a faction rule is biting: a frozen room and who can thaw it. */
+function renderMechanicAlerts(view) {
+  const locks = Object.keys(view.mechanics?.ion?.locks || {});
+  if (!locks.length || !live(view)) return '';
+  const engineer = view.crew.find(member => member.role === 'engineer');
+  return `<p class="ftl-alert is-frost" role="status">Ion froze ${e(locks.map(id => ROOM_NAMES[id] || id).join(' and '))}.${engineer ? ` Send ${e(engineer.name.split(' ')[0])} to thaw it twice as fast.` : ' It thaws in a few seconds.'}</p>`;
+}
+
 export function renderFtlControls(view, { selectedCrewId = null, paused = false, claimAct = 'contract-claim', claimRevision = view?.revision, claimAcceptanceId = view?.acceptanceId } = {}) {
   if (!view?.ftl) return '';
   const hullPct = Math.round((view.hull / view.hullMax) * 100);
   const status = `<div class="ftl-status">
       <div class="ftl-hull${hullPct <= 30 ? ' is-low' : ''}"><span>Hull</span>${bar(hullPct, 'hull')}<b>${e(view.hull)}</b></div>
-      <div class="ftl-shield" aria-label="Shields ${view.shields.layers} of ${view.shields.full}"><span>Shield</span>${pips(view.shields.layers, view.shields.max, view.shields.full)}</div>
+      <div class="ftl-shield" aria-label="Shields ${view.shields.layers} of ${view.shields.full}"><span>Shield</span>${pips(view.shields.layers, view.shields.max, view.shields.full)}${view.mechanics?.ion?.stall ? '<i class="ftl-stalled">Stalled</i>' : ''}</div>
       <small class="ftl-evade">Evade ${e(view.evasion)}%</small>
       ${live(view) ? `<button type="button" class="ftl-pause${paused ? ' is-paused' : ''}" data-act="ftl-pause" aria-pressed="${paused}">${paused ? 'Resume' : 'Pause'}</button>` : ''}
     </div>`;
@@ -177,9 +236,9 @@ export function renderFtlControls(view, { selectedCrewId = null, paused = false,
     ? `<p class="ftl-alert" role="status">${view.boarders.phase === 'incoming' ? `Boarding clamps on the hull. Raiders are heading for ${e(view.boarders.roomLabel)}.` : `Raiders in ${e(view.boarders.roomLabel)} · send crew to fight them`}</p>` : '';
   return `<section class="ftl-controls" aria-label="Fight controls">${status}
     <div class="ftl-weapons">${weapons}
-      <button type="button" class="ftl-hold${view.hold ? ' is-on' : ''}" data-act="encounter-command" data-command-type="hold" data-hold="${view.hold ? 'false' : 'true'}" ${identity(view)} aria-pressed="${view.hold}">${view.hold ? 'Holding' : 'Hold'}<span>${view.hold ? 'Fire together' : 'Fire as ready'}</span></button>
+      <button type="button" class="ftl-hold${view.hold ? ' is-on' : ''}${view.mechanics?.cloak?.cloaked && !view.hold ? ' is-advised' : ''}" data-act="encounter-command" data-command-type="hold" data-hold="${view.hold ? 'false' : 'true'}" ${identity(view)} aria-pressed="${view.hold}">${view.hold ? 'Holding' : 'Hold'}<span>${view.hold ? 'Fire together' : 'Fire as ready'}</span></button>
     </div>
-    ${boarders}
+    ${boarders}${renderMechanicAlerts(view)}
     <div class="ftl-crew-row">${renderAutoToggle(view)}<div class="ftl-crew" role="group" aria-label="Crew">${crew}</div></div>
     <p class="ftl-hint">${selected ? `Tap a room on the ship to send ${e(selected.name.split(' ')[0])}.` : view.abilities ? (view.auto ? 'Crew use their moves when they help. Drag crew onto a room to fight fires or repair.' : 'Tap a glowing move to use it. Drag crew onto a room to fight fires or repair.') : 'Drag crew onto a room (or tap crew, then a room) to fight fires or repair.'}</p>
     ${view.tactics?.length ? `<div class="ftl-tactics">${renderTactics(view)}</div>` : ''}

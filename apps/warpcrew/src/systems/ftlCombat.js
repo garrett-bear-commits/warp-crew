@@ -12,6 +12,8 @@ import { STATIONS } from './stations.js';
 import { kitFor } from '../data/crewKits.js';
 import { CREW_CATALOG, catalogById } from '../data/crewRoster.js';
 import { familyTiers } from '../data/families.js';
+import { FACTIONS, factionOf, factionHas } from '../data/factions.js';
+import { TWISTS, TWIST_RULES, cleanTwist, validTwist } from '../data/twists.js';
 
 export const FTL_VERSION = 3;
 export const TICK_MS = 250;
@@ -92,9 +94,83 @@ export const BOARD = Object.freeze({ maxEnemyHull: 21, rewardScale: 1.25 });
  */
 export const ENEMY_HULL = 42;
 export const KIT_ENEMY = Object.freeze({ hull: 55, damageMult: 1.15 });
-/** The enemy's full hull: a wall segment's start, else the default for this kind of fight. */
+/** The enemy's full hull: a wall segment's start, else the default for this kind of fight (a Heavy elite has more). */
 export const enemyStartHull = state => (Number.isInteger(state?.enemy?.startHull) ? state.enemy.startHull
-  : state?.fx && typeof state.fx === 'object' ? KIT_ENEMY.hull : ENEMY_HULL);
+  : fullEnemyHull(state?.fx && typeof state.fx === 'object', fightElite(state)));
+const fullEnemyHull = (kits, elite) => Math.round((kits ? KIT_ENEMY.hull : ENEMY_HULL) * (elite?.modifier === 'heavy' ? ELITE_RULES.heavyHull : 1));
+/** The hull the ship now in front of you started with: wave 2 of a Two waves fight arrives short. */
+export const enemyWaveHull = state => (state?.twist?.id === 'waves' && state.twist.wave === 2
+  ? Math.max(1, Math.round(enemyStartHull(state) * TWIST_RULES.waves.hullPct / 100)) : enemyStartHull(state));
+
+// --- Factions, elites and twists (Phase 3 world design §3-4) ---------------------
+// A fight carries `faction` (from its encounter) and, for a contract with a twist, `twist`. A fight without
+// them (old saves, the guided first fight, engine tests) plays exactly as before.
+
+const deepFreeze = value => Object.freeze(Object.fromEntries(Object.entries(value).map(([k, v]) => [k, Object.freeze(v)])));
+/**
+ * Faction fight rules (tuned 2026-10-10 on the balance pass's day-7 crews, docs/qa/2026-10-10-faction-mechanics.md).
+ * missiles: their heavy gun (or an extra one when they carry no heavy) fires a missile of `damageMult` x the
+ *   cannon's damage: through shields, but it can be dodged.
+ * drones: the cannon becomes `shots` weak drones; each takes a shield layer. Past one layer, the drones land
+ *   `landMult` of what the cannon's volley would have; their room damage is `roomMult` of a shot's.
+ * regrow: the hull grows back `perBeat` a beat unless one of their rooms is burning, up to `maxPct`% of the
+ *   ship's starting hull over the whole fight (so a weak crew still wears it down).
+ * ion: an extra ion gun. A hit freezes that room (its system offline) for `lockMs`, an engineer inside thawing
+ *   it `thawMult` times as fast; a hit on the shields stalls their recharge for `stallMs`.
+ * cloak: from beat `first`, every `every` beats they cloak for `beats` beats unless their helm is below `helmMin`.
+ *   Shots fired at them miss; weapons on hold keep their charge. Their own guns keep firing.
+ * harmonics: their shields recharge `rechargeMult` times as fast while their shields room is above `roomMin`, plus
+ *   `layers` extra layers. The design's starting value was one extra layer; with three layers a starter Sparrow's
+ *   three-shot volley never reaches the Shields room, so the counter could not work: it is tuned to none.
+ */
+export const FACTION_RULES = deepFreeze({
+  missiles: { damageMult: 1, chargeMs: 15000 },
+  drones: { shots: 4, landMult: 0.9, roomMult: 0.8 },
+  regrow: { perBeat: 1, maxPct: 15 },
+  ion: { chargeMs: 16000, lockMs: 5000, stallMs: 4000, thawMult: 2 },
+  cloak: { first: 8, every: 12, beats: 4, helmMin: 50 },
+  harmonics: { layers: 0, rechargeMult: 2, roomMin: 50 },
+});
+/**
+ * Each faction's ship tuned around its rule, so a hands-off captain with Auto on wins about as often as before
+ * the rules (within a few points; the evidence report has the numbers). damageMult scales every gun, repairMult
+ * their crew's repairs, shieldLayers adds to (or takes from) their hull class's layers, evasion adds points.
+ */
+export const FACTION_LOADOUT = deepFreeze({
+  corsairs: {},
+  scrappers: {},
+  swarm: {},
+  ice: { damageMult: 0.85 },
+  shades: { damageMult: 0.65, repairMult: 0.5 },
+  wardens: { damageMult: 0.6 },
+  eclipse: { repairMult: 0.5, shieldLayers: -1 },
+});
+/** Elite modifiers: Armored +1 shield layer, Veteran repairs x1.5, Overclocked guns charge 25% faster, Heavy +30% hull. */
+export const ELITE_RULES = Object.freeze({ armoredLayers: 1, veteranRepair: 1.5, overclockedCharge: 1.25, heavyHull: 1.3 });
+
+/** The fight's faction id when it carries one. */
+export const fightFaction = state => (FACTIONS[state?.faction?.id] ? state.faction.id : null);
+/** Does this fight run a faction rule ('missiles', 'drones', 'regrow', 'ion', 'cloak', 'harmonics')? */
+export const fightHas = (state, mechanic) => factionHas(fightFaction(state), mechanic);
+/** The Bounty elite in this fight, if any. */
+export const fightElite = state => (state?.twist?.id === 'bounty' ? state.twist.elite : null);
+/** Cloaked right now (this beat)? */
+export const enemyCloaked = state => fightHas(state, 'cloak') && state.faction.cloak > 0 && state.faction.cloak >= state.beat;
+const cloakDue = beat => beat >= FACTION_RULES.cloak.first && (beat - FACTION_RULES.cloak.first) % FACTION_RULES.cloak.every === 0;
+/** Beats until their next cloak is due (counting this beat's start), or null without a cloak. */
+export function beatsToCloak(state) {
+  if (!fightHas(state, 'cloak')) return null;
+  const { first, every } = FACTION_RULES.cloak;
+  const next = state.beat + 1;
+  if (next <= first) return first - next;
+  return (every - ((next - first) % every)) % every;
+}
+/** Is this player room frozen by an ion hit? */
+export const roomLocked = (state, id) => (state?.faction?.locks?.[id] || 0) > 0;
+const escortAlive = state => state?.twist?.id === 'escort' && state.twist.freighter > 0;
+const ENEMY_GUN_KIND = Object.freeze({ missile: 'missile', ion: 'ion', drones: 'drones' });
+/** What kind of gun an enemy weapon is: laser (cannon, heavy), missile, ion or drones. */
+export const enemyGunKind = weapon => ENEMY_GUN_KIND[weapon?.id] || 'laser';
 export const OVERCHARGE = Object.freeze({ fuel: 1 });
 
 export function seededIndex(seed, salt, size) {
@@ -112,7 +188,7 @@ const room = () => ({ integrity: 100, fire: 0, fireMs: 0 });
  * Enemy loadout from threat (0.6 Favorable … 1.6 Deadly). Siege-wall flagships are tougher:
  * tier 1 (the first wall) always carries a second gun; tier 2 (later walls) also an extra shield layer.
  */
-export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0, kits = false } = {}) {
+export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0, kits = false, faction = null, elite = null, hitMult = 1 } = {}) {
   const t = clamp(Number(threat) || 1, 0.6, 1.6);
   const tier = flagship === true ? 2 : Math.max(0, Math.min(2, Math.trunc(Number(flagship) || 0)));
   // Enemy tier comes from the ship's class (later sectors): tier 1 fires three-shot volleys,
@@ -121,10 +197,41 @@ export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0, ki
   const damage = Math.max(2, Math.round((-16 + 24 * t) * (kits ? KIT_ENEMY.damageMult : 1)));
   const weapons = [{ id: 'cannon', shots: shipTier >= 1 ? 3 : 2, damage, chargeMs: 10000 }];
   if (t >= 1.1 || tier >= 1) weapons.push({ id: 'heavy', shots: 1, damage: Math.round(damage * 1.8), chargeMs: 12000 });
-  return {
+  const base = {
     shieldLayers: Math.min(2, (t < 0.8 ? 0 : 1) + (tier >= 2 || shipTier >= 2 ? 1 : 0)),
     repairPerSec: Math.round((2 + 4 * t) * 10) / 10,
     evasion: Math.round(4 + 8 * t),
+    weapons,
+  };
+  const id = FACTIONS[faction] ? faction : null;
+  return id || elite || hitMult !== 1 ? reshapeLoadout(base, id, elite, hitMult) : base;
+}
+
+/** The base loadout reshaped by the faction's rule and tuning, a Bounty elite and the Holdout's harder hits. */
+function reshapeLoadout(base, faction, elite, hitMult) {
+  const tune = FACTION_LOADOUT[faction] || {};
+  const has = mechanic => factionHas(faction, mechanic);
+  const cannon = base.weapons[0];
+  let weapons = base.weapons.map(w => ({ ...w }));
+  if (has('drones')) {
+    // Against one shield layer the cannon lands all but one shot; the drones land all but one drone.
+    const { shots, landMult } = FACTION_RULES.drones;
+    weapons[0] = { id: 'drones', shots, damage: Math.max(1, Math.round(cannon.damage * Math.max(1, cannon.shots - 1) * landMult / (shots - 1))), chargeMs: cannon.chargeMs };
+  }
+  if (has('missiles')) {
+    const missile = { id: 'missile', shots: 1, damage: Math.round(cannon.damage * FACTION_RULES.missiles.damageMult), chargeMs: FACTION_RULES.missiles.chargeMs };
+    const heavy = weapons.findIndex(w => w.id === 'heavy');
+    if (heavy >= 0) weapons[heavy] = missile; else weapons.push(missile);
+  }
+  if (has('ion')) weapons.push({ id: 'ion', shots: 1, damage: 0, chargeMs: FACTION_RULES.ion.chargeMs });
+  const mult = (tune.damageMult ?? 1) * hitMult;
+  if (mult !== 1) weapons = weapons.map(w => ({ ...w, damage: w.damage > 0 ? Math.max(1, Math.round(w.damage * mult)) : 0 }));
+  if (elite?.modifier === 'overclocked') weapons = weapons.map(w => ({ ...w, chargeMs: Math.round(w.chargeMs / ELITE_RULES.overclockedCharge) }));
+  return {
+    shieldLayers: Math.max(0, base.shieldLayers + (has('harmonics') ? FACTION_RULES.harmonics.layers : 0) + (tune.shieldLayers || 0)
+      + (elite?.modifier === 'armored' ? ELITE_RULES.armoredLayers : 0)),
+    repairPerSec: Math.round(base.repairPerSec * (tune.repairMult ?? 1) * (elite?.modifier === 'veteran' ? ELITE_RULES.veteranRepair : 1) * 10) / 10,
+    evasion: Math.max(0, base.evasion + (tune.evasion || 0)),
     weapons,
   };
 }
@@ -135,8 +242,12 @@ export function enemyLoadout(threat = 1, { flagship = 0, tier: enemyTier = 0, ki
  */
 export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1, crew = [], hull = 100,
   enemyHull = null, remainingBefore = null, tactics = [], boarders = false, guided = false,
-  shipLevels = null, loadout = DEFAULT_LOADOUT, flagship = 0, enemyTier = 0, auto = false }) {
+  shipLevels = null, loadout = DEFAULT_LOADOUT, flagship = 0, enemyTier = 0, auto = false, faction = null, twist = null }) {
   const s = Number.isFinite(Number(seed)) ? Math.trunc(Number(seed)) : 0;
+  // Faction (from the encounter) and twist (from the contract): both optional, both rebuilt by the validator.
+  const factionId = FACTIONS[typeof faction === 'string' ? faction : faction?.id] ? (typeof faction === 'string' ? faction : faction.id) : null;
+  const twistCore = cleanTwist(twist);
+  const elite = twistCore?.id === 'bounty' ? twistCore.elite : null;
   const tier = Math.max(0, Math.min(2, Math.trunc(Number(enemyTier) || 0)));
   // One flagship tier for the loadout and the save, so the validator rebuilds the same enemy.
   const flagTier = flagship === true ? 2 : Math.max(0, Math.min(2, Math.trunc(Number(flagship) || 0)));
@@ -159,7 +270,9 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
   const families = kitted ? familyTiers(fighters.filter(hasKit).map(member => member.kit)) : {};
   const startCharge = Math.max(50, families.unbound === 2 ? 100 : families.unbound === 1 ? 65 : 0, families.yards === 2 ? 75 : 0);
   for (const member of fighters) if (hasKit(member)) member.charge = startCharge;
-  const load = enemyLoadout(threat, { flagship: flagTier, tier, kits: kitted });
+  const load = enemyLoadout(threat, { flagship: flagTier, tier, kits: kitted, faction: factionId, elite,
+    hitMult: twistCore?.id === 'holdout' ? TWIST_RULES.holdout.damageMult : 1 });
+  const escorting = twistCore?.id === 'escort';
   const levels = shipLevels ? Object.fromEntries(['shields', 'weapons', 'engines', 'sensors']
     .map(key => [key, Math.max(1, Math.min(20, Math.trunc(shipLevels[key] || 1)))])) : null;
   const stats = shipCombatStats(levels || {});
@@ -167,7 +280,7 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
   const fitted = guns.length ? guns : [...DEFAULT_LOADOUT];
   const missiles = fitted.filter(id => WEAPON_CATALOG[id].kind === 'missile').length;
   const shieldLayers = stats.shieldLayers;
-  const fullHull = kitted ? KIT_ENEMY.hull : ENEMY_HULL;
+  const fullHull = fullEnemyHull(kitted, elite);
   const startHull = Number.isInteger(enemyHull) ? clamp(enemyHull, 1, fullHull) : fullHull;
   return {
     version: FTL_VERSION,
@@ -205,11 +318,24 @@ export function startFtlEncounter({ acceptanceId, encounterId, seed, threat = 1,
       rooms: Object.fromEntries(ENEMY_ROOMS.map(id => [id, room()])),
       // Enemies open part-charged so the first volley lands in 4-7 s.
       weapons: load.weapons.map((w, i) => ({ ...w, progressMs: Math.round(w.chargeMs * (30 + seededIndex(s, 700 + i, 31)) / 100),
-        target: PLAYER_ROOMS[seededIndex(s, 710 + i, PLAYER_ROOMS.length)] })),
+        // Escort: some volleys go for the freighter (its own seeded roll, so other picks never move).
+        target: escorting && seededIndex(s, 720 + i, 100) < TWIST_RULES.escort.aimPct ? 'escort' : PLAYER_ROOMS[seededIndex(s, 710 + i, PLAYER_ROOMS.length)] })),
     },
     ...(tactics.length ? { tactics: Object.fromEntries(['burn', 'board'].filter(name => tactics.includes(name))
       .map(name => [name, name === 'burn' ? { uses: 0, throughBeat: 0 } : { uses: 0, success: null }])) } : {}),
     ...(boarders ? { boarders: { phase: 'none', room: null, hp: 0 } } : {}),
+    ...(factionId ? { faction: newFactionBlock(factionId) } : {}),
+    ...(twistCore ? { twist: { ...twistCore, ...(escorting ? { freighter: TWIST_RULES.escort.hull } : {}), ...(twistCore.id === 'waves' ? { wave: 1 } : {}) } } : {}),
+  };
+}
+
+/** A faction block at the start of a fight: its id, plus the cloak timer or the ion locks when it has them. */
+function newFactionBlock(id) {
+  return {
+    id,
+    ...(factionHas(id, 'cloak') ? { cloak: 0 } : {}),
+    ...(factionHas(id, 'regrow') ? { regrown: 0 } : {}),
+    ...(factionHas(id, 'ion') ? { locks: Object.fromEntries(PLAYER_ROOMS.map(room => [room, 0])), stall: 0 } : {}),
   };
 }
 
@@ -273,6 +399,8 @@ export function playerEvasion(state) {
   const base = !atHelm.length ? 5 : pilots.length ? 15 + Math.round(10 * Math.max(...pilots.map(gradeOf))) : 10;
   // A move's dodge is the crew's own footwork, added after helm damage (audit 2026-10-09 #4).
   const evade = fxActive(state, 'evade') ? state.fx.evade.bonus : 0;
+  // A frozen helm cannot steer (ion); the crew's own footwork still counts.
+  if (roomLocked(state, 'helm')) return evade;
   return Math.round((base + shipStatsOf(state).evasionBonus) * state.rooms.helm.integrity / 100) + evade;
 }
 
@@ -382,6 +510,64 @@ function finishLoss(next, events, t, reason) {
   finish(next, 'loss', events, t, reason);
 }
 
+/**
+ * The enemy ship has no hull left. Usually that wins the fight; in a Two waves fight the first ship's fall
+ * brings the second (fresh rooms, full shields, guns part-charged, short of hull). True when the fight is won.
+ */
+function enemyFalls(next, events, t) {
+  if (next.twist?.id === 'waves' && next.twist.wave === 1) {
+    next.twist.wave = 2;
+    const hull = enemyWaveHull(next);
+    const en = next.enemy;
+    en.hull = hull;
+    en.rooms = Object.fromEntries(ENEMY_ROOMS.map(id => [id, room()]));
+    en.shields.layers = en.shields.max;
+    en.shields.rechargeMs = 0;
+    if (Object.hasOwn(en.shields, 'ionMs')) en.shields.ionMs = 0;
+    en.weapons.forEach((w, i) => { w.progressMs = Math.round(w.chargeMs * (30 + seededIndex(next.seed, 730 + i, 31)) / 100); });
+    if (fightHas(next, 'cloak')) next.faction.cloak = 0;
+    events.push({ t, type: 'wave', wave: 2, hull });
+    return false;
+  }
+  finish(next, 'win', events, t);
+  return true;
+}
+
+/** A gun's punch for a thrown-back boarding party: a drone swarm counts as one cannon's worth of shots. */
+const gunPunch = weapon => (enemyGunKind(weapon) === 'drones' ? Math.round(weapon.damage * weapon.shots / 2) : weapon.damage);
+
+/** Start, hold or drop the cloak at the start of a beat. */
+function updateCloak(next, events) {
+  const f = next.faction;
+  const rule = FACTION_RULES.cloak;
+  const helmOk = next.enemy.rooms.helm.integrity >= rule.helmMin;
+  if (f.cloak > 0 && (next.beat > f.cloak || !helmOk)) {
+    f.cloak = 0;
+    events.push({ t: 0, type: 'cloak', side: 'enemy', on: false, ...(helmOk ? {} : { broken: true }) });
+  }
+  if (f.cloak === 0 && cloakDue(next.beat)) {
+    if (helmOk) {
+      f.cloak = next.beat + rule.beats - 1;
+      events.push({ t: 0, type: 'cloak', side: 'enemy', on: true, through: f.cloak });
+    } else events.push({ t: 0, type: 'cloak_failed', side: 'enemy' });
+  }
+}
+
+/** Hull a regrowing ship can grow back over a whole fight. */
+export const regrowBudget = state => Math.round(enemyStartHull(state) * FACTION_RULES.regrow.maxPct / 100);
+
+/** One beat of regrowth, up to the hull this ship started with and the fight's budget, unless one of its rooms burns. */
+function regrow(next, events) {
+  const cap = enemyWaveHull(next);
+  const left = regrowBudget(next) - next.faction.regrown;
+  if (next.enemy.hull >= cap || left <= 0) return;
+  if (ENEMY_ROOMS.some(id => next.enemy.rooms[id].fire > 0)) return;
+  const amount = Math.min(FACTION_RULES.regrow.perBeat, cap - next.enemy.hull, left);
+  next.enemy.hull += amount;
+  next.faction.regrown += amount;
+  events.push({ t: BEAT_MS - 20, type: 'regrow', side: 'enemy', amount });
+}
+
 function damageRoom(rooms, id, amount) {
   rooms[id].integrity = Math.max(0, rooms[id].integrity - amount);
 }
@@ -481,11 +667,15 @@ export function advanceFtlEncounter(state, order = null) {
     if (success) {
       events.push({ t: 0, type: 'boarding', success: true, amount: next.enemy.hull });
       next.enemy.hull = 0;
-      finish(next, 'win', events, 0);
-      next.eventIndex += events.length;
-      return { state: next, events };
+      // Two waves: the boarders take the first ship and the second one arrives.
+      if (enemyFalls(next, events, 0)) {
+        next.eventIndex += events.length;
+        return { state: next, events };
+      }
     }
-    let amount = Math.max(1, Math.round(next.enemy.weapons[0].damage * 1.5));
+  }
+  if (order === 'board' && !next.tactics.board.success) {
+    let amount = Math.max(1, Math.round(gunPunch(next.enemy.weapons[0]) * 1.5));
     // Brace and Later protect against a thrown-back boarding party too (audit #5).
     if (kitFight(next) && fxActive(next, 'brace')) amount = Math.ceil(amount / 2);
     next.hull = Math.max(1, next.hull - amount);
@@ -520,6 +710,9 @@ export function advanceFtlEncounter(state, order = null) {
     }
   }
 
+  // Shades and the Eclipse cloak on a fixed rhythm, unless their helm is wrecked.
+  if (fightHas(next, 'cloak')) updateCloak(next, events);
+
   if (kitFight(next)) castAbilities(next, events);
 
   dispatchCrew(next);
@@ -530,18 +723,65 @@ export function advanceFtlEncounter(state, order = null) {
     const salt = next.beat * 100 + tick * 10;
     runTick(next, events, t, salt, overcharged);
   }
+  if (next.result === null && next.phase === 'combat') {
+    // Regrowth: the hull grows back unless something aboard is burning.
+    if (fightHas(next, 'regrow')) regrow(next, events);
+    // Holdout: still flying when the clock runs out is a win.
+    if (next.twist?.id === 'holdout' && next.beat >= TWIST_RULES.holdout.beats) {
+      events.push({ t: BEAT_MS - 1, type: 'holdout_done' });
+      finish(next, 'win', events, BEAT_MS - 1);
+    }
+  }
   if (kitFight(next) && next.result === null) chargeAbilities(next);
 
   next.eventIndex += events.length;
   return { state: next, events };
 }
 
+/** Ion: frozen rooms thaw (an engineer inside thaws theirs twice as fast), and a stalled shield comes back. */
+function thawRooms(next, events, t) {
+  const f = next.faction;
+  if (f.stall > 0) {
+    f.stall = Math.max(0, f.stall - TICK_MS);
+    if (f.stall === 0) events.push({ t, type: 'ion_clear', side: 'player' });
+  }
+  for (const id of PLAYER_ROOMS) {
+    if (!(f.locks[id] > 0)) continue;
+    const engineer = next.crew.some(member => member.room === id && member.role === 'engineer');
+    f.locks[id] = Math.max(0, f.locks[id] - TICK_MS * (engineer ? FACTION_RULES.ion.thawMult : 1));
+    if (f.locks[id] === 0) events.push({ t, type: 'ion_thaw', side: 'player', room: id });
+  }
+}
+
+/** Escort: a shot at the freighter. It has no shields and dodges a little; it is lost at zero hull. */
+export const ESCORT_EVASION = 10;
+function shootEscort(next, weapon, index, shot, salt, events, at) {
+  const tw = next.twist;
+  const base = { t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: 'escort' };
+  if (tw.freighter <= 0 || seededIndex(next.seed, salt + 35 + index * 5 + shot, 100) < ESCORT_EVASION) {
+    events.push({ ...base, outcome: 'miss' });
+    return;
+  }
+  const damage = enemyGunKind(weapon) === 'ion' ? 0 : Math.min(tw.freighter, weapon.damage);
+  tw.freighter -= damage;
+  events.push({ ...base, outcome: 'hit', damage, ...(enemyGunKind(weapon) === 'ion' ? { ion: true } : {}) });
+  if (tw.freighter > 0) return;
+  events.push({ t: at, type: 'escort_lost' });
+  // Guns still aiming at the wreck find the Sparrow instead.
+  next.enemy.weapons.forEach((w, i) => { if (w.target === 'escort') w.target = PLAYER_ROOMS[seededIndex(next.seed, salt + 80 + i, PLAYER_ROOMS.length)]; });
+}
+
 function runTick(next, events, t, salt, overcharged) {
   const sec = TICK_MS / 1000;
-  // Player shields.
+  // Ion (Ice Raiders): frozen rooms thaw as the beat runs.
+  const ion = fightHas(next, 'ion');
+  if (ion) thawRooms(next, events, t);
+  // Player shields (an ion-stalled or frozen shield room does not recharge).
   const cap = playerShieldCap(next);
   if (next.shields.layers > cap) next.shields.layers = cap;
-  if (next.shields.layers < cap) {
+  if (ion && (next.faction.stall > 0 || roomLocked(next, 'shields'))) {
+    // Stalled: the recharge waits where it is.
+  } else if (next.shields.layers < cap) {
     const boost = (fxActive(next, 'shieldRecharge') ? 1 + next.fx.shieldRecharge.pct / 100 : 1) * [1, 1.1, 1.25][fam(next, 'navy')];
     next.shields.rechargeMs += Math.round(TICK_MS * manning(next, 'shields') * shipStatsOf(next).shieldRechargeMult * boost);
     if (next.shields.rechargeMs >= RULES.shieldRechargeMs) {
@@ -560,7 +800,11 @@ function runTick(next, events, t, salt, overcharged) {
     es.ionMs = Math.max(0, es.ionMs - TICK_MS);
     if (es.ionMs === 0) events.push({ t, type: 'ion_clear', side: 'enemy' });
   } else if (es.layers < enemyCap) {
-    es.rechargeMs += Math.round(TICK_MS * [1, 0.9, 0.75][fam(next, 'choirs')]);
+    // Harmonics (Wardens): twice as fast while their shields room is above half.
+    const harmonic = fightHas(next, 'harmonics') && next.enemy.rooms.shields.integrity > FACTION_RULES.harmonics.roomMin
+      ? FACTION_RULES.harmonics.rechargeMult : 1;
+    const tuned = FACTION_LOADOUT[fightFaction(next)]?.shieldRecharge ?? 1;
+    es.rechargeMs += Math.round(TICK_MS * [1, 0.9, 0.75][fam(next, 'choirs')] * harmonic * tuned);
     if (es.rechargeMs >= RULES.enemyShieldRechargeMs) {
       es.layers += 1;
       es.rechargeMs = 0;
@@ -568,8 +812,8 @@ function runTick(next, events, t, salt, overcharged) {
     }
   } else es.rechargeMs = 0;
 
-  // Player weapons charge, then fire (all together when holding).
-  const rate = manning(next, 'weapons') * integrityFactor(next.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1)
+  // Player weapons charge (not in a frozen Weapons room), then fire (all together when holding).
+  const rate = roomLocked(next, 'weapons') ? 0 : manning(next, 'weapons') * integrityFactor(next.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1)
     * shipStatsOf(next).chargeMult;
   for (const weapon of next.weapons) {
     if (!weaponCanFire(next, weapon)) continue;
@@ -578,20 +822,26 @@ function runTick(next, events, t, salt, overcharged) {
   }
   const armed = next.weapons.filter(w => weaponCanFire(next, w));
   const ready = armed.filter(w => w.chargeMs >= weaponDef(w.id).chargeMs);
-  const fireNow = next.intent.hold ? (ready.length === armed.length ? ready : []) : ready;
+  // Cloak: shots fired now miss; weapons on hold keep their charge until it drops.
+  const cloaked = enemyCloaked(next);
+  const fireNow = next.intent.hold ? (!cloaked && ready.length === armed.length ? ready : []) : ready;
   const target = currentTarget(next);
   const kitted = kitFight(next);
   const fx = next.fx;
   const extra = kitted ? fx.extraShots || 0 : 0;
   const crit = critChance(next);
   let shotNo = 0;
-  for (const weapon of fireNow) {
+  volley: for (const weapon of fireNow) {
     const def = weaponDef(weapon.id);
     weapon.chargeMs = 0;
     if (def.kind === 'missile') next.ammo.missile -= 1;
     for (let shot = 0; shot < def.shots + extra; shot += 1) {
       const at = t + shotNo * 70;
       shotNo += 1;
+      if (cloaked) {
+        events.push({ t: at, type: 'shot', from: 'player', weapon: weapon.id, room: target, outcome: 'miss', cloaked: true });
+        continue;
+      }
       let shielded = next.enemy.shields.layers > 0;
       // Cold Read: the next shots slip through shields like a missile.
       // Missiles already pass shields and ion is meant to hit them, so neither spends a pierce (audit #6).
@@ -635,8 +885,9 @@ function runTick(next, events, t, salt, overcharged) {
       maybeFire(next, next.enemy.rooms, target, salt + 50 + shotNo, events, at, 'enemy', crits && fam(next, 'wings') === 2 ? 100 : def.fireChance);
       if (next.enemy.hull <= 0) {
         next.enemy.hull = 0;
-        finish(next, 'win', events, at);
-        return;
+        if (enemyFalls(next, events, at)) return;
+        // Two waves: the rest of this volley is lost in the wreck.
+        break volley;
       }
     }
   }
@@ -652,16 +903,22 @@ function runTick(next, events, t, salt, overcharged) {
     weapon.progressMs = Math.min(weapon.chargeMs, weapon.progressMs + Math.round(TICK_MS * enemyRate));
     if (weapon.progressMs < weapon.chargeMs) return;
     weapon.progressMs = 0;
+    // Missiles fly through shields; ion freezes a room; drones are many small shots.
+    const kind = enemyGunKind(weapon);
+    const atEscort = weapon.target === 'escort';
     for (let shot = 0; shot < weapon.shots; shot += 1) {
-      const at = t + 120 + shot * 70;
+      const at = t + 120 + shot * (kind === 'drones' ? 40 : 70);
+      if (atEscort) { shootEscort(next, weapon, index, shot, salt, events, at); continue; }
       // The Hallway Moved: nothing lands while it runs, not even on the shields (audit #4).
       if (kitted && fxActive(next, 'evade') && next.fx.evade.bonus >= 100) {
         events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'miss', dodge: true });
         continue;
       }
-      if (next.shields.layers > 0) {
+      if (kind !== 'missile' && next.shields.layers > 0) {
         next.shields.layers -= 1;
-        events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'shield' });
+        // An ion hit on the shields stalls their recharge.
+        if (kind === 'ion' && next.faction?.locks) next.faction.stall = FACTION_RULES.ion.stallMs;
+        events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'shield', ...(kind === 'ion' ? { ion: true } : {}) });
         continue;
       }
       if (kitted && next.fx.dodgeNext > 0) {
@@ -675,13 +932,21 @@ function runTick(next, events, t, salt, overcharged) {
         if (kitted && fxActive(next, 'evade') && next.fx.evade.dodgeCharge > 0) chargeWeapons(next, next.fx.evade.dodgeCharge);
         continue;
       }
+      if (kind === 'ion' && next.faction?.locks) {
+        // Ion: no hull damage, but the room freezes (its system offline) for a few seconds.
+        next.faction.locks[weapon.target] = FACTION_RULES.ion.lockMs;
+        events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'hit', damage: 0, ion: true });
+        events.push({ t: at, type: 'ion_lock', side: 'player', room: weapon.target, ms: FACTION_RULES.ion.lockMs });
+        continue;
+      }
       const damage = kitted && fxActive(next, 'brace') ? Math.ceil(weapon.damage / 2) : weapon.damage;
       let hull = Math.max(1, next.hull - damage);
       // Later: while it runs the hull holds (at the hold line, or where it already was if lower).
       if (kitted && fxActive(next, 'lastStand')) hull = Math.max(hull, Math.min(next.hull, next.fx.lastStand.hold));
       const taken = next.hull - hull;
       next.hull = hull;
-      damageRoom(next.rooms, weapon.target, RULES.roomHitDamage + 2 * weapon.damage);
+      // A drone's sting is small: its room damage scales down with it.
+      damageRoom(next.rooms, weapon.target, (RULES.roomHitDamage + 2 * weapon.damage) * (kind === 'drones' ? FACTION_RULES.drones.roomMult : 1));
       // Fights without kits report the weapon's damage, exactly as before (audit #10).
       events.push({ t: at, type: 'shot', from: 'enemy', weapon: weapon.id, room: weapon.target, outcome: 'hit', damage: kitted ? taken : weapon.damage,
         ...(damage < weapon.damage ? { braced: true } : {}) });
@@ -691,8 +956,9 @@ function runTick(next, events, t, salt, overcharged) {
         return;
       }
     }
-    // Next aim, shown on the player's ship while it charges.
-    weapon.target = PLAYER_ROOMS[seededIndex(next.seed, salt + 70 + index, PLAYER_ROOMS.length)];
+    // Next aim, shown on the player's ship while it charges (an escort draws some volleys: its own roll).
+    const aim = PLAYER_ROOMS[seededIndex(next.seed, salt + 70 + index, PLAYER_ROOMS.length)];
+    weapon.target = escortAlive(next) && seededIndex(next.seed, salt + 75 + index, 100) < TWIST_RULES.escort.aimPct ? 'escort' : aim;
   });
   if (next.result !== null || next.phase !== 'combat') return;
 
@@ -701,7 +967,7 @@ function runTick(next, events, t, salt, overcharged) {
   burnFires(next, next.enemy.rooms, ENEMY_ADJ, events, t, salt + 5, 'enemy');
 
   // Player crew: fires first, then boarders, then repairs.
-  const engineeringBoost = next.crew.some(c => c.room === 'engineering') ? 1.25 : 1;
+  const engineeringBoost = next.crew.some(c => c.room === 'engineering') && !roomLocked(next, 'engineering') ? 1.25 : 1;
   const haste = kitted && fxActive(next, 'haste') ? next.fx.haste.mult : 1;
   const door = kitted && fxActive(next, 'holdDoor') ? next.fx.holdDoor.mult : 1;
   for (const member of next.crew) {
@@ -797,7 +1063,11 @@ function applyAbility(next, member, events) {
           next.enemy.hull -= amount;
           damageRoom(next.enemy.rooms, target, RULES.roomHitDamage + 2 * e.damage);
           events.push({ t: shot * 70, type: 'shot', from: 'player', weapon: 'ability', crewId: member.id, room: target, outcome: 'hit', damage: amount });
-          if (next.enemy.hull <= 0) { next.enemy.hull = 0; finish(next, 'win', events, shot * 70); return; }
+          if (next.enemy.hull <= 0) {
+            next.enemy.hull = 0;
+            if (enemyFalls(next, events, shot * 70)) return;
+            break;
+          }
         }
         break;
       }
@@ -854,7 +1124,7 @@ function applyAbility(next, member, events) {
         const amount = Math.min(e.hull || 0, next.enemy.hull);
         next.enemy.hull -= amount;
         events.push({ t: 0, type: 'strike', side: 'enemy', room: target, damage: amount });
-        if (next.enemy.hull <= 0) { next.enemy.hull = 0; finish(next, 'win', events, 0); return; }
+        if (next.enemy.hull <= 0) { next.enemy.hull = 0; if (enemyFalls(next, events, 0)) return; }
         break;
       }
       case 'offline':
@@ -1108,6 +1378,55 @@ function validKitState(e) {
     && cast.every(id => e.crew.some(c => c.id === id && hasKit(c) && c.charge === 100));
 }
 
+/**
+ * The faction block: the encounter's own faction, with exactly the timers its rules keep, each in range.
+ * A cloak in force started on a cloak beat and ends within its length.
+ */
+function validFactionBlock(e) {
+  const f = e.faction;
+  if (!rec(f) || factionOf(e.encounterId)?.id !== f.id) return false;
+  const keys = ['id', ...(factionHas(f.id, 'cloak') ? ['cloak'] : []), ...(factionHas(f.id, 'regrow') ? ['regrown'] : []),
+    ...(factionHas(f.id, 'ion') ? ['locks', 'stall'] : [])];
+  if (Object.keys(f).length !== keys.length || !keys.every(key => Object.hasOwn(f, key))) return false;
+  if (factionHas(f.id, 'cloak')) {
+    const { beats } = FACTION_RULES.cloak;
+    if (!(f.cloak === 0 || (int(f.cloak, Math.max(1, e.beat), e.beat + beats - 1) && cloakDue(f.cloak - beats + 1)))) return false;
+  }
+  // Regrowth so far: whole hull points, never past the fight's budget or one a beat.
+  if (factionHas(f.id, 'regrow') && !int(f.regrown, 0, Math.min(e.beat * FACTION_RULES.regrow.perBeat, regrowBudget(e)))) return false;
+  if (factionHas(f.id, 'ion')) {
+    const { lockMs, stallMs } = FACTION_RULES.ion;
+    if (!rec(f.locks) || Object.keys(f.locks).length !== PLAYER_ROOMS.length
+      || !PLAYER_ROOMS.every(id => int(f.locks[id], 0, lockMs) && f.locks[id] % TICK_MS === 0)) return false;
+    if (!int(f.stall, 0, stallMs) || f.stall % TICK_MS !== 0) return false;
+  }
+  return true;
+}
+
+/** The twist block: a valid contract twist plus exactly its own fight state (the freighter's hull, the wave). */
+function validTwistBlock(e) {
+  const t = e.twist;
+  if (!rec(t)) return false;
+  const extra = t.id === 'escort' ? 'freighter' : t.id === 'waves' ? 'wave' : null;
+  const core = Object.fromEntries(Object.entries(t).filter(([key]) => key !== extra));
+  if (!validTwist(core) || (extra && !Object.hasOwn(t, extra))) return false;
+  if (t.id === 'escort' && !int(t.freighter, 0, TWIST_RULES.escort.hull)) return false;
+  if (t.id === 'waves' && ![1, 2].includes(t.wave)) return false;
+  // Holdout ends at its clock; Two waves ends only when the second ship falls.
+  if (t.id === 'holdout' && e.result === null && e.beat >= TWIST_RULES.holdout.beats && e.phase !== 'downed') return false;
+  if (t.id === 'waves' && e.result === 'win' && t.wave !== 2) return false;
+  return true;
+}
+
+/** What the twist did, once the fight is over: { id, met }. Null while it runs or without a twist. */
+export function ftlTwistOutcome(state) {
+  const t = state?.twist;
+  if (!t || !TWISTS[t.id] || state.result === null) return null;
+  const won = state.result === 'win';
+  const met = t.id === 'escort' ? won && t.freighter > 0 : t.id === 'rush' ? won && state.beat <= TWIST_RULES.rush.beats : won;
+  return { id: t.id, met };
+}
+
 /** Shape and rule checks for a saved v3 fight, independent of what it is bound to. */
 export function validFtlBody(e) {
   if (!rec(e) || e.version !== FTL_VERSION || e.kind !== 'normal' || !Number.isInteger(e.seed)
@@ -1149,20 +1468,29 @@ export function validFtlBody(e) {
   if (!rec(en) || !num(en.threat, 0.6, 1.6)) return false;
   if (Object.hasOwn(en, 'flagship') && ![1, 2].includes(en.flagship)) return false;
   if (Object.hasOwn(en, 'tier') && ![1, 2].includes(en.tier)) return false;
+  // Faction and twist (Phase 3): rebuilt from the encounter and the contract's twist; edits are refused.
+  if (Object.hasOwn(e, 'faction') && !validFactionBlock(e)) return false;
+  if (Object.hasOwn(e, 'twist') && !validTwistBlock(e)) return false;
   const kits = Object.hasOwn(e, 'fx');
-  const load = enemyLoadout(en.threat, { flagship: en.flagship || 0, tier: en.tier || 0, kits });
+  const elite = fightElite(e);
+  const load = enemyLoadout(en.threat, { flagship: en.flagship || 0, tier: en.tier || 0, kits, faction: fightFaction(e), elite,
+    hitMult: e.twist?.id === 'holdout' ? TWIST_RULES.holdout.damageMult : 1 });
   const startHull = enemyStartHull(e);
-  if (!int(startHull, 1, kits ? KIT_ENEMY.hull : ENEMY_HULL) || !int(en.hull, 0, startHull) || en.evasion !== load.evasion || en.repairPerSec !== load.repairPerSec
-    || !validShields(en.shields, 2, RULES.enemyShieldRechargeMs * 2) || en.shields.max !== load.shieldLayers
+  if (!int(startHull, 1, fullEnemyHull(kits, elite)) || !int(en.hull, 0, enemyWaveHull(e)) || en.evasion !== load.evasion || en.repairPerSec !== load.repairPerSec
+    || !validShields(en.shields, 4, RULES.enemyShieldRechargeMs * 2) || en.shields.max !== load.shieldLayers
     || (Object.hasOwn(en.shields, 'ionMs') && !int(en.shields.ionMs, 0, WEAPON_CATALOG.ion.ionMs))
     || !validRooms(en.rooms, ENEMY_ROOMS)) return false;
-  // The enemy's guns are derived from threat: an edited save cannot soften them.
+  // The enemy's guns are derived from threat (and faction, elite, twist): an edited save cannot soften them.
+  // Only an escort with hull left can draw their aim.
+  const aimable = target => PLAYER_ROOMS.includes(target) || (target === 'escort' && escortAlive(e));
   if (!Array.isArray(en.weapons) || en.weapons.length !== load.weapons.length
     || !en.weapons.every((w, k) => rec(w) && w.id === load.weapons[k].id && w.shots === load.weapons[k].shots
       && w.damage === load.weapons[k].damage && w.chargeMs === load.weapons[k].chargeMs
-      && int(w.progressMs, 0, w.chargeMs) && PLAYER_ROOMS.includes(w.target))) return false;
+      && int(w.progressMs, 0, w.chargeMs) && aimable(w.target))) return false;
   if (e.result === null && en.hull === 0) return false;
-  if (e.result === 'win' && (e.beat === 0 || en.hull !== 0)) return false;
+  // A Holdout is also won by surviving its clock, with their ship still flying.
+  const heldOut = e.twist?.id === 'holdout' && e.beat >= TWIST_RULES.holdout.beats;
+  if (e.result === 'win' && (e.beat === 0 || (en.hull !== 0 && !heldOut))) return false;
   if (e.result === 'loss' && (e.beat === 0 || e.hull !== 1 || en.hull <= 0)) return false;
   if (Object.hasOwn(e, 'tactics')) {
     const t = e.tactics;
@@ -1171,7 +1499,8 @@ export function validFtlBody(e) {
       && (t.burn.uses === 0 ? t.burn.throughBeat === 0 : int(t.burn.throughBeat, RULES.overchargeBeats, e.beat + RULES.overchargeBeats - 1)))) return false;
     if (t.board && !(rec(t.board) && [0, 1].includes(t.board.uses)
       && (t.board.uses === 0 ? t.board.success === null : typeof t.board.success === 'boolean')
-      && (!t.board.success || (e.result === 'win' && en.hull === 0)))) return false;
+      // A boarding that took the first of two waves leaves the second ship to fight.
+      && (!t.board.success || (e.result === 'win' && en.hull === 0) || (e.twist?.id === 'waves' && e.twist.wave === 2)))) return false;
   }
   if (Object.hasOwn(e, 'boarders')) {
     const b = e.boarders;
@@ -1192,11 +1521,14 @@ export const MAX_FIGHT_BEATS = 200;
  * - idle: nothing (crew and auto-targeting only).
  * - smart: hold volleys while the enemy has shields, break shields, then guns.
  * - initiative: smart, plus Overcharge early and Board once it is open.
+ * - sharp: smart, plus each faction's and twist's counter (sharpStep).
  * Returns { commands, order }.
  */
 export function ftlPolicyStep(state, policy = 'idle') {
   if (state.phase === 'downed') return { commands: [], order: null };
   if (policy === 'idle') return { commands: [], order: null };
+  // Sharp: the counters, and Overcharge to beat a Rush clock.
+  if (policy === 'sharp') return { commands: sharpCommands(state), order: rushing(state) && ftlTacticStatus(state, 'burn').available ? 'burn' : null };
   const commands = [];
   const shielded = enemyShieldMax(state) > 0 && state.enemy.rooms.shields.integrity > 0;
   if (state.intent.hold !== shielded) commands.push({ type: 'hold', hold: shielded });
@@ -1210,8 +1542,123 @@ export function ftlPolicyStep(state, policy = 'idle') {
   return { commands, order };
 }
 
+/** Will the next beat be cloaked: a cloak still running, or one due while their Helm can hold it? */
+export function cloakedNextBeat(state) {
+  if (!fightHas(state, 'cloak') || state.enemy.rooms.helm.integrity < FACTION_RULES.cloak.helmMin) return false;
+  const nextBeat = state.beat + 1;
+  return state.faction.cloak >= nextBeat || (state.faction.cloak < nextBeat && cloakDue(nextBeat));
+}
+
+/** A Rush clock still running. */
+const rushing = state => state.twist?.id === 'rush' && state.beat < TWIST_RULES.rush.beats;
+
+/** Is an enemy gun aimed at the escort and about to fire? */
+const escortThreatened = state => escortAlive(state) && state.enemy.weapons.some(w => w.target === 'escort' && w.progressMs >= w.chargeMs * 0.4);
+
+/**
+ * The sharp captain: the smart captain's discipline (hold volleys while they have shields; break shields,
+ * then guns), plus the counter for whoever is out there:
+ * - a cloaking ship (Shades, Eclipse): hold fire while it is cloaked; in the beats before a cloak, once their
+ *   Shields room is below half, aim at the Helm (below half it cannot cloak);
+ * - Wardens: keep aiming at the Shields room (harmonics stop below half);
+ * - Corsairs: their Weapons room (the missile launcher), with a free crew member at an empty helm to dodge;
+ * - Ice Raiders: their Weapons room (the ion gun), and an engineer into a frozen room;
+ * - Swarm and Eclipse regrowth: fire as each gun is ready (holding only while it is cloaked);
+ * - boarders aboard: a security officer (or gunner) off any post but Weapons goes to meet them;
+ * - an escort under a gun's aim: that gun's Weapons room, firing as each gun is ready;
+ * - a Rush: Overcharge, and straight at shields then guns; a Holdout: their Weapons room.
+ */
+function sharpCommands(state) {
+  const commands = [];
+  const faction = fightFaction(state);
+  const shieldsUp = enemyShieldMax(state) > 0 && state.enemy.rooms.shields.integrity > 0;
+  const helm = state.enemy.rooms.helm.integrity;
+  let room = shieldsUp ? 'shields' : 'weapons';
+  let hold = shieldsUp;
+  // Against a clock, speed first: no detour to their guns. Holding out, their guns are all that matters.
+  if ((faction === 'corsairs' || faction === 'ice') && !rushing(state)) room = 'weapons';
+  if (state.twist?.id === 'holdout') room = 'weapons';
+  if (fightHas(state, 'harmonics') && state.enemy.rooms.shields.integrity > 0) room = 'shields';
+  // A cloak due within three beats: once their Shields room is below half, put the volleys into the Helm.
+  if (fightHas(state, 'cloak') && helm >= FACTION_RULES.cloak.helmMin && beatsToCloak(state) <= 3
+    && state.enemy.rooms.shields.integrity < 50) room = 'helm';
+  // Regrowth (Swarm, Eclipse) or a Rush clock: every beat spent holding counts against you, so fire as ready.
+  if (fightHas(state, 'regrow') || rushing(state)) hold = false;
+  if (escortThreatened(state)) { room = 'weapons'; hold = false; }
+  // Cloaked next beat (still cloaked, or a cloak due with the Helm able to): nothing fired lands, so hold.
+  if (cloakedNextBeat(state)) hold = true;
+  if (state.intent.hold !== hold) commands.push({ type: 'hold', hold });
+  if (state.intent.target !== room) commands.push({ type: 'target', room });
+  // Crew counters: someone at an empty helm against missiles, an engineer into a frozen room.
+  const moving = id => Object.hasOwn(state.intent.moves || {}, id);
+  if (faction === 'corsairs' && !state.crew.some(member => member.room === 'helm')) {
+    const free = state.crew.filter(member => !member.station && !moving(member.id))
+      .sort((a, b) => (b.role === 'pilot') - (a.role === 'pilot'))[0];
+    if (free) commands.push({ type: 'move', crewId: free.id, room: 'helm' });
+  }
+  // Boarders aboard (Scrappers, Ice Raiders, the Corsairs' ace and king): the best fighter goes to meet them.
+  const b = state.boarders;
+  if (b?.phase === 'aboard' && !state.crew.some(member => member.room === b.room && ['security', 'gunner'].includes(member.role))) {
+    const fighter = state.crew.filter(member => ['security', 'gunner'].includes(member.role) && !moving(member.id) && member.station !== 'weapons')
+      .sort((x, y) => (y.role === 'security') - (x.role === 'security'))[0];
+    if (fighter) commands.push({ type: 'move', crewId: fighter.id, room: b.room });
+  }
+  if (fightHas(state, 'ion')) {
+    const frozen = ['weapons', 'shields', 'helm', 'engineering'].find(id => roomLocked(state, id) && state.faction.locks[id] > BEAT_MS);
+    const engineers = state.crew.filter(member => member.role === 'engineer' && !moving(member.id));
+    if (frozen && !engineers.some(member => member.room === frozen) && engineers.length) {
+      commands.push({ type: 'move', crewId: engineers[0].id, room: frozen });
+    }
+  }
+  return commands;
+}
+
+// --- What the fight screen shows for factions and twists (presentation only) ----
+
+/**
+ * The faction's and twist's live state in plain numbers for the fight screen: who they are, the cloak, the
+ * regrowth, harmonics, frozen rooms, the escort, the clocks, the wave and the elite. Null parts are absent rules.
+ */
+export function ftlMechanicsView(state) {
+  const factionId = fightFaction(state);
+  const def = factionId ? FACTIONS[factionId] : null;
+  const live = state.result === null && state.phase === 'combat';
+  const burning = ENEMY_ROOMS.some(id => state.enemy.rooms[id].fire > 0);
+  const t = state.twist && TWISTS[state.twist.id] ? state.twist : null;
+  const seconds = ms => Math.ceil(ms / BEAT_MS);
+  const clock = (kind, total) => ({ kind, total, left: Math.max(0, total - state.beat) });
+  return {
+    faction: def ? { id: def.id, name: def.name, chip: def.chip, mechanic: def.mechanic, counter: def.counter } : null,
+    missiles: fightHas(state, 'missiles'),
+    drones: fightHas(state, 'drones'),
+    cloak: fightHas(state, 'cloak') ? {
+      cloaked: enemyCloaked(state),
+      beatsLeft: enemyCloaked(state) ? state.faction.cloak - state.beat + 1 : 0,
+      nextIn: enemyCloaked(state) ? null : beatsToCloak(state),
+      helmBroken: state.enemy.rooms.helm.integrity < FACTION_RULES.cloak.helmMin,
+    } : null,
+    regrow: fightHas(state, 'regrow') ? { burning, left: Math.max(0, regrowBudget(state) - state.faction.regrown),
+      active: live && !burning && state.enemy.hull < enemyWaveHull(state) && regrowBudget(state) > state.faction.regrown } : null,
+    harmonics: fightHas(state, 'harmonics') ? { active: state.enemy.rooms.shields.integrity > FACTION_RULES.harmonics.roomMin } : null,
+    ion: fightHas(state, 'ion') ? {
+      locks: Object.fromEntries(PLAYER_ROOMS.filter(id => roomLocked(state, id)).map(id => [id, seconds(state.faction.locks[id])])),
+      stall: state.faction.stall > 0 ? seconds(state.faction.stall) : 0,
+    } : null,
+    twist: t ? {
+      id: t.id, label: TWISTS[t.id].label, rule: TWISTS[t.id].rule,
+      ...(t.id === 'escort' ? { escort: { hull: t.freighter, max: TWIST_RULES.escort.hull, lost: t.freighter <= 0,
+        targeted: state.enemy.weapons.some(w => w.target === 'escort') } } : {}),
+      ...(t.id === 'rush' ? { clock: clock('rush', TWIST_RULES.rush.beats) } : {}),
+      ...(t.id === 'holdout' ? { clock: clock('holdout', TWIST_RULES.holdout.beats) } : {}),
+      ...(t.id === 'waves' ? { wave: t.wave, waves: 2 } : {}),
+      ...(t.id === 'bounty' ? { elite: { name: t.elite.name, modifier: t.elite.modifier } } : {}),
+    } : null,
+  };
+}
+
 /** Charge gained per beat (ms), for smooth bars between beats. */
 export function playerChargePerBeat(state) {
+  if (roomLocked(state, 'weapons')) return 0;
   const overcharged = state.tactics?.burn?.throughBeat > state.beat;
   return Math.round(BEAT_MS * manning(state, 'weapons') * integrityFactor(state.rooms.weapons.integrity) * (overcharged ? RULES.overchargeMult : 1)
     * shipStatsOf(state).chargeMult);

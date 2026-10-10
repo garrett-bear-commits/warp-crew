@@ -22,7 +22,7 @@ export const FACTIONS = Object.freeze(Object.fromEntries([
     mechanic: 'Every so often they cloak, and every shot fired at them misses.',
     counter: 'Hold fire while they are cloaked. Wreck their Helm and they cannot cloak.' },
   { id: 'wardens', name: 'Wardens', chip: 'Wardens · harmonics', mechanics: ['harmonics'],
-    mechanic: 'An extra shield layer that recharges twice as fast.',
+    mechanic: 'Harmonic shields recharge twice as fast while their Shields room is above half.',
     counter: 'Hit their Shields room until it is below half.' },
   { id: 'eclipse', name: 'Eclipse', chip: 'Eclipse · it learned', mechanics: ['cloak', 'regrow'],
     mechanic: 'It cloaks like a Shade and grows back like the Swarm.',

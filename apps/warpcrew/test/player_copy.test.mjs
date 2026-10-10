@@ -3,6 +3,8 @@ import { SHIPS } from '../src/data/ships.js';
 import { PLANET_DEFS } from '../src/data/planets.js';
 import { NODES, STORY_BEATS } from '../src/data/sectors.js';
 import { ENCOUNTERS_V1 } from '../src/systems/combat.js';
+import { FACTIONS, ELITE_MODIFIERS, ELITE_NAMES } from '../src/data/factions.js';
+import { TWISTS, describeTwist, twistOutcomeLine } from '../src/data/twists.js';
 
 // Player-facing copy stays in the game's voice: no launch phases, SKUs, genre labels or design-speak.
 const DEV_WORDS = /\b(tutorial|SKUs?|IAP|LiveOps|soft[- ]?launch|placeholder|TODO|provisional|mid-?core|mid-?game|end-?game|monetization|telemetry|F2P|roadmap|fast follow|season spine|not shipped|story-adjacent|QA)\b/i;
@@ -41,5 +43,20 @@ for (const encounter of ENCOUNTERS_V1) {
   assert.match(reason, CURRENT_FIGHT, `${encounter.id} tell advice names something the player can do in the fight: "${reason}"`);
 }
 assert.equal(new Set(ENCOUNTERS_V1.map((encounter) => encounter.tell.reason)).size, ENCOUNTERS_V1.length, 'each tell gives its own advice');
+
+// Factions and twists (Phase 3): the card chip, the rule and the counter in plain words, each one short.
+for (const faction of Object.values(FACTIONS)) {
+  for (const key of ['name', 'chip', 'mechanic', 'counter']) clean(faction[key], `${faction.id} ${key}`);
+  assert.ok(faction.mechanic.length <= 90 && faction.counter.length <= 90, `${faction.id} reads in one line`);
+  for (const name of ELITE_NAMES[faction.id]) clean(name, `${faction.id} elite name`);
+}
+for (const modifier of Object.values(ELITE_MODIFIERS)) { clean(modifier.label, modifier.id); clean(modifier.rule, modifier.id); }
+for (const twist of Object.values(TWISTS)) {
+  const sample = twist.id === 'bounty' ? { id: 'bounty', elite: { name: ELITE_NAMES.corsairs[0], modifier: 'heavy' } } : { id: twist.id };
+  const card = describeTwist(sample);
+  for (const key of ['label', 'rule', 'payLine']) clean(card[key], `${twist.id} ${key}`);
+  assert.ok(card.rule.length <= 80, `${twist.id} rule is one short line`);
+  for (const met of [true, false]) clean(twistOutcomeLine(sample, { id: twist.id, met }), `${twist.id} debrief`);
+}
 
 console.log('player_copy.test.mjs OK');

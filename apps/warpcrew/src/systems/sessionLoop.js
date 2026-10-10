@@ -12,7 +12,8 @@ import { listCombatOrders, previewCombatOrder, encounterById, crewPower } from '
 import { readyCrew } from './player.js';
 import { assignStation, stationOutputs, STATIONS } from './stations.js';
 import { applyEncounterAction, recoverEncounter, applyEncounterCommand, guidedTargetDone } from './encounterState.js';
-import { FTL_VERSION, PLAYER_WEAPONS, weaponDef, playerChargePerBeat, enemyChargePerBeat, currentTarget, playerEvasion, enemyEvasion, playerShieldCap, enemyShieldCap, ftlTacticStatus, RULES as FTL_RULES, OVERCHARGE, enemyStartHull, kitFight, memberKit, abilityGainPerBeat } from './ftlCombat.js';
+import { FTL_VERSION, PLAYER_WEAPONS, weaponDef, playerChargePerBeat, enemyChargePerBeat, currentTarget, playerEvasion, enemyEvasion, playerShieldCap, enemyShieldCap, ftlTacticStatus, RULES as FTL_RULES, OVERCHARGE, enemyWaveHull, kitFight, memberKit, abilityGainPerBeat, ftlMechanicsView, enemyGunKind } from './ftlCombat.js';
+import { ELITE_MODIFIERS } from '../data/factions.js';
 import { describeKit } from '../data/crewKits.js';
 import { previewTravel, commitTravel } from './travel.js';
 import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpeditionParty, previewExpedition, expeditionPartySize, visiblePlanets, startExpedition } from './expedition.js';
@@ -179,17 +180,22 @@ function ftlEncounterView(player, encounter, { settled, ui = {} }) {
         nextPct: !encounter.result && encounter.phase === 'combat' ? Math.min(100, member.charge + abilityGainPerBeat(encounter, member)) : member.charge } : null })),
     abilities: kitFight(encounter),
     auto: encounter.intent.auto === true,
+    // Factions and twists (Phase 3): the cloak, regrowth, frozen rooms, the escort, the clocks, the elite.
+    mechanics: ftlMechanicsView(encounter),
+    elite: encounter.twist?.id === 'bounty' && ELITE_MODIFIERS[encounter.twist.elite?.modifier]
+      ? { name: encounter.twist.elite.name, label: ELITE_MODIFIERS[encounter.twist.elite.modifier].label, rule: ELITE_MODIFIERS[encounter.twist.elite.modifier].rule } : null,
     enemy: {
       hull: encounter.enemy.hull,
-      hullMax: enemyStartHull(encounter),
+      // The ship in front of you: wave 2 of a Two waves fight arrives short of hull.
+      hullMax: enemyWaveHull(encounter),
       shields: { layers: encounter.enemy.shields.layers, max: enemyShieldCap(encounter), full: encounter.enemy.shields.max,
         rechargePct: pct(encounter.enemy.shields.rechargeMs, FTL_RULES.enemyShieldRechargeMs), ionized: (encounter.enemy.shields.ionMs || 0) > 0 },
       evasion: enemyEvasion(encounter),
       rooms: Object.fromEntries(Object.keys(encounter.enemy.rooms).map(id => [id, room(encounter.enemy.rooms, id, ENEMY_ROOM_LABELS[id])])),
-      weapons: encounter.enemy.weapons.map(weapon => ({ id: weapon.id, shots: weapon.shots, damage: weapon.damage,
+      weapons: encounter.enemy.weapons.map(weapon => ({ id: weapon.id, kind: enemyGunKind(weapon), shots: weapon.shots, damage: weapon.damage,
         chargePct: pct(weapon.progressMs, weapon.chargeMs), progressMs: weapon.progressMs, maxMs: weapon.chargeMs,
         nextPct: !encounter.result && encounter.phase === 'combat' ? pct(Math.min(weapon.chargeMs, weapon.progressMs + enemyChargePerBeat(encounter)), weapon.chargeMs) : pct(weapon.progressMs, weapon.chargeMs),
-        target: weapon.target, targetLabel: STATIONS[weapon.target]?.label || weapon.target })),
+        target: weapon.target, targetLabel: weapon.target === 'escort' ? 'Freighter' : STATIONS[weapon.target]?.label || weapon.target })),
     },
     boarders: encounter.boarders && encounter.boarders.phase !== 'none' ? { phase: encounter.boarders.phase, room: encounter.boarders.room,
       roomLabel: STATIONS[encounter.boarders.room]?.label || encounter.boarders.room,

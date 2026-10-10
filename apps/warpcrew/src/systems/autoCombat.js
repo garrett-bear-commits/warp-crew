@@ -125,8 +125,11 @@ export function tacticStatus(state, name) {
   return { available: true, reason: null, ...(name === 'board' ? { chance: boardChance(state) } : {}) };
 }
 
-/** Raiders that dock a boarding party mid-fight (their tells already threaten it). */
-export const BOARDING_ENEMIES = Object.freeze(['scrapper_gang', 'ice_raiders', 'corsair_king']);
+/**
+ * Raiders that dock a boarding party mid-fight: the Scrappers (both crews), the Ice Raiders and, since
+ * Phase 3, the Corsairs' ace and their king (world design §4).
+ */
+export const BOARDING_ENEMIES = Object.freeze(['scrapper_gang', 'ember_raider', 'ice_raiders', 'pirate_ace', 'corsair_king']);
 export const BOARDERS = Object.freeze({ warnBeat: 2, strength: 3, sabotage: 10, minSystem: 60 });
 const BOARDER_TARGETS = ['weapons', 'shields', 'engineering', 'helm'];
 

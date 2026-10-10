@@ -1,5 +1,6 @@
 // @ts-nocheck
-/** Dependency-free persistence schema. Catalog checks are supplied by callers. */
+/** Dependency-free persistence schema (plus the twist data table). Catalog checks are supplied by callers. */
+import { validTwist } from '../data/twists.js';
 const CONTRACT_STAGES = new Set(['briefing', 'choice', 'confrontation', 'return', 'claimed']);
 const CONTRACT_PROFILES_IDS = new Set(['reliable', 'risky', 'strange', 'distress']);
 
@@ -142,10 +143,14 @@ export function normalizeContractState(player, { nodes, encounterById }) {
       ],
     };
   }
+  // A twist is kept only when well formed, and never on a wall or the tutorial job; a bad one drops alone.
+  const { twist, ...kept } = contract;
+  const keepTwist = Object.hasOwn(contract, 'twist') && validTwist(twist) && !contract.wall && contract.profile !== 'distress';
   return {
     ...player,
     activeContract: {
-      ...contract,
+      ...kept,
+      ...(keepTwist ? { twist } : {}),
       choiceId: contract.choiceId || null,
       encounterId: contract.encounterId || null,
       orderId: contract.orderId || null,

@@ -82,7 +82,9 @@ function playOut(player, { orderFor = () => null, reloadEachBeat = true } = {}) 
   assert.equal(encounter.enemy.threat, contractThreat(before, { encounterId: 'pirate_scout' }, now));
   // Explore fights bring the crew's kits, so the enemy fights as a kit-fight enemy.
   assert.ok(encounter.fx && encounter.crew.every(member => typeof member.kit === 'string'), 'the crew fight with their signature moves');
-  assert.deepEqual(encounter.enemy.weapons.map(w => w.damage), enemyLoadout(encounter.enemy.threat, { kits: true }).weapons.map(w => w.damage));
+  // Phase 3: the scout flies for the Corsairs, so its loadout carries their missile launcher.
+  assert.equal(encounter.faction?.id, 'corsairs');
+  assert.deepEqual(encounter.enemy.weapons.map(w => w.damage), enemyLoadout(encounter.enemy.threat, { kits: true, faction: 'corsairs' }).weapons.map(w => w.damage));
   assert.equal(encounter.hull, before.ship.hull, 'the fight runs on the ship\'s own hull');
   assert.deepEqual(Object.keys(encounter.tactics), unlockedTactics(before));
   assert.equal(validTravelFight(player), true);

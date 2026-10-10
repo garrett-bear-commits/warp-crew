@@ -170,23 +170,34 @@ export function resolveCombat({
   };
 }
 
+/**
+ * Each encounter's tell: what the crew sees coming, and one line of advice naming its faction's trick and the
+ * counter (Phase 3 world design §4; factions in src/data/factions.js). Advice stays one short line, no numbers.
+ */
 const ENCOUNTER_TELLS = {
-  pirate_scout: { label: 'Targeting engines.', text: "The scout is painting the Sparrow's engines, but its first volley is hurried.", recommendedOrder: 'brace', reason: 'Hit their Weapons room first and the hurried volleys slow right down.' },
-  pirate_wing: { label: 'Formation tightening.', text: 'Three cutters are closing their ragged V around the Sparrow.', recommendedOrder: 'burn', reason: 'Overcharge your guns, then keep hitting their Weapons room.' },
-  scrapper_gang: { label: 'Grapples primed.', text: 'Cutting skiffs are drifting close enough to trade hull for salvage.', recommendedOrder: 'board', reason: 'Boarders may land: keep security free to meet them.' },
-  swarm_probe: { label: 'Signal about to jump.', text: 'The probe has finished mapping the ship and is turning for open dark.', recommendedOrder: 'burn', reason: 'Thin hull. Overcharge and finish it before it jumps.' },
-  swarm_skirmish: { label: 'Pack spreading wide.', text: 'The hunting pack is separating to strike from both sides.', recommendedOrder: 'brace', reason: 'Hits will land in several rooms. Keep an engineer free for fires.' },
-  swarm_frigate: { label: 'Core flare rising.', text: 'The remembered frigate is charging a broadside larger than the Sparrow.', recommendedOrder: 'brace', reason: 'Big guns. Hold fire to break its shields together, then hit Weapons.' },
-  pirate_ace: { label: 'Attack vector committed.', text: 'The ace has traded distance for one clean firing pass.', recommendedOrder: 'burn', reason: 'Slippery pilot. Hit their Engines room so your shots stop missing.' },
-  ice_raiders: { label: 'Boarding clamps open.', text: 'White-hulled corsairs are matching speed with their clamps exposed.', recommendedOrder: 'board', reason: 'Clamps are out: keep security free, and Board once their hull runs low.' },
-  swarm_brood: { label: 'Chitin cloud closing.', text: 'Half-grown probes are thickening around the shield line.', recommendedOrder: 'brace', reason: 'They go for your shield line. Keep crew in your Shields room.' },
-  veil_wraith: { label: 'Blind angle moving.', text: 'The contact vanishes whenever sensors or crew look directly at it.', recommendedOrder: 'burn', reason: 'Hard to hit. Knock out their Helm room and it stops dodging.' },
-  corsair_king: { label: 'Flagship alongside.', text: 'The old captain is presenting a prize broadside and daring a boarding reply.', recommendedOrder: 'board', reason: 'Boarders may land: keep security free, and Board when his hull is low.' },
-  eclipse_echo: { label: 'War-form unfolding.', text: 'The echo is opening weapon limbs the Spur was never built to answer.', recommendedOrder: 'brace', reason: 'A lot of guns. Man your Shields room and keep an engineer free.' },
-  ember_raider: { label: 'Breach team heating.', text: 'Raiders are welding toward Cargo while their own hull runs exposed.', recommendedOrder: 'burn', reason: 'Their hull is exposed. Overcharge and finish it fast.' },
-  hollow_shade: { label: 'Name forming.', text: "A second line of writing is appearing beneath the crew's name on the hull.", recommendedOrder: 'brace', reason: 'Watch which of your rooms it marks, and have crew there for repairs.' },
-  crown_warden: { label: 'Verdict chambered.', text: 'The Warden has finished its warning and loaded a gold verdict round.', recommendedOrder: 'brace', reason: 'Thick shields. Hold fire to break them together, then hit Weapons.' },
-  eclipse_throne: { label: 'Halo collapsing inward.', text: "The Throne's halo is drawing every nearby signal toward its core.", recommendedOrder: 'burn', reason: 'The big one. Overcharge, break its shields together, then hit Weapons.' },
+  // Corsairs: a missile through the shields; dodge it from the Helm, silence their Weapons.
+  pirate_scout: { label: 'Missile rack warm.', text: "The scout is painting the Sparrow's engines, and the rack under its nose is not for show.", recommendedOrder: 'brace', reason: 'Its missile skips your shields. Crew the Helm to dodge, then hit their Weapons.' },
+  pirate_wing: { label: 'Formation tightening.', text: 'Three cutters are closing their ragged V, and the lead one is hauling a missile pod.', recommendedOrder: 'burn', reason: 'Missiles fly past shields. Keep a pilot at the Helm and break their Weapons.' },
+  pirate_ace: { label: 'Attack vector committed.', text: 'The ace has traded distance for one clean pass: a missile first, then a boarding hook.', recommendedOrder: 'burn', reason: 'A missile and a boarding hook. Pilot at the Helm, security free for the hook.' },
+  corsair_king: { label: 'Flagship alongside.', text: 'The old captain is presenting a prize broadside and daring a boarding reply.', recommendedOrder: 'board', reason: 'The king fires missiles and boards. Hit his Weapons and keep security free.' },
+  // Scrappers: boarders; keep security free.
+  scrapper_gang: { label: 'Grapples primed.', text: 'Cutting skiffs are drifting close enough to trade hull for salvage.', recommendedOrder: 'board', reason: 'Boarders are coming. Keep security free to meet them wherever they land.' },
+  ember_raider: { label: 'Breach team heating.', text: 'Raiders are welding toward Cargo while their own hull runs exposed.', recommendedOrder: 'burn', reason: 'They board while their hull glows. Send security, then Overcharge.' },
+  // Swarm: drones strip shields and the hull grows back unless it burns.
+  swarm_probe: { label: 'Signal about to jump.', text: 'The probe has finished mapping the ship and its shell is already knitting shut.', recommendedOrder: 'burn', reason: 'Its shell grows back unless it is burning. Overcharge and finish it fast.' },
+  swarm_skirmish: { label: 'Pack spreading wide.', text: 'The hunting pack is splitting into a cloud of drones to strike from every side.', recommendedOrder: 'brace', reason: 'Drone swarms strip your shields. Keep crew in Shields and set them on fire.' },
+  swarm_frigate: { label: 'Core flare rising.', text: 'The remembered frigate is charging a broadside larger than the Sparrow.', recommendedOrder: 'brace', reason: 'It regrows unless it is burning. Fire as ready, no Hold, and keep it lit.' },
+  swarm_brood: { label: 'Chitin cloud closing.', text: 'Half-grown probes are thickening around the shield line.', recommendedOrder: 'brace', reason: 'Drone clouds eat shield layers. Man your Shields; a fire stops the regrowth.' },
+  // Ice Raiders: ion freezes a room; an engineer thaws it twice as fast. They board too.
+  ice_raiders: { label: 'Ion clamps open.', text: 'White-hulled corsairs are matching speed with an ion projector and their clamps out.', recommendedOrder: 'board', reason: 'Ion freezes a room. An engineer thaws it fast; keep security for the clamps.' },
+  // Shades: they cloak; hold fire, and a wrecked Helm cannot cloak.
+  veil_wraith: { label: 'Blind angle moving.', text: 'The contact vanishes whenever sensors or crew look directly at it.', recommendedOrder: 'burn', reason: 'It cloaks and your shots miss. Hold fire while it hides, then wreck its Helm.' },
+  hollow_shade: { label: 'Name forming.', text: "A second line of writing is appearing beneath the crew's name on the hull.", recommendedOrder: 'brace', reason: 'When it cloaks, Hold your guns. Below half, its Helm cannot cloak at all.' },
+  // Wardens: harmonic shields; hit the Shields room.
+  crown_warden: { label: 'Verdict chambered.', text: 'The Warden has finished its warning, and its shields are humming in a chord.', recommendedOrder: 'brace', reason: 'Harmonic shields refill fast. Hit their Shields room until it is below half.' },
+  eclipse_throne: { label: 'Halo collapsing inward.', text: "The Throne's halo is drawing every nearby signal toward its core.", recommendedOrder: 'burn', reason: 'Its harmonics refill its shields. Break its Shields room, then Overcharge.' },
+  // Eclipse: it learned to cloak and to regrow.
+  eclipse_echo: { label: 'War-form unfolding.', text: 'The echo is opening weapon limbs, and it is learning how you fight.', recommendedOrder: 'brace', reason: 'It cloaks and it regrows. Hold fire while it hides, and keep it burning.' },
 };
 
 export const ENCOUNTERS_V1 = [

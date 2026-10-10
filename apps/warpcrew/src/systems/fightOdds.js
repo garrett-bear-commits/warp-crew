@@ -32,7 +32,9 @@ export function offerFightContract(offer) {
   if (!ids.length) return null;
   // Threat follows the encounter's power, so the strongest encounter is the toughest fight.
   const encounterId = ids.sort((a, b) => encounterById(b).power - encounterById(a).power || a.localeCompare(b))[0];
-  return { encounterId, profile: offer.profile, destinationId: offer.destinationId, ...(offer.wall ? { wall: { id: offer.wall.id } } : {}) };
+  // The offer's twist rides along (contractFightArgs keeps it off walls), so the odds play the real fight.
+  return { encounterId, profile: offer.profile, destinationId: offer.destinationId, ...(offer.wall ? { wall: { id: offer.wall.id } } : {}),
+    ...(offer.twist ? { twist: offer.twist } : {}) };
 }
 
 /** One scripted fight to its end (smart captain, Auto on, a downed crew concedes): true for a win. */
