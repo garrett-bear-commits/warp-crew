@@ -16,7 +16,11 @@ import { previewTravel } from '../src/systems/travel.js';
 import { shouldAutoAdvanceFight, beatDelayMs, FIGHT_BEAT_MS } from '../src/systems/fightPacing.js';
 import { createGuidedBeatScheduler } from '../src/ui/guidedBeatScheduler.js';
 import { renderOverlays, renderMissions } from '../src/ui/bridge.js';
+import { createSeededRng } from '../src/sim/contractEconomy.js';
 
+// Deterministic: the veteran's crew and every roll the test leaves unseeded come from one seed. A crew drawn
+// from Math.random made the near-miss search below fail about one run in sixteen once fights got fairer.
+Math.random = createSeededRng(4219);
 const now = Date.UTC(2030, 8, 22, 12);
 const LANE_A_SCOUT = { node: 'lane_a', rng: () => 0.6 };
 const reload = player => migratePlayer(JSON.parse(JSON.stringify(player)));
