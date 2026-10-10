@@ -32,6 +32,12 @@ const list = (extra: Record<string, unknown> = {}, key = secret) =>
     key,
   );
 
+/** A forged token: the signature's first character changed (all six bits are data, unlike the last one's). */
+const forge = (jws: string): string => {
+  const at = jws.lastIndexOf('.') + 1;
+  return jws.slice(0, at) + (jws[at] === 'A' ? 'B' : 'A') + jws.slice(at + 1);
+};
+
 describe('Jest subscriptions verifier', () => {
   it('verifies a signed list for this player and game, iat in seconds or ms', () => {
     expect(v.verifySubscriptions(list(), check)).toEqual({
@@ -75,8 +81,7 @@ describe('Jest subscriptions verifier', () => {
     });
   });
   it('refuses a forged, foreign, other-player, unsigned-age, stale or future list', () => {
-    // Always change the last character (a token already ending in 'A' was a 1-in-64 false pass).
-    const forged = list().replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'));
+    const forged = forge(list());
     expect(v.verifySubscriptions(forged, check)).toEqual({
       ok: false,
       reason: 'bad_signature',

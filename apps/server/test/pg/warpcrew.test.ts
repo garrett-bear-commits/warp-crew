@@ -49,6 +49,12 @@ const token = (player: string, o: { iatMs?: number; aud?: string; secret?: strin
     nowMs: o.iatMs ?? T0,
     registered: true,
   });
+
+/** A forged token: the signature's first character changed (all six bits are data, unlike the last one's). */
+const forge = (jws: string): string => {
+  const at = jws.lastIndexOf('.') + 1;
+  return jws.slice(0, at) + (jws[at] === 'A' ? 'B' : 'A') + jws.slice(at + 1);
+};
 const headers = (player: string, bearer = token(player)) => ({
   'x-player-key': player,
   authorization: `Bearer ${bearer}`,
@@ -146,7 +152,7 @@ describe('identity is required and verified (legacy: identity is required and ve
     const url = '/v1/saves/current';
     const no = await off.inject({ method: 'GET', url });
     expect(no.statusCode).toBe(401);
-    const forged = token('pilot1').replace(/.$/, 'A');
+    const forged = forge(token('pilot1'));
     const reasons = async (h: Record<string, string>) => {
       const r = await off.inject({ method: 'GET', url, headers: h });
       expect(r.statusCode).toBe(401);
@@ -334,7 +340,7 @@ describe('purchases: signed receipt only, idempotent, one-time enforced (legacy 
   });
 
   it('receipts cannot be forged, used by another player, come from another game or pick their alg', async () => {
-    const forged = receipt('buyer', { token: 'tok-x', sku: 'wc_gems_xxl' }).replace(/.$/, 'A');
+    const forged = forge(receipt('buyer', { token: 'tok-x', sku: 'wc_gems_xxl' }));
     expect((await verify(on, 'buyer', forged)).json()).toMatchObject({
       outcome: 'rejected',
       reason: 'bad_signature',
@@ -615,9 +621,7 @@ describe('subscriptions: signed list only, for this player, recent (legacy subsc
       ),
     ).toBe('no_iat');
     expect(await reason('thief', list('subber', [sub('active')]))).toBe('sub_mismatch');
-    expect(await reason('subber', list('subber', [sub('active')]).replace(/.$/, 'A'))).toBe(
-      'bad_signature',
-    );
+    expect(await reason('subber', forge(list('subber', [sub('active')])))).toBe('bad_signature');
     expect(await reason('subber', list('subber', [sub('active')], { aud: 'nope' }))).toBe(
       'wrong_audience',
     );

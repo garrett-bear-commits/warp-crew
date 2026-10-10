@@ -6,6 +6,12 @@ import postgres from 'postgres';
 import { buildApp, MAX_SAVE_BYTES } from '../app.js';
 import { createStore, migrate } from '../store.js';
 
+/** A forged token: the signature's first character changed (all six bits are data, unlike the last one's). */
+const forge = (jws) => {
+  const at = jws.lastIndexOf('.') + 1;
+  return jws.slice(0, at) + (jws[at] === 'A' ? 'B' : 'A') + jws.slice(at + 1);
+};
+
 const url = process.env.TEST_DATABASE_URL;
 const SECRET = Buffer.from('warp-crew-test-secret-32-bytes!!').toString('base64');
 const GAME = 'game-warp-crew';
@@ -36,7 +42,7 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
   await t.test('identity is required and verified', async () => {
     assert.equal((await app.inject({ method: 'GET', url: '/v1/saves/current' })).statusCode, 401);
     assert.equal((await call('GET', '/v1/saves/current', 'pilot1', undefined, { authorization: 'Bearer nope' })).json().error, 'malformed');
-    const forged = playerToken('pilot1').replace(/.$/, 'A');
+    const forged = forge(playerToken('pilot1'));
     assert.equal((await call('GET', '/v1/saves/current', 'pilot1', undefined, { authorization: `Bearer ${forged}` })).statusCode, 401);
     const other = sign({ aud: 'another-game', sub: 'pilot1', iat: Math.floor(NOW / 1000) });
     assert.equal((await call('GET', '/v1/saves/current', 'pilot1', undefined, { authorization: `Bearer ${other}` })).json().error, 'wrong_audience');
@@ -92,7 +98,7 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     const replay = (await buy('buyer', 'tok-1', 'wc_gems_m')).json();
     assert.equal(replay.purchases[0].status, 'already_recorded', 'replays never grant twice');
     // Receipts cannot be forged, reused by another player, or come from another game.
-    const forged = receipt('buyer', [purchase('tok-x', 'wc_gems_xxl')], {}).replace(/.$/, 'A');
+    const forged = forge(receipt('buyer', [purchase('tok-x', 'wc_gems_xxl')], {}));
     assert.equal((await call('POST', '/v1/purchases/verify', 'buyer', { receipt: forged })).json().error, 'bad_signature');
     assert.equal((await call('POST', '/v1/purchases/verify', 'thief', { receipt: receipt('buyer', [purchase('tok-y', 'wc_gems_s')]) })).statusCode, 403);
     const otherGame = sign({ aud: 'nope', sub: 'buyer', purchase: purchase('tok-z', 'wc_gems_s') });
@@ -158,7 +164,7 @@ test('saves and purchases', { skip: !url && 'TEST_DATABASE_URL not set' }, async
     const single = sign({ aud: GAME, sub: 'subber', iat: Math.floor(NOW / 1000), subscription: sub('active') });
     assert.equal((await verify('subber', single)).json().subscriptions[0].active, true, 'subscriptionSigned from checkout works too');
     assert.equal((await verify('thief', list('subber', [sub('active')]))).json().error, 'player_mismatch');
-    assert.equal((await verify('subber', list('subber', [sub('active')]).replace(/.$/, 'A'))).json().error, 'bad_signature');
+    assert.equal((await verify('subber', forge(list('subber', [sub('active')])))).json().error, 'bad_signature');
     assert.equal((await verify('subber', list('subber', [sub('active')], { aud: 'nope' }))).json().error, 'wrong_audience');
     const old = list('subber', [sub('active')], { iat: Math.floor((NOW - 25 * 3600 * 1000) / 1000) });
     assert.equal((await verify('subber', old)).json().error, 'stale', 'an old list cannot be replayed after a cancel');
