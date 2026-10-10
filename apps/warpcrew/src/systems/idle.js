@@ -13,7 +13,7 @@ import { trustedNow } from '../shared/time.js';
 
 const HOUR = 3600000;
 // Tuned in the 30-day sim: three staffed stations at level 1 earn about one contract's credits in 8 hours.
-export const IDLE_RATES = { creditsPerStation: 5, roleBonus: 2, perCrewLevel: 0.25, engineeringMedalsPerHour: 0.5 };
+export const IDLE_RATES = { creditsPerStation: 4, roleBonus: 2, perCrewLevel: 0.25, engineeringMedalsPerHour: 0.5 };
 export const HOLD_HOURS = { base: 8, perCargoLevel: 1, max: 16 };
 /** Less than this and there is nothing to collect yet (no claim screen for a quick tab switch). */
 export const IDLE_MIN_MS = 5 * 60000;

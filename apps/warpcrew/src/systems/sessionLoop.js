@@ -19,7 +19,7 @@ import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpedition
 import { buyWeapon, equipWeapon } from './armory.js';
 import { nextUpgradeCost, upgradeSystem, completeShipBuild, skipShipBuild } from './hangar.js';
 import { levelCrew, rankUpCrew, ascendCrew } from './gacha.js';
-import { medalLevelCostFor, catalogById } from '../data/crewRoster.js';
+import { medalLevelCostFor, catalogById, levelCap } from '../data/crewRoster.js';
 import { ROOMS } from '../data/starterShip.js';
 import { portraitFor } from '../data/portraits.js';
 import { NODES } from '../data/sectors.js';
@@ -705,6 +705,19 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     if (!res.ok) return res;
     player = res.player;
     milestone('improve');
+    // Milestone levels (every fifth, and the cap) get the reveal; the levels between stay a quick tap.
+    if (act === 'level-crew') {
+      const was = before.crew.find(member => member.instanceId === data.id);
+      const leveled = player.crew.find(member => member.instanceId === data.id);
+      const level = leveled?.level || 1;
+      if (leveled && (level % 5 === 0 || level >= levelCap(leveled))) {
+        const name = leveled.name || catalogById(leveled.templateId)?.name || 'Crew';
+        effect = { kind: 'reward', source: 'level-up', title: `${name} reached level ${level}`,
+          subtitle: level >= levelCap(leveled) ? 'Level cap: more stars or Ascension raise it' : `+${Math.max(0, Math.round((leveled.power || 0) - (was?.power || 0)))} power`,
+          art: null, rewards: {}, cta: 'Continue', tier: 'medium',
+          crew: { name, rarity: catalogById(leveled.templateId)?.rarity || 'common', portrait: portraitFor(leveled.templateId) } };
+      }
+    }
     if (act === 'ship-upgrade') events.push(event(res.build ? 'ship_build_started' : 'ship_upgrade', { system: data.system, level: res.nextLevel, ...(res.build ? { minutes: Math.round((res.build.endAt - res.build.startedAt) / 60000) } : {}) }));
   } else if (act === 'weapon-buy' || act === 'weapon-equip') {
     if (isTutorialActive(player)) return fail('improvements_locked');

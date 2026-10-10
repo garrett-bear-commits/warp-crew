@@ -104,4 +104,8 @@ assert.equal(holdFullAt({ ...tankFull, stationAssignments: {} }, t0 + HOUR), nul
 assert.equal(holdFullAt({ ...tankFull, activeExpedition: { endAt: t0 + 7 * HOUR } }, t0 + HOUR), null, 'the away team notice that day wins');
 assert.equal(holdFullAt({ ...tankFull, activeExpedition: { endAt: t0 + 30 * HOUR } }, t0 + HOUR), t0 + 8 * HOUR, 'a notice on another day does not block it');
 
+// Success test 3: three staffed stations at level 1 earn about one early contract (100-200 credits) in 8 hours.
+const typical = idleHaul({ ...player, crew: player.crew.map(c => ({ ...c, level: 1 })) }, t0 + 8 * HOUR);
+assert.ok(typical.credits >= 100 && typical.credits <= 200, `8 hours at three stations: ${typical.credits} credits`);
+
 console.log('idle: OK');

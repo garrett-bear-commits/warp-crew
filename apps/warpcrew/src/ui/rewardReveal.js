@@ -61,10 +61,10 @@ export function rewardTier(items = []) {
  * shards ({ kind: 'shard', name, portrait, amount }).
  * Returns null when there is nothing to show, so callers can pass any grant.
  */
-export function rewardEntry({ source, title, subtitle = '', items = [], art = null }) {
+export function rewardEntry({ source, title, subtitle = '', items = [], art = null, cta = 'Collect', tier = null }) {
   const shown = items.filter(item => item.kind === 'crew' || (item.kind === 'shard' ? item.amount > 0 && item.portrait : item.amount > 0));
   if (!shown.length) return null;
-  return { source, title, subtitle, art, items: shown, tier: rewardTier(shown) };
+  return { source, title, subtitle, art, cta, items: shown, tier: TIERS.includes(tier) ? tier : rewardTier(shown) };
 }
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -83,7 +83,7 @@ export function renderRewardReveal(entry) {
       <h2>${esc(entry.title)}</h2>
       ${entry.subtitle ? `<p class="reward-sub">${esc(entry.subtitle)}</p>` : ''}
       <ul class="reward-cards">${cards}</ul>
-      <button class="primary" data-act="reward-close">Collect</button>
+      <button class="primary" data-act="reward-close">${esc(entry.cta || 'Collect')}</button>
     </section>
   </div>`;
 }

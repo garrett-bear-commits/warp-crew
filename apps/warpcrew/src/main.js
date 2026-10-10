@@ -895,7 +895,7 @@ async function handleAction(act, data = {}) {
         if (effect.kind === 'encounter-beat') playEncounterBeat(effect.events);
         if (effect.kind === 'reward') {
           showReward(rewardEntry({ source: effect.source, title: effect.title, subtitle: effect.subtitle,
-            art: effect.art ? artUrl(effect.art) : null,
+            art: effect.art ? artUrl(effect.art) : null, cta: effect.cta, tier: effect.tier,
             items: [...(effect.crew ? [{ kind: 'crew', ...effect.crew }] : []), ...(effect.shard ? [{ kind: 'shard', ...effect.shard }] : []),
               ...rewardItems(effect.rewards)] }));
         }

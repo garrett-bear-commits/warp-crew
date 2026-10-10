@@ -24,21 +24,21 @@ export const WEEKLY_CHEST_GOAL = 5;
 export const CHESTS = Object.freeze({
   daily: {
     label: 'Daily chest',
-    fixed: { credits: [40, 80], medals: [6, 12] },
+    fixed: { credits: [20, 40], medals: [6, 12] },
     bonus: [
       { weight: 35, reward: { fuel: 2 } },
       { weight: 30, reward: { marks: 3 } },
-      { weight: 20, reward: { gems: 15 } },
+      { weight: 20, reward: { gems: 10 } },
       { weight: 15, shard: 1 },
     ],
   },
   weekly: {
     label: 'Weekly chest',
-    fixed: { credits: [150, 250], medals: [20, 30], gems: [40, 40], marks: [5, 5] },
+    fixed: { credits: [80, 120], medals: [20, 30], gems: [20, 20], marks: [5, 5] },
     bonus: [
       { weight: 40, shard: 1 },
       { weight: 35, reward: { fuel: 4 } },
-      { weight: 25, reward: { gems: 30 } },
+      { weight: 25, reward: { gems: 20 } },
     ],
   },
 });

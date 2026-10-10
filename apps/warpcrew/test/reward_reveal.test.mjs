@@ -4,6 +4,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { walletGain, rewardItems, rewardTier, rewardEntry, renderRewardReveal, centreCards, productArt, TIER_SOUNDS, TIERS } from '../src/ui/rewardReveal.js';
 import { PRODUCT_DEFS } from '../src/systems/iap.js';
 import { WALLS } from '../src/systems/walls.js';
+import { sessionAction } from '../src/systems/sessionLoop.js';
+import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 import { wallPackSku } from '../src/systems/offers.js';
 
 // Only what went up counts; spends and other bookkeeping are ignored.
@@ -49,7 +51,7 @@ for (const source of ['commission', 'purchase', 'expedition']) {
 }
 // Session claims (the login calendar, achievements) return a reward effect that main.js turns into a reveal.
 const session = readFileSync(new URL('../src/systems/sessionLoop.js', import.meta.url), 'utf8');
-for (const source of ['calendar', 'achievement', 'chest', 'idle']) assert.match(session, new RegExp(`kind: 'reward', source: '${source}'`), `${source} returns a reward effect`);
+for (const source of ['calendar', 'achievement', 'chest', 'idle', 'level-up']) assert.match(session, new RegExp(`kind: 'reward', source: '${source}'`), `${source} returns a reward effect`);
 assert.match(main, /effect\.kind === 'reward'[\s\S]{0,400}showReward\(/, 'reward effects raise a reveal');
 assert.doesNotMatch(main, /showToast\(\{ title: `Day \$\{daily\.bonus\.streak\} bonus`/, 'the login bonus is no longer a toast');
 
@@ -60,5 +62,22 @@ for (const sku of [...Object.keys(PRODUCT_DEFS), ...WALLS.map(wall => wallPackSk
   assert.ok(existsSync(new URL(`../public${art}`, import.meta.url)), `${sku} art is installed`);
 }
 assert.equal(productArt('wc_unknown'), null);
+
+// A level-up reveal: one crew card, a calm tier whatever the rarity, and its own button word.
+const lvl = rewardEntry({ source: 'level-up', title: 'Kira reached level 5', items: [{ kind: 'crew', name: 'Kira', rarity: 'legendary', portrait: 'k.png' }], cta: 'Continue', tier: 'medium' });
+assert.equal(lvl.tier, 'medium');
+assert.match(renderRewardReveal(lvl), />Continue<\/button>/);
+assert.equal(rewardEntry({ source: 'x', title: 'y', items: rewardItems({ gems: 500 }), tier: 'bogus' }).tier, 'huge', 'an unknown tier falls back to the computed one');
+
+// Through the session: level 5 raises the reveal with the merc's card; level 3 stays a quick tap.
+const vet = completeFreshTutorial();
+const merc = vet.crew.find(m => !m.isCaptain && m.instanceId !== vet.captainInstanceId);
+const at = level => ({ ...vet, wallet: { ...vet.wallet, medals: 5000 }, crew: vet.crew.map(m => m.instanceId === merc.instanceId ? { ...m, level } : m) });
+const five = sessionAction(at(4), {}, 'level-crew', { id: merc.instanceId }, { now: Date.UTC(2026, 9, 10) });
+assert.ok(five.ok, five.reason);
+assert.deepEqual([five.effect.kind, five.effect.source, five.effect.tier], ['reward', 'level-up', 'medium']);
+assert.match(five.effect.title, /reached level 5$/);
+assert.ok(five.effect.crew.portrait);
+assert.equal(sessionAction(at(2), {}, 'level-crew', { id: merc.instanceId }, { now: Date.UTC(2026, 9, 10) }).effect, null);
 
 console.log('reward_reveal: OK');
