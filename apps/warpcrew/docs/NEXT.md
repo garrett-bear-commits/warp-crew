@@ -76,10 +76,12 @@ Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) 
   - threat from a reference crew by day played (the 82% pull-up is gone from kit fights);
   - win odds from the real fight on contract cards;
   - wall pools 100/130/180/220/270 with rising floors: the Veil falls for 14 of 15 captains;
-  - fixed: a fight that ends above its starting hull could never be claimed.
+  - fixed: a fight that ends above its starting hull could never be claimed;
+  - fixed (2026-10-10): a fight could stall when every crew member held a station and the empty Weapons room
+    burned out or was boarded (now one crew member leaves a quiet post to deal with it);
+  - fixed (2026-10-10): the Crown paid 8 gems per segment won (now the flagship's gems come once, at the fall).
 - [ ] Garrett, from the balance pass: contracts are now near-certain wins for a growing crew (enemy rank?);
-  success test 2 holds only at low hull (Legendary moves charge slowly); the Crown pays gems per segment;
-  credits per day are up 17-68%.
+  success test 2 holds only at low hull (Legendary moves charge slowly); credits per day are up 17-68%.
 - [ ] Phase 2:
   - the universal reward reveal for purchases and chests;
   - a shop redesign;
