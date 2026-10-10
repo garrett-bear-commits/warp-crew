@@ -26,6 +26,11 @@ export const WALL_BY_ID = Object.fromEntries(WALLS.map(wall => [wall.id, wall]))
 /** A flagship is never easier than Dangerous when the captain first reaches it (the first walls' floor). */
 export const WALL_THREAT_FLOOR = 1.2;
 export const SIEGE_SEGMENT = 42;
+/**
+ * Gems for breaking a wall, paid with the flagship's own listed gems (only the Eclipse Throne lists any) when the
+ * wall falls. Segments won before the fall pay no gems (contractRewards.js resolveSimulatedCombatPayout).
+ */
+export const WALL_TAKEDOWN_GEMS = 20;
 
 const dayKey = now => localDayKey(now);
 

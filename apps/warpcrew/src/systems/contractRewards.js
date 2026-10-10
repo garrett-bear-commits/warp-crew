@@ -2,7 +2,7 @@
 /** Shared production payout and combat mutations; preview callers use disposable players. */
 import { familyTiers } from '../data/families.js';
 import { trustedNow } from '../shared/time.js';
-import { WALL_BY_ID, siegeState } from './walls.js';
+import { WALL_BY_ID, WALL_TAKEDOWN_GEMS, siegeState } from './walls.js';
 import { encounterById, resolveCombatOrder, crewPower, rubberBandPower } from './combat.js';
 import { scaleSitePayout } from './economy.js';
 import { combatBonuses, hullAfterCombat, injuryMinutesFor, tradePayout } from './passives.js';
@@ -164,11 +164,16 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
     defeated: !lost && wallRemaining(player, contract, now) <= wallSegment,
   } : null;
   const flagshipDown = wallOutcome?.defeated === true;
+  // A wall's flagship pays its own listed gems once, when the wall falls (on top of the takedown gems). A segment
+  // won before that pays the flagship's credits, medals and reputation but no gems: the Eclipse Throne's 8 gems
+  // once paid on every Crown segment won, about 180 free gems a week in one tuning run (balance pass 2026-10-09).
+  const { gems: flagshipGems = 0, ...segmentRewards } = catalog.rewards;
   const winRewards = contract.profile === 'distress'
     ? { credits: 120, medals: 8, reputation: 4 }
     : flagshipDown
-      ? { ...catalog.rewards, credits: (catalog.rewards.credits || 0) * 2, medals: (catalog.rewards.medals || 0) * 2, reputation: (catalog.rewards.reputation || 0) * 2, gems: 20 }
-      : catalog.rewards;
+      ? { ...catalog.rewards, credits: (catalog.rewards.credits || 0) * 2, medals: (catalog.rewards.medals || 0) * 2, reputation: (catalog.rewards.reputation || 0) * 2,
+          gems: WALL_TAKEDOWN_GEMS + flagshipGems }
+      : contract.wall ? segmentRewards : catalog.rewards;
   // A lost crew fight pays the same salvage share the order-based fights paid on failure.
   const rawRewards = lost
     ? {
