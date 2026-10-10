@@ -1966,6 +1966,51 @@ button.hud-chip {
 .hud-chip img { width: 20px; height: 20px; opacity: 1; }
 .hud-chip.has-claim { color: var(--good); border-color: rgba(111, 224, 140, 0.55); }
 .hud-chip .claim-pip { box-shadow: 0 0 6px var(--good); }
+.hud-chip { cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent; }
+.hud-chip[aria-expanded="true"] { border-color: rgba(88, 225, 255, 0.7); }
+.hud-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Currency tip: a small panel under the top bar with an arrow toward the tapped chip.
+   The slot has no height; --tip-left / --tip-arrow are set in px by placeTip() so it never leaves the screen. */
+.currency-tip-slot { position: relative; height: 0; z-index: 40; pointer-events: none; }
+.currency-tip {
+  position: absolute;
+  top: 8px;
+  left: var(--tip-left, 8px);
+  width: min(300px, calc(100% - 16px));
+  box-sizing: border-box;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 12px 10px;
+  background: var(--ops-grad);
+  border: 1px solid rgba(88, 225, 255, 0.55);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(160, 210, 255, 0.08), 0 8px 22px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+.currency-tip::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: calc(var(--tip-arrow, 24px) - 5px);
+  width: 9px;
+  height: 9px;
+  background: #131d2b;
+  border: 1px solid rgba(88, 225, 255, 0.55);
+  border-right: 0;
+  border-bottom: 0;
+  transform: rotate(45deg);
+}
+.currency-tip > img { width: 26px; height: 26px; flex: 0 0 auto; margin-top: 1px; }
+.currency-tip-text { min-width: 0; }
+.currency-tip b { display: block; font: 700 16px var(--font-display); letter-spacing: 0.03em; color: var(--text); }
+.currency-tip p { margin: 2px 0 0; font-size: 13px; line-height: 1.35; color: #c3d2e4; }
+.currency-tip p.currency-tip-live { color: var(--accent); font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  .currency-tip { animation: currency-tip-in 160ms var(--ease-out); }
+}
+@keyframes currency-tip-in { from { opacity: 0; transform: translateY(-4px); } }
 
 /* Stage overlay grid: status left, objective right. */
 .stage-hud {

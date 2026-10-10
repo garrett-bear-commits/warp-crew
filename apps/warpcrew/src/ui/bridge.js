@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { fuelStatus } from '../systems/fuel.js';
 import { formatDuration } from '../shared/timer.js';
+import { TIP_MS, tapTip, visibleTip, chipAriaLabel, renderCurrencyTip, placeTip } from './currencyTips.js';
 import { visibleNodes, nodesBySector, nodeMeta, typicalPayout } from '../data/sectors.js';
 import { EXPEDITION_SKIP_GEMS, visiblePlanets, previewExpedition, planetById } from '../systems/expedition.js';
 import { crewPower } from '../systems/combat.js';
@@ -142,6 +143,10 @@ function bindOnce(root, ctx) {
   bindCamera(root, ctx);
   bindCrewDrag(root);
   root.addEventListener('pointerdown', () => unlockSfx(), { once: true });
+  // A press anywhere but a currency chip closes the open tip (the ship view swallows plain clicks while panning).
+  root.addEventListener('pointerdown', ev => {
+    if (root._wcCurrencyTip && !ev.target.closest?.('[data-tip]')) closeCurrencyTip(root);
+  }, true);
   root.addEventListener('click', (ev) => {
     const handlers = root._wcHandlers;
     if (!handlers) return;
@@ -149,6 +154,12 @@ function bindOnce(root, ctx) {
       ev.preventDefault();
       return;
     }
+    const tipChip = ev.target.closest('[data-tip]');
+    if (tipChip && root.contains(tipChip)) {
+      tapCurrencyChip(root, tipChip);
+      return;
+    }
+    if (root._wcCurrencyTip) closeCurrencyTip(root); // a tap anywhere else closes the tip; the tap still does its job
     const cameraButton = ev.target.closest('[data-camera]');
     if (cameraButton && root.contains(cameraButton)) {
       const action = cameraButton.dataset.camera;
@@ -394,6 +405,7 @@ function buildShell() {
   return `
     <div class="wc-shell tab-home">
       <div class="hud-bar" data-slot="hud"></div>
+      <div class="currency-tip-slot" data-slot="currency-tip"></div>
       <div class="ftl-top" data-slot="fight-top"></div>
       <div class="stage">
         <div class="space-stage" aria-hidden="true">
@@ -584,7 +596,6 @@ function patchShell(root, ctx) {
   root.querySelector('.bottom-nav')?.style.setProperty('--nav-cols', String(tabs.length));
   root.querySelector('.hud-bar')?.style.setProperty('--hud-cols', String(chips.length));
 
-  setSlot(root, 'hud', renderHud(player, fuel, chips, firstSession || v5Session));
   setSlot(root, 'stage-hud', renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, root._wcCameraOpen));
   setSlot(root, 'crew-rail', isHome && !fighting && !firstSession && !v5Session && !selectedRoom ? renderCrewRail(player) : '');
   setSlot(root, 'ship-sequence', renderShipSequence(ctx.shipSequence));
@@ -606,6 +617,14 @@ function patchShell(root, ctx) {
   const offerModal = calm && starter.showModal ? renderStarterOffer(starter, starterValue(ctx.shopProducts || []))
     : calm && wallPack.showModal ? renderWallPack(wallPack, packValue(wallPack.sku, ctx.shopProducts || []), { modal: true }) : '';
   setSlot(root, 'modal', baseModal.trim() ? baseModal : offerModal);
+  // Currency tip (UI only): never over a fight, a modal sheet, a reward or a room sheet; follows the tab it opened on.
+  const tipBlocked = Boolean(fighting || player.activeEncounter || baseModal.trim() || offerModal || selectedRoom
+    || ctx.rewardReveal || ctx.transmission || cinematic);
+  if (root._wcCurrencyTip?.id === 'fuel' && ctx.fuelCollected > 0) root._wcCurrencyTip = { ...root._wcCurrencyTip, collected: ctx.fuelCollected };
+  root._wcTipCtx = { player, now, tab, blocked: tipBlocked };
+  root._wcCurrencyTip = visibleTip(root._wcCurrencyTip, { now: performance.now(), tab, blocked: tipBlocked });
+  setSlot(root, 'hud', renderHud(player, fuel, chips, firstSession || v5Session, { expReady, openTip: root._wcCurrencyTip?.id }));
+  syncCurrencyTip(root);
   setSlot(root, 'hotspots', v5Session && phase === 'assign' ? renderV5AssignmentHotspot(player)
     : firstSession || v5Session ? '' : renderHotspots(player, fuel, expReady, selectedRoom));
   setSlot(root, 'captain-marker', v5Session && phase === 'assign' ? renderCaptainMarker(player) : '');
@@ -670,32 +689,67 @@ function patchShell(root, ctx) {
   }
 }
 
-function renderHud(player, fuel, chips, firstSession = false) {
+/**
+ * Top-bar chips. Every chip is a button that opens its currency tip (UI only). The fuel chip also claims waiting
+ * fuel or a finished away team, except in the first-session scripts, where a tap never changes the save.
+ */
+export function renderHud(player, fuel, chips, firstSession = false, { expReady = false, openTip = null } = {}) {
+  const chip = (id, { cls = '', extra = '', inner }) => `
+      <button type="button" class="hud-chip ${cls}" data-currency="${id}" data-tip="${id}" ${extra}
+        aria-label="${escapeHtml(chipAriaLabel(id, player, fuel))}" aria-expanded="${openTip === id}">
+        <img src="${ICONS[id]}" alt="" />
+        ${inner}
+      </button>`;
+  const claimable = !firstSession && (fuel.pendingWhole > 0 || expReady);
   const map = {
-    fuel: `
-      <${firstSession ? 'div' : 'button'} class="hud-chip ${fuel.pendingWhole && !firstSession ? 'has-claim' : ''}" data-currency="fuel" ${firstSession ? '' : 'data-act="claim"'}>
-        <img src="${ICONS.fuel}" alt="" />
-        <b>${fuel.current}</b><span>/${fuel.max}</span>
-        ${fuel.pendingWhole && !firstSession ? '<i class="claim-pip"></i>' : ''}
-      </${firstSession ? 'div' : 'button'}>`,
-    credits: `
-      <div class="hud-chip" data-currency="credits">
-        <img src="${ICONS.credits}" alt="" />
-        <b>${player.wallet.credits}</b>
-      </div>`,
-    gems: `
-      <div class="hud-chip premium" data-currency="gems">
-        <img src="${ICONS.gems}" alt="" />
-        <b>${player.wallet.gems}</b>
-      </div>`,
-    medals: `
-      <div class="hud-chip" data-currency="medals">
-        <img src="${ICONS.medals}" alt="" />
-        <b>${player.wallet.medals}</b>
-      </div>`,
+    fuel: chip('fuel', {
+      cls: fuel.pendingWhole && !firstSession ? 'has-claim' : '',
+      extra: claimable ? 'data-act="claim" data-source="hud"' : '',
+      inner: `<b>${fuel.current}</b><span>/${fuel.max}</span>
+        ${fuel.pendingWhole && !firstSession ? '<i class="claim-pip"></i>' : ''}`,
+    }),
+    credits: chip('credits', { inner: `<b>${player.wallet.credits}</b>` }),
+    gems: chip('gems', { cls: 'premium', inner: `<b>${player.wallet.gems}</b>` }),
+    medals: chip('medals', { inner: `<b>${player.wallet.medals}</b>` }),
   };
   const list = chips && chips.length ? chips : ['fuel', 'credits', 'gems', 'medals'];
   return list.map((id) => map[id] || '').join('');
+}
+
+/** Draw (or clear) the open currency tip from root._wcCurrencyTip and set a timer for its 5 s. */
+function syncCurrencyTip(root) {
+  const slot = root.querySelector('[data-slot="currency-tip"]');
+  if (!slot) return;
+  const state = root._wcCurrencyTip || null;
+  clearTimeout(root._wcCurrencyTipTimer);
+  root._wcCurrencyTipTimer = 0;
+  const ctx = root._wcTipCtx || {};
+  setSlot(root, 'currency-tip', state ? renderCurrencyTip(state, ctx.player || root._wcPlayer, ctx.now ?? trustedNow()) : '');
+  for (const chip of root.querySelectorAll('.hud-chip[data-tip]')) {
+    const open = String(chip.dataset.tip === state?.id);
+    if (chip.getAttribute('aria-expanded') !== open) chip.setAttribute('aria-expanded', open);
+  }
+  if (!state) return;
+  placeTip(slot.querySelector('.currency-tip'), root.querySelector(`.hud-chip[data-tip="${state.id}"]`), slot);
+  root._wcCurrencyTipTimer = setTimeout(() => closeCurrencyTip(root), Math.max(0, TIP_MS - (performance.now() - state.at)));
+}
+
+function closeCurrencyTip(root) {
+  root._wcCurrencyTip = null;
+  syncCurrencyTip(root);
+}
+
+/** Tap on a chip: open its tip (the same chip again closes it). Waiting fuel is claimed and the tip says so. */
+function tapCurrencyChip(root, chip) {
+  const ctx = root._wcTipCtx || {};
+  const id = chip.dataset.tip;
+  const claim = chip.dataset.act;
+  root._wcCurrencyTip = claim
+    ? { id, at: performance.now(), tab: ctx.tab ?? null, collected: 0 }
+    : tapTip(root._wcCurrencyTip, id, { now: performance.now(), tab: ctx.tab ?? null });
+  if (ctx.blocked) root._wcCurrencyTip = null;
+  syncCurrencyTip(root);
+  if (claim && !ctx.blocked) root._wcHandlers?.onAction(claim, { source: chip.dataset.source });
 }
 
 function renderStageHud(locName, hullPct, shieldPct, player, selectedRoom, now, cameraOpen = false) {

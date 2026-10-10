@@ -113,6 +113,8 @@ let shopProducts = null;
 let artReady = false;
 let toast = null;
 let toastTimer = 0;
+// Fuel just collected by a tap on the top-bar fuel chip: that chip's tip reports it instead of a toast.
+let fuelCollected = 0;
 let departureInFlight = false;
 let departureRunId = 0;
 let shipSequence = null;
@@ -595,6 +597,7 @@ function render() {
     splashReady: essentialReady,
     splashScene: essentialScene,
     toast,
+    fuelCollected,
     departureInFlight,
     shipSequence,
     handlers: {
@@ -613,6 +616,8 @@ function render() {
       onAction: userAction,
     },
   });
+  fuelCollected = 0; // the fuel tip took it on this render
+
   // The core's own screens: keep-this-device / use-cloud prompt, cloud unreachable, update
   // required, and "Play here" for a second tab. They sit above the game shell.
   let overlay = app.querySelector(':scope > .wc-core-overlay');
@@ -1028,7 +1033,8 @@ async function handleAction(act, data = {}) {
     const resolved = tryResolveExpedition();
     if (claimed.gained) {
       pushLog(`Claimed +${claimed.gained} fuel.`);
-      showToast({ title: `+${claimed.gained} fuel` });
+      if (data.source === 'hud') fuelCollected = claimed.gained;
+      else showToast({ title: `+${claimed.gained} fuel` });
     } else if (!resolved) pushLog('Nothing new to claim yet.');
     await refreshNotifs();
   } else if (act === 'goto-ship') {
