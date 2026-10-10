@@ -31,7 +31,10 @@ export const MUSIC_TRACKS = Object.freeze({
   }),
 });
 
-/** Scene -> track. The ship and the crew, shop and log tabs are the hub; Contracts is the star map. */
+/**
+ * Scene -> track. Every tab (Ship, Crew, Contracts with its board and Away, Shop, Log) is the hub, so tapping
+ * around the menus keeps one song; only the Explore sector map is the star map.
+ */
 export const SCENE_TRACK = Object.freeze({
   hub: 'space_city',
   map: 'cosmic_navigation',
@@ -41,8 +44,11 @@ export const SCENE_TRACK = Object.freeze({
 
 const fightRunning = encounter => Boolean(encounter) && encounter.result == null && encounter.outcome == null;
 
-/** The music scene for what is on screen: a running fight wins over the tab; a Siege wall fight is a boss. */
-export function musicScene(player, tab) {
+/**
+ * The music scene for what is on screen: a running fight wins over the tab; a Siege wall fight is a boss.
+ * `missionView` is the Contracts tab view being shown (contracts, away or explore).
+ */
+export function musicScene(player, tab, missionView) {
   if (fightRunning(player?.activeEncounter)) return player?.activeContract?.wall ? 'boss' : 'fight';
-  return tab === 'missions' ? 'map' : 'hub';
+  return tab === 'missions' && missionView === 'explore' ? 'map' : 'hub';
 }
