@@ -15,7 +15,10 @@
     "build:pages": "GITHUB_PAGES=1 vite build",
     "report:contract-balance": "node scripts/contract-balance-report.mjs",
     "report:contract-economy": "node scripts/contract-economy-report.mjs",
-    "test:balance": "node test/deterministic_seams.test.mjs && node test/encounter_intelligence.test.mjs && node test/contract_rewards.test.mjs && node test/contract_balance.test.mjs && node test/contract_economy.test.mjs && node test/contract_economy_guided.test.mjs && node test/encounter_artifact_names.test.mjs && node --test test/balance_success.test.mjs && npm run report:contract-balance && npm run report:contract-economy",
+    "test:balance": "npm run test:balance:sims && npm run test:balance:success && npm run test:balance:evidence",
+    "test:balance:sims": "node test/deterministic_seams.test.mjs && node test/encounter_intelligence.test.mjs && node test/contract_rewards.test.mjs && node test/contract_balance.test.mjs && node test/contract_economy.test.mjs && node test/contract_economy_guided.test.mjs && node test/encounter_artifact_names.test.mjs",
+    "test:balance:success": "node --test test/balance_success.test.mjs",
+    "test:balance:evidence": "npm run report:contract-balance && npm run report:contract-economy",
     "server": "node server/index.js",
     "test:server": "node --test --test-concurrency=1 server/test/server.test.js"
   },

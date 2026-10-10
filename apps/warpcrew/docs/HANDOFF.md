@@ -127,8 +127,11 @@ Owner's parts are marked; never handle secrets yourself.
   hiring/hangar (they go through a generic `set` action today), notifications through the core.
 - Known gap: if a tab loses leadership between claiming a purchase grant and applying it, support must re-grant
   (logged loudly).
-- `main`'s CI is game-core's workflow (`.github/workflows/ci.yml`): core checks, pg tests, template-game browser
-  tests. It does not yet run the Warp Crew suites beyond what `pnpm check` runs.
+- `main`'s CI (`.github/workflows/ci.yml`) has three jobs:
+  - `check`: game-core's core checks, pg tests and template-game browser tests;
+  - `warpcrew`: the Warp Crew suites and the QA build;
+  - `warpcrew-balance`: `test:balance` in three parts (`sims`, `success`, `evidence`), each on its own runner,
+    because together they outgrew one job's 30 minutes. Locally, `test:balance` still runs all three.
 
 ## Where the knowledge is
 
