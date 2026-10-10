@@ -893,6 +893,8 @@ async function handleAction(act, data = {}) {
           holdCrewForDeparture(transition.effect.crewInstanceIds);
         }
         if (result.effect?.kind === 'crew-arrival') holdCrewForArrival(result.player, result.effect.crewInstanceId);
+        // Story first: a briefing, debrief or chapter finale plays before any reward flies (Phase 3 §1).
+        for (const id of result.transmissions || []) showTransmission(id);
         if (['launch', 'crew-arrival'].includes(result.effect?.kind)) shipSequence = result.effect.kind === 'crew-arrival'
           ? { kind: 'crew-arrival', member: result.player.crew.find(c => c.instanceId === result.effect.crewInstanceId) }
           : 'launch';
@@ -900,8 +902,6 @@ async function handleAction(act, data = {}) {
       },
       capture: captureEvent,
       animate: (effect) => {
-        // Story first: a debrief or a chapter finale plays before its rewards fly.
-        for (const id of transition.transmissions || []) showTransmission(id);
         effectSound(act, effect);
         if ((effect.kind === 'travel' || effect.kind === 'combat') && effect.result) logTravelResult(effect.result);
         if (effect.kind === 'launch') {

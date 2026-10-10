@@ -3643,8 +3643,8 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .alm-crew summary::-webkit-details-marker { display: none; }
 .alm-crew img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #0b1220; }
 .alm-crew > li.is-locked { display: grid; justify-items: center; gap: 2px; text-align: center; }
-.alm-silhouette { filter: brightness(0) drop-shadow(0 0 2px rgba(255, 255, 255, 0.35)); }
-.alm-crew small { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+.alm-crew img.alm-silhouette { background: none; filter: brightness(0) drop-shadow(0 0 1px rgba(170, 200, 255, 0.7)); }
+.alm-crew small { color: var(--muted); font-size: 12px; }
 .alm-file { display: grid; gap: 4px; margin-top: 6px; font-size: 13px; text-align: left; }
 .alm-file blockquote { margin: 0; color: #f1b66b; font-style: italic; }
 .alm-faction { border-radius: 10px; padding: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 6px; }
@@ -3658,3 +3658,8 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .alm-ships img { width: 56px; height: 36px; object-fit: contain; }
 .alm-ships span { display: grid; min-width: 0; flex: 1; }
 .alm-record { flex: none !important; color: var(--muted); white-space: nowrap; }
+/* A client card's banner holds only its label; the client sits on its own row below. */
+.contract-card:has(.contract-client) .contract-banner, .contract-sheet:has(.contract-client) .contract-banner { height: auto; margin-bottom: 8px; }
+.contract-card > .contract-client, .contract-sheet > .contract-client { margin: 0 0 6px; }
+.tx-intitle { margin: 0; font: 700 12px var(--font-display); letter-spacing: 0.16em; text-transform: uppercase; color: #f1b66b; }
+.tx-intitle span { color: var(--muted); }

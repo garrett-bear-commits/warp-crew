@@ -28,12 +28,15 @@ export function renderTransmission(entry, player, { panel = 0, instant = false }
   const typed = words.map((word, n) => `<span style="--w:${n}">${esc(word)}</span>`).join(' ');
   const last = i === entry.panels.length - 1;
   const art = entry.art ? `<img class="tx-art" src="${esc(artUrl(entry.art))}" alt="" />` : '';
-  const title = entry.title && i === 0 ? `<div class="tx-title">${entry.kicker ? `<span>${esc(entry.kicker)}</span>` : ''}<b>${esc(entry.title)}</b></div>` : '';
+  // A scene carries its title card above the sheet; without one, the title sits inside the sheet.
+  const titleCard = entry.title && i === 0 ? `<div class="tx-title">${entry.kicker ? `<span>${esc(entry.kicker)}</span>` : ''}<b>${esc(entry.title)}</b></div>` : '';
+  const title = entry.art ? titleCard : '';
+  const inTitle = !entry.art && entry.title ? `<p class="tx-intitle">${entry.kicker ? `<span>${esc(entry.kicker)}</span> · ` : ''}${esc(entry.title)}</p>` : '';
   const dots = entry.panels.length > 1 ? `<span class="tx-dots" aria-hidden="true">${entry.panels.map((_, n) => `<i class="${n === i ? 'on' : ''}"></i>`).join('')}</span>` : '';
   return `<div class="modal-backdrop tx-backdrop${entry.art ? ' has-art' : ''}" data-act="tx-next">
     ${art}${title}
     <section class="tx-sheet tx-${esc(who.style || 'plain')}${instant ? ' is-instant' : ''}" role="dialog" aria-modal="true" aria-label="Transmission from ${esc(who.name)}" data-panel="${i}">
-      <header class="tx-head"><span class="tx-signal" aria-hidden="true"></span><b>${esc(who.name)}</b><span class="tx-from">${esc(who.from || '')}</span>${dots}</header>
+      ${inTitle}<header class="tx-head"><span class="tx-signal" aria-hidden="true"></span><b>${esc(who.name)}</b><span class="tx-from">${esc(who.from || '')}</span>${dots}</header>
       <div class="tx-body">
         <div class="tx-portrait"><img src="${esc(who.portrait)}" alt="" /><span class="tx-scan" aria-hidden="true"></span></div>
         <p class="tx-line" aria-live="polite">${typed}</p>

@@ -73,8 +73,8 @@ export function renderContractBoard(model = {}) {
     return `<article class="contract-card${offer.completed ? ' is-completed' : ''}${offer.wall ? ' is-wall' : ''}${offer.story ? ' is-story' : ''}${offer.loyalty ? ' is-loyalty' : ''}" data-profile="${e(offer.story ? 'story' : offer.loyalty ? 'loyalty' : offer.wall ? 'wall' : offer.profile)}">
       <div class="contract-banner">
         <p class="contract-profile"><span aria-hidden="true">${cardIcon(offer)}</span> ${e(cardLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
-        ${art ? `<img class="contract-art" src="${e(art)}" alt="" />` : ''}${clientBanner(offer)}
-      </div>
+        ${art ? `<img class="contract-art" src="${e(art)}" alt="" />` : ''}
+      </div>${clientBanner(offer)}
       <h3>${e(offer.title)}</h3><p class="contract-brief">${e(offer.brief)}</p>${twistLine(offer)}${factionLine(offer)}${storyPay(offer)}${siege}
       <dl class="contract-facts"><div class="fact-fuel"><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div class="fact-length"><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(offer))}</dd></div></dl>
       ${fightOddsLine(odds)}${trait(offer.favoredTrait)}<button type="button" class="contract-review-btn" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
@@ -86,7 +86,7 @@ export function renderContractReview(model = {}) {
   const offer = model.offer || {};
   return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-labelledby="contract-review-title">
     <button type="button" class="icon-close" data-act="contract-review-close" aria-label="Close contract review">×</button>
-    <div class="contract-banner" data-profile="${e(offer.story ? 'story' : offer.profile)}"><p class="contract-profile">${e(cardLabel(offer))}</p>${!offer.client && PROFILE_ART[offer.profile] ? `<img class="contract-art" src="${e(PROFILE_ART[offer.profile])}" alt="" />` : ''}${clientBanner(offer)}</div>
+    <div class="contract-banner" data-profile="${e(offer.story ? 'story' : offer.profile)}"><p class="contract-profile">${e(cardLabel(offer))}</p>${!offer.client && PROFILE_ART[offer.profile] ? `<img class="contract-art" src="${e(PROFILE_ART[offer.profile])}" alt="" />` : ''}</div>${clientBanner(offer)}
     <h2 id="contract-review-title">${e(offer.title)}</h2>
     <p class="contract-brief">${e(offer.brief)}</p>${twistLine(offer)}${factionLine(offer)}${storyPay(offer)}${model.briefingId ? `<button type="button" class="ghost tx-replay" data-act="tx-replay" data-id="${e(model.briefingId)}">Replay the briefing</button>` : ''}<p class="contract-destination">Destination: ${e(model.destinationName || offer.destinationName)}</p>
     <dl class="contract-facts"><div class="fact-fuel"><dt>Payable route fuel</dt><dd>${e(model.cost?.fuel)}F</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(model))}</dd></div></dl>

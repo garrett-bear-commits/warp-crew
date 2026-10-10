@@ -12,6 +12,7 @@ import { loyaltyLevel, hasBond } from '../systems/loyalty.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const LOCKED = '<span class="alm-locked">Not yet</span>';
+const cap = s => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
 const SECTOR_NAMES = { spur: 'The Spur', veil: 'Veil Edge', ember: 'Ember Reach', hollow: 'Hollow Expanse', crown: 'Crown Halo' };
 
 function storySection(section) {
@@ -23,10 +24,10 @@ function storySection(section) {
 
 function crewSection(section, player) {
   return `<ul class="alm-crew">${section.entries.map(({ merc, open }) => {
-    if (!open) return `<li class="is-locked rarity-${esc(merc.rarity)}"><img class="alm-silhouette" src="${esc(portraitFor(merc.id, merc.role))}" alt="" /><b>???</b><small>${esc(merc.rarity)} · answers the hiring beacon</small></li>`;
+    if (!open) return `<li class="is-locked rarity-${esc(merc.rarity)}"><img class="alm-silhouette" src="${esc(portraitFor(merc.id, merc.role))}" alt="" /><b>???</b><small>${esc(cap(merc.rarity))} · answers the hiring beacon</small></li>`;
     const family = FAMILIES[familyOf(merc.id)];
     const bond = hasBond(merc.id) ? loyaltyLevel(player, merc.id).label : '';
-    return `<li class="rarity-${esc(merc.rarity)}"><details><summary><img src="${esc(portraitFor(merc.id, merc.role))}" alt="" /><b>${esc(merc.name)}</b><small>${esc(merc.rarity)} ${esc(merc.role)}${bond ? ` · ${esc(bond)}` : ''}</small></summary>
+    return `<li class="rarity-${esc(merc.rarity)}"><details><summary><img src="${esc(portraitFor(merc.id, merc.role))}" alt="" /><b>${esc(merc.name)}</b><small>${esc(cap(merc.rarity))} ${esc(merc.role)}${bond ? ` · ${esc(bond)}` : ''}</small></summary>
       <div class="alm-file">${family ? `<p class="muted">${esc(family.name)} · from ${esc(merc.origin)}</p>` : `<p class="muted">From ${esc(merc.origin)}</p>`}
       ${merc.quote ? `<blockquote>“${esc(merc.quote)}”</blockquote>` : ''}<p>${esc(merc.history || merc.blurb)}</p></div></details></li>`;
   }).join('')}</ul>`;
@@ -60,7 +61,7 @@ export function renderAlmanac(player, sectionId = 'story') {
   const section = model.sections.find(s => s.id === sectionId) || model.sections[0];
   const body = { story: storySection, crew: crewSection, enemies: enemiesSection, places: placesSection, discoveries: discoveriesSection }[section.id](section, player);
   return `<div class="modal-backdrop alm-backdrop"><section class="alm-book" role="dialog" aria-modal="true" aria-label="Captain's Almanac">
-    <header class="alm-head" style="background-image:url('${esc(artUrl('art/pixel/cinematic/v2/almanac.png'))}')">
+    <header class="alm-head" style="background-image:linear-gradient(90deg, rgba(14, 22, 38, 0.92), rgba(14, 22, 38, 0.2) 70%), url('${esc(artUrl('art/pixel/cinematic/v2/almanac.png'))}')">
       <div><span class="modal-kicker">Captain's Almanac</span><b>${model.percent}% filled in</b><small>${model.open} of ${model.total} entries</small></div>
       <button type="button" class="icon-close" data-act="almanac-close" aria-label="Close the Almanac">×</button>
     </header>

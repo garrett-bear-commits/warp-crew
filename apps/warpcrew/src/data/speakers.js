@@ -66,7 +66,8 @@ export function speakerFor(id, player = null) {
   if (Object.hasOwn(SPEAKERS, id)) return { id, style: 'plain', ...SPEAKERS[id] };
   if (id === 'captain') {
     const captain = captainOf(player);
-    return { id, name: captain?.customName || captain?.name || 'You', from: (typeof player?.ship?.name === 'string' && player.ship.name.trim()) || 'The Sparrow',
+    const named = typeof player?.captainName === 'string' && player.captainName.trim() && player.captainName !== 'Captain' ? player.captainName.trim() : null;
+    return { id, name: captain?.customName || named || captain?.name || 'You', from: (typeof player?.ship?.name === 'string' && player.ship.name.trim()) || 'The Sparrow',
       portrait: portraitFor(captain?.templateId || 'captain_cyborg', captain?.role), style: 'plain' };
   }
   const merc = catalogById(id);
