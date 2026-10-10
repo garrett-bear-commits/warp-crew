@@ -19,7 +19,7 @@ import { expeditionCrewOptions, recommendedExpeditionCrewIds, validateExpedition
 import { buyWeapon, equipWeapon } from './armory.js';
 import { nextUpgradeCost, upgradeSystem, completeShipBuild, skipShipBuild } from './hangar.js';
 import { levelCrew, rankUpCrew, ascendCrew } from './gacha.js';
-import { medalLevelCostFor } from '../data/crewRoster.js';
+import { medalLevelCostFor, catalogById } from '../data/crewRoster.js';
 import { ROOMS } from '../data/starterShip.js';
 import { portraitFor } from '../data/portraits.js';
 import { NODES } from '../data/sectors.js';
@@ -38,6 +38,7 @@ import { laneCheck, sectorMapModel } from './sectorMap.js';
 import { resolveRoutePayout } from './contractRewards.js';
 import { markExploreNudge, noteMapJump } from './exploreNudge.js';
 import { claimAchievement } from './achievements.js';
+import { claimCalendar } from './calendar.js';
 
 export function prepareSession(player, now = trustedNow()) {
   let next = ensureDailyLoop(player, now);
@@ -706,6 +707,17 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     if (!res.ok) return fail(res.reason);
     player = res.player;
     if (act === 'weapon-buy') { milestone('improve'); events.push(event('weapon_bought', { weapon: data.weapon, credits: res.cost.credits })); }
+  } else if (act === 'calendar-claim') {
+    if (isTutorialActive(player)) return fail('tutorial_contract_required');
+    const res = claimCalendar(player, { now });
+    if (!res.ok) return fail(res.reason);
+    player = res.player;
+    events.push(event('calendar_claimed', { day: res.day, cycle: res.cycle, gems: res.reward.gems || 0, hire: res.hired?.rarity || null }));
+    const hire = res.hired ? { name: res.hired.instance.name || catalogById(res.hired.instance.templateId)?.name || 'New crew',
+      rarity: res.hired.rarity, portrait: portraitFor(res.hired.instance.templateId) } : null;
+    effect = { kind: 'reward', source: 'calendar', title: `Day ${res.day} of 28`, subtitle: hire ? `${hire.name} joins the crew` : 'Login calendar',
+      art: res.hired ? 'art/pixel/ui/merc-pod.png' : null, rewards: res.reward, crew: hire };
+    if (res.hired) player = prepareSession(player, now);
   } else if (act === 'achievement-claim') {
     if (isTutorialActive(player)) return fail('improvements_locked');
     const res = claimAchievement(player, data.id);

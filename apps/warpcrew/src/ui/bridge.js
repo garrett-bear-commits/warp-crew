@@ -53,6 +53,7 @@ import { artUrl } from '../shared/artUrl.js';
 import { starterOfferState, starterValue, wallPackState, packValue, gemLadderValues } from '../systems/offers.js';
 import { productArt } from './rewardReveal.js';
 import { achievementProgress, claimableAchievements, ACHIEVEMENT_TRACKS } from '../systems/achievements.js';
+import { calendarState, CALENDAR_REWARDS, CALENDAR_MILESTONES, CALENDAR_LENGTH } from '../systems/calendar.js';
 import { COMMISSION, commissionActive, priceCents, usableTerms } from '../systems/subscription.js';
 import { currentWall } from '../systems/walls.js';
 import { PRODUCT_DEFS, GEM_LADDER } from '../systems/iap.js';
@@ -585,7 +586,8 @@ function patchShell(root, ctx) {
   // Travel events: the open card (saved) or its result (UI only) sits over every tab.
   const eventModal = !player.flags?.splashSeen ? '' : ctx.activeEventView ? renderEventCard(ctx.activeEventView, { hint: nudges.eventHint }) : ctx.eventResult ? renderEventResult(ctx.eventResult) : '';
   const baseModal = ctx.hireReveal ? renderHireReveal(ctx.hireReveal) : ctx.hireOddsOpen ? renderHireOdds(player, now)
-    : ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
+    : ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal
+    || (ctx.calendarOpen && player.flags?.splashSeen && !isTutorialActive(player) ? renderCalendar(player, now) : '') || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
   const wallPack = wallPackState(player, currentWall(player, now));
   const calm = !baseModal.trim() && isHome && !fighting && !player.activeEncounter && !selectedRoom;
@@ -722,7 +724,7 @@ export function renderNav(tab, player, expReady, tabs, step, crewAttentionSeen =
     crew: tab !== 'crew' && !crewAttentionSeen && player.dailyPullAvailable && isFeatureUnlocked(player, 'gacha')
       && ((player.crew || []).length < (player.crewSlots || 0) || (player.reserve || []).length < RESERVE_CAP),
     missions: expReady,
-    log: tab !== 'log' && claimableAchievements(player) > 0,
+    log: tab !== 'log' && (claimableAchievements(player) > 0 || (!isTutorialActive(player) && calendarState(player).canClaim)),
   };
   return renderCommandBar(tab, player, expReady, ids, { spotlight: step?.spotlight || null, badges });
 }
@@ -1897,6 +1899,37 @@ export function renderRestartSaveConfirm() {
   return `<div class="modal-backdrop contract-backdrop"><section class="contract-sheet" role="dialog" aria-modal="true" aria-label="Restart save confirmation"><h2>Restart your save?</h2><p>This erases this browser's Warp Crew progress and starts you over from the very beginning. Your Jest account stays signed in. This cannot be undone.</p><button class="danger" data-act="restart-save-confirm">Erase progress and restart</button><button data-act="restart-save-cancel">Keep my save</button></section></div>`;
 }
 
+/** The login calendar sheet (Phase 2 design §2): 28 squares, today's glowing, the day-28 hire pod. */
+export function renderCalendar(player, now = trustedNow()) {
+  const state = calendarState(player, now);
+  const icon = reward => reward.hire ? artUrl('art/pixel/ui/merc-pod.png')
+    : reward.gems ? ICONS.gems : reward.marks ? artUrl('art/pixel/ui/marks.png') : reward.fuel ? ICONS.fuel
+      : reward.medals && !reward.credits ? ICONS.medals : ICONS.credits;
+  const label = reward => reward.hire ? 'Epic hire' : reward.gems ? `${reward.gems} gems` : reward.marks ? `${reward.marks} Marks`
+    : reward.fuel ? `${reward.fuel} fuel` : reward.medals && !reward.credits ? `${reward.medals} medals` : `${reward.credits} cr`;
+  // On the square the icon names the currency, so only the amount shows (the full words are in the aria-label).
+  const short = reward => reward.hire ? 'Epic' : String(reward.gems || reward.marks || reward.fuel || (reward.medals && !reward.credits ? reward.medals : reward.credits));
+  const squares = CALENDAR_REWARDS.map((reward, i) => {
+    const day = i + 1;
+    const done = day <= state.claimed;
+    const today = day === state.nextDay && state.canClaim;
+    const big = CALENDAR_MILESTONES.includes(day);
+    return `<li class="cal-day${done ? ' is-done' : ''}${today ? ' is-today' : ''}${big ? ' is-big' : ''}" aria-label="Day ${day}: ${escapeHtml(label(reward))}${done ? ', claimed' : ''}">
+      <span class="cal-num">${day}</span><img src="${escapeHtml(icon(reward))}" alt="" /><small>${escapeHtml(short(reward))}</small>
+    </li>`;
+  }).join('');
+  return `<div class="modal-backdrop calendar-backdrop">
+    <section class="calendar-sheet" role="dialog" aria-modal="true" aria-label="Login calendar">
+      <span class="modal-kicker">Cycle ${state.cycle} · day ${Math.min(state.nextDay, CALENDAR_LENGTH)} of ${CALENDAR_LENGTH}</span>
+      <h2>Captain's log-in</h2>
+      <p class="muted">One square a day. Miss a day and it waits for you.</p>
+      <ol class="cal-grid">${squares}</ol>
+      ${state.canClaim ? '<button class="primary" data-act="calendar-claim">Claim today</button>' : '<p class="muted">Today\'s square is claimed. Back tomorrow.</p>'}
+      <button data-act="calendar-close">${state.canClaim ? 'Later' : 'Close'}</button>
+    </section>
+  </div>`;
+}
+
 /** Achievements (Phase 2 design §5): one row per line with its track badge, progress to the next tier and a claim. */
 export function renderAchievements(player) {
   const lines = achievementProgress(player);
@@ -1925,7 +1958,11 @@ export function renderLog(player, log, goals) {
   const goalsDone = goals.goals.filter((g) => g.done).length;
   const collected = new Set((player.crew || []).map((c) => c.templateId)).size;
   const rank = reputationRank(player.wallet.reputation || 0);
+  const cal = calendarState(player);
   return `
+    ${isTutorialActive(player) ? '' : `<div class="panel calendar-row"><img src="${artUrl(cal.canClaim ? 'art/pixel/ui/chest-daily.png' : 'art/pixel/ui/chest-daily-open.png')}" alt="" />
+      <div><h2>Login calendar</h2><span class="muted">${cal.canClaim ? `Day ${cal.nextDay} of ${CALENDAR_LENGTH} is ready` : `Day ${cal.claimed} of ${CALENDAR_LENGTH} claimed · back tomorrow`}</span></div>
+      <button class="${cal.canClaim ? 'primary' : ''}" data-act="calendar-open">${cal.canClaim ? 'Claim' : 'View'}</button></div>`}
     <div class="panel"><h2>Daily plan · ${dailyPlan(player).completed}/3</h2>${DAILY_MILESTONES.map(m => {
       const done = ensureDailyLoop(player).dailyLoop[m.id];
       return `<div class="week-row ${done ? 'done' : ''}"><span class="mark">${done ? '●' : '○'}</span><span>${escapeHtml(m.label)}</span><span class="prog">${done ? 'Done' : ''}</span></div>`;

@@ -2,6 +2,7 @@ import { createNewPlayer, tickCrewStatus } from '../systems/player.js';
 import { prepareSession, sessionAction, sessionModels } from '../systems/sessionLoop.js';
 import { claimFuelRegen } from '../systems/fuel.js';
 import { applyDailyLogin } from '../systems/daily.js';
+import { calendarState } from '../systems/calendar.js';
 import { defaultTutorial, isTutorialActive, isFeatureUnlocked, noteTutorialEvent } from '../systems/tutorial.js';
 import { pullOnce, benchCrew, callUpReserve } from '../systems/gacha.js';
 import { readyContractCrew } from '../systems/contractRewards.js';
@@ -277,11 +278,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     if (isTutorialActive(player) && player.tutorial.phase !== 'done') {
       player = { ...player, lastLoginDay: login.player.lastLoginDay, loginStreak: login.player.loginStreak };
       day.loginRewardHeld = login.isNewDay;
-    } else {
-      const fuelBefore = player.wallet.fuel;
-      account('daily-login', login.player);
-      day.fuel.wasted += Math.max(0, (login.bonus?.fuel || 0) - (player.wallet.fuel - fuelBefore));
-    }
+    } else account('daily-login', login.player);
     const rawAccrual = Math.floor(Math.max(0, now - player.fuelClaimAt) / 3600000 * player.fuelRatePerHour);
     const regen = claimFuelRegen(player, now);
     day.fuel.deferredAtCap = Math.max(0, rawAccrual - regen.gained);
@@ -325,6 +322,12 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       act('exp-choose', { planet: 'dustfall' });
       act('exp-start', { planet: 'dustfall' });
       if (isTutorialActive(player)) throw new Error('Tutorial did not finish through production transitions');
+    }
+    // The login calendar (Phase 2 §2): today's square, once the tutorial is over. Fuel over the cap is lost.
+    if (!isTutorialActive(player) && calendarState(player, now).canClaim) {
+      const fuelBefore = player.wallet.fuel;
+      const square = calendarState(player, now).reward;
+      if (act('calendar-claim', {}, 'calendar')) day.fuel.wasted += Math.max(0, (square.fuel || 0) - (player.wallet.fuel - fuelBefore));
     }
     if (guided) noteWalls(day, index);
     if (player.activeExpedition) {
@@ -820,9 +823,9 @@ const showDay = day => day >= NOT_FALLEN ? 'not in 30' : String(day);
 export function renderEconomyMarkdown(report) {
   const lines = ['## 30-day free-player economy', '',
     `Fixed seeds: ${report.seeds.join(', ')}. Start: ${new Date(report.startAt).toISOString()}; exactly 24 hours between check-ins.`, '',
-    'Day 1 includes the tutorial, its already accepted first normal offer, and active Dustfall job. Later days choose the strategy-priority offer and first visible expedition with production-recommended crew. Cheapest affordable system wins; equal costs sort by system ID. Free daily-login gems are earned rewards; no premium grants, purchases, ads, skips, or force completion occur.', '',
+    'Day 1 includes the tutorial, its already accepted first normal offer, and active Dustfall job. Later days choose the strategy-priority offer and first visible expedition with production-recommended crew. Cheapest affordable system wins; equal costs sort by system ID. Free login-calendar gems are earned rewards; no premium grants, purchases, ads, skips, or force completion occur.', '',
     'A useful session completes all three daily milestones (contract, improvement, away launch). A useful action is any claim, upgrade, or away launch. Worst means fewest useful sessions/upgrades, most fuel-starved days, and greatest ending accumulation for each currency separately. Ties use the first listed seed. No target bands or tuning approval are implied.', '',
-    'Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cursor, so this accrual is banked, not permanently discarded. These daily backlog snapshots must not be summed as losses. Wasted fuel counts only discarded daily-login grants; wallet sinks count actual deductions.', '',
+    'Fuel cap exclusion is recorded as deferredAtCap: production retains its claim cursor, so this accrual is banked, not permanently discarded. These daily backlog snapshots must not be summed as losses. Wasted fuel counts only discarded login-calendar fuel; wallet sinks count actual deductions.', '',
     '| Strategy | Metric | Median | Worst seed | Worst value |', '|---|---|---:|---:|---:|'];
   for (const strategy of Object.keys(STRATEGIES)) {
     const runs = report.runs.filter(r => r.strategy === strategy);
@@ -903,11 +906,11 @@ function renderGuidedMarkdown(report) {
     }
   }
   lines.push('', '### Gem ledger per run (fights-first)', '',
-    '| Strategy | Seed | Earned | Daily login | Wall takedowns | Other | Spent: Rally | Spent: refill | Spent: drydock skip | End gems | Rallies free/paid/declined | Useful sessions |',
+    '| Strategy | Seed | Earned | Login calendar | Wall takedowns | Other | Spent: Rally | Spent: refill | Spent: drydock skip | End gems | Rallies free/paid/declined | Useful sessions |',
     '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|');
   for (const run of runs) {
     const by = run.gems.earnedBySource;
-    const login = by['daily-login'] || 0, walls = by['wall:contract-claim'] || 0;
+    const login = by['calendar'] || 0, walls = by['wall:contract-claim'] || 0;
     const r = run.metrics.rallies;
     lines.push(`| ${run.strategy} | ${run.seed} | ${run.gems.earned} | ${login} | ${walls} | ${run.gems.earned - login - walls} | ${run.gems.spentBySink.rally} | ${run.gems.spentBySink.fuel_refill} | ${run.gems.spentBySink.drydock_skip} | ${run.gems.end} | ${r.free}/${r.paid}/${r.declined} | ${run.metrics.usefulSessions} |`);
   }

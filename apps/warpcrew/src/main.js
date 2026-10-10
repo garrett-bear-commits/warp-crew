@@ -12,7 +12,8 @@ import {
   EXPEDITION_SKIP_GEMS,
   abortPayoutFrac,
 } from './systems/expedition.js';
-import { applyDailyLogin, loginBonusLine } from './systems/daily.js';
+import { applyDailyLogin } from './systems/daily.js';
+import { calendarState } from './systems/calendar.js';
 import { syncAllNotifications } from './systems/notifications.js';
 import { listShopProducts, PRODUCT_DEFS } from './systems/iap.js';
 import { SHIPS } from './data/ships.js';
@@ -82,6 +83,8 @@ let confirmRestartSave = false;
 let hireReveal = null;
 /** Reward reveals waiting their turn (src/ui/rewardReveal.js). UI only, never saved. */
 let rewardQueue = [];
+/** The login calendar sheet is open (UI only). It opens on the first boot of a day with a square to claim. */
+let calendarOpen = false;
 let hireOddsOpen = false;
 /** Cancel-save sheet for the Captain's Commission subscription. */
 let commissionWinback = false;
@@ -333,11 +336,8 @@ function hydratePlayer({ fresh, newCaptain }) {
   const daily = applyDailyLogin(player, trustedNow());
   if (!isTutorialActive(player) || player.tutorial?.phase === 'done') {
     player = daily.player;
-    if (daily.isNewDay) {
-      pushLog(loginBonusLine(daily.bonus));
-      showReward(rewardEntry({ source: 'login', title: `Day ${daily.bonus.streak} login`, subtitle: 'Welcome back, Captain',
-        items: rewardItems(daily.bonus) }));
-    }
+    if (daily.isNewDay) pushLog(`Day ${daily.streak} in a row aboard.`);
+    if (calendarState(player, trustedNow()).canClaim) calendarOpen = true;
   } else if (daily.isNewDay) {
     // Hold the day-1 streak without dumping extra currencies into the intro.
     player = {
@@ -534,6 +534,7 @@ function render() {
     commissionWinback,
     hireReveal,
     rewardReveal: rewardQueue[0] || null,
+    calendarOpen,
     hireOddsOpen,
     ftlSelectedCrewId,
     ftlPaused,
@@ -888,7 +889,8 @@ async function handleAction(act, data = {}) {
         if (effect.kind === 'encounter-beat') playEncounterBeat(effect.events);
         if (effect.kind === 'reward') {
           showReward(rewardEntry({ source: effect.source, title: effect.title, subtitle: effect.subtitle,
-            art: effect.art ? artUrl(effect.art) : null, items: rewardItems(effect.rewards) }));
+            art: effect.art ? artUrl(effect.art) : null,
+            items: [...(effect.crew ? [{ kind: 'crew', ...effect.crew }] : []), ...rewardItems(effect.rewards)] }));
         }
       },
     });
@@ -917,6 +919,12 @@ async function handleAction(act, data = {}) {
     render();
     return;
   }
+  if (act === 'calendar-open' || act === 'calendar-close') {
+    calendarOpen = act === 'calendar-open';
+    render();
+    return;
+  }
+  if (act === 'calendar-claim') calendarOpen = false;
   if (act === 'reward-close') {
     const cards = rewardCardRects(app);
     rewardQueue.shift();

@@ -44,9 +44,13 @@ assert.ok(starts.every(s => s.rect.width > 0 && Number.isFinite(s.rect.left)));
 
 // Wiring guard: the grants that used to be toasts now raise a reveal.
 const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
-for (const source of ['login', 'commission', 'purchase', 'expedition']) {
+for (const source of ['commission', 'purchase', 'expedition']) {
   assert.match(main, new RegExp(`showReward\\(rewardEntry\\(\\{ source: '${source}'|rewardEntry\\(\\{ source: '${source}'`), `${source} raises a reveal`);
 }
+// Session claims (the login calendar, achievements) return a reward effect that main.js turns into a reveal.
+const session = readFileSync(new URL('../src/systems/sessionLoop.js', import.meta.url), 'utf8');
+for (const source of ['calendar', 'achievement']) assert.match(session, new RegExp(`kind: 'reward', source: '${source}'`), `${source} returns a reward effect`);
+assert.match(main, /effect\.kind === 'reward'[\s\S]{0,400}showReward\(/, 'reward effects raise a reveal');
 assert.doesNotMatch(main, /showToast\(\{ title: `Day \$\{daily\.bonus\.streak\} bonus`/, 'the login bonus is no longer a toast');
 
 // Every product in the catalog and every wall pack has its own picture, and the file is installed.

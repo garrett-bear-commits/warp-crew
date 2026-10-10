@@ -1,4 +1,4 @@
-import { dayKey, applyDailyLogin, loginBonusLine } from '../src/systems/daily.js';
+import { dayKey, applyDailyLogin } from '../src/systems/daily.js';
 import { contractDayKey } from '../src/systems/contracts.js';
 import { createNewPlayer } from '../src/systems/player.js';
 
@@ -16,13 +16,14 @@ if (r2.isNewDay) throw new Error('same day should not re-bonus');
 const r3 = applyDailyLogin(r1.player, Date.parse('2026-09-19T12:00:00Z'));
 if (r3.player.loginStreak !== 2) throw new Error('streak 2 expected got ' + r3.player.loginStreak);
 
-// The login log line is a readable sentence, never raw JSON.
-if (loginBonusLine({ gems: 15, credits: 150, medals: 15, reputation: 5, streak: 7 }) !== 'Day 7 login: +15 gems, +150 credits, +15 medals, +5 reputation.') throw new Error('day 7 login line');
-if (loginBonusLine({ credits: 40, medals: 8, streak: 3 }) !== 'Day 3 login: +40 credits, +8 medals.') throw new Error('day 3 login line');
-if (loginBonusLine({ credits: 80, fuel: 1, streak: 4 }) !== 'Day 4 login: +80 credits, +1 fuel.') throw new Error('day 4 login line');
-for (const streak of [1, 2, 3, 4, 5, 6, 7, 8]) {
-  const line = loginBonusLine(applyDailyLogin({ ...createNewPlayer(), loginStreak: streak - 1, lastLoginDay: dayKey(Date.parse('2026-09-18T12:00:00Z') - 86400000) }, Date.parse('2026-09-18T12:00:00Z')).bonus);
-  if (/[{}"]/.test(line) || !line.startsWith(`Day ${streak} login: +`)) throw new Error('login line must read as a sentence: ' + line);
+// Logging in pays nothing by itself: the login calendar (calendar.js) pays the day's square when claimed.
+for (const streak of [1, 2, 7, 8]) {
+  const before = { ...createNewPlayer(), loginStreak: streak - 1, lastLoginDay: dayKey(Date.parse('2026-09-18T12:00:00Z') - 86400000) };
+  const res = applyDailyLogin(before, Date.parse('2026-09-18T12:00:00Z'));
+  if (res.streak !== streak || res.player.loginStreak !== streak) throw new Error('streak ' + streak);
+  if (JSON.stringify(res.player.wallet) !== JSON.stringify(before.wallet)) throw new Error('login must not touch the wallet on day ' + streak);
+  if ('bonus' in res) throw new Error('login has no bonus');
 }
+if (applyDailyLogin(r1.player, Date.parse('2026-09-18T18:00:00Z')).player !== r1.player) throw new Error('same-day login is a no-op');
 
 console.log('daily.test.mjs OK', dayKey());

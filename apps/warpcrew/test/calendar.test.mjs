@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import { createNewPlayer } from '../src/systems/player.js';
 import { CALENDAR_LENGTH, CALENDAR_REWARDS, CALENDAR_MILESTONES, calendarState, claimCalendar, normalizeCalendar } from '../src/systems/calendar.js';
 import { RARITY, catalogById } from '../src/data/crewRoster.js';
+import { sessionAction } from '../src/systems/sessionLoop.js';
+import { renderCalendar, renderNav, renderLog } from '../src/ui/bridge.js';
+import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 
 const DAY = 86400000;
 const start = Date.UTC(2026, 9, 10, 12);
@@ -60,5 +63,35 @@ assert.equal(claimCalendar(hire.player, { now: start + 11 * DAY }).player.calend
 // A damaged or edited calendar is cleaned on read.
 assert.deepEqual(normalizeCalendar({ cycle: -3, claimed: 99, lastDay: 'yesterday' }), { cycle: 1, claimed: 28, lastDay: null });
 assert.deepEqual(normalizeCalendar(null), { cycle: 1, claimed: 0, lastDay: null });
+
+// Through the session (the engine path): a reward effect, never during the tutorial, and the day-28 crew card.
+const fresh = createNewPlayer({ tutorialScript: 5, now: start, rng: () => 0.5 });
+assert.equal(sessionAction(fresh, {}, 'calendar-claim', {}, { now: start }).ok, false, 'locked during the tutorial');
+const done = completeFreshTutorial();
+const viaSession = sessionAction(done, {}, 'calendar-claim', {}, { now: start });
+assert.ok(viaSession.ok, viaSession.reason);
+assert.deepEqual([viaSession.effect.kind, viaSession.effect.source, viaSession.effect.title], ['reward', 'calendar', 'Day 1 of 28']);
+assert.deepEqual(viaSession.effect.rewards, CALENDAR_REWARDS[0]);
+assert.equal(viaSession.effect.crew, null);
+assert.equal(sessionAction(viaSession.player, {}, 'calendar-claim', {}, { now: start + 3600000 }).reason, 'calendar_claimed_today');
+const day28 = sessionAction({ ...done, calendar: { cycle: 1, claimed: 27, lastDay: '2026-10-01' } }, {}, 'calendar-claim', {}, { now: start });
+assert.ok(day28.ok, day28.reason);
+assert.ok(RARITY[day28.effect.crew.rarity].rank >= RARITY.epic.rank, 'the day-28 card shows an Epic or better');
+assert.match(day28.effect.subtitle, /joins the crew/);
+assert.ok(day28.effect.crew.portrait);
+assert.deepEqual(day28.events.find(e => e.event === 'calendar_claimed').fields, { day: 28, cycle: 1, gems: 30, hire: day28.effect.crew.rarity });
+
+// The sheet: 28 squares, today glowing, a claim button; claimed squares tick off; the Log row and tab dot.
+const sheet = renderCalendar(done, start);
+assert.equal(sheet.match(/class="cal-day/g).length, CALENDAR_LENGTH);
+assert.equal(sheet.match(/is-today/g).length, 1);
+assert.match(sheet, /data-act="calendar-claim"/);
+const after = renderCalendar(viaSession.player, start);
+assert.doesNotMatch(after, /data-act="calendar-claim"/);
+assert.equal(after.match(/is-done/g).length, 1);
+assert.match(after, /Back tomorrow/);
+assert.match(renderLog(done, [], { goals: [] }), /Day 1 of 28 is ready[\s\S]*data-act="calendar-open"/);
+assert.match(renderNav('ship', done, false, ['ship', 'crew', 'missions', 'shop', 'log']), /nav-badge/);
+assert.doesNotMatch(renderLog(fresh, [], { goals: [] }), /calendar-open/, 'no calendar during the tutorial');
 
 console.log('calendar: OK');
