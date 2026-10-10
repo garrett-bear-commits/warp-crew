@@ -50,10 +50,11 @@ import { dailyPlan, ensureDailyLoop, MILESTONES as DAILY_MILESTONES } from '../s
 import { makeCamera, focusCamera, resizeCamera, zoomAt, pan, project, unproject } from './shipCamera.js';
 import { createCameraController } from './shipCameraController.js';
 import { artUrl } from '../shared/artUrl.js';
-import { starterOfferState, starterValue, wallPackState, packValue } from '../systems/offers.js';
+import { starterOfferState, starterValue, wallPackState, packValue, gemLadderValues } from '../systems/offers.js';
+import { productArt } from './rewardReveal.js';
 import { COMMISSION, commissionActive, priceCents, usableTerms } from '../systems/subscription.js';
 import { currentWall } from '../systems/walls.js';
-import { PRODUCT_DEFS } from '../systems/iap.js';
+import { PRODUCT_DEFS, GEM_LADDER } from '../systems/iap.js';
 import { FUEL_REFILL } from '../systems/gemSinks.js';
 import { trustedNow } from '../shared/time.js';
 import { renderStatusPanel, renderObjectiveHead, renderCrewRail, renderCommandBar, pixelIcon } from './hudView.js';
@@ -1775,24 +1776,11 @@ function renderStarterCard(state, value) {
   </section>`;
 }
 
-function renderShop(player, shopProducts, now = trustedNow()) {
-  const SKU_COPY = {
-    wc_gems_s: { name: 'Gem Pouch', blurb: '100 gems' },
-    wc_gems_m: { name: 'Gem Pack', blurb: '280 gems · +12%' },
-    wc_gems_l: { name: 'Gem Crate', blurb: '600 gems · +20%' },
-    wc_gems_xl: { name: 'Gem Vault', blurb: '1,300 gems · +30%' },
-    wc_gems_xxl: { name: 'Gem Hoard', blurb: '3,500 gems · +40%' },
-  };
+export function renderShop(player, shopProducts, now = trustedNow()) {
+  // Gem packs as cards: art, the gems, and a value badge computed from real prices (never invented).
+  const values = gemLadderValues(shopProducts || []);
   const bySku = Object.fromEntries((shopProducts || []).map((p) => [p.sku, p]));
-  const products = Object.keys(SKU_COPY).map((sku) => {
-    const remote = bySku[sku] || {};
-    return {
-      sku,
-      ...remote,
-      name: SKU_COPY[sku].name,
-      blurb: SKU_COPY[sku].blurb,
-    };
-  });
+  const products = GEM_LADDER.map((sku) => ({ sku, ...PRODUCT_DEFS[sku], ...(bySku[sku] || {}), name: PRODUCT_DEFS[sku].name, value: values[sku] || null }));
   const owned = listOwnedHulls(player);
   const shipId = player.ship?.shipId || 'sparrow';
   const qa = typeof window !== 'undefined' && /(?:^|[?&])qa=1(?:&|$)/.test(window.location.search);
@@ -1800,7 +1788,34 @@ function renderShop(player, shopProducts, now = trustedNow()) {
   const hullRows = Object.values(SHIPS);
   const lastOwned = Math.max(0, ...hullRows.map((h, i) => (owned.includes(h.id) || h.id === shipId ? i : 0)));
   const visibleHulls = Math.min(hullRows.length, lastOwned + 2);
+  const starter = starterOfferState(player, now);
+  const wallPack = wallPackState(player, currentWall(player, now));
+  const featured = [
+    starter.active ? renderStarterCard(starter, starterValue(shopProducts || [])) : '',
+    wallPack.active ? renderWallPack(wallPack, packValue(wallPack.sku, shopProducts || [])) : '',
+  ].join('');
   return `
+    ${featured ? `<div class="panel shop-featured"><h2>For you</h2>${featured}</div>` : ''}
+    <div class="panel">
+      <h2>Gems</h2>
+      <div class="muted">Gems buy time: Rally, fuel, drydock finishes and hires.</div>
+      <ul class="gem-grid">
+        ${products.map((p) => `
+        <li class="gem-card${p.value?.best ? ' is-best' : ''}">
+          ${p.value?.best ? '<span class="gem-ribbon">Best value</span>' : ''}
+          <img src="${escapeHtml(productArt(p.sku))}" alt="" />
+          <b>${escapeHtml(p.name)}</b>
+          <span class="gem-amount">${p.grant.gems.toLocaleString('en-US')} gems</span>
+          ${p.value?.morePct ? `<span class="gem-badge">+${p.value.morePct}% more</span>` : '<span class="gem-badge is-empty" aria-hidden="true"></span>'}
+          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">${p.price != null ? `$${p.price.toFixed(2)}` : 'Buy'}</button>
+        </li>`).join('')}
+      </ul>
+    </div>
+    ${renderCommissionCard(player, now)}
+    <div class="panel">
+      <h2>Fuel</h2>
+      <div class="row">${fuelBuyButtons(player) || '<span class="muted">Tanks full.</span>'}</div>
+    </div>
     <div class="panel">
       <h2>Hangar</h2>
       <div class="muted">Credits buy hulls slowly. Gems buy them now.</div>
@@ -1860,24 +1875,6 @@ function renderShop(player, shopProducts, now = trustedNow()) {
       </details>` : ''}
     </div>
     <div class="panel">
-      <h2>Fuel</h2>
-      <div class="row">${fuelBuyButtons(player) || '<span class="muted">Tanks full.</span>'}</div>
-    </div>
-    <div class="panel">
-      <h2>Buy</h2>
-      <div class="muted">Real money for gems. Gems buy time.</div>
-      ${renderCommissionCard(player, now)}
-      ${starterOfferState(player, now).active ? renderStarterCard(starterOfferState(player, now), starterValue(shopProducts || [])) : ''}
-      ${wallPackState(player, currentWall(player, now)).active ? renderWallPack(wallPackState(player, currentWall(player, now)), packValue(wallPackState(player, currentWall(player, now)).sku, shopProducts || [])) : ''}
-      ${products.map((p) => `
-        <div class="iap-row">
-          <div>
-            <b>${escapeHtml(p.name)}</b>
-            <div class="muted">${escapeHtml(p.blurb)}</div>
-          </div>
-          <button class="primary" data-act="iap-buy" data-sku="${p.sku}">${p.price != null ? `$${p.price.toFixed(2)}` : 'Buy'}</button>
-        </div>
-      `).join('')}
       ${renderPlatformLoginEntry()}
       ${qa ? `
       <div class="row" style="margin-top:8px">

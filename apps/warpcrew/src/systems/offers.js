@@ -55,6 +55,22 @@ export function packValue(sku, products = []) {
     gemValue, morePct: morePct > 0 ? morePct : 0 };
 }
 
+/**
+ * The gem ladder's truthful value badges: each pack's gems per dollar against the smallest pack's, rounded down so
+ * a badge never overstates, and which pack gives the most gems per dollar. Packs without a known price get no badge.
+ */
+export function gemLadderValues(products = []) {
+  const priced = Object.fromEntries(products.filter(p => Number.isFinite(p?.price) && p.price > 0).map(p => [p.sku, p.price]));
+  const base = GEM_LADDER.find(sku => priced[sku]);
+  if (!base) return {};
+  const rate = sku => PRODUCT_DEFS[sku].grant.gems / priced[sku];
+  const best = GEM_LADDER.filter(sku => priced[sku]).sort((a, b) => rate(b) - rate(a))[0];
+  return Object.fromEntries(GEM_LADDER.filter(sku => priced[sku]).map(sku => [sku, {
+    gems: PRODUCT_DEFS[sku].grant.gems, price: priced[sku],
+    morePct: sku === base ? 0 : Math.max(0, Math.floor((rate(sku) / rate(base) - 1) * 100)), best: sku === best && sku !== base,
+  }]));
+}
+
 export function starterValue(products = []) {
   return packValue(STARTER_OFFER.sku, products);
 }
