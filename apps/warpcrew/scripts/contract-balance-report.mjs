@@ -1,13 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { buildCombatBalanceMatrix, renderCombatBalanceMarkdown } from '../src/sim/contractBalance.js';
-import { runEconomySeedSet, renderEconomyMarkdown } from '../src/sim/contractEconomy.js';
+import { buildCombatBalanceMatrix } from '../src/sim/contractBalance.js';
 
+// The evidence page (docs/qa/2026-09-22-encounter-balance-evidence.md) shows this matrix too; it is written by
+// contract-economy-report.mjs, which already runs the 30-day seed set the page needs. Running that set here as
+// well doubled test:balance's longest step.
 const matrix = buildCombatBalanceMatrix();
-const runtimeEvidence = await readFile('docs/qa/2026-09-22-encounter-runtime-evidence.md', 'utf8');
 const outputs = [
   ['docs/qa/artifacts/encounter-balance-matrix.json', JSON.stringify(matrix, null, 2) + '\n'],
-  ['docs/qa/2026-09-22-encounter-balance-evidence.md', renderCombatBalanceMarkdown(matrix) + '\n' + renderEconomyMarkdown(runEconomySeedSet()) + '\n' + runtimeEvidence],
 ];
 
 for (const [path, content] of outputs) {
