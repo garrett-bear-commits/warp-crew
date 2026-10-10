@@ -73,6 +73,64 @@ export function isWarpcrewPlayer(v: unknown): v is WarpcrewPlayer {
       return false;
   }
   if (v.ship !== undefined && !record(v.ship)) return false;
+  // Phase 2 fields, the same rules as the client (apps/warpcrew/src/core/progress.js).
+  // Achievement tiers claimed: small whole counts only.
+  if (
+    v.achievements !== undefined &&
+    !(
+      record(v.achievements) &&
+      Object.values(v.achievements).every(
+        (n) => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 5,
+      )
+    )
+  )
+    return false;
+  // Login calendar: whole counts, at most 28 squares, a day key or nothing.
+  if (v.calendar !== undefined) {
+    const c = v.calendar;
+    if (!(
+      record(c) &&
+      Number.isSafeInteger(c.cycle) &&
+      (c.cycle as number) >= 1 &&
+      Number.isInteger(c.claimed) &&
+      (c.claimed as number) >= 0 &&
+      (c.claimed as number) <= 28 &&
+      (c.lastDay === null ||
+        (typeof c.lastDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(c.lastDay)))
+    ))
+      return false;
+  }
+  // Income while away: the clock start is a time; anything banked is bounded.
+  if (v.idle !== undefined) {
+    const idle = v.idle;
+    if (!(
+      record(idle) &&
+      typeof idle.since === 'number' &&
+      Number.isFinite(idle.since) &&
+      idle.since > 0
+    ))
+      return false;
+    const banked = idle.banked;
+    if (
+      banked !== undefined &&
+      !(
+        record(banked) &&
+        (
+          [
+            ['credits', 100000],
+            ['medals', 10000],
+            ['hours', 16],
+          ] as const
+        ).every(
+          ([key, max]) =>
+            typeof banked[key] === 'number' &&
+            (banked[key] as number) >= 0 &&
+            (banked[key] as number) <= max,
+        )
+      )
+    )
+      return false;
+  }
   return true;
 }
 
@@ -115,12 +173,15 @@ export function summaryOf(player: WarpcrewPlayer): Record<string, number> {
  * purpose; the parity test fails when the game's fresh player grows a field this list does not name.
  */
 export const QA_FIELDS = [
+  'achievements',
   'activeContract',
   'activeEncounter',
   'activeEvent',
   'activeExpedition',
   'activeTravelFight',
+  'calendar',
   'captainInstanceId',
+  'chests',
   'contractBoard',
   'createdAt',
   'crew',
@@ -134,6 +195,7 @@ export const QA_FIELDS = [
   'fuelRatePerHour',
   'gacha',
   'hullRepairAt',
+  'idle',
   'lastLoginDay',
   'location',
   'loginStreak',

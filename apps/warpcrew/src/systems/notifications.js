@@ -59,9 +59,13 @@ export function fuelFullAt(player, now = trustedNow()) {
   return now + Math.max(60_000, Math.min(msUntilFull, 6.5 * 24 * MS_PER_HOUR));
 }
 
+/** Daytime hours (local) a "Hold full" text may arrive in. */
+export const HOLD_NOTICE_HOURS = { from: 8, to: 21 };
+
 /**
- * When the hold fills (ms), or null: no clock yet, nobody earning, already full, or another timed notice (fuel
- * full, away team back, drydock done) lands on the same game day, so this never adds a second message that day.
+ * When the hold fills (ms), or null: no clock yet, nobody earning, already full, it fills after today (tomorrow
+ * already has the comeback and daily-hire texts), it fills at night, or another timed notice (fuel full, away team
+ * back, drydock done) lands the same game day. So it never adds a second message to a day.
  */
 export function holdFullAt(player, now = trustedNow()) {
   if (isTutorialActive(player) || !player?.idle) return null;
@@ -70,6 +74,9 @@ export function holdFullAt(player, now = trustedNow()) {
   const rates = idleRates(player, now);
   if (!rates.credits && !rates.medals) return null;
   const at = Math.max(now + 60_000, Number(player.idle.since) + haul.capHours * MS_PER_HOUR);
+  if (dayKey(at) !== dayKey(now)) return null;
+  const hour = new Date(at).getHours();
+  if (hour < HOLD_NOTICE_HOURS.from || hour >= HOLD_NOTICE_HOURS.to) return null;
   const others = [fuelFullAt(player, now), player.activeExpedition?.endAt, player.shipBuild?.endAt].filter(Number.isFinite);
   if (others.some(t => dayKey(t) === dayKey(at))) return null;
   return at;

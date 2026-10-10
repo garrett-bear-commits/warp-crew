@@ -24,7 +24,8 @@ export function applyDailyLogin(player, now = trustedNow()) {
   let loginStreak = player.loginStreak || 0;
   let dailyPullAvailable = player.dailyPullAvailable;
 
-  if (last === today) {
+  // Only a later game day is a new day: a clock set back to an earlier day never resets the free hire.
+  if (last && today <= last) {
     return { player, isNewDay: false, streak: loginStreak };
   }
 

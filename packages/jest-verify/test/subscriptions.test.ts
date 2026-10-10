@@ -75,7 +75,9 @@ describe('Jest subscriptions verifier', () => {
     });
   });
   it('refuses a forged, foreign, other-player, unsigned-age, stale or future list', () => {
-    expect(v.verifySubscriptions(list().replace(/.$/, 'A'), check)).toEqual({
+    // Always change the last character (a token already ending in 'A' was a 1-in-64 false pass).
+    const forged = list().replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'));
+    expect(v.verifySubscriptions(forged, check)).toEqual({
       ok: false,
       reason: 'bad_signature',
     });

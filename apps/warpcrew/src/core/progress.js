@@ -78,6 +78,8 @@ export function isWarpcrewPlayer(v) {
     && Number.isInteger(v.calendar.claimed) && v.calendar.claimed >= 0 && v.calendar.claimed <= 28
     && (v.calendar.lastDay === null || (typeof v.calendar.lastDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.calendar.lastDay))))) return false;
   // Income while away (src/systems/idle.js): the clock start is a time; the hold caps what any start can pay.
-  if (v.idle !== undefined && !(record(v.idle) && typeof v.idle.since === 'number' && Number.isFinite(v.idle.since) && v.idle.since > 0)) return false;
+  if (v.idle !== undefined && !(record(v.idle) && typeof v.idle.since === 'number' && Number.isFinite(v.idle.since) && v.idle.since > 0
+    && (v.idle.banked === undefined || (record(v.idle.banked) && [['credits', 100000], ['medals', 10000], ['hours', 16]]
+      .every(([key, max]) => typeof v.idle.banked[key] === 'number' && v.idle.banked[key] >= 0 && v.idle.banked[key] <= max))))) return false;
   return true;
 }

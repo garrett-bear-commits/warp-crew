@@ -81,11 +81,79 @@ function* players(): Generator<unknown> {
       story: rnd() < 0.5 ? { chapter: pick() } : undefined,
       crew: rnd() < 0.1 ? [null] : rnd() < 0.1 ? [{ templateId: 1 }] : base.crew,
       ship: rnd() < 0.05 ? 'sparrow' : base.ship,
+      // Phase 2 fields: real values, odd ones and garbage.
+      achievements:
+        rnd() < 0.5
+          ? undefined
+          : rnd() < 0.1
+            ? pick()
+            : { victor: pick(), roster: rnd() < 0.5 ? 2 : pick() },
+      calendar:
+        rnd() < 0.4
+          ? undefined
+          : rnd() < 0.1
+            ? pick()
+            : {
+                cycle: rnd() < 0.7 ? 1 : pick(),
+                claimed: rnd() < 0.6 ? Math.floor(rnd() * 29) : pick(),
+                lastDay:
+                  rnd() < 0.6
+                    ? '2026-10-10'
+                    : rnd() < 0.5
+                      ? null
+                      : rnd() < 0.5
+                        ? 'yesterday'
+                        : pick(),
+              },
+      idle:
+        rnd() < 0.4
+          ? undefined
+          : rnd() < 0.1
+            ? pick()
+            : {
+                since: rnd() < 0.7 ? 1_791_000_000_000 : pick(),
+                ...(rnd() < 0.5
+                  ? {}
+                  : {
+                      banked:
+                        rnd() < 0.1
+                          ? pick()
+                          : {
+                              credits: pick(),
+                              medals: rnd() < 0.5 ? 2 : pick(),
+                              hours: rnd() < 0.5 ? 4 : pick(),
+                            },
+                    }),
+              },
     };
   }
 }
 
 describe('Warp Crew client progress and summary equal the policy', () => {
+  it('client and server agree on Phase 2 saves (calendar, idle clock, achievements)', () => {
+    const base = game.createNewPlayer({ captainName: 'Vex', now: 1, rng: () => 0.5 });
+    const good = {
+      ...base,
+      achievements: { victor: 2 },
+      calendar: { cycle: 1, claimed: 28, lastDay: '2026-10-10' },
+      idle: { since: 1_791_000_000_000, banked: { credits: 12.5, medals: 0.25, hours: 8 } },
+    };
+    const bad = [
+      { ...good, achievements: { victor: 9 } },
+      { ...good, calendar: { cycle: 1, claimed: 40, lastDay: null } },
+      { ...good, calendar: { cycle: 0, claimed: 3, lastDay: null } },
+      { ...good, calendar: { cycle: 1, claimed: 3, lastDay: 'tomorrow' } },
+      { ...good, idle: { since: 'yesterday' } },
+      { ...good, idle: { since: 5, banked: { credits: 1e9, medals: 0, hours: 0 } } },
+    ];
+    expect(isWarpcrewPlayer(good)).toBe(true);
+    expect(progress.isWarpcrewPlayer(good)).toBe(true);
+    for (const p of bad) {
+      expect(isWarpcrewPlayer(p)).toBe(false);
+      expect(progress.isWarpcrewPlayer(p)).toBe(false);
+    }
+  });
+
   it('progressOf, summaryOf and the shape check agree on 400 odd players', () => {
     for (const p of players()) {
       expect(progress.isWarpcrewPlayer(p)).toBe(isWarpcrewPlayer(p));

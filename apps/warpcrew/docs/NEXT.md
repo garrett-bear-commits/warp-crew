@@ -1,6 +1,6 @@
 # Warp Crew next-work checklist
 
-Last updated: 2026-10-09
+Last updated: 2026-10-10
 
 ## Where things are (2026-10-09)
 
@@ -82,13 +82,24 @@ Garrett approved the [deep dive and roadmap](design/21-deep-dive-2026-10-09.md) 
   - fixed (2026-10-10): the Crown paid 8 gems per segment won (now the flagship's gems come once, at the fall).
 - [ ] Garrett, from the balance pass: contracts are now near-certain wins for a growing crew (enemy rank?);
   success test 2 holds only at low hull (Legendary moves charge slowly); credits per day are up 17-68%.
-- [ ] Phase 2:
-  - the universal reward reveal for purchases and chests;
-  - a shop redesign;
-  - idle income;
-  - a 28-day login calendar;
-  - daily and weekly chests;
-  - achievements.
+- [x] Phase 2, reward feel and retention ([report](qa/2026-10-10-phase2-retention.md); Phase 2 art $0.51 on Flora):
+  - one reward reveal for every grant (purchases, calendar, chests, achievements, welcome-back haul, milestone
+    levels);
+  - a 28-day login calendar (day 28: an Epic-or-better hire);
+  - five daily orders with points, a daily chest and a weekly chest (odds shown on each);
+  - income while away (a hold on the ship, a welcome-back screen);
+  - achievements (11 lines × 3 tiers);
+  - a shop redesign with art and computed value badges;
+  - a notice strip on the ship, and a "Hold full" text notice.
+- [ ] Garrett, from Phase 2:
+  - walls fall sooner with the new rewards (Ember about a week sooner for balanced captains): accept, raise the
+    Ember and Hollow pools, trim free gems, or make Rally dearer?
+  - daily-order points are 30/25/25/20/20 with 100 needed (the spec had all five needed);
+  - play it in the QA build: the calendar on first visit of the day, the hold chip, chests in the Log.
+- [x] Independent audit of Phase 2: 2 high, 4 medium and 7 low findings, all fixed under regression tests
+  ([report](audits/2026-10-10-phase2-audit.md)).
+- [ ] Phase 2 leftover: the twice-a-day check-in variant of the sim.
+- [ ] Next: Phase 3 (world).
 
 ## 2026-10-05 FTL-lite fights, weapons, sound, Explore
 

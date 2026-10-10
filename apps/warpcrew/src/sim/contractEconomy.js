@@ -192,6 +192,18 @@ export function reconcileLedger(run) {
   return { ok: Object.keys(differences).length === 0, differences };
 }
 
+/** Phase 2 sources in a run: credits by source, their share of all credits, daily chests opened, free gems a day. */
+export function phase2Summary(run) {
+  const by = run.totals.rewardsBySource;
+  const credits = key => by[key]?.credits || 0;
+  const all = Object.values(by).reduce((sum, r) => sum + (r.credits || 0), 0);
+  const split = { calendar: credits('calendar'), idle: credits('idle'), chests: credits('chest:daily') + credits('chest:weekly'), achievements: credits('achievement') };
+  const total = Object.values(split).reduce((a, b) => a + b, 0);
+  const gems = Object.values(by).reduce((sum, r) => sum + (r.gems || 0), 0);
+  return { credits: split, total, share: all ? total / all : 0, chestDays: run.days.filter(day => day.orders?.chest).length,
+    gemsPerDay: Math.round((gems / run.days.length) * 10) / 10 };
+}
+
 export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_START, flow = 'script3', sessionOrder = 'fights-first', onDayEnd = null, days = 30 }) {
   const rules = STRATEGIES[strategy];
   if (!rules) throw new Error(`Unknown strategy: ${strategy}`);
@@ -332,8 +344,6 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
       const square = calendarState(player, now).reward;
       if (act('calendar-claim', {}, 'calendar')) day.fuel.wasted += Math.max(0, (square.fuel || 0) - (player.wallet.fuel - fuelBefore));
     }
-    // Income while away (Phase 2 §4): one check-in a day, so the hold is full every morning but the first.
-    if (!isTutorialActive(player) && idleHaul(player, now).ready) act('idle-claim', {}, 'idle');
     if (guided) noteWalls(day, index);
     if (player.activeExpedition) {
       const result = resolveExpedition(player.activeExpedition, { now, rng, player });
@@ -345,6 +355,9 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         day.expedition = { planet: result.planet.id, success: result.success, rewards: result.rewards };
       } else blocked('expedition-claim', 'not_ready');
     }
+    // Income while away (Phase 2 §4), collected after the away team is home, as at a real boot. One check-in a day,
+    // so the hold is full every morning but the first.
+    if (!isTutorialActive(player) && idleHaul(player, now).ready) act('idle-claim', {}, 'idle');
     const launchAway = () => {
       if (!player.activeExpedition) {
         // Stable first-visible destination; party is always production-recommended.
@@ -926,13 +939,22 @@ function renderGuidedMarkdown(report) {
     }
   }
   lines.push('', '### Gem ledger per run (fights-first)', '',
-    '| Strategy | Seed | Earned | Login calendar | Wall takedowns | Other | Spent: Rally | Spent: refill | Spent: drydock skip | End gems | Rallies free/paid/declined | Useful sessions |',
-    '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|');
+    '| Strategy | Seed | Earned | Login calendar | Chests | Achievements | Wall takedowns | Other | Spent: Rally | Spent: refill | Spent: drydock skip | End gems | Rallies free/paid/declined | Useful sessions |',
+    '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|');
   for (const run of runs) {
     const by = run.gems.earnedBySource;
-    const login = by['calendar'] || 0, walls = by['wall:contract-claim'] || 0;
+    const login = by['calendar'] || 0, walls = by['wall:contract-claim'] || 0, achievements = by.achievement || 0;
+    const chests = (by['chest:daily'] || 0) + (by['chest:weekly'] || 0);
     const r = run.metrics.rallies;
-    lines.push(`| ${run.strategy} | ${run.seed} | ${run.gems.earned} | ${login} | ${walls} | ${run.gems.earned - login - walls} | ${run.gems.spentBySink.rally} | ${run.gems.spentBySink.fuel_refill} | ${run.gems.spentBySink.drydock_skip} | ${run.gems.end} | ${r.free}/${r.paid}/${r.declined} | ${run.metrics.usefulSessions} |`);
+    lines.push(`| ${run.strategy} | ${run.seed} | ${run.gems.earned} | ${login} | ${chests} | ${achievements} | ${walls} | ${run.gems.earned - login - chests - achievements - walls} | ${run.gems.spentBySink.rally} | ${run.gems.spentBySink.fuel_refill} | ${run.gems.spentBySink.drydock_skip} | ${run.gems.end} | ${r.free}/${r.paid}/${r.declined} | ${run.metrics.usefulSessions} |`);
+  }
+  lines.push('', '### Phase 2 sources per run (fights-first)', '',
+    'Credits from the login calendar, income while away, chests and achievements, and their share of all credits earned in 30 days; days the daily chest opened.', '',
+    '| Strategy | Seed | Calendar | Idle | Chests | Achievements | Phase 2 share of credits | Daily chests | Free gems a day |',
+    '|---|---:|---:|---:|---:|---:|---:|---:|---:|');
+  for (const run of runs) {
+    const p2 = phase2Summary(run);
+    lines.push(`| ${run.strategy} | ${run.seed} | ${p2.credits.calendar} | ${p2.credits.idle} | ${p2.credits.chests} | ${p2.credits.achievements} | ${Math.round(p2.share * 100)}% | ${p2.chestDays} | ${p2.gemsPerDay} |`);
   }
   if (away.length) {
     lines.push('', '### Session-order sensitivity: away team launched before the fights', '',

@@ -342,7 +342,8 @@ function hydratePlayer({ fresh, newCaptain }) {
     if (daily.isNewDay) pushLog(`Day ${daily.streak} in a row aboard.`);
     if (calendarState(player, trustedNow()).canClaim) calendarOpen = true;
     const haul = idleHaul(player, trustedNow());
-    if (haul.ready && haul.awayMs >= WELCOME_BACK_MS) welcomeBackOpen = true;
+    // An hour or more of income waiting (hours earned, not time since the clock last moved: it moves on every change).
+    if (haul.ready && haul.hours * 3600000 >= WELCOME_BACK_MS) welcomeBackOpen = true;
   } else if (daily.isNewDay) {
     // Hold the day-1 streak without dumping extra currencies into the intro.
     player = {
@@ -834,6 +835,9 @@ async function handleAction(act, data = {}) {
     if (type === 'move') ftlSelectedCrewId = null;
   }
   if (!player.activeEncounter || player.activeEncounter.result) { ftlSelectedCrewId = null; ftlPaused = false; }
+  // Claiming closes its sheet. The session answers these acts and returns, so this must run first.
+  if (act === 'calendar-claim') calendarOpen = false;
+  if (act === 'idle-claim') welcomeBackOpen = false;
   // The engine runs sessionAction and commits its player; the core saves it.
   const ran = wc.session(act, data, { ...sessionUi, pendingCombat, tab, selectedRoom, selectedCrewId });
   const transition = ran.result;
@@ -906,7 +910,9 @@ async function handleAction(act, data = {}) {
       pushLog(message);
       showToast({ title: message });
       if (committed.reason === 'hull_critical') { tab = 'ship'; selectedRoom = 'engineering'; }
-    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-order', 'encounter-recover', 'combat-order', 'travel-claim', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip', 'weapon-buy'].includes(act)
+    } else if (['contract-action', 'contract-order', 'contract-claim', 'encounter-order', 'encounter-recover', 'combat-order', 'travel-claim', 'exp-start', 'exp-launch', 'ship-upgrade', 'ship-build-skip', 'weapon-buy',
+      // Phase 2: the hold-full text follows the hold (collecting it, a station change) and the day's claims.
+      'idle-claim', 'station-assign', 'calendar-claim', 'chest-open', 'level-crew'].includes(act)
       // Beats come every second in real-time fights: refresh notifications only when one ends.
       || (act === 'encounter-advance' && (!player.activeEncounter || player.activeEncounter.result))) {
       await refreshNotifs();
@@ -931,13 +937,11 @@ async function handleAction(act, data = {}) {
     render();
     return;
   }
-  if (act === 'calendar-claim') calendarOpen = false;
   if (act === 'welcome-close') {
     welcomeBackOpen = false;
     render();
     return;
   }
-  if (act === 'idle-claim') welcomeBackOpen = false;
   if (act === 'reward-close') {
     const cards = rewardCardRects(app);
     rewardQueue.shift();

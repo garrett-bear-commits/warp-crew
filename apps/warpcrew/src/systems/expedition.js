@@ -8,6 +8,7 @@ import { sumPassives, injuryMinutesFor } from './passives.js';
 import { scaleSitePayout, grant } from './economy.js';
 import { noteTutorialEvent } from './tutorial.js';
 import { galaxyUnlocked } from '../data/galaxies.js';
+import { settleIdle } from './idle.js';
 
 /** Test cadence — set to 360 for launch (6h) */
 export const TEST_EXPEDITION_MINUTES = 15;
@@ -207,7 +208,8 @@ export function applyExpeditionResult(player, result, { now = trustedNow() } = {
   if (result.success) nextPlayer = grantCrewXp(nextPlayer, result.crewInstanceIds, 18);
   else if (!result.aborted) nextPlayer = applyCrewInjury(nextPlayer, result.crewInstanceIds, injuryMinutesFor(nextPlayer, 18), now);
   nextPlayer = noteTutorialEvent(nextPlayer, 'expedition_done').player;
-  return { ok: true, player: nextPlayer, result };
+  // The away team earns at its stations only from its return (Phase 2 §4).
+  return { ok: true, player: settleIdle(player, nextPlayer, now), result };
 }
 
 export function skipExpeditionJob(job, now = trustedNow()) {

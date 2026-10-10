@@ -38,7 +38,7 @@ const four = idleHaul(player, t0 + 4 * HOUR);
 assert.equal(four.credits, Math.floor(rates.credits * 4));
 assert.equal(four.full, false);
 assert.equal(idleHaul(player, t0 - 5 * HOUR).credits, 0);
-assert.equal(startIdleClock(player, t0 - 5 * HOUR).idle.since, t0 - 5 * HOUR, 'a clock that ran backwards restarts at now');
+assert.equal(startIdleClock(player, t0 - 5 * HOUR).idle.since, t0, 'a clock that ran backwards keeps the saved start (nothing builds until real time passes it)');
 
 // The hold caps it: 30 hours away pays the same as 8.
 const long = idleHaul(player, t0 + 30 * HOUR);

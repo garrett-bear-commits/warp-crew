@@ -14,7 +14,9 @@ import { encounterById, rubberBandPower } from '../src/systems/combat.js';
 import { combatBonuses } from '../src/systems/passives.js';
 import { WALL_BY_ID } from '../src/systems/walls.js';
 
-const SEEDS = Array.from({ length: 16 }, (_, i) => 5000 + i * 7919);
+// 48 seeds per crew (720 fights per Legendary): at 16, the full-hull gain (about +2 points at an 84% base) sat
+// inside one standard error and its sign flipped with unrelated changes.
+const SEEDS = Array.from({ length: 48 }, (_, i) => 5000 + i * 7919);
 const LEGENDARIES = ['merc_zephyr', 'merc_onyx', 'merc_prism', 'merc_solace', 'merc_harrow'];
 
 /** Every guided captain's save at the end of day 7, crew back aboard and healed, siege damage cleared. */
@@ -67,7 +69,7 @@ test('success test 2: a Legendary in a typical day-7 crew wins a Dangerous wall 
     const mean = Math.round(Object.values(each).reduce((sum, v) => sum + v, 0) / LEGENDARIES.length * 10) / 10;
     rows.push({ hull, base, mean, gain: Math.round((mean - base) * 10) / 10, each });
   }
-  console.log('success test 2 (Veil wall, 15 day-7 captains x 16 seeds):');
+  console.log(`success test 2 (Veil wall, 15 day-7 captains x ${SEEDS.length} seeds):`);
   for (const row of rows) console.log(`  hull ${row.hull}: base ${row.base}% -> with a Legendary ${row.mean}% (+${row.gain}); ${Object.entries(row.each).map(([id, v]) => `${id.slice(5)} ${v}`).join(', ')}`);
   // NOT met as the spec words it (report): the spec's 15 points hold only where the wall bites hardest, a ship at
   // the 60-hull repair line. With more hull the typical crew already wins most attempts and the five Legendary

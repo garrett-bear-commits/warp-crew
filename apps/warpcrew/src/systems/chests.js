@@ -105,17 +105,23 @@ export function rollChest(player, kind, key) {
   return { reward, shard };
 }
 
-/** Pay a rolled chest: currencies to the wallet, fuel up to the cap, Marks to the hire state, a shard to its merc. */
+/**
+ * Pay a rolled chest: currencies to the wallet, fuel up to the cap, Marks to the hire state, a shard to its merc.
+ * Returns the player and what was actually paid (fuel past a full tank is not).
+ */
 function payChest(player, { reward, shard }) {
   const { fuel, marks, ...currencies } = reward;
   let next = { ...player, wallet: grant(player.wallet, currencies) };
-  if (fuel) next = { ...next, wallet: { ...next.wallet, fuel: Math.min(next.fuelMax || 10, (next.wallet.fuel || 0) + fuel) } };
+  const fuelBefore = next.wallet.fuel || 0;
+  if (fuel) next = { ...next, wallet: { ...next.wallet, fuel: Math.max(fuelBefore, Math.min(next.fuelMax || 10, fuelBefore + fuel)) } };
+  const fuelAdded = (next.wallet.fuel || 0) - fuelBefore;
   if (marks) next = { ...next, gacha: { ...defaultGacha(), ...(next.gacha || {}), marks: (next.gacha?.marks || 0) + marks } };
   if (shard) {
     const give = member => member.instanceId === shard.instanceId ? recomputeCrew({ ...member, shards: (member.shards || 0) + shard.amount }) : member;
     next = { ...next, crew: (next.crew || []).map(give), reserve: (next.reserve || []).map(give) };
   }
-  return next;
+  const { fuel: _rolled, ...rest } = reward;
+  return { player: next, paid: { ...rest, ...(fuelAdded > 0 ? { fuel: fuelAdded } : {}) } };
 }
 
 /** Open today's daily chest (100 points of orders). */
@@ -126,10 +132,10 @@ export function openDailyChest(player, { now = trustedNow() } = {}) {
   const day = dayKey(now);
   const roll = rollChest(player, 'daily', day);
   const week = chestWeek(player, now);
-  let next = ensureDailyLoop(player, now);
-  next = payChest({ ...next, dailyLoop: { ...next.dailyLoop, chest: true } }, roll);
-  next = { ...next, chests: { ...week, opened: week.opened + 1 } };
-  return { ok: true, player: next, kind: 'daily', ...roll };
+  const opened = ensureDailyLoop(player, now);
+  const paid = payChest({ ...opened, dailyLoop: { ...opened.dailyLoop, chest: true } }, roll);
+  const next = { ...paid.player, chests: { ...week, opened: week.opened + 1 } };
+  return { ok: true, player: next, kind: 'daily', reward: paid.paid, rolled: roll.reward, shard: roll.shard };
 }
 
 /** Open this week's weekly chest (five daily chests this week). */
@@ -139,6 +145,7 @@ export function openWeeklyChest(player, { now = trustedNow() } = {}) {
   if (!state.weekly.ready) return { ok: false, reason: 'chest_needs_dailies' };
   const week = chestWeek(player, now);
   const roll = rollChest(player, 'weekly', week.weekKey);
-  const next = { ...payChest(player, roll), chests: { ...week, weeklyClaimed: true } };
-  return { ok: true, player: next, kind: 'weekly', ...roll };
+  const paid = payChest(player, roll);
+  const next = { ...paid.player, chests: { ...week, weeklyClaimed: true } };
+  return { ok: true, player: next, kind: 'weekly', reward: paid.paid, rolled: roll.reward, shard: roll.shard };
 }

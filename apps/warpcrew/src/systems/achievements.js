@@ -83,7 +83,7 @@ export function claimableAchievements(player) {
 
 /** Claim a line's next tier: its reward goes into the wallet. */
 export function claimAchievement(player, id) {
-  const line = ACHIEVEMENT_BY_ID[id];
+  const line = typeof id === 'string' && Object.hasOwn(ACHIEVEMENT_BY_ID, id) ? ACHIEVEMENT_BY_ID[id] : null;
   if (!line) return { ok: false, reason: 'unknown_achievement' };
   const state = achievementProgress(player).find(entry => entry.id === id);
   if (!state.next) return { ok: false, reason: 'achievement_complete' };

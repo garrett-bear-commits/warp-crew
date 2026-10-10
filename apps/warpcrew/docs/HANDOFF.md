@@ -1,4 +1,4 @@
-# Warp Crew hand-off (2026-10-09)
+# Warp Crew hand-off (2026-10-10)
 
 Written for the next Claude account picking up Warp Crew. Start here, then [NEXT.md](NEXT.md) for the to-do list.
 
@@ -31,6 +31,19 @@ Built so far:
   thumbnails, space sprites, icons) followed ([ledger](art/2026-10-09-art-pass-2-ledger.md)): installed by
   `scripts/install-art-pass.py`; enemy target rooms in `scripts/measure-enemies-v2.py`.
 - The step-0 fixes.
+- The balance pass ([report](qa/2026-10-09-balance-pass.md)) and, on 2026-10-10, the fight-stall and Crown-gem
+  fixes.
+- Phase 2, reward feel and retention ([report](qa/2026-10-10-phase2-retention.md)):
+  - the reward reveal (`src/ui/rewardReveal.js`);
+  - the login calendar (`src/systems/calendar.js`);
+  - daily orders and chests (`src/systems/dailyLoop.js`, `src/systems/chests.js`);
+  - income while away (`src/systems/idle.js`);
+  - achievements (`src/systems/achievements.js`);
+  - the shop redesign;
+  - hub notices.
+
+  Every claim is a session action (`calendar-claim`, `idle-claim`, `chest-open`, `achievement-claim`) that
+  returns a `reward` effect, which `main.js` turns into a reveal. The 30-day sim plays all of them.
 
 The live checklist is in [NEXT.md](NEXT.md). Node 24 is needed (`/opt/nvm`: `nvm use 24` in cloud sessions).
 

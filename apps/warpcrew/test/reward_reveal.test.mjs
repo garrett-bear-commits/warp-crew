@@ -80,4 +80,13 @@ assert.match(five.effect.title, /reached level 5$/);
 assert.ok(five.effect.crew.portrait);
 assert.equal(sessionAction(at(2), {}, 'level-crew', { id: merc.instanceId }, { now: Date.UTC(2026, 9, 10) }).effect, null);
 
+// Audit M4 and L1: claiming closes its sheet before the session answers (it returns early), and the hold-full text
+// is rescheduled after collecting the hold or changing a station.
+const sessionCall = main.indexOf('const ran = wc.session(act');
+for (const close of ["if (act === 'calendar-claim') calendarOpen = false;", "if (act === 'idle-claim') welcomeBackOpen = false;"]) {
+  assert.ok(main.indexOf(close) > 0 && main.indexOf(close) < sessionCall, `${close} runs before the session call`);
+}
+const refresh = main.slice(main.indexOf("} else if (['contract-action'"), main.indexOf('await refreshNotifs();'));
+for (const act of ['idle-claim', 'station-assign', 'calendar-claim', 'chest-open']) assert.ok(refresh.includes(`'${act}'`), `${act} refreshes notifications`);
+
 console.log('reward_reveal: OK');

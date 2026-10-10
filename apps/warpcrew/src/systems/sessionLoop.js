@@ -39,7 +39,7 @@ import { resolveRoutePayout } from './contractRewards.js';
 import { markExploreNudge, noteMapJump } from './exploreNudge.js';
 import { claimAchievement } from './achievements.js';
 import { claimCalendar } from './calendar.js';
-import { startIdleClock, claimIdle, formatHoldSpan, holdPercent, WELCOME_BACK_MS } from './idle.js';
+import { startIdleClock, claimIdle, settleIdle, formatHoldSpan, holdPercent, WELCOME_BACK_MS } from './idle.js';
 import { openDailyChest, openWeeklyChest } from './chests.js';
 import { mapJumps } from './exploreNudge.js';
 
@@ -54,7 +54,10 @@ export function prepareSession(player, now = trustedNow()) {
   } else if (!early) next = ensureContractBoard(next, now).player;
   if (!early) next = ensureWallOffer(next, now);
   if (!early) next = evaluateWallPackOffer(next, currentWall(next, now), now);
+  const building = next;
   next = completeShipBuild(next, now).player;
+  // A finished Cargo build grows the hold from now on, never backwards.
+  next = settleIdle(building, next, now);
   next = dockRepair(next, now);
   next = syncCommission(next, now);
   // Income while away starts once the tutorial is over (Phase 2 §4).
@@ -741,9 +744,9 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     const res = claimIdle(player, now);
     if (!res.ok) return fail(res.reason);
     player = res.player;
-    const { hours, full, awayMs } = res.haul;
+    const { hours, full } = res.haul;
     events.push(event('idle_claimed', { minutes: Math.round(hours * 60), credits: res.reward.credits || 0, medals: res.reward.medals || 0, full }));
-    effect = { kind: 'reward', source: 'idle', title: awayMs >= WELCOME_BACK_MS ? 'Welcome back, Captain' : 'Hold collected',
+    effect = { kind: 'reward', source: 'idle', title: hours * 3600000 >= WELCOME_BACK_MS ? 'Welcome back, Captain' : 'Hold collected',
       subtitle: `${formatHoldSpan(hours)} at your stations · hold ${full ? 'full' : `${holdPercent(res.haul)}% full`}`,
       art: 'art/pixel/ui/hold.png', rewards: res.reward };
   } else if (act === 'chest-open') {
@@ -860,6 +863,8 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     if (ui.pendingCombat?.tutorialFight) return fail('tutorial_contract_required');
     nextUi.pendingCombat = null;
   } else return null;
+  // Income while away (Phase 2 §4): a change to who earns or to the hold only pays from now on.
+  player = settleIdle(before, player, now);
   // Daily orders (Phase 2 §3): a star-map jump and a won fight count however they happened.
   if (mapJumps(player) > mapJumps(before)) milestone('jump');
   if ((player.stats?.combatsWon || 0) > (before.stats?.combatsWon || 0)) milestone('win');

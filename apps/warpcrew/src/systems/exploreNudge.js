@@ -16,10 +16,13 @@ export const EXPLORE_NUDGE_FLAGS = Object.freeze({
 /** Set on a new captain's first map jump, so their first event card still gets its hint. */
 const NEW_TO_MAP = 'exploreNewCaptain';
 
-/** Map jumps so far: every contract claim also counts a jump, so those are taken out. */
+/**
+ * Map jumps so far: every contract claim, won or lost, also counts a jump (and a completed contract), so those are
+ * taken out. Losses are already inside contractsCompleted; subtracting them again stuck the count at 0.
+ */
 export function mapJumps(player) {
   const s = player?.stats || {};
-  return Math.max(0, (s.jumps || 0) - (s.contractsCompleted || 0) - (s.contractsLost || 0));
+  return Math.max(0, (s.jumps || 0) - (s.contractsCompleted || 0));
 }
 
 function newCaptain(player) {

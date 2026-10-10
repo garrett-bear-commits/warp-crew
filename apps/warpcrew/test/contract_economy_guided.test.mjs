@@ -1,7 +1,7 @@
 // Siege damage resets at local midnight; the evidence and these assertions are pinned to UTC.
 process.env.TZ = 'UTC';
 import assert from 'node:assert/strict';
-import { simulateFreePlayer30Days, reconcileLedger, runEconomySeedSet, renderEconomyMarkdown, GUIDED_STRATEGIES, EXPLORE_STRATEGIES, CREW_STRATEGIES } from '../src/sim/contractEconomy.js';
+import { simulateFreePlayer30Days, reconcileLedger, runEconomySeedSet, renderEconomyMarkdown, phase2Summary, GUIDED_STRATEGIES, EXPLORE_STRATEGIES, CREW_STRATEGIES } from '../src/sim/contractEconomy.js';
 import { hasLane } from '../src/data/sectorMaps.js';
 import { WALL_BY_ID, SIEGE_SEGMENT, WALL_TAKEDOWN_GEMS } from '../src/systems/walls.js';
 import { encounterById } from '../src/systems/combat.js';
@@ -136,6 +136,20 @@ assert.ok(runs[2].explore.jumps >= runs[0].explore.jumps, 'ambitious jumps at le
 // A growing crew that heads for the next gate breaks the Veil wall inside 30 days (balance pass 2026-10-09).
 for (const run of runs.slice(1, 3)) assert.ok(run.walls.veil?.fellOnDay <= 30, `${run.strategy}: the Veil wall falls`);
 
+// Phase 2 (2026-10-10 design, success test 2): free gems stay under the 25-35 a day budget, Phase 2 sources are at most
+// a third of credits for the typical (median) captain and never more than 45% (cautious captains, whose other income
+// is one contract a day, sit highest), and the daily orders open the chest on most days. Every source pays.
+const p2 = runs.slice(0, 3).map(phase2Summary);
+for (const [i, summary] of p2.entries()) {
+  const label = runs[i].strategy;
+  assert.ok(summary.gemsPerDay <= 35, `${label}: ${summary.gemsPerDay} free gems a day`);
+  assert.ok(summary.share <= 0.45, `${label}: Phase 2 is ${Math.round(summary.share * 100)}% of credits`);
+  assert.ok(summary.chestDays >= 20, `${label}: the daily chest opened on ${summary.chestDays} days`);
+  for (const [source, credits] of Object.entries(summary.credits)) assert.ok(credits > 0, `${label}: ${source} pays`);
+}
+const shares = p2.map(summary => summary.share).sort((a, b) => a - b);
+assert.ok(shares[1] <= 1 / 3, `median Phase 2 share ${Math.round(shares[1] * 100)}%`);
+
 // The evidence renderer adds the guided section and keeps the baseline table.
 const report = runEconomySeedSet({ seeds: [4219], startAt });
 const markdown = renderEconomyMarkdown(report);
@@ -143,6 +157,7 @@ assert.ok(markdown.startsWith('## 30-day free-player economy'));
 assert.match(markdown, /## 30-day guided-flow economy: siege walls, gems, timed drydock/);
 assert.match(markdown, /\| balanced \| First wall fell on day \|/);
 assert.match(markdown, /### Explore per run \(fights-first\)/);
+assert.match(markdown, /### Phase 2 sources per run \(fights-first\)/);
 assert.match(markdown, /\| balanced \| Explore net credits \|/);
 assert.match(markdown, /Conservation: 3\/3 guided runs PASS \(fights-first\), 3\/3 PASS \(away-first\)/);
 assert.equal(report.runs.length, 3);

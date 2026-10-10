@@ -1946,7 +1946,7 @@ export function renderWelcomeBack(player, now = trustedNow()) {
   return `<div class="modal-backdrop welcome-backdrop">
     <section class="welcome-sheet" role="dialog" aria-modal="true" aria-label="Welcome back">
       <img class="welcome-art" src="${artUrl('art/pixel/cinematic/v2/welcome-back.png')}" alt="" />
-      <span class="modal-kicker">Away ${escapeHtml(formatHoldSpan((haul.awayMs || 0) / 3600000))}</span>
+      <span class="modal-kicker">While you were away</span>
       <h2>Welcome back, Captain</h2>
       <p>Your crew kept the stations running for ${escapeHtml(formatHoldSpan(haul.hours))}.</p>
       <ul class="welcome-haul">${lines}</ul>

@@ -13,6 +13,8 @@ import { defaultGacha } from './gacha.js';
 import { berthsFor, fuelMaxFor, fuelRateFor, parkOverflowToReserve } from './hangar.js';
 import { clampFuel } from './economy.js';
 import { normalizeAssignments } from './stations.js';
+import { settleIdle, normalizeIdle } from './idle.js';
+import { normalizeCalendar } from './calendar.js';
 import { normalizeEncounterState } from './encounterState.js';
 import { normalizeTravelFightState } from './travelFight.js';
 import { normalizeEventState } from './travelEvents.js';
@@ -138,6 +140,9 @@ export function migratePlayer(player) {
     stats: { ...base.stats, ...(player.stats || {}), visits: { ...(base.stats.visits || {}), ...(player.stats?.visits || {}) }, planetRuns: { ...(base.stats.planetRuns || {}), ...(player.stats?.planetRuns || {}) }, contractsByProfile: { ...base.stats.contractsByProfile, ...(player.stats?.contractsByProfile || {}) } },
     dailyLoop: { ...base.dailyLoop, ...(player.dailyLoop || {}) },
     achievements: claimedTiers(player.achievements),
+    // Phase 2 clocks, cleaned so an odd saved value never fails the save check (see core/progress.js).
+    calendar: player.calendar === undefined ? undefined : normalizeCalendar(player.calendar),
+    idle: normalizeIdle(player.idle),
     story,
     flags,
     tutorial,
@@ -186,7 +191,8 @@ export function tickCrewStatus(player, now = trustedNow()) {
     }
     return c;
   });
-  return changed ? { ...player, crew } : player;
+  // A healed crew member at a station earns from now on, not for the time they were laid up.
+  return changed ? settleIdle(player, { ...player, crew }, now) : player;
 }
 
 export function applyCrewInjury(player, instanceIds = [], minutes = 20, now = trustedNow()) {
