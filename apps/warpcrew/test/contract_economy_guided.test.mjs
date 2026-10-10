@@ -1,7 +1,7 @@
 // Siege damage resets at local midnight; the evidence and these assertions are pinned to UTC.
 process.env.TZ = 'UTC';
 import assert from 'node:assert/strict';
-import { simulateFreePlayer30Days, reconcileLedger, runEconomySeedSet, renderEconomyMarkdown, GUIDED_STRATEGIES, EXPLORE_STRATEGIES } from '../src/sim/contractEconomy.js';
+import { simulateFreePlayer30Days, reconcileLedger, runEconomySeedSet, renderEconomyMarkdown, GUIDED_STRATEGIES, EXPLORE_STRATEGIES, CREW_STRATEGIES } from '../src/sim/contractEconomy.js';
 import { hasLane } from '../src/data/sectorMaps.js';
 import { WALL_BY_ID, SIEGE_SEGMENT } from '../src/systems/walls.js';
 import { buildSkipGems, UPGRADE_BUILD } from '../src/systems/hangar.js';
@@ -34,7 +34,11 @@ function checkRun(run) {
   assert.equal(run.metrics.rallies.free <= 1, true, `${label}: one free Rally per captain`);
   assert.equal(run.gems.spentBySink.rally, run.metrics.rallies.paid * RALLY.gems, label);
   const broken = Object.values(run.walls).filter(w => w.fellOnDay).length;
-  assert.equal(run.gems.earnedBySource['wall:contract-claim'] || 0, 20 * broken, `${label}: +20 gems per takedown`);
+  // +20 gems per takedown; since growing crews reach the Crown (balance pass 2026-10-09), its Eclipse Throne
+  // also pays its own listed gems on every segment won (the only flagship with gems in its prize).
+  const segmentGems = run.wallAttempts.filter(a => a.success && !a.defeated).reduce((sum, a) => sum + (a.rewards?.gems || 0), 0);
+  assert.ok(run.wallAttempts.every(a => a.defeated || !(a.rewards?.gems > 0) || a.wall === 'crown'), `${label}: only the Crown pays gems before it falls`);
+  assert.equal(run.gems.earnedBySource['wall:contract-claim'] || 0, 20 * broken + segmentGems, `${label}: +20 gems per takedown`);
 
   // Wall attempts: a segment is at most 42 hull; damage holds within a day and resets on the next.
   assert.ok(run.wallAttempts.length > 0, `${label}: the wall is attempted`);
@@ -63,6 +67,8 @@ function checkRun(run) {
     assert.ok(!jump.unsettled, `${label}: Explore fight settled`);
   }
   for (const day of run.days) {
+    // Every settled Explore fight is claimed (a healed hull once made the claim fail forever).
+    assert.ok(!day.blockedActions.some(b => b.action === 'travel-claim' || b.reason === 'travel_fight_active'), `${label} day ${day.day}: no stuck Explore fight`);
     const x = day.explore;
     if (!x) continue;
     const limits = EXPLORE_STRATEGIES[run.strategy];
@@ -75,6 +81,21 @@ function checkRun(run) {
     assert.equal(wall.attempts, attempts.length, label);
     assert.equal(wall.nearMissLosses, attempts.filter(a => a.nearMissLoss).length, label);
     assert.equal(wall.fellOnDay != null, attempts.some(a => a.defeated), label);
+  }
+
+  // Crew growth (balance pass 2026-10-09): the free daily hire every check-in, never a paid one; medals buy levels
+  // for the fighting crew at the strategy's point in the check-in.
+  assert.equal(run.metrics.crewHires, run.days.length, `${label}: one free hire a day`);
+  assert.equal(run.totals.costsByAction['crew-hire'], undefined, `${label}: hires cost nothing`);
+  assert.ok(run.metrics.crewLevelUps > 0 && run.finalCrew.some(member => member.level > 1), `${label}: crew levels bought`);
+  assert.ok(run.metrics.crewSize >= 4, `${label}: new berths are filled`);
+  const levelAt = CREW_STRATEGIES[run.strategy].levelAt;
+  for (const day of run.days.slice(1)) {
+    const names = day.actions.filter(a => a.ok).map(a => a.action);
+    const level = names.indexOf('level-crew');
+    if (level < 0) continue;
+    if (levelAt === 'before-fights' && names.includes('contract-review')) assert.ok(level < names.indexOf('contract-review'), `${label} day ${day.day}: levels before the fights`);
+    if (levelAt === 'after-upgrades' && names.includes('ship-upgrade')) assert.ok(level > names.lastIndexOf('ship-upgrade'), `${label} day ${day.day}: levels after the drydock`);
   }
 
   // Drydock: one build at a time, only above level 3, finished by the clock via prepareSession or a paid skip.
@@ -110,6 +131,8 @@ for (const run of runs.slice(0, 3)) {
   assert.ok(run.explore.earned.credits > 0, `${run.strategy} earns credits exploring`);
 }
 assert.ok(runs[2].explore.jumps >= runs[0].explore.jumps, 'ambitious jumps at least as often as cautious');
+// A growing crew that heads for the next gate breaks the Veil wall inside 30 days (balance pass 2026-10-09).
+for (const run of runs.slice(1, 3)) assert.ok(run.walls.veil?.fellOnDay <= 30, `${run.strategy}: the Veil wall falls`);
 
 // The evidence renderer adds the guided section and keeps the baseline table.
 const report = runEconomySeedSet({ seeds: [4219], startAt });

@@ -3,7 +3,8 @@ import { trustedNow } from '../shared/time.js';
 import { startEncounter, advanceEncounter, enemyVolleyDamage, TACTICS, BURN, BOARDERS, BOARDING_ENEMIES } from './autoCombat.js';
 import { normalizeAssignments, stationOutputs } from './stations.js';
 import { resolveSimulatedCombatPayout, readyContractCrew } from './contractRewards.js';
-import { crewPower, encounterById, rubberBandPower } from './combat.js';
+import { crewPower, encounterById } from './combat.js';
+import { NODES } from '../data/sectors.js';
 import { combatBonuses } from './passives.js';
 import { wallEncounterSetup } from './walls.js';
 import { RALLY } from './gemSinks.js';
@@ -125,14 +126,64 @@ export function threatLabel(threat) {
   return threat >= 1.3 ? 'Deadly' : threat >= 1.05 ? 'Dangerous' : threat >= 0.9 ? 'Even' : 'Favorable';
 }
 
-/** Same power model the order-based fights used, expressed as enemy/crew threat. */
-export function contractThreat(player, contract, now = trustedNow(), { excludeIds = [] } = {}) {
-  const encounter = encounterById(contract.encounterId);
+/** The crew side of the power model: ready fighting crew plus crit and hull bonuses. */
+export function fightPower(player, encounterId, now = trustedNow(), { excludeIds = [] } = {}) {
   const crew = readyContractCrew(player, now).filter(member => !excludeIds.includes(member.instanceId));
-  const bonus = combatBonuses(player, encounter);
-  const playerPower = Math.max(1, crewPower(crew) + bonus.extraPower);
-  const enemyPower = Math.max(6, Math.round(rubberBandPower(encounter.power, playerPower) * bonus.enemyScale));
-  return Math.max(THREAT_RANGE[0], Math.min(THREAT_RANGE[1], Math.round((enemyPower / playerPower) * 100) / 100));
+  return Math.max(1, crewPower(crew) + combatBonuses(player, encounterById(encounterId)).extraPower);
+}
+
+/**
+ * Days the captain has played: local days with a finished board contract, plus today. Contract offer ids
+ * carry their board day (`offer_YYYY-MM-DD_profile`); the tutorial job and Siege-wall attempts carry none,
+ * so a day of failed wall attempts never counts twice and a captain who stays away is not punished.
+ */
+export function daysPlayed(player) {
+  const days = new Set();
+  for (const id of player?.contractBoard?.completedOfferIds || []) {
+    const match = /^offer_(\d{4}-\d{2}-\d{2})_/.exec(String(id));
+    if (match) days.add(match[1]);
+  }
+  return days.size + 1;
+}
+
+/**
+ * Reference crew power by day played: the power model's crew side (fightPower: ready fighting crew plus crit
+ * and hull bonuses) of a typical free captain. Points are the median first fight of each day across the
+ * guided 30-day simulator's captains, who take the free daily hire and level their crew (balance pass
+ * 2026-10-09, docs/qa/2026-10-09-balance-pass.md). Linear between points; held after day 30 (not simulated).
+ */
+export const REFERENCE_CURVE = Object.freeze([[1, 38], [4, 72], [7, 95], [15, 130], [30, 220]]);
+export function referencePower(player) {
+  const day = daysPlayed(player);
+  const last = REFERENCE_CURVE[REFERENCE_CURVE.length - 1];
+  if (day >= last[0]) return last[1];
+  const upper = REFERENCE_CURVE.findIndex(([d]) => d >= day);
+  if (upper <= 0) return REFERENCE_CURVE[0][1];
+  const [d0, p0] = REFERENCE_CURVE[upper - 1];
+  const [d1, p1] = REFERENCE_CURVE[upper];
+  return Math.round(p0 + (p1 - p0) * (day - d0) / (d1 - d0));
+}
+
+/**
+ * Each sector's base threat: what a fight there is worth against a crew that has outgrown its enemy.
+ * Later sectors fight back harder (Spur fodder stays Favorable, the Hollow and the Crown stay Even).
+ */
+export const SECTOR_THREAT_BASE = Object.freeze({ spur: 0.8, veil: 0.84, ember: 0.88, hollow: 0.92, crown: 0.96 });
+
+/**
+ * Fight threat (the FTL-lite enemy loadout, its label and the Siege-wall floor) from the encounter, the sector
+ * and the reference crew power for this point in the game, never from your actual crew. An enemy listed
+ * stronger than the reference crew fights at power over reference; a weaker one at the sector's base plus
+ * its share of the rest. A stronger crew than the reference therefore wins more instead of being matched:
+ * the old 82% pull-up toward the crew's own power (rubberBandPower) now serves only the legacy order-based
+ * fights. With nobody aboard who can fight, the fight is Deadly.
+ */
+export function contractThreat(player, contract, now = trustedNow(), { excludeIds = [] } = {}) {
+  if (!readyContractCrew(player, now).some(member => !excludeIds.includes(member.instanceId))) return THREAT_RANGE[1];
+  const ratio = encounterById(contract.encounterId).power / referencePower(player);
+  const base = SECTOR_THREAT_BASE[NODES[contract.destinationId ?? contract.nodeId]?.sector] ?? SECTOR_THREAT_BASE.spur;
+  const threat = ratio >= 1 ? ratio : base + (1 - base) * ratio;
+  return Math.max(THREAT_RANGE[0], Math.min(THREAT_RANGE[1], Math.round(threat * 100) / 100));
 }
 
 /** Each role's one passive (crewRoster passive field) that the fight reads as `bonus`. */
@@ -224,15 +275,36 @@ export function fightCrewLaunched(encounter, participantIds) {
   return Array.isArray(participantIds) && encounter.crew.every(member => participantIds.includes(member.id));
 }
 
-/** Hull a settled fight took off the ship (v3 fights use the ship's own hull). */
-export const fightHullLoss = encounter => (encounter.version === FTL_VERSION ? encounter.startHull - encounter.hull : 30 - encounter.hull);
+/**
+ * Hull a settled fight took off the ship (v3 fights use the ship's own hull). A crew that patched the hull
+ * above where it started lost none: the payout records 0, so this must too, or the settled fight would fail
+ * validation and its prize could never be claimed (balance pass 2026-10-09).
+ */
+export const fightHullLoss = encounter => Math.max(0, encounter.version === FTL_VERSION ? encounter.startHull - encounter.hull : 30 - encounter.hull);
+
+/**
+ * The FTL-lite fight a normal contract opens: its threat and, for a Siege wall, the segment and the flagship
+ * tier. Contract launches and the contract cards' win odds (fightOdds.js) both start fights from this.
+ */
+export function contractFightArgs(player, contract, now = trustedNow()) {
+  const threat = contractThreat(player, contract, now);
+  const wall = contract.wall ? wallEncounterSetup(player, contract, threat, now) : null;
+  return {
+    encounterId: contract.encounterId,
+    threat: wall ? wall.threat : threat,
+    enemyHull: wall ? wall.enemyHull : null,
+    remainingBefore: wall ? wall.remainingBefore : null,
+    // The first wall's flagship fights as tuned; later walls' flagships carry an extra shield layer.
+    flagship: wall ? (contract.wall.id === 'spur' ? 0 : 2) : 0,
+  };
+}
 
 /** Called only by the action that freshly enters confrontation. */
 export function beginContractEncounter(player, now = trustedNow()) {
   const contract = player?.activeContract;
   if (player?.activeEncounter || !eligibleContract(player, contract)) return player;
   const kind = contract.profile === 'distress' ? 'guided' : 'normal';
-  const wall = contract.wall ? wallEncounterSetup(player, contract, contractThreat(player, contract, now), now) : null;
+  const normal = kind === 'normal' ? contractFightArgs(player, contract, now) : null;
   const encounter = ftlGuided(player, contract) ? startCrewFight(player, {
     acceptanceId: contract.acceptanceId,
     encounterId: contract.encounterId,
@@ -240,15 +312,10 @@ export function beginContractEncounter(player, now = trustedNow()) {
     threat: GUIDED_FIGHT.threat,
     enemyHull: GUIDED_FIGHT.enemyHull,
     guided: true,
-  }, now) : kind === 'normal' ? startCrewFight(player, {
+  }, now) : normal ? startCrewFight(player, {
     acceptanceId: contract.acceptanceId,
-    encounterId: contract.encounterId,
     seed: contract.routeSeed,
-    threat: wall ? wall.threat : contractThreat(player, contract, now),
-    enemyHull: wall ? wall.enemyHull : null,
-    remainingBefore: wall ? wall.remainingBefore : null,
-    // The first wall's flagship fights as tuned; later walls' flagships carry an extra shield layer.
-    flagship: wall ? (contract.wall.id === 'spur' ? 0 : 2) : 0,
+    ...normal,
   }, now) : startEncounter({
     acceptanceId: contract.acceptanceId,
     encounterId: contract.encounterId,
@@ -258,11 +325,12 @@ export function beginContractEncounter(player, now = trustedNow()) {
     seed: contract.routeSeed,
     assignments: normalizeAssignments(player),
     outputs: stationOutputs(player, now),
-    threat: kind === 'normal' ? (wall ? wall.threat : contractThreat(player, contract, now)) : null,
-    enemyHull: wall ? wall.enemyHull : null,
-    remainingBefore: wall ? wall.remainingBefore : null,
-    tactics: kind === 'normal' ? unlockedTactics(player) : [],
-    boarders: kind === 'normal' && boardersUnlocked(player),
+    // Only the script-4 guided distress fight still starts a v1/v2 beat fight.
+    threat: null,
+    enemyHull: null,
+    remainingBefore: null,
+    tactics: [],
+    boarders: false,
   });
   return {
     ...player,

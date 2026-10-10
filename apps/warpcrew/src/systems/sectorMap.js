@@ -60,7 +60,7 @@ export function riskRead(player, node, now = trustedNow()) {
   const fightPct = Math.round((fights.reduce((sum, outcome) => sum + outcome.w, 0) / total) * 100);
   const strongest = [...fights].sort((a, b) => encounterById(b.encounter).power - encounterById(a.encounter).power)[0];
   const crewAboard = readyCrew(player, now).filter(member => member.status !== 'expedition').length;
-  const threat = crewAboard ? threatLabel(contractThreat(player, { encounterId: strongest.encounter }, now)) : 'Deadly';
+  const threat = crewAboard ? threatLabel(contractThreat(player, { encounterId: strongest.encounter, destinationId: node.id }, now)) : 'Deadly';
   // Who you will most likely meet, and how hard the worst of them hits.
   const likeliest = [...fights].sort((a, b) => b.w - a.w)[0];
   const family = FAMILY[likeliest.encounter] || 'Hostiles reported';

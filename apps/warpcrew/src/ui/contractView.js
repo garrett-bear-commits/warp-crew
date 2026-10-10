@@ -32,9 +32,13 @@ function renderSiegeMeter(wall) {
   </div>`;
 }
 
+/** The fight a contract can lead to: its threat and the win odds played from the real fight. */
+const fightOddsLine = (odds) => odds ? `<p class="fight-threat contract-odds" data-threat="${e(odds.label.toLowerCase())}">Fight: <b>${e(odds.label)}</b> · ${e(odds.text)}</p>` : '';
+
 export function renderContractBoard(model = {}) {
   return `<section class="contract-board" aria-label="Contract Board"><header class="board-head"><h2>Contracts</h2><span>Pick one job for the crew</span></header>${(model.offers || []).map((offer) => {
-    const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, Possible payout now: ${rewardLabel(offer)}`;
+    const odds = offer.completed ? null : offer.fightOdds;
+    const label = `${offer.completed ? 'Completed · Review' : 'Review'} ${profileLabel(offer)}, ${offer.title}, ${offer.normalFuel}F, ${offer.danger} danger, Possible payout now: ${rewardLabel(offer)}${odds ? `, Fight ${odds.label}, ${odds.text}` : ''}`;
     const art = PROFILE_ART[offer.profile];
     const siege = offer.wall ? renderSiegeMeter(offer.wall) : '';
     return `<article class="contract-card${offer.completed ? ' is-completed' : ''}${offer.wall ? ' is-wall' : ''}" data-profile="${e(offer.wall ? 'wall' : offer.profile)}">
@@ -44,7 +48,7 @@ export function renderContractBoard(model = {}) {
       </div>
       <h3>${e(offer.title)}</h3><p class="contract-brief">${e(offer.brief)}</p>${siege}
       <dl class="contract-facts"><div class="fact-fuel"><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div class="fact-length"><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(offer))}</dd></div></dl>
-      ${trait(offer.favoredTrait)}<button type="button" class="contract-review-btn" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
+      ${fightOddsLine(odds)}${trait(offer.favoredTrait)}<button type="button" class="contract-review-btn" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
     </article>`;
   }).join('') || '<p>No contracts available.</p>'}</section>`;
 }
@@ -57,7 +61,7 @@ export function renderContractReview(model = {}) {
     <h2 id="contract-review-title">${e(offer.title)}</h2>
     <p class="contract-brief">${e(offer.brief)}</p><p class="contract-destination">Destination: ${e(model.destinationName || offer.destinationName)}</p>
     <dl class="contract-facts"><div class="fact-fuel"><dt>Payable route fuel</dt><dd>${e(model.cost?.fuel)}F</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(model))}</dd></div></dl>
-    ${model.fightThreat ? `<p class="fight-threat" data-threat="${e(model.fightThreat.label.toLowerCase())}">Fight threat with crew aboard: <b>${e(model.fightThreat.label)}</b>${model.fightThreat.awayCount ? ` · ${e(model.fightThreat.awayCount)} crew away` : ''}</p>` : ''}
+    ${model.fightThreat ? `<p class="fight-threat" data-threat="${e(model.fightThreat.label.toLowerCase())}">Fight: <b>${e(model.fightThreat.label)}</b>${model.fightThreat.odds ? ` · ${e(model.fightThreat.odds.text)} with the crew aboard` : ''}${model.fightThreat.awayCount ? ` · ${e(model.fightThreat.awayCount)} crew away` : ''}</p>` : ''}
     ${reason(model.consequence)}${trait(model.favoredTrait || offer.favoredTrait)}${reason(model.reason)}
     <p class="contract-note">Accepting spends no fuel. Fuel is spent by route actions.</p>
     <button type="button" class="primary" data-act="contract-accept" data-offer="${e(offer.id)}" aria-label="${e(`Accept contract, Possible payout now: ${rewardLabel(model)}`)}" ${model.enabled === false || model.ok === false ? 'disabled' : ''}>Accept contract</button>

@@ -57,8 +57,13 @@ const throneBand = contractRewardBand(thronePlayer, throne, { now });
 // Crew fights have no lucky roll: a starter crew cannot beat the end boss, so only salvage is possible.
 assert.equal(throneBand.label, '92 credits · 9 medals');
 assert.equal(throneBand.paths.length, 1, 'every losing policy settles to the same salvage');
-const veteranCrew = { ...thronePlayer, crew: thronePlayer.crew.map(member => ({ ...member, power: 60 })),
-  stationAssignments: thronePlayer.stationAssignments };
+// Balance pass 2026-10-09: the throne's threat comes from the reference crew (Deadly for a day-1 captain), not
+// from this crew, so "strong enough" now means a crew and ship that can actually win that fight.
+const veterans = [...thronePlayer.crew, ...['merc_kira', 'merc_tink'].map(id => ({ ...thronePlayer.crew[0], instanceId: `${id}_vet`, templateId: id,
+  role: id === 'merc_kira' ? 'gunner' : 'engineer' }))].map(member => ({ ...member, power: 60 }));
+const veteranCrew = { ...thronePlayer, crew: veterans, crewSlots: 4,
+  ship: { ...thronePlayer.ship, systems: { ...thronePlayer.ship.systems, shields: 6, weapons: 6, engines: 6, sensors: 5 } },
+  stationAssignments: { ...thronePlayer.stationAssignments, merc_kira_vet: 'weapons', merc_tink_vet: 'engineering' } };
 const veteranBand = contractRewardBand(veteranCrew, throne, { now });
 assert.ok(veteranBand.currencies.credits.max > 92, 'a crew strong enough to win sees the victory payout');
 const twoFuel = { ...thronePlayer, wallet: { ...player.wallet, fuel: 2 } };

@@ -100,7 +100,7 @@ export function beginTravelFight(player, preview, now = trustedNow()) {
   const jump = (paid.stats?.jumps || 0) + 1;
   const seed = fightSeed(`${paid.createdAt || 0}:${jump}:${preview.node.id}:${encounterId}`);
   const fightId = `travel:${preview.node.id}:${jump}:${seed}`;
-  const threat = contractThreat(paid, { encounterId }, now);
+  const threat = contractThreat(paid, { encounterId, destinationId: preview.node.id }, now);
   const encounter = startCrewFight(paid, { acceptanceId: fightId, encounterId, seed, threat }, now);
   const fight = {
     version: TRAVEL_FIGHT_VERSION,
