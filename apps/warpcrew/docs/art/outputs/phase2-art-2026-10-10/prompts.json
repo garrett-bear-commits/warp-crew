@@ -1,0 +1,173 @@
+[
+ {
+  "name": "shop-gems-a",
+  "file": "raw/shop-gems-a.png",
+  "used_for": "Shop: gem pouch, pack, crate, vault",
+  "splits": [
+   "gems-pouch",
+   "gems-pack",
+   "gems-crate",
+   "gems-vault"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a small leather pouch spilling a few cyan crystal gems (top left), a neat pile of cyan crystal gems (top right), an open metal supply crate full of glowing cyan gems (bottom left), an open steel vault door with stacks of cyan gems inside (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m1721v7v9hb0exa14z5061t41n8g1wem"
+ },
+ {
+  "name": "shop-gems-b",
+  "file": "raw/shop-gems-b.png",
+  "used_for": "Shop: gem hoard, starter crate, Commission badge, drydock finish",
+  "splits": [
+   "gems-hoard",
+   "starter-crate",
+   "commission",
+   "drydock-finish"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a huge treasure mound of cyan crystal gems, overflowing and sparkling (top left), a sturdy orange-trimmed starter supply crate with a fuel canister, a coin and a gem on top (top right), a golden captain's commission seal: a round gilded badge with a star and a ribbon (bottom left), a silver wrench crossed with a small glowing clock (a drydock speed-up) (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17d4ksqsx170b2rvp2qy5jqhd8g0xfy"
+ },
+ {
+  "name": "shop-walls-a",
+  "file": "raw/shop-walls-a.png",
+  "used_for": "Shop: wall packs for Spur, Veil, Ember and Hollow",
+  "splits": [
+   "wall-spur",
+   "wall-veil",
+   "wall-ember",
+   "wall-hollow"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a rusty orange frontier supply crate with an anchor emblem and hazard stripes (top left), a violet supply crate with a glowing teal ring emblem (top right), a charred black supply crate with glowing molten orange cracks and a flame emblem (bottom left), a bone-white supply crate with a faint teal glow and a ribbed arch emblem (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m179q7wds4v17mmb9fr5y1j2a98g1ada"
+ },
+ {
+  "name": "chests",
+  "file": "raw/chests.png",
+  "used_for": "Daily and weekly chests, closed and open",
+  "splits": [
+   "chest-daily",
+   "chest-daily-open",
+   "chest-weekly",
+   "chest-weekly-open"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a closed sturdy bronze-and-steel daily supply chest (top left), the same daily chest open, glowing with light and coins inside (top right), a closed large ornate gold-trimmed weekly chest with a star emblem (bottom left), the same weekly chest open, bursting with golden light and gems (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m1701n3ekxqtk582qetwabahcn8g1sxb"
+ },
+ {
+  "name": "calendar",
+  "file": "raw/calendar.png",
+  "used_for": "Calendar day-28 pod, Contract Marks, shards; Crown wall pack",
+  "splits": [
+   "merc-pod",
+   "marks",
+   "shard",
+   "wall-crown"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a glowing golden docking pod with a silhouette of a crew member inside (a guaranteed hire) (top left), a bronze contract mark token: a hexagonal coin stamped with a star (top right), a single glowing violet crystal shard (bottom left), a gilded supply crate with a black-sun crown emblem (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17bjvxjzyhepg5a7vg3w6fehd8g0zan"
+ },
+ {
+  "name": "achievements-a",
+  "file": "raw/achievements-a.png",
+  "used_for": "Achievement tracks: Combat, Crew, Ship, Explore",
+  "splits": [
+   "ach-combat",
+   "ach-crew",
+   "ach-ship",
+   "ach-explore"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a shield badge with two crossed blasters (top left), a shield badge with three crew helmets side by side (top right), a shield badge with a small starship silhouette (bottom left), a shield badge with a star map compass (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m178veygdz2vh7gae0nxqzskt58g0s4b"
+ },
+ {
+  "name": "achievements-b",
+  "file": "raw/achievements-b.png",
+  "used_for": "Achievement tracks: Walls, Collection; the hold icon; Rally",
+  "splits": [
+   "ach-walls",
+   "ach-collection",
+   "hold",
+   "rally"
+  ],
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/e6091c2d-1a99-4621-9ed2-647064a4bab4.png"
+   ],
+   "aspect_ratio": "1:1",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, the same pixel size, thick dark outline, punchy saturated palette and the same lighting. Use it only for style: do not redraw those four icons. Draw four new game icons for a mobile space mercenary game in a 2 by 2 grid, each centred in its own quarter with plenty of empty space around it, none touching: a shield badge with a cracked fortress wall (top left), a shield badge with a fan of three crew cards (top right), a sealed cargo container with an orange hazard stripe (the ship's hold) (bottom left), a bright signal flare with a heart on it (a rally) (bottom right). Bold readable icons that read at 48 pixels, simple strong shapes. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Plain flat dark navy background (#0b1220). No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m17e2gfzxmg6rg3kzh6dww4t458g1qdw"
+ },
+ {
+  "name": "welcome-back",
+  "file": "raw/welcome-back.png",
+  "used_for": "Welcome-back claim screen",
+  "splits": null,
+  "model": "is2i-gpt-image-2-5-flare",
+  "params": {
+   "image_urls": [
+    "https://media.flora.ai/node-inputs/2026/10/9/anonymous/1bb484a1-271b-44f6-9287-9383f6ba0249.png"
+   ],
+   "aspect_ratio": "16:9",
+   "quality": "high",
+   "resolution": "1k"
+  },
+  "prompt": "The reference image sets the art style to match exactly: the same bold chunky pixel art, pixel size, strong dark outline, punchy saturated palette and lighting (warm amber key light, cool cyan rim light, deep violet shadows). Use it only for style: do not copy those people or that room. Draw a finished widescreen illustration for a mobile space mercenary game: the cargo hold of a small gunmetal starship with orange hazard trim, stacked with supply crates, glowing credit chips and a few cyan gems, warm lights, the big cargo door open to a starry sky, a welcoming feeling of coming home to a full hold. No people. Clear shapes that read at phone size. High-quality stylized retro pixel art: crisp hard-edged pixel clusters on one consistent pixel grid, no blur, no anti-aliasing, no painterly smoothing, limited palette of about 40 colours with hue-shifted shading ramps (violet shadows, warm highlights). Full-bleed scene. No text, no letters, no numbers, no labels, no logo, no frame, no UI.",
+  "run_id": "run_m176fkyw3cs6br9q8w6ctt5zps8g067g"
+ }
+]

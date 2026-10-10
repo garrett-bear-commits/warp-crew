@@ -1,0 +1,263 @@
+[
+ {
+  "name": "shop-gems-a",
+  "file": "public/art/pixel/ui/gems-pouch.png",
+  "size": [
+   256,
+   233
+  ],
+  "bytes": 19177
+ },
+ {
+  "name": "shop-gems-a",
+  "file": "public/art/pixel/ui/gems-pack.png",
+  "size": [
+   256,
+   240
+  ],
+  "bytes": 18963
+ },
+ {
+  "name": "shop-gems-a",
+  "file": "public/art/pixel/ui/gems-crate.png",
+  "size": [
+   254,
+   256
+  ],
+  "bytes": 23365
+ },
+ {
+  "name": "shop-gems-a",
+  "file": "public/art/pixel/ui/gems-vault.png",
+  "size": [
+   256,
+   223
+  ],
+  "bytes": 23167
+ },
+ {
+  "name": "shop-gems-b",
+  "file": "public/art/pixel/ui/gems-hoard.png",
+  "size": [
+   256,
+   244
+  ],
+  "bytes": 22935
+ },
+ {
+  "name": "shop-gems-b",
+  "file": "public/art/pixel/ui/starter-crate.png",
+  "size": [
+   227,
+   256
+  ],
+  "bytes": 20803
+ },
+ {
+  "name": "shop-gems-b",
+  "file": "public/art/pixel/ui/commission.png",
+  "size": [
+   225,
+   256
+  ],
+  "bytes": 18242
+ },
+ {
+  "name": "shop-gems-b",
+  "file": "public/art/pixel/ui/drydock-finish.png",
+  "size": [
+   251,
+   256
+  ],
+  "bytes": 18307
+ },
+ {
+  "name": "shop-walls-a",
+  "file": "public/art/pixel/ui/wall-spur.png",
+  "size": [
+   245,
+   256
+  ],
+  "bytes": 23720
+ },
+ {
+  "name": "shop-walls-a",
+  "file": "public/art/pixel/ui/wall-veil.png",
+  "size": [
+   248,
+   256
+  ],
+  "bytes": 23122
+ },
+ {
+  "name": "shop-walls-a",
+  "file": "public/art/pixel/ui/wall-ember.png",
+  "size": [
+   246,
+   256
+  ],
+  "bytes": 23745
+ },
+ {
+  "name": "shop-walls-a",
+  "file": "public/art/pixel/ui/wall-hollow.png",
+  "size": [
+   242,
+   256
+  ],
+  "bytes": 20164
+ },
+ {
+  "name": "chests",
+  "file": "public/art/pixel/ui/chest-daily.png",
+  "size": [
+   256,
+   228
+  ],
+  "bytes": 18484
+ },
+ {
+  "name": "chests",
+  "file": "public/art/pixel/ui/chest-daily-open.png",
+  "size": [
+   216,
+   256
+  ],
+  "bytes": 21316
+ },
+ {
+  "name": "chests",
+  "file": "public/art/pixel/ui/chest-weekly.png",
+  "size": [
+   256,
+   254
+  ],
+  "bytes": 22374
+ },
+ {
+  "name": "chests",
+  "file": "public/art/pixel/ui/chest-weekly-open.png",
+  "size": [
+   219,
+   256
+  ],
+  "bytes": 25027
+ },
+ {
+  "name": "calendar",
+  "file": "public/art/pixel/ui/merc-pod.png",
+  "size": [
+   195,
+   256
+  ],
+  "bytes": 15788
+ },
+ {
+  "name": "calendar",
+  "file": "public/art/pixel/ui/marks.png",
+  "size": [
+   236,
+   256
+  ],
+  "bytes": 20458
+ },
+ {
+  "name": "calendar",
+  "file": "public/art/pixel/ui/shard.png",
+  "size": [
+   154,
+   256
+  ],
+  "bytes": 11016
+ },
+ {
+  "name": "calendar",
+  "file": "public/art/pixel/ui/wall-crown.png",
+  "size": [
+   253,
+   256
+  ],
+  "bytes": 21755
+ },
+ {
+  "name": "achievements-a",
+  "file": "public/art/pixel/ui/ach-combat.png",
+  "size": [
+   256,
+   256
+  ],
+  "bytes": 23832
+ },
+ {
+  "name": "achievements-a",
+  "file": "public/art/pixel/ui/ach-crew.png",
+  "size": [
+   256,
+   249
+  ],
+  "bytes": 22228
+ },
+ {
+  "name": "achievements-a",
+  "file": "public/art/pixel/ui/ach-ship.png",
+  "size": [
+   254,
+   256
+  ],
+  "bytes": 21744
+ },
+ {
+  "name": "achievements-a",
+  "file": "public/art/pixel/ui/ach-explore.png",
+  "size": [
+   256,
+   255
+  ],
+  "bytes": 24385
+ },
+ {
+  "name": "achievements-b",
+  "file": "public/art/pixel/ui/ach-walls.png",
+  "size": [
+   251,
+   256
+  ],
+  "bytes": 21831
+ },
+ {
+  "name": "achievements-b",
+  "file": "public/art/pixel/ui/ach-collection.png",
+  "size": [
+   247,
+   256
+  ],
+  "bytes": 22812
+ },
+ {
+  "name": "achievements-b",
+  "file": "public/art/pixel/ui/hold.png",
+  "size": [
+   256,
+   234
+  ],
+  "bytes": 20040
+ },
+ {
+  "name": "achievements-b",
+  "file": "public/art/pixel/ui/rally.png",
+  "size": [
+   240,
+   256
+  ],
+  "bytes": 14719
+ },
+ {
+  "name": "welcome-back",
+  "file": "public/art/pixel/cinematic/v2/welcome-back.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 429624
+ }
+]
