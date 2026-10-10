@@ -63,7 +63,7 @@
 7. **Saves.** The campaign, loyalty and Almanac fields have defaults and clean up odd values on load. Both
    validators, the game's and the server's, refuse edited values.
 
-## The 30-day sim (15 guided captains, one check-in a day, after the wall retune)
+## The 30-day sim (15 guided captains, one check-in a day, after the wall retune and the audit fixes)
 
 The sim now:
 - plays the open story mission and any loyalty job before and after its strategy contract, keeping its wall fuel
@@ -77,16 +77,16 @@ The sim now:
 | cautious 88421 | 5 | 14 | 20 (3) | Veil 14 | 30,611 | 11% | 21.5 |
 | cautious 240911 | 5 | 14 | 20 (4) | Veil 14 | 32,964 | 11% | 24.8 |
 | cautious 990001 | 5 | 12 | 20 (3) | Veil 12 | 32,666 | 10% | 22.8 |
-| balanced 4219 | 4 | 9 | 20 (3) | Veil 9, Ember 22 | 28,841 | 10% | 23.8 |
-| balanced 17031 | 4 | 9 | 21 (3) | Veil 9, Ember 15 | 33,680 | 9% | 25.8 |
-| balanced 88421 | 4 | 9 | 20 (4) | Veil 9, Ember 22 | 26,304 | 14% | 24.2 |
+| balanced 4219 | 4 | 9 | 21 (3) | Veil 9, Ember 22 | 24,635 | 12% | 23.8 |
+| balanced 17031 | 4 | 9 | 22 (3) | Veil 9, Ember 15 | 33,680 | 9% | 25.8 |
+| balanced 88421 | 4 | 9 | 21 (4) | Veil 9, Ember 22 | 30,117 | 12% | 24.2 |
 | balanced 240911 | 4 | 12 | 20 (3) | Veil 12, Ember 22 | 30,604 | 10% | 26.8 |
 | balanced 990001 | 4 | 9 | 22 (4) | Veil 9, Ember 17 | 35,374 | 10% | 25.5 |
-| ambitious 4219 | 4 | 8 | 20 (4) | Veil 8, Ember 15 | 30,764 | 11% | 25.8 |
-| ambitious 17031 | 4 | 8 | 20 (4) | Veil 8, Ember 18 | 35,212 | 10% | 29.0 |
-| ambitious 88421 | 4 | 8 | 20 (4) | Veil 8, Ember 16 | 30,255 | 12% | 25.8 |
-| ambitious 240911 | 4 | 8 | 20 (4) | Veil 8, Ember 17, Hollow 28 | 34,536 | 11% | 30.3 |
-| ambitious 990001 | 4 | 8 | 22 (4) | Veil 8, Ember 12, Hollow 28 | 34,049 | 11% | 27.8 |
+| ambitious 4219 | 4 | 8 | 22 (4) | Veil 8, Ember 15 | 32,044 | 11% | 25.8 |
+| ambitious 17031 | 4 | 8 | 20 (4) | Veil 8, Ember 18 | 34,396 | 11% | 29.0 |
+| ambitious 88421 | 4 | 8 | 21 (4) | Veil 8, Ember 15 | 30,587 | 12% | 25.8 |
+| ambitious 240911 | 4 | 8 | 21 (4) | Veil 8, Ember 17, Hollow 28 | 34,795 | 11% | 30.3 |
+| ambitious 990001 | 4 | 8 | 22 (4) | Veil 8, Ember 12, Hollow 28 | 34,040 | 11% | 27.8 |
 
 - **The Spur wall** falls on day 4 or 5 for everyone. It used to fall on day 3 or 4; it now waits for chapter 1's five
   missions.
@@ -130,7 +130,7 @@ their wall falls.
      in the fight, so playing sharp is level there.
 4. **Mercs become yours: met.**
    - All 46 mercs have their writing (`test/loyalty.test.mjs` lints it).
-   - The first loyalty job lands on day 20-23 in the sim.
+   - The first loyalty job lands on day 20-22 in the sim.
 5. **The Almanac: met.** `test/almanac.test.mjs` checks:
    - every entry can be opened in play;
    - a captain with everything reads 100%;
