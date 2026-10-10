@@ -48,6 +48,9 @@ Layers, not a pool. Sparrow: 2 layers, one recharges every ~2 s while the Shield
 
 - Crew start at their stations. **Drag a crew member to a room** (or tap crew, then tap a room) to send them there. In a room they repair it, put out fires and fight boarders.
 - A station left empty works at baseline only.
+- Free crew (no station) go where the ship needs them. When nobody aboard is free, a room that is burning, boarded
+  or offline with nobody in it draws one crew member from a station that is not in trouble (the engineer first),
+  who goes back once the room is whole, so a fight left alone still ends (added 2026-10-10).
 - Existing boarders land in a room and sabotage it; crew in that room fight them (this replaces the Repel button).
 
 ### Fires

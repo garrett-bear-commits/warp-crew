@@ -118,10 +118,23 @@ simulator and session actions do not, so the 30-day sims are not slowed.
 - **The Crown pays gems on every segment won**: the Eclipse Throne's own prize carries 8 gems, and a wall attempt
   that wins a segment pays the catalogue prize. No simulated captain reaches the Crown with the new pools, but in
   an earlier tuning run one captain earned about 180 gems there in a week. Consider dropping gems from segment
-  wins.
+  wins. **Fixed 2026-10-10:** a segment won pays the flagship's credits, medals and reputation but no gems; the
+  flagship's own gems are paid once, with the 20 takedown gems, when the wall falls (the Crown: 28 for the
+  whole siege, 68 before). Only the Eclipse Throne lists gems, so the other walls pay as before
+  (`test/wall_gems.test.mjs`).
 - **A fight can stall forever** if every crew member aboard is stationed and the unmanned Weapons room burns
   out (stationed crew never leave their post). A real player can drag crew; an idle one cannot. The simulator
   now keeps crew without a matching station free, which avoids it; the engine has no stalemate guard.
+  **Fixed 2026-10-10:** when nobody aboard is free, a room that is burning, boarded or offline with nobody in it
+  draws one crew member from a post that is not in trouble (the engineer first), who goes home once the room is
+  whole. Reproduced first: a fire in the empty Weapons room left a plain Sparrow's guns dead from beat 29 to a
+  loss at beat 356 (now a win at 61); boarders holding it against a two-shield Sparrow never ended (now 41);
+  a contract fight saved stalled by the old engine needed 610 beats (now 134). `test/fight_stall.test.mjs`.
+  Evidence regenerated: the fights-first tables above are unchanged (one ambitious captain's day-8 contract cost
+  42 hull instead of 49). The away-first sensitivity rows moved, since there the away team leaves and everyone
+  left aboard holds a station: hull repair credits fell (cautious 1085 to 595, balanced 5950 to 5250, ambitious
+  5495 to 3395), balanced broke 2 walls instead of 1, and useful sessions rose (balanced 26 to 28, ambitious 25
+  to 28). No simulated captain reaches the Crown, so the gem fix does not move the evidence.
 - **Gate seeking** is new simulator behaviour (a real player chasing the next wall). It changes the Explore
   numbers in the evidence (more gate visits).
 

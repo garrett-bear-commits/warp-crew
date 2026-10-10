@@ -358281,7 +358281,7 @@
                   "gems": false,
                   "fuel": false
                 },
-                "hullLoss": 49,
+                "hullLoss": 42,
                 "injuredCrewId": null,
                 "storyFlag": null,
                 "summary": "The echo folds. A gem-bright core in the wrecklight."
@@ -358393,7 +358393,7 @@
                     "medals": 1,
                     "reputation": 0
                   },
-                  "hullAfter": 51
+                  "hullAfter": 58
                 },
                 {
                   "day": 9,
@@ -358410,7 +358410,7 @@
                     "medals": 1,
                     "reputation": 0
                   },
-                  "hullAfter": 51
+                  "hullAfter": 58
                 },
                 {
                   "day": 9,
@@ -358427,12 +358427,12 @@
                     "medals": 0,
                     "reputation": 8
                   },
-                  "hullAfter": 51
+                  "hullAfter": 58
                 }
               ],
               "stopped": "max_jumps",
               "startFuel": 10,
-              "startHull": 51
+              "startHull": 58
             },
             "affordabilityGaps": [
               {
@@ -358482,7 +358482,7 @@
               "medals": 10,
               "reputation": 253
             },
-            "endHull": 51,
+            "endHull": 58,
             "crew": {
               "size": 4,
               "reserve": 6,
@@ -358519,7 +358519,7 @@
               "medals": 10,
               "reputation": 253
             },
-            "startHull": 51,
+            "startHull": 58,
             "actions": [
               {
                 "action": "contract-review",
@@ -375768,13 +375768,13 @@
           "usefulSessions": 29,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
-          "upgrades": 28,
-          "completedContracts": 49,
+          "upgrades": 27,
+          "completedContracts": 61,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
             "paid": 0,
-            "declined": 0
+            "declined": 2
           },
           "wallArrivalDay": 3,
           "wallFellOnDay": 4,
@@ -375787,21 +375787,21 @@
           "gemsSpent": 0,
           "wallsBroken": 2,
           "upgradeLevels": 32,
-          "drydockBusyDays": 3,
-          "hullRepairCredits": 1085,
-          "exploreJumps": 25,
-          "exploreEvents": 12,
+          "drydockBusyDays": 1,
+          "hullRepairCredits": 1645,
+          "exploreJumps": 22,
+          "exploreEvents": 9,
           "exploreFights": 12,
-          "exploreCredits": 2054,
-          "exploreCreditShare": 16,
+          "exploreCredits": 1710,
+          "exploreCreditShare": 13,
           "fightWinPctDay7": 100,
-          "fightWinPctDay30": 92,
-          "wallWinPct": 44,
-          "creditsPerDay": 426,
+          "fightWinPctDay30": 100,
+          "wallWinPct": 30,
+          "creditsPerDay": 434,
           "crewHires": 30,
-          "crewLevelUps": 31,
+          "crewLevelUps": 32,
           "crewSize": 6,
-          "crewPower": 185
+          "crewPower": 188
         },
         "walls": {
           "spur": {
@@ -375831,18 +375831,18 @@
             "arrivalDay": 23,
             "gemsAtArrival": 65,
             "fuelAtArrival": 10,
-            "fellOnDay": 26,
+            "fellOnDay": 29,
             "packOffer": {
               "day": 25,
               "reason": "stuck"
             },
-            "attempts": 12,
-            "attemptDays": 3,
+            "attempts": 24,
+            "attemptDays": 6,
             "attemptsPerAttemptDay": 4,
-            "daysOnBoard": 4,
-            "daysToBreak": 4,
-            "losses": 8,
-            "nearMissLosses": 0,
+            "daysOnBoard": 7,
+            "daysToBreak": 7,
+            "losses": 19,
+            "nearMissLosses": 2,
             "rallies": {
               "free": 1,
               "paid": 0
@@ -375866,36 +375866,294 @@
           "daysWithSpend": 0
         },
         "explore": {
-          "jumps": 25,
-          "days": 25,
-          "events": 12,
+          "jumps": 22,
+          "days": 22,
+          "events": 9,
           "fights": 12,
-          "fightWins": 11,
+          "fightWins": 12,
           "eventFights": 0,
           "downed": 0,
-          "beacons": 11,
+          "beacons": 9,
           "sectors": [
             "spur",
             "veil"
           ],
           "earned": {
-            "credits": 2054,
+            "credits": 1710,
             "fuel": 0,
             "gems": 0,
-            "medals": 148,
-            "reputation": 85
+            "medals": 118,
+            "reputation": 73
           },
           "spent": {
             "credits": 0,
-            "fuel": 30,
+            "fuel": 27,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 2054,
+          "netCredits": 1710,
           "stops": {
-            "max_jumps": 25,
-            "hull_low": 5
+            "max_jumps": 22,
+            "hull_low": 8
+          }
+        },
+        "builds": [
+          {
+            "day": 5,
+            "system": "cargo",
+            "targetLevel": 4,
+            "startedAt": 1790424000000,
+            "endAt": 1790425800000
+          },
+          {
+            "day": 7,
+            "system": "engines",
+            "targetLevel": 4,
+            "startedAt": 1790596800000,
+            "endAt": 1790598600000
+          },
+          {
+            "day": 10,
+            "system": "cargo",
+            "targetLevel": 5,
+            "startedAt": 1790856000000,
+            "endAt": 1790859600000
+          },
+          {
+            "day": 13,
+            "system": "engines",
+            "targetLevel": 5,
+            "startedAt": 1791115200000,
+            "endAt": 1791118800000
+          },
+          {
+            "day": 14,
+            "system": "shields",
+            "targetLevel": 4,
+            "startedAt": 1791201600000,
+            "endAt": 1791203400000
+          },
+          {
+            "day": 15,
+            "system": "cargo",
+            "targetLevel": 6,
+            "startedAt": 1791288000000,
+            "endAt": 1791295200000
+          },
+          {
+            "day": 17,
+            "system": "sensors",
+            "targetLevel": 4,
+            "startedAt": 1791460800000,
+            "endAt": 1791462600000
+          },
+          {
+            "day": 19,
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1791633600000,
+            "endAt": 1791635400000
+          },
+          {
+            "day": 20,
+            "system": "engines",
+            "targetLevel": 6,
+            "startedAt": 1791720000000,
+            "endAt": 1791727200000
+          },
+          {
+            "day": 21,
+            "system": "weapons",
+            "targetLevel": 4,
+            "startedAt": 1791806400000,
+            "endAt": 1791808200000
+          },
+          {
+            "day": 23,
+            "system": "shields",
+            "targetLevel": 5,
+            "startedAt": 1791979200000,
+            "endAt": 1791982800000
+          },
+          {
+            "day": 24,
+            "system": "cargo",
+            "targetLevel": 7,
+            "startedAt": 1792065600000,
+            "endAt": 1792080000000
+          },
+          {
+            "day": 26,
+            "system": "sensors",
+            "targetLevel": 5,
+            "startedAt": 1792238400000,
+            "endAt": 1792242000000
+          },
+          {
+            "day": 28,
+            "system": "medbay",
+            "targetLevel": 5,
+            "startedAt": 1792411200000,
+            "endAt": 1792414800000
+          },
+          {
+            "day": 29,
+            "system": "engines",
+            "targetLevel": 7,
+            "startedAt": 1792497600000,
+            "endAt": 1792512000000
+          },
+          {
+            "day": 30,
+            "system": "weapons",
+            "targetLevel": 5,
+            "startedAt": 1792584000000,
+            "endAt": 1792587600000
+          }
+        ],
+        "finalWallet": {
+          "credits": 16,
+          "fuel": 10,
+          "gems": 100,
+          "medals": 15,
+          "reputation": 443
+        },
+        "systemLevels": {
+          "engines": 7,
+          "shields": 5,
+          "cargo": 7,
+          "weapons": 4,
+          "quarters": 2,
+          "sensors": 5,
+          "medbay": 5
+        },
+        "reconciliation": {
+          "ok": true,
+          "differences": {}
+        }
+      },
+      {
+        "seed": 17031,
+        "strategy": "cautious",
+        "captain": "captain_gunner",
+        "gemPolicy": "never",
+        "wallFuelReserve": 3,
+        "sessionOrder": "away-first",
+        "policy": {
+          "ads": false,
+          "purchases": false,
+          "skips": false,
+          "forceComplete": false
+        },
+        "metrics": {
+          "usefulSessions": 30,
+          "noUsefulActionDays": 0,
+          "fuelStarvedDays": 0,
+          "upgrades": 27,
+          "completedContracts": 34,
+          "completedExpeditions": 29,
+          "rallies": {
+            "free": 0,
+            "paid": 0,
+            "declined": 0
+          },
+          "wallArrivalDay": 3,
+          "wallFellOnDay": 3,
+          "wallDaysToBreak": 1,
+          "wallAttempts": 3,
+          "wallAttemptsPerAttemptDay": 3,
+          "wallNearMissLosses": 0,
+          "gemsAtWall": 0,
+          "gemsEarned": 80,
+          "gemsSpent": 0,
+          "wallsBroken": 1,
+          "upgradeLevels": 31,
+          "drydockBusyDays": 0,
+          "hullRepairCredits": 140,
+          "exploreJumps": 29,
+          "exploreEvents": 13,
+          "exploreFights": 12,
+          "exploreCredits": 1968,
+          "exploreCreditShare": 18,
+          "fightWinPctDay7": 100,
+          "fightWinPctDay30": 100,
+          "wallWinPct": 100,
+          "creditsPerDay": 373,
+          "crewHires": 30,
+          "crewLevelUps": 27,
+          "crewSize": 6,
+          "crewPower": 174
+        },
+        "walls": {
+          "spur": {
+            "id": "spur",
+            "pool": 100,
+            "arrivalDay": 3,
+            "gemsAtArrival": 0,
+            "fuelAtArrival": 11,
+            "fellOnDay": 3,
+            "packOffer": null,
+            "attempts": 3,
+            "attemptDays": 1,
+            "attemptsPerAttemptDay": 3,
+            "daysOnBoard": 1,
+            "daysToBreak": 1,
+            "losses": 0,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 100
+          }
+        },
+        "gems": {
+          "earned": 80,
+          "earnedBySource": {
+            "daily-login": 60,
+            "wall:contract-claim": 20
+          },
+          "spent": 0,
+          "spentBySink": {
+            "rally": 0,
+            "fuel_refill": 0,
+            "drydock_skip": 0
+          },
+          "end": 80,
+          "daysWithSpend": 0
+        },
+        "explore": {
+          "jumps": 29,
+          "days": 29,
+          "events": 13,
+          "fights": 12,
+          "fightWins": 12,
+          "eventFights": 0,
+          "downed": 0,
+          "beacons": 8,
+          "sectors": [
+            "spur",
+            "veil"
+          ],
+          "earned": {
+            "credits": 1968,
+            "fuel": 0,
+            "gems": 0,
+            "medals": 145,
+            "reputation": 80
+          },
+          "spent": {
+            "credits": 0,
+            "fuel": 36,
+            "gems": 0,
+            "medals": 0,
+            "reputation": 0
+          },
+          "netCredits": 1968,
+          "stops": {
+            "max_jumps": 29,
+            "hull_low": 1
           }
         },
         "builds": [
@@ -375977,11 +376235,11 @@
             "endAt": 1791982800000
           },
           {
-            "day": 24,
+            "day": 25,
             "system": "cargo",
             "targetLevel": 7,
-            "startedAt": 1792065600000,
-            "endAt": 1792080000000
+            "startedAt": 1792152000000,
+            "endAt": 1792166400000
           },
           {
             "day": 26,
@@ -375998,29 +376256,22 @@
             "endAt": 1792414800000
           },
           {
-            "day": 29,
+            "day": 30,
             "system": "engines",
             "targetLevel": 7,
-            "startedAt": 1792497600000,
-            "endAt": 1792512000000
-          },
-          {
-            "day": 30,
-            "system": "weapons",
-            "targetLevel": 5,
             "startedAt": 1792584000000,
-            "endAt": 1792587600000
+            "endAt": 1792598400000
           }
         ],
         "finalWallet": {
-          "credits": 341,
+          "credits": 242,
           "fuel": 10,
-          "gems": 100,
-          "medals": 8,
-          "reputation": 447
+          "gems": 80,
+          "medals": 21,
+          "reputation": 395
         },
         "systemLevels": {
-          "engines": 7,
+          "engines": 6,
           "shields": 5,
           "cargo": 7,
           "weapons": 4,
@@ -376034,9 +376285,9 @@
         }
       },
       {
-        "seed": 17031,
+        "seed": 88421,
         "strategy": "cautious",
-        "captain": "captain_gunner",
+        "captain": "captain_alien",
         "gemPolicy": "never",
         "wallFuelReserve": 3,
         "sessionOrder": "away-first",
@@ -376047,11 +376298,11 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 29,
+          "usefulSessions": 30,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
           "upgrades": 27,
-          "completedContracts": 34,
+          "completedContracts": 38,
           "completedExpeditions": 29,
           "rallies": {
             "free": 0,
@@ -376065,25 +376316,25 @@
           "wallAttemptsPerAttemptDay": 3,
           "wallNearMissLosses": 0,
           "gemsAtWall": 0,
-          "gemsEarned": 80,
+          "gemsEarned": 100,
           "gemsSpent": 0,
-          "wallsBroken": 1,
-          "upgradeLevels": 31,
-          "drydockBusyDays": 0,
-          "hullRepairCredits": 175,
-          "exploreJumps": 29,
-          "exploreEvents": 13,
-          "exploreFights": 12,
-          "exploreCredits": 1966,
-          "exploreCreditShare": 18,
+          "wallsBroken": 2,
+          "upgradeLevels": 32,
+          "drydockBusyDays": 3,
+          "hullRepairCredits": 350,
+          "exploreJumps": 28,
+          "exploreEvents": 16,
+          "exploreFights": 7,
+          "exploreCredits": 1845,
+          "exploreCreditShare": 15,
           "fightWinPctDay7": 100,
           "fightWinPctDay30": 100,
-          "wallWinPct": 67,
-          "creditsPerDay": 368,
+          "wallWinPct": 100,
+          "creditsPerDay": 404,
           "crewHires": 30,
-          "crewLevelUps": 27,
+          "crewLevelUps": 31,
           "crewSize": 6,
-          "crewPower": 174
+          "crewPower": 186
         },
         "walls": {
           "spur": {
@@ -376099,20 +376350,41 @@
             "attemptsPerAttemptDay": 3,
             "daysOnBoard": 1,
             "daysToBreak": 1,
-            "losses": 1,
+            "losses": 0,
             "nearMissLosses": 0,
             "rallies": {
               "free": 0,
               "paid": 0
             },
             "bestDayDamage": 100
+          },
+          "veil": {
+            "id": "veil",
+            "pool": 130,
+            "arrivalDay": 23,
+            "gemsAtArrival": 65,
+            "fuelAtArrival": 10,
+            "fellOnDay": 24,
+            "packOffer": null,
+            "attempts": 4,
+            "attemptDays": 1,
+            "attemptsPerAttemptDay": 4,
+            "daysOnBoard": 2,
+            "daysToBreak": 2,
+            "losses": 0,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 130
           }
         },
         "gems": {
-          "earned": 80,
+          "earned": 100,
           "earnedBySource": {
             "daily-login": 60,
-            "wall:contract-claim": 20
+            "wall:contract-claim": 40
           },
           "spent": 0,
           "spentBySink": {
@@ -376120,40 +376392,41 @@
             "fuel_refill": 0,
             "drydock_skip": 0
           },
-          "end": 80,
+          "end": 100,
           "daysWithSpend": 0
         },
         "explore": {
-          "jumps": 29,
-          "days": 29,
-          "events": 13,
-          "fights": 12,
-          "fightWins": 12,
+          "jumps": 28,
+          "days": 28,
+          "events": 16,
+          "fights": 7,
+          "fightWins": 7,
           "eventFights": 0,
           "downed": 0,
-          "beacons": 8,
+          "beacons": 11,
           "sectors": [
             "spur",
             "veil"
           ],
           "earned": {
-            "credits": 1966,
+            "credits": 1845,
             "fuel": 0,
             "gems": 0,
-            "medals": 145,
-            "reputation": 80
+            "medals": 151,
+            "reputation": 64
           },
           "spent": {
             "credits": 0,
-            "fuel": 36,
+            "fuel": 35,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 1966,
+          "netCredits": 1845,
           "stops": {
-            "max_jumps": 29,
-            "hull_low": 1
+            "max_jumps": 28,
+            "hull_low": 1,
+            "fuel_reserve": 1
           }
         },
         "builds": [
@@ -376228,281 +376501,6 @@
             "endAt": 1791894600000
           },
           {
-            "day": 23,
-            "system": "shields",
-            "targetLevel": 5,
-            "startedAt": 1791979200000,
-            "endAt": 1791982800000
-          },
-          {
-            "day": 25,
-            "system": "cargo",
-            "targetLevel": 7,
-            "startedAt": 1792152000000,
-            "endAt": 1792166400000
-          },
-          {
-            "day": 27,
-            "system": "sensors",
-            "targetLevel": 5,
-            "startedAt": 1792324800000,
-            "endAt": 1792328400000
-          },
-          {
-            "day": 29,
-            "system": "medbay",
-            "targetLevel": 5,
-            "startedAt": 1792497600000,
-            "endAt": 1792501200000
-          },
-          {
-            "day": 30,
-            "system": "engines",
-            "targetLevel": 7,
-            "startedAt": 1792584000000,
-            "endAt": 1792598400000
-          }
-        ],
-        "finalWallet": {
-          "credits": 43,
-          "fuel": 10,
-          "gems": 80,
-          "medals": 21,
-          "reputation": 390
-        },
-        "systemLevels": {
-          "engines": 6,
-          "shields": 5,
-          "cargo": 7,
-          "weapons": 4,
-          "quarters": 2,
-          "sensors": 5,
-          "medbay": 5
-        },
-        "reconciliation": {
-          "ok": true,
-          "differences": {}
-        }
-      },
-      {
-        "seed": 88421,
-        "strategy": "cautious",
-        "captain": "captain_alien",
-        "gemPolicy": "never",
-        "wallFuelReserve": 3,
-        "sessionOrder": "away-first",
-        "policy": {
-          "ads": false,
-          "purchases": false,
-          "skips": false,
-          "forceComplete": false
-        },
-        "metrics": {
-          "usefulSessions": 28,
-          "noUsefulActionDays": 0,
-          "fuelStarvedDays": 0,
-          "upgrades": 25,
-          "completedContracts": 62,
-          "completedExpeditions": 29,
-          "rallies": {
-            "free": 1,
-            "paid": 0,
-            "declined": 4
-          },
-          "wallArrivalDay": 3,
-          "wallFellOnDay": 3,
-          "wallDaysToBreak": 1,
-          "wallAttempts": 3,
-          "wallAttemptsPerAttemptDay": 3,
-          "wallNearMissLosses": 0,
-          "gemsAtWall": 0,
-          "gemsEarned": 80,
-          "gemsSpent": 0,
-          "wallsBroken": 1,
-          "upgradeLevels": 29,
-          "drydockBusyDays": 0,
-          "hullRepairCredits": 2135,
-          "exploreJumps": 22,
-          "exploreEvents": 13,
-          "exploreFights": 6,
-          "exploreCredits": 1342,
-          "exploreCreditShare": 11,
-          "fightWinPctDay7": 0,
-          "fightWinPctDay30": 83,
-          "wallWinPct": 16,
-          "creditsPerDay": 398,
-          "crewHires": 30,
-          "crewLevelUps": 29,
-          "crewSize": 5,
-          "crewPower": 166
-        },
-        "walls": {
-          "spur": {
-            "id": "spur",
-            "pool": 100,
-            "arrivalDay": 3,
-            "gemsAtArrival": 0,
-            "fuelAtArrival": 11,
-            "fellOnDay": 3,
-            "packOffer": null,
-            "attempts": 3,
-            "attemptDays": 1,
-            "attemptsPerAttemptDay": 3,
-            "daysOnBoard": 1,
-            "daysToBreak": 1,
-            "losses": 0,
-            "nearMissLosses": 0,
-            "rallies": {
-              "free": 0,
-              "paid": 0
-            },
-            "bestDayDamage": 100
-          },
-          "veil": {
-            "id": "veil",
-            "pool": 130,
-            "arrivalDay": 23,
-            "gemsAtArrival": 65,
-            "fuelAtArrival": 10,
-            "fellOnDay": null,
-            "packOffer": {
-              "day": 25,
-              "reason": "stuck"
-            },
-            "attempts": 28,
-            "attemptDays": 7,
-            "attemptsPerAttemptDay": 4,
-            "daysOnBoard": 8,
-            "daysToBreak": null,
-            "losses": 26,
-            "nearMissLosses": 4,
-            "rallies": {
-              "free": 1,
-              "paid": 0
-            },
-            "bestDayDamage": 117
-          }
-        },
-        "gems": {
-          "earned": 80,
-          "earnedBySource": {
-            "daily-login": 60,
-            "wall:contract-claim": 20
-          },
-          "spent": 0,
-          "spentBySink": {
-            "rally": 0,
-            "fuel_refill": 0,
-            "drydock_skip": 0
-          },
-          "end": 80,
-          "daysWithSpend": 0
-        },
-        "explore": {
-          "jumps": 22,
-          "days": 22,
-          "events": 13,
-          "fights": 6,
-          "fightWins": 5,
-          "eventFights": 0,
-          "downed": 1,
-          "beacons": 8,
-          "sectors": [
-            "spur",
-            "veil"
-          ],
-          "earned": {
-            "credits": 1342,
-            "fuel": 0,
-            "gems": 0,
-            "medals": 96,
-            "reputation": 52
-          },
-          "spent": {
-            "credits": 0,
-            "fuel": 28,
-            "gems": 0,
-            "medals": 0,
-            "reputation": 0
-          },
-          "netCredits": 1342,
-          "stops": {
-            "max_jumps": 22,
-            "hull_low": 8
-          }
-        },
-        "builds": [
-          {
-            "day": 5,
-            "system": "cargo",
-            "targetLevel": 4,
-            "startedAt": 1790424000000,
-            "endAt": 1790425800000
-          },
-          {
-            "day": 7,
-            "system": "engines",
-            "targetLevel": 4,
-            "startedAt": 1790596800000,
-            "endAt": 1790598600000
-          },
-          {
-            "day": 10,
-            "system": "cargo",
-            "targetLevel": 5,
-            "startedAt": 1790856000000,
-            "endAt": 1790859600000
-          },
-          {
-            "day": 13,
-            "system": "engines",
-            "targetLevel": 5,
-            "startedAt": 1791115200000,
-            "endAt": 1791118800000
-          },
-          {
-            "day": 15,
-            "system": "shields",
-            "targetLevel": 4,
-            "startedAt": 1791288000000,
-            "endAt": 1791289800000
-          },
-          {
-            "day": 16,
-            "system": "cargo",
-            "targetLevel": 6,
-            "startedAt": 1791374400000,
-            "endAt": 1791381600000
-          },
-          {
-            "day": 17,
-            "system": "sensors",
-            "targetLevel": 4,
-            "startedAt": 1791460800000,
-            "endAt": 1791462600000
-          },
-          {
-            "day": 20,
-            "system": "medbay",
-            "targetLevel": 4,
-            "startedAt": 1791720000000,
-            "endAt": 1791721800000
-          },
-          {
-            "day": 21,
-            "system": "engines",
-            "targetLevel": 6,
-            "startedAt": 1791806400000,
-            "endAt": 1791813600000
-          },
-          {
-            "day": 22,
-            "system": "weapons",
-            "targetLevel": 4,
-            "startedAt": 1791892800000,
-            "endAt": 1791894600000
-          },
-          {
             "day": 24,
             "system": "shields",
             "targetLevel": 5,
@@ -376517,28 +376515,49 @@
             "endAt": 1792166400000
           },
           {
-            "day": 28,
+            "day": 26,
             "system": "sensors",
             "targetLevel": 5,
+            "startedAt": 1792238400000,
+            "endAt": 1792242000000
+          },
+          {
+            "day": 27,
+            "system": "medbay",
+            "targetLevel": 5,
+            "startedAt": 1792324800000,
+            "endAt": 1792328400000
+          },
+          {
+            "day": 28,
+            "system": "engines",
+            "targetLevel": 7,
             "startedAt": 1792411200000,
-            "endAt": 1792414800000
+            "endAt": 1792425600000
+          },
+          {
+            "day": 29,
+            "system": "weapons",
+            "targetLevel": 5,
+            "startedAt": 1792497600000,
+            "endAt": 1792501200000
           }
         ],
         "finalWallet": {
-          "credits": 51,
-          "fuel": 3,
-          "gems": 80,
-          "medals": 16,
-          "reputation": 379
+          "credits": 407,
+          "fuel": 10,
+          "gems": 100,
+          "medals": 14,
+          "reputation": 415
         },
         "systemLevels": {
-          "engines": 6,
+          "engines": 7,
           "shields": 5,
           "cargo": 7,
-          "weapons": 4,
+          "weapons": 5,
           "quarters": 2,
           "sensors": 5,
-          "medbay": 4
+          "medbay": 5
         },
         "reconciliation": {
           "ok": true,
@@ -376848,11 +376867,11 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 30,
+          "usefulSessions": 29,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
           "upgrades": 27,
-          "completedContracts": 61,
+          "completedContracts": 58,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
@@ -376860,9 +376879,9 @@
             "declined": 4
           },
           "wallArrivalDay": 3,
-          "wallFellOnDay": 4,
-          "wallDaysToBreak": 2,
-          "wallAttempts": 6,
+          "wallFellOnDay": 3,
+          "wallDaysToBreak": 1,
+          "wallAttempts": 3,
           "wallAttemptsPerAttemptDay": 3,
           "wallNearMissLosses": 0,
           "gemsAtWall": 0,
@@ -376870,19 +376889,19 @@
           "gemsSpent": 0,
           "wallsBroken": 2,
           "upgradeLevels": 31,
-          "drydockBusyDays": 1,
-          "hullRepairCredits": 1820,
-          "exploreJumps": 22,
-          "exploreEvents": 11,
-          "exploreFights": 9,
-          "exploreCredits": 1625,
+          "drydockBusyDays": 0,
+          "hullRepairCredits": 1505,
+          "exploreJumps": 23,
+          "exploreEvents": 16,
+          "exploreFights": 6,
+          "exploreCredits": 1542,
           "exploreCreditShare": 12,
           "fightWinPctDay7": null,
           "fightWinPctDay30": 100,
           "wallWinPct": 33,
-          "creditsPerDay": 436,
+          "creditsPerDay": 425,
           "crewHires": 30,
-          "crewLevelUps": 31,
+          "crewLevelUps": 32,
           "crewSize": 6,
           "crewPower": 189
         },
@@ -376893,14 +376912,14 @@
             "arrivalDay": 3,
             "gemsAtArrival": 0,
             "fuelAtArrival": 11,
-            "fellOnDay": 4,
+            "fellOnDay": 3,
             "packOffer": null,
-            "attempts": 6,
-            "attemptDays": 2,
+            "attempts": 3,
+            "attemptDays": 1,
             "attemptsPerAttemptDay": 3,
-            "daysOnBoard": 2,
-            "daysToBreak": 2,
-            "losses": 3,
+            "daysOnBoard": 1,
+            "daysToBreak": 1,
+            "losses": 1,
             "nearMissLosses": 0,
             "rallies": {
               "free": 0,
@@ -376949,11 +376968,11 @@
           "daysWithSpend": 0
         },
         "explore": {
-          "jumps": 22,
-          "days": 22,
-          "events": 11,
-          "fights": 9,
-          "fightWins": 9,
+          "jumps": 23,
+          "days": 23,
+          "events": 16,
+          "fights": 6,
+          "fightWins": 6,
           "eventFights": 0,
           "downed": 0,
           "beacons": 9,
@@ -376962,11 +376981,11 @@
             "veil"
           ],
           "earned": {
-            "credits": 1625,
+            "credits": 1542,
             "fuel": 0,
             "gems": 0,
-            "medals": 100,
-            "reputation": 75
+            "medals": 128,
+            "reputation": 62
           },
           "spent": {
             "credits": 0,
@@ -376975,10 +376994,10 @@
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 1625,
+          "netCredits": 1542,
           "stops": {
-            "max_jumps": 22,
-            "hull_low": 8
+            "max_jumps": 23,
+            "hull_low": 7
           }
         },
         "builds": [
@@ -376990,60 +377009,60 @@
             "endAt": 1790425800000
           },
           {
-            "day": 8,
+            "day": 7,
             "system": "engines",
             "targetLevel": 4,
-            "startedAt": 1790683200000,
-            "endAt": 1790685000000
+            "startedAt": 1790596800000,
+            "endAt": 1790598600000
           },
           {
-            "day": 10,
+            "day": 11,
             "system": "cargo",
             "targetLevel": 5,
-            "startedAt": 1790856000000,
-            "endAt": 1790859600000
+            "startedAt": 1790942400000,
+            "endAt": 1790946000000
           },
           {
-            "day": 13,
+            "day": 14,
             "system": "engines",
             "targetLevel": 5,
-            "startedAt": 1791115200000,
-            "endAt": 1791118800000
-          },
-          {
-            "day": 15,
-            "system": "shields",
-            "targetLevel": 4,
-            "startedAt": 1791288000000,
-            "endAt": 1791289800000
+            "startedAt": 1791201600000,
+            "endAt": 1791205200000
           },
           {
             "day": 16,
-            "system": "cargo",
-            "targetLevel": 6,
+            "system": "shields",
+            "targetLevel": 4,
             "startedAt": 1791374400000,
-            "endAt": 1791381600000
+            "endAt": 1791376200000
           },
           {
             "day": 17,
-            "system": "sensors",
-            "targetLevel": 4,
+            "system": "cargo",
+            "targetLevel": 6,
             "startedAt": 1791460800000,
-            "endAt": 1791462600000
+            "endAt": 1791468000000
           },
           {
-            "day": 19,
-            "system": "medbay",
+            "day": 18,
+            "system": "sensors",
             "targetLevel": 4,
-            "startedAt": 1791633600000,
-            "endAt": 1791635400000
+            "startedAt": 1791547200000,
+            "endAt": 1791549000000
           },
           {
             "day": 20,
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1791720000000,
+            "endAt": 1791721800000
+          },
+          {
+            "day": 21,
             "system": "engines",
             "targetLevel": 6,
-            "startedAt": 1791720000000,
-            "endAt": 1791727200000
+            "startedAt": 1791806400000,
+            "endAt": 1791813600000
           },
           {
             "day": 22,
@@ -377053,11 +377072,11 @@
             "endAt": 1791894600000
           },
           {
-            "day": 23,
+            "day": 24,
             "system": "shields",
             "targetLevel": 5,
-            "startedAt": 1791979200000,
-            "endAt": 1791982800000
+            "startedAt": 1792065600000,
+            "endAt": 1792069200000
           },
           {
             "day": 25,
@@ -377089,11 +377108,11 @@
           }
         ],
         "finalWallet": {
-          "credits": 455,
+          "credits": 420,
           "fuel": 10,
           "gems": 100,
-          "medals": 18,
-          "reputation": 459
+          "medals": 21,
+          "reputation": 435
         },
         "systemLevels": {
           "engines": 6,
@@ -377123,246 +377142,16 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 27,
+          "usefulSessions": 29,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
-          "upgrades": 16,
-          "completedContracts": 129,
+          "upgrades": 22,
+          "completedContracts": 115,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
             "paid": 1,
-            "declined": 4
-          },
-          "wallArrivalDay": 3,
-          "wallFellOnDay": 4,
-          "wallDaysToBreak": 2,
-          "wallAttempts": 6,
-          "wallAttemptsPerAttemptDay": 3,
-          "wallNearMissLosses": 0,
-          "gemsAtWall": 0,
-          "gemsEarned": 100,
-          "gemsSpent": 60,
-          "wallsBroken": 2,
-          "upgradeLevels": 19,
-          "drydockBusyDays": 1,
-          "hullRepairCredits": 5950,
-          "exploreJumps": 4,
-          "exploreEvents": 4,
-          "exploreFights": 0,
-          "exploreCredits": 321,
-          "exploreCreditShare": 3,
-          "fightWinPctDay7": 75,
-          "fightWinPctDay30": 80,
-          "wallWinPct": 11,
-          "creditsPerDay": 377,
-          "crewHires": 30,
-          "crewLevelUps": 31,
-          "crewSize": 4,
-          "crewPower": 148
-        },
-        "walls": {
-          "spur": {
-            "id": "spur",
-            "pool": 100,
-            "arrivalDay": 3,
-            "gemsAtArrival": 0,
-            "fuelAtArrival": 10,
-            "fellOnDay": 4,
-            "packOffer": null,
-            "attempts": 6,
-            "attemptDays": 2,
-            "attemptsPerAttemptDay": 3,
-            "daysOnBoard": 2,
-            "daysToBreak": 2,
-            "losses": 3,
-            "nearMissLosses": 0,
-            "rallies": {
-              "free": 0,
-              "paid": 0
-            },
-            "bestDayDamage": 100
-          },
-          "veil": {
-            "id": "veil",
-            "pool": 130,
-            "arrivalDay": 6,
-            "gemsAtArrival": 20,
-            "fuelAtArrival": 5,
-            "fellOnDay": 13,
-            "packOffer": {
-              "day": 8,
-              "reason": "stuck"
-            },
-            "attempts": 28,
-            "attemptDays": 7,
-            "attemptsPerAttemptDay": 4,
-            "daysOnBoard": 8,
-            "daysToBreak": 8,
-            "losses": 25,
-            "nearMissLosses": 1,
-            "rallies": {
-              "free": 0,
-              "paid": 0
-            },
-            "bestDayDamage": 130
-          },
-          "ember": {
-            "id": "ember",
-            "pool": 180,
-            "arrivalDay": 14,
-            "gemsAtArrival": 70,
-            "fuelAtArrival": 9,
-            "fellOnDay": null,
-            "packOffer": {
-              "day": 16,
-              "reason": "stuck"
-            },
-            "attempts": 64,
-            "attemptDays": 17,
-            "attemptsPerAttemptDay": 3.76,
-            "daysOnBoard": 17,
-            "daysToBreak": null,
-            "losses": 59,
-            "nearMissLosses": 3,
-            "rallies": {
-              "free": 0,
-              "paid": 1
-            },
-            "bestDayDamage": 134
-          }
-        },
-        "gems": {
-          "earned": 100,
-          "earnedBySource": {
-            "daily-login": 60,
-            "wall:contract-claim": 40
-          },
-          "spent": 60,
-          "spentBySink": {
-            "rally": 60,
-            "fuel_refill": 0,
-            "drydock_skip": 0
-          },
-          "end": 40,
-          "daysWithSpend": 1
-        },
-        "explore": {
-          "jumps": 4,
-          "days": 2,
-          "events": 4,
-          "fights": 0,
-          "fightWins": 0,
-          "eventFights": 0,
-          "downed": 0,
-          "beacons": 3,
-          "sectors": [
-            "spur",
-            "veil"
-          ],
-          "earned": {
-            "credits": 321,
-            "fuel": 0,
-            "gems": 0,
-            "medals": 10,
-            "reputation": 23
-          },
-          "spent": {
-            "credits": 0,
-            "fuel": 7,
-            "gems": 0,
-            "medals": 0,
-            "reputation": 0
-          },
-          "netCredits": 321,
-          "stops": {
-            "no_lane": 1,
-            "hull_low": 27,
-            "max_jumps": 2
-          }
-        },
-        "builds": [
-          {
-            "day": 7,
-            "system": "cargo",
-            "targetLevel": 4,
-            "startedAt": 1790596800000,
-            "endAt": 1790598600000
-          },
-          {
-            "day": 13,
-            "system": "engines",
-            "targetLevel": 4,
-            "startedAt": 1791115200000,
-            "endAt": 1791117000000
-          },
-          {
-            "day": 15,
-            "system": "cargo",
-            "targetLevel": 5,
-            "startedAt": 1791288000000,
-            "endAt": 1791291600000
-          },
-          {
-            "day": 25,
-            "system": "engines",
-            "targetLevel": 5,
-            "startedAt": 1792152000000,
-            "endAt": 1792155600000
-          },
-          {
-            "day": 29,
-            "system": "shields",
-            "targetLevel": 4,
-            "startedAt": 1792497600000,
-            "endAt": 1792499400000
-          }
-        ],
-        "finalWallet": {
-          "credits": 37,
-          "fuel": 2,
-          "gems": 40,
-          "medals": 79,
-          "reputation": 309
-        },
-        "systemLevels": {
-          "engines": 5,
-          "shields": 4,
-          "cargo": 5,
-          "weapons": 3,
-          "quarters": 0,
-          "sensors": 3,
-          "medbay": 3
-        },
-        "reconciliation": {
-          "ok": true,
-          "differences": {}
-        }
-      },
-      {
-        "seed": 17031,
-        "strategy": "balanced",
-        "captain": "captain_gunner",
-        "gemPolicy": "rally-refuel",
-        "wallFuelReserve": 1,
-        "sessionOrder": "away-first",
-        "policy": {
-          "ads": false,
-          "purchases": false,
-          "skips": false,
-          "forceComplete": false
-        },
-        "metrics": {
-          "usefulSessions": 26,
-          "noUsefulActionDays": 0,
-          "fuelStarvedDays": 0,
-          "upgrades": 15,
-          "completedContracts": 138,
-          "completedExpeditions": 29,
-          "rallies": {
-            "free": 1,
-            "paid": 1,
-            "declined": 3
+            "declined": 0
           },
           "wallArrivalDay": 3,
           "wallFellOnDay": 3,
@@ -377371,25 +377160,25 @@
           "wallAttemptsPerAttemptDay": 3,
           "wallNearMissLosses": 0,
           "gemsAtWall": 0,
-          "gemsEarned": 80,
+          "gemsEarned": 100,
           "gemsSpent": 60,
-          "wallsBroken": 1,
-          "upgradeLevels": 17,
+          "wallsBroken": 2,
+          "upgradeLevels": 24,
           "drydockBusyDays": 0,
-          "hullRepairCredits": 6720,
-          "exploreJumps": 4,
-          "exploreEvents": 4,
-          "exploreFights": 0,
-          "exploreCredits": 325,
-          "exploreCreditShare": 3,
+          "hullRepairCredits": 4480,
+          "exploreJumps": 14,
+          "exploreEvents": 9,
+          "exploreFights": 4,
+          "exploreCredits": 1168,
+          "exploreCreditShare": 10,
           "fightWinPctDay7": 100,
           "fightWinPctDay30": 100,
-          "wallWinPct": 7,
-          "creditsPerDay": 382,
+          "wallWinPct": 14,
+          "creditsPerDay": 402,
           "crewHires": 30,
-          "crewLevelUps": 32,
-          "crewSize": 4,
-          "crewPower": 151
+          "crewLevelUps": 36,
+          "crewSize": 5,
+          "crewPower": 185
         },
         "walls": {
           "spur": {
@@ -377419,30 +377208,51 @@
             "arrivalDay": 4,
             "gemsAtArrival": 20,
             "fuelAtArrival": 6,
-            "fellOnDay": null,
+            "fellOnDay": 24,
             "packOffer": {
               "day": 6,
               "reason": "stuck"
             },
-            "attempts": 104,
-            "attemptDays": 26,
-            "attemptsPerAttemptDay": 4,
-            "daysOnBoard": 27,
-            "daysToBreak": null,
-            "losses": 99,
-            "nearMissLosses": 3,
+            "attempts": 77,
+            "attemptDays": 20,
+            "attemptsPerAttemptDay": 3.85,
+            "daysOnBoard": 21,
+            "daysToBreak": 21,
+            "losses": 70,
+            "nearMissLosses": 0,
             "rallies": {
               "free": 1,
               "paid": 1
             },
-            "bestDayDamage": 120
+            "bestDayDamage": 130
+          },
+          "ember": {
+            "id": "ember",
+            "pool": 180,
+            "arrivalDay": 29,
+            "gemsAtArrival": 40,
+            "fuelAtArrival": 8,
+            "fellOnDay": null,
+            "packOffer": null,
+            "attempts": 4,
+            "attemptDays": 1,
+            "attemptsPerAttemptDay": 4,
+            "daysOnBoard": 2,
+            "daysToBreak": null,
+            "losses": 1,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 159
           }
         },
         "gems": {
-          "earned": 80,
+          "earned": 100,
           "earnedBySource": {
             "daily-login": 60,
-            "wall:contract-claim": 20
+            "wall:contract-claim": 40
           },
           "spent": 60,
           "spentBySink": {
@@ -377450,88 +377260,376 @@
             "fuel_refill": 0,
             "drydock_skip": 0
           },
-          "end": 20,
+          "end": 40,
           "daysWithSpend": 1
         },
         "explore": {
-          "jumps": 4,
-          "days": 2,
-          "events": 4,
-          "fights": 0,
-          "fightWins": 0,
+          "jumps": 14,
+          "days": 7,
+          "events": 9,
+          "fights": 4,
+          "fightWins": 4,
           "eventFights": 0,
           "downed": 0,
-          "beacons": 3,
+          "beacons": 9,
           "sectors": [
             "spur",
-            "veil"
+            "veil",
+            "ember"
           ],
           "earned": {
-            "credits": 325,
+            "credits": 1168,
             "fuel": 0,
             "gems": 0,
-            "medals": 11,
-            "reputation": 23
+            "medals": 63,
+            "reputation": 51
           },
           "spent": {
             "credits": 0,
-            "fuel": 6,
+            "fuel": 17,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 325,
+          "netCredits": 1168,
           "stops": {
             "no_lane": 1,
-            "max_jumps": 2,
-            "hull_low": 27
+            "max_jumps": 7,
+            "hull_low": 22
           }
         },
         "builds": [
           {
-            "day": 7,
+            "day": 6,
             "system": "cargo",
             "targetLevel": 4,
-            "startedAt": 1790596800000,
-            "endAt": 1790598600000
+            "startedAt": 1790510400000,
+            "endAt": 1790512200000
           },
           {
-            "day": 13,
+            "day": 10,
             "system": "engines",
             "targetLevel": 4,
-            "startedAt": 1791115200000,
-            "endAt": 1791117000000
+            "startedAt": 1790856000000,
+            "endAt": 1790857800000
           },
           {
-            "day": 21,
+            "day": 18,
             "system": "cargo",
             "targetLevel": 5,
-            "startedAt": 1791806400000,
-            "endAt": 1791810000000
+            "startedAt": 1791547200000,
+            "endAt": 1791550800000
           },
           {
-            "day": 28,
+            "day": 23,
             "system": "engines",
             "targetLevel": 5,
-            "startedAt": 1792411200000,
-            "endAt": 1792414800000
+            "startedAt": 1791979200000,
+            "endAt": 1791982800000
+          },
+          {
+            "day": 25,
+            "system": "shields",
+            "targetLevel": 4,
+            "startedAt": 1792152000000,
+            "endAt": 1792153800000
+          },
+          {
+            "day": 26,
+            "system": "cargo",
+            "targetLevel": 6,
+            "startedAt": 1792238400000,
+            "endAt": 1792245600000
+          },
+          {
+            "day": 27,
+            "system": "sensors",
+            "targetLevel": 4,
+            "startedAt": 1792324800000,
+            "endAt": 1792326600000
+          },
+          {
+            "day": 29,
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1792497600000,
+            "endAt": 1792499400000
+          },
+          {
+            "day": 30,
+            "system": "engines",
+            "targetLevel": 6,
+            "startedAt": 1792584000000,
+            "endAt": 1792591200000
           }
         ],
         "finalWallet": {
-          "credits": 151,
+          "credits": 178,
           "fuel": 2,
-          "gems": 20,
-          "medals": 52,
-          "reputation": 294
+          "gems": 40,
+          "medals": 50,
+          "reputation": 364
         },
         "systemLevels": {
           "engines": 5,
-          "shields": 3,
-          "cargo": 5,
-          "weapons": 2,
-          "quarters": 0,
-          "sensors": 3,
-          "medbay": 3
+          "shields": 4,
+          "cargo": 6,
+          "weapons": 3,
+          "quarters": 1,
+          "sensors": 4,
+          "medbay": 4
+        },
+        "reconciliation": {
+          "ok": true,
+          "differences": {}
+        }
+      },
+      {
+        "seed": 17031,
+        "strategy": "balanced",
+        "captain": "captain_gunner",
+        "gemPolicy": "rally-refuel",
+        "wallFuelReserve": 1,
+        "sessionOrder": "away-first",
+        "policy": {
+          "ads": false,
+          "purchases": false,
+          "skips": false,
+          "forceComplete": false
+        },
+        "metrics": {
+          "usefulSessions": 26,
+          "noUsefulActionDays": 0,
+          "fuelStarvedDays": 0,
+          "upgrades": 19,
+          "completedContracts": 120,
+          "completedExpeditions": 29,
+          "rallies": {
+            "free": 1,
+            "paid": 1,
+            "declined": 1
+          },
+          "wallArrivalDay": 3,
+          "wallFellOnDay": 3,
+          "wallDaysToBreak": 1,
+          "wallAttempts": 3,
+          "wallAttemptsPerAttemptDay": 3,
+          "wallNearMissLosses": 0,
+          "gemsAtWall": 0,
+          "gemsEarned": 100,
+          "gemsSpent": 60,
+          "wallsBroken": 2,
+          "upgradeLevels": 23,
+          "drydockBusyDays": 0,
+          "hullRepairCredits": 5250,
+          "exploreJumps": 12,
+          "exploreEvents": 11,
+          "exploreFights": 1,
+          "exploreCredits": 1150,
+          "exploreCreditShare": 9,
+          "fightWinPctDay7": 100,
+          "fightWinPctDay30": 100,
+          "wallWinPct": 15,
+          "creditsPerDay": 419,
+          "crewHires": 30,
+          "crewLevelUps": 35,
+          "crewSize": 5,
+          "crewPower": 181
+        },
+        "walls": {
+          "spur": {
+            "id": "spur",
+            "pool": 100,
+            "arrivalDay": 3,
+            "gemsAtArrival": 0,
+            "fuelAtArrival": 11,
+            "fellOnDay": 3,
+            "packOffer": null,
+            "attempts": 3,
+            "attemptDays": 1,
+            "attemptsPerAttemptDay": 3,
+            "daysOnBoard": 1,
+            "daysToBreak": 1,
+            "losses": 0,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 100
+          },
+          "veil": {
+            "id": "veil",
+            "pool": 130,
+            "arrivalDay": 4,
+            "gemsAtArrival": 20,
+            "fuelAtArrival": 6,
+            "fellOnDay": 14,
+            "packOffer": {
+              "day": 6,
+              "reason": "stuck"
+            },
+            "attempts": 39,
+            "attemptDays": 10,
+            "attemptsPerAttemptDay": 3.9,
+            "daysOnBoard": 11,
+            "daysToBreak": 11,
+            "losses": 36,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 130
+          },
+          "ember": {
+            "id": "ember",
+            "pool": 180,
+            "arrivalDay": 19,
+            "gemsAtArrival": 70,
+            "fuelAtArrival": 10,
+            "fellOnDay": null,
+            "packOffer": {
+              "day": 21,
+              "reason": "stuck"
+            },
+            "attempts": 47,
+            "attemptDays": 12,
+            "attemptsPerAttemptDay": 3.92,
+            "daysOnBoard": 12,
+            "daysToBreak": null,
+            "losses": 40,
+            "nearMissLosses": 1,
+            "rallies": {
+              "free": 1,
+              "paid": 1
+            },
+            "bestDayDamage": 151
+          }
+        },
+        "gems": {
+          "earned": 100,
+          "earnedBySource": {
+            "daily-login": 60,
+            "wall:contract-claim": 40
+          },
+          "spent": 60,
+          "spentBySink": {
+            "rally": 60,
+            "fuel_refill": 0,
+            "drydock_skip": 0
+          },
+          "end": 40,
+          "daysWithSpend": 1
+        },
+        "explore": {
+          "jumps": 12,
+          "days": 6,
+          "events": 11,
+          "fights": 1,
+          "fightWins": 1,
+          "eventFights": 0,
+          "downed": 0,
+          "beacons": 10,
+          "sectors": [
+            "spur",
+            "veil",
+            "ember"
+          ],
+          "earned": {
+            "credits": 1150,
+            "fuel": 0,
+            "gems": 0,
+            "medals": 60,
+            "reputation": 53
+          },
+          "spent": {
+            "credits": 0,
+            "fuel": 15,
+            "gems": 0,
+            "medals": 0,
+            "reputation": 0
+          },
+          "netCredits": 1150,
+          "stops": {
+            "no_lane": 1,
+            "max_jumps": 6,
+            "hull_low": 23
+          }
+        },
+        "builds": [
+          {
+            "day": 5,
+            "system": "cargo",
+            "targetLevel": 4,
+            "startedAt": 1790424000000,
+            "endAt": 1790425800000
+          },
+          {
+            "day": 10,
+            "system": "engines",
+            "targetLevel": 4,
+            "startedAt": 1790856000000,
+            "endAt": 1790857800000
+          },
+          {
+            "day": 14,
+            "system": "cargo",
+            "targetLevel": 5,
+            "startedAt": 1791201600000,
+            "endAt": 1791205200000
+          },
+          {
+            "day": 17,
+            "system": "engines",
+            "targetLevel": 5,
+            "startedAt": 1791460800000,
+            "endAt": 1791464400000
+          },
+          {
+            "day": 19,
+            "system": "shields",
+            "targetLevel": 4,
+            "startedAt": 1791633600000,
+            "endAt": 1791635400000
+          },
+          {
+            "day": 22,
+            "system": "cargo",
+            "targetLevel": 6,
+            "startedAt": 1791892800000,
+            "endAt": 1791900000000
+          },
+          {
+            "day": 25,
+            "system": "sensors",
+            "targetLevel": 4,
+            "startedAt": 1792152000000,
+            "endAt": 1792153800000
+          },
+          {
+            "day": 29,
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1792497600000,
+            "endAt": 1792499400000
+          }
+        ],
+        "finalWallet": {
+          "credits": 387,
+          "fuel": 2,
+          "gems": 40,
+          "medals": 40,
+          "reputation": 366
+        },
+        "systemLevels": {
+          "engines": 5,
+          "shields": 4,
+          "cargo": 6,
+          "weapons": 3,
+          "quarters": 1,
+          "sensors": 4,
+          "medbay": 4
         },
         "reconciliation": {
           "ok": true,
@@ -377552,11 +377650,11 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 30,
+          "usefulSessions": 28,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
-          "upgrades": 20,
-          "completedContracts": 129,
+          "upgrades": 19,
+          "completedContracts": 118,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
@@ -377573,22 +377671,22 @@
           "gemsEarned": 100,
           "gemsSpent": 60,
           "wallsBroken": 2,
-          "upgradeLevels": 24,
+          "upgradeLevels": 23,
           "drydockBusyDays": 1,
-          "hullRepairCredits": 5775,
-          "exploreJumps": 6,
-          "exploreEvents": 5,
-          "exploreFights": 1,
-          "exploreCredits": 562,
-          "exploreCreditShare": 4,
-          "fightWinPctDay7": 80,
-          "fightWinPctDay30": 93,
-          "wallWinPct": 26,
-          "creditsPerDay": 456,
+          "hullRepairCredits": 5075,
+          "exploreJumps": 12,
+          "exploreEvents": 9,
+          "exploreFights": 3,
+          "exploreCredits": 1130,
+          "exploreCreditShare": 9,
+          "fightWinPctDay7": 100,
+          "fightWinPctDay30": 100,
+          "wallWinPct": 17,
+          "creditsPerDay": 417,
           "crewHires": 30,
-          "crewLevelUps": 35,
+          "crewLevelUps": 36,
           "crewSize": 5,
-          "crewPower": 188
+          "crewPower": 186
         },
         "walls": {
           "spur": {
@@ -377596,7 +377694,7 @@
             "pool": 100,
             "arrivalDay": 3,
             "gemsAtArrival": 0,
-            "fuelAtArrival": 10,
+            "fuelAtArrival": 11,
             "fellOnDay": 3,
             "packOffer": null,
             "attempts": 3,
@@ -377618,20 +377716,20 @@
             "arrivalDay": 5,
             "gemsAtArrival": 20,
             "fuelAtArrival": 6,
-            "fellOnDay": 21,
+            "fellOnDay": 25,
             "packOffer": {
               "day": 7,
               "reason": "stuck"
             },
-            "attempts": 63,
-            "attemptDays": 16,
-            "attemptsPerAttemptDay": 3.94,
-            "daysOnBoard": 17,
-            "daysToBreak": 17,
-            "losses": 55,
+            "attempts": 80,
+            "attemptDays": 20,
+            "attemptsPerAttemptDay": 4,
+            "daysOnBoard": 21,
+            "daysToBreak": 21,
+            "losses": 72,
             "nearMissLosses": 1,
             "rallies": {
-              "free": 0,
+              "free": 1,
               "paid": 1
             },
             "bestDayDamage": 130
@@ -377639,20 +377737,17 @@
           "ember": {
             "id": "ember",
             "pool": 180,
-            "arrivalDay": 22,
-            "gemsAtArrival": 25,
+            "arrivalDay": 29,
+            "gemsAtArrival": 40,
             "fuelAtArrival": 8,
             "fellOnDay": null,
-            "packOffer": {
-              "day": 24,
-              "reason": "stuck"
-            },
-            "attempts": 32,
-            "attemptDays": 8,
+            "packOffer": null,
+            "attempts": 4,
+            "attemptDays": 1,
             "attemptsPerAttemptDay": 4,
-            "daysOnBoard": 9,
+            "daysOnBoard": 2,
             "daysToBreak": null,
-            "losses": 18,
+            "losses": 0,
             "nearMissLosses": 0,
             "rallies": {
               "free": 0,
@@ -377677,38 +377772,38 @@
           "daysWithSpend": 1
         },
         "explore": {
-          "jumps": 6,
-          "days": 3,
-          "events": 5,
-          "fights": 1,
-          "fightWins": 1,
+          "jumps": 12,
+          "days": 6,
+          "events": 9,
+          "fights": 3,
+          "fightWins": 3,
           "eventFights": 0,
           "downed": 0,
-          "beacons": 4,
+          "beacons": 7,
           "sectors": [
             "spur",
             "veil",
             "ember"
           ],
           "earned": {
-            "credits": 562,
+            "credits": 1130,
             "fuel": 0,
             "gems": 0,
-            "medals": 24,
-            "reputation": 36
+            "medals": 71,
+            "reputation": 57
           },
           "spent": {
             "credits": 0,
-            "fuel": 8,
+            "fuel": 14,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 562,
+          "netCredits": 1130,
           "stops": {
             "no_lane": 1,
-            "hull_low": 26,
-            "max_jumps": 3
+            "max_jumps": 6,
+            "hull_low": 23
           }
         },
         "builds": [
@@ -377727,61 +377822,54 @@
             "endAt": 1791117000000
           },
           {
-            "day": 16,
+            "day": 17,
             "system": "cargo",
             "targetLevel": 5,
-            "startedAt": 1791374400000,
-            "endAt": 1791378000000
-          },
-          {
-            "day": 21,
-            "system": "engines",
-            "targetLevel": 5,
-            "startedAt": 1791806400000,
-            "endAt": 1791810000000
-          },
-          {
-            "day": 23,
-            "system": "shields",
-            "targetLevel": 4,
-            "startedAt": 1791979200000,
-            "endAt": 1791981000000
+            "startedAt": 1791460800000,
+            "endAt": 1791464400000
           },
           {
             "day": 25,
-            "system": "cargo",
-            "targetLevel": 6,
+            "system": "engines",
+            "targetLevel": 5,
             "startedAt": 1792152000000,
-            "endAt": 1792159200000
+            "endAt": 1792155600000
           },
           {
             "day": 26,
-            "system": "sensors",
+            "system": "shields",
             "targetLevel": 4,
             "startedAt": 1792238400000,
             "endAt": 1792240200000
           },
           {
-            "day": 29,
-            "system": "medbay",
+            "day": 27,
+            "system": "cargo",
+            "targetLevel": 6,
+            "startedAt": 1792324800000,
+            "endAt": 1792332000000
+          },
+          {
+            "day": 28,
+            "system": "sensors",
             "targetLevel": 4,
-            "startedAt": 1792497600000,
-            "endAt": 1792499400000
+            "startedAt": 1792411200000,
+            "endAt": 1792413000000
           },
           {
             "day": 30,
-            "system": "engines",
-            "targetLevel": 6,
+            "system": "medbay",
+            "targetLevel": 4,
             "startedAt": 1792584000000,
-            "endAt": 1792591200000
+            "endAt": 1792585800000
           }
         ],
         "finalWallet": {
-          "credits": 517,
+          "credits": 492,
           "fuel": 2,
           "gems": 40,
-          "medals": 60,
-          "reputation": 428
+          "medals": 57,
+          "reputation": 396
         },
         "systemLevels": {
           "engines": 5,
@@ -377790,7 +377878,7 @@
           "weapons": 3,
           "quarters": 1,
           "sensors": 4,
-          "medbay": 4
+          "medbay": 3
         },
         "reconciliation": {
           "ok": true,
@@ -378010,39 +378098,39 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 26,
+          "usefulSessions": 28,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
-          "upgrades": 17,
-          "completedContracts": 133,
+          "upgrades": 18,
+          "completedContracts": 126,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
             "paid": 1,
-            "declined": 0
+            "declined": 2
           },
           "wallArrivalDay": 3,
           "wallFellOnDay": 3,
           "wallDaysToBreak": 1,
-          "wallAttempts": 4,
-          "wallAttemptsPerAttemptDay": 4,
+          "wallAttempts": 3,
+          "wallAttemptsPerAttemptDay": 3,
           "wallNearMissLosses": 0,
           "gemsAtWall": 0,
-          "gemsEarned": 80,
+          "gemsEarned": 100,
           "gemsSpent": 60,
-          "wallsBroken": 1,
-          "upgradeLevels": 19,
+          "wallsBroken": 2,
+          "upgradeLevels": 20,
           "drydockBusyDays": 0,
-          "hullRepairCredits": 5810,
-          "exploreJumps": 6,
-          "exploreEvents": 6,
+          "hullRepairCredits": 5775,
+          "exploreJumps": 8,
+          "exploreEvents": 8,
           "exploreFights": 0,
-          "exploreCredits": 464,
-          "exploreCreditShare": 4,
+          "exploreCredits": 897,
+          "exploreCreditShare": 8,
           "fightWinPctDay7": 100,
           "fightWinPctDay30": 100,
-          "wallWinPct": 4,
-          "creditsPerDay": 373,
+          "wallWinPct": 6,
+          "creditsPerDay": 393,
           "crewHires": 30,
           "crewLevelUps": 32,
           "crewSize": 4,
@@ -378057,12 +378145,12 @@
             "fuelAtArrival": 11,
             "fellOnDay": 3,
             "packOffer": null,
-            "attempts": 4,
+            "attempts": 3,
             "attemptDays": 1,
-            "attemptsPerAttemptDay": 4,
+            "attemptsPerAttemptDay": 3,
             "daysOnBoard": 1,
             "daysToBreak": 1,
-            "losses": 2,
+            "losses": 1,
             "nearMissLosses": 0,
             "rallies": {
               "free": 0,
@@ -378075,31 +378163,52 @@
             "pool": 130,
             "arrivalDay": 5,
             "gemsAtArrival": 20,
-            "fuelAtArrival": 5,
-            "fellOnDay": null,
+            "fuelAtArrival": 6,
+            "fellOnDay": 29,
             "packOffer": {
               "day": 7,
               "reason": "stuck"
             },
-            "attempts": 98,
-            "attemptDays": 25,
-            "attemptsPerAttemptDay": 3.92,
-            "daysOnBoard": 26,
-            "daysToBreak": null,
-            "losses": 96,
-            "nearMissLosses": 0,
+            "attempts": 92,
+            "attemptDays": 24,
+            "attemptsPerAttemptDay": 3.83,
+            "daysOnBoard": 25,
+            "daysToBreak": 25,
+            "losses": 88,
+            "nearMissLosses": 2,
             "rallies": {
               "free": 1,
               "paid": 1
             },
-            "bestDayDamage": 98
+            "bestDayDamage": 130
+          },
+          "ember": {
+            "id": "ember",
+            "pool": 180,
+            "arrivalDay": 30,
+            "gemsAtArrival": 40,
+            "fuelAtArrival": 7,
+            "fellOnDay": null,
+            "packOffer": null,
+            "attempts": 0,
+            "attemptDays": 0,
+            "attemptsPerAttemptDay": 0,
+            "daysOnBoard": 1,
+            "daysToBreak": null,
+            "losses": 0,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 0
           }
         },
         "gems": {
-          "earned": 80,
+          "earned": 100,
           "earnedBySource": {
             "daily-login": 60,
-            "wall:contract-claim": 20
+            "wall:contract-claim": 40
           },
           "spent": 60,
           "spentBySink": {
@@ -378107,41 +378216,42 @@
             "fuel_refill": 0,
             "drydock_skip": 0
           },
-          "end": 20,
+          "end": 40,
           "daysWithSpend": 1
         },
         "explore": {
-          "jumps": 6,
-          "days": 3,
-          "events": 6,
+          "jumps": 8,
+          "days": 4,
+          "events": 8,
           "fights": 0,
           "fightWins": 0,
           "eventFights": 0,
           "downed": 0,
-          "beacons": 3,
+          "beacons": 5,
           "sectors": [
             "spur",
-            "veil"
+            "veil",
+            "ember"
           ],
           "earned": {
-            "credits": 464,
+            "credits": 897,
             "fuel": 0,
             "gems": 0,
-            "medals": 15,
-            "reputation": 32
+            "medals": 23,
+            "reputation": 54
           },
           "spent": {
             "credits": 0,
-            "fuel": 10,
+            "fuel": 12,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 464,
+          "netCredits": 897,
           "stops": {
             "no_lane": 1,
-            "max_jumps": 3,
-            "hull_low": 26
+            "max_jumps": 4,
+            "hull_low": 25
           }
         },
         "builds": [
@@ -378167,26 +378277,33 @@
             "endAt": 1791378000000
           },
           {
-            "day": 26,
+            "day": 27,
             "system": "engines",
             "targetLevel": 5,
-            "startedAt": 1792238400000,
-            "endAt": 1792242000000
+            "startedAt": 1792324800000,
+            "endAt": 1792328400000
           },
           {
-            "day": 28,
+            "day": 29,
             "system": "shields",
             "targetLevel": 4,
-            "startedAt": 1792411200000,
-            "endAt": 1792413000000
+            "startedAt": 1792497600000,
+            "endAt": 1792499400000
+          },
+          {
+            "day": 30,
+            "system": "cargo",
+            "targetLevel": 6,
+            "startedAt": 1792584000000,
+            "endAt": 1792591200000
           }
         ],
         "finalWallet": {
-          "credits": 54,
-          "fuel": 2,
-          "gems": 20,
-          "medals": 21,
-          "reputation": 289
+          "credits": 308,
+          "fuel": 7,
+          "gems": 40,
+          "medals": 46,
+          "reputation": 335
         },
         "systemLevels": {
           "engines": 5,
@@ -378216,16 +378333,16 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 24,
+          "usefulSessions": 26,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
-          "upgrades": 20,
-          "completedContracts": 112,
+          "upgrades": 26,
+          "completedContracts": 83,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
             "paid": 0,
-            "declined": 5
+            "declined": 3
           },
           "wallArrivalDay": 3,
           "wallFellOnDay": 3,
@@ -378235,24 +378352,24 @@
           "wallNearMissLosses": 0,
           "gemsAtWall": 0,
           "gemsEarned": 120,
-          "gemsSpent": 110,
+          "gemsSpent": 115,
           "wallsBroken": 3,
-          "upgradeLevels": 29,
+          "upgradeLevels": 34,
           "drydockBusyDays": 0,
-          "hullRepairCredits": 5040,
-          "exploreJumps": 23,
-          "exploreEvents": 15,
-          "exploreFights": 7,
-          "exploreCredits": 2381,
-          "exploreCreditShare": 16,
-          "fightWinPctDay7": 89,
-          "fightWinPctDay30": 81,
-          "wallWinPct": 26,
-          "creditsPerDay": 503,
+          "hullRepairCredits": 2695,
+          "exploreJumps": 40,
+          "exploreEvents": 26,
+          "exploreFights": 13,
+          "exploreCredits": 4442,
+          "exploreCreditShare": 28,
+          "fightWinPctDay7": 100,
+          "fightWinPctDay30": 93,
+          "wallWinPct": 21,
+          "creditsPerDay": 523,
           "crewHires": 30,
-          "crewLevelUps": 40,
+          "crewLevelUps": 41,
           "crewSize": 6,
-          "crewPower": 212
+          "crewPower": 215
         },
         "walls": {
           "spur": {
@@ -378292,347 +378409,23 @@
             "attemptsPerAttemptDay": 4.33,
             "daysOnBoard": 10,
             "daysToBreak": 10,
-            "losses": 35,
-            "nearMissLosses": 2,
-            "rallies": {
-              "free": 0,
-              "paid": 0
-            },
-            "bestDayDamage": 130
-          },
-          "ember": {
-            "id": "ember",
-            "pool": 180,
-            "arrivalDay": 20,
-            "gemsAtArrival": 15,
-            "fuelAtArrival": 7,
-            "fellOnDay": 25,
-            "packOffer": {
-              "day": 22,
-              "reason": "stuck"
-            },
-            "attempts": 24,
-            "attemptDays": 5,
-            "attemptsPerAttemptDay": 4.8,
-            "daysOnBoard": 6,
-            "daysToBreak": 6,
-            "losses": 13,
-            "nearMissLosses": 0,
-            "rallies": {
-              "free": 0,
-              "paid": 0
-            },
-            "bestDayDamage": 180
-          },
-          "hollow": {
-            "id": "hollow",
-            "pool": 220,
-            "arrivalDay": 27,
-            "gemsAtArrival": 5,
-            "fuelAtArrival": 6,
-            "fellOnDay": null,
-            "packOffer": {
-              "day": 29,
-              "reason": "stuck"
-            },
-            "attempts": 15,
-            "attemptDays": 3,
-            "attemptsPerAttemptDay": 5,
-            "daysOnBoard": 4,
-            "daysToBreak": null,
-            "losses": 12,
+            "losses": 36,
             "nearMissLosses": 1,
             "rallies": {
               "free": 0,
               "paid": 0
             },
-            "bestDayDamage": 140
-          }
-        },
-        "gems": {
-          "earned": 120,
-          "earnedBySource": {
-            "daily-login": 60,
-            "wall:contract-claim": 60
-          },
-          "spent": 110,
-          "spentBySink": {
-            "rally": 0,
-            "fuel_refill": 0,
-            "drydock_skip": 110
-          },
-          "end": 10,
-          "daysWithSpend": 10
-        },
-        "explore": {
-          "jumps": 23,
-          "days": 8,
-          "events": 15,
-          "fights": 7,
-          "fightWins": 7,
-          "eventFights": 0,
-          "downed": 0,
-          "beacons": 15,
-          "sectors": [
-            "spur",
-            "veil",
-            "ember",
-            "hollow"
-          ],
-          "earned": {
-            "credits": 2381,
-            "fuel": 0,
-            "gems": 0,
-            "medals": 131,
-            "reputation": 113
-          },
-          "spent": {
-            "credits": 0,
-            "fuel": 31,
-            "gems": 0,
-            "medals": 0,
-            "reputation": 0
-          },
-          "netCredits": 2381,
-          "stops": {
-            "hull_low": 22,
-            "max_jumps": 7,
-            "fuel_reserve": 1
-          }
-        },
-        "builds": [
-          {
-            "day": 4,
-            "system": "cargo",
-            "targetLevel": 4,
-            "startedAt": 1790337600000,
-            "endAt": 1790339400000,
-            "skippedFor": 5
-          },
-          {
-            "day": 9,
-            "system": "engines",
-            "targetLevel": 4,
-            "startedAt": 1790769600000,
-            "endAt": 1790771400000,
-            "skippedFor": 5
-          },
-          {
-            "day": 13,
-            "system": "cargo",
-            "targetLevel": 5,
-            "startedAt": 1791115200000,
-            "endAt": 1791118800000,
-            "skippedFor": 10
-          },
-          {
-            "day": 17,
-            "system": "engines",
-            "targetLevel": 5,
-            "startedAt": 1791460800000,
-            "endAt": 1791464400000,
-            "skippedFor": 10
-          },
-          {
-            "day": 18,
-            "system": "shields",
-            "targetLevel": 4,
-            "startedAt": 1791547200000,
-            "endAt": 1791549000000,
-            "skippedFor": 5
-          },
-          {
-            "day": 20,
-            "system": "cargo",
-            "targetLevel": 6,
-            "startedAt": 1791720000000,
-            "endAt": 1791727200000,
-            "skippedFor": 20
-          },
-          {
-            "day": 20,
-            "system": "sensors",
-            "targetLevel": 4,
-            "startedAt": 1791720000000,
-            "endAt": 1791721800000,
-            "skippedFor": 5
-          },
-          {
-            "day": 24,
-            "system": "medbay",
-            "targetLevel": 4,
-            "startedAt": 1792065600000,
-            "endAt": 1792067400000,
-            "skippedFor": 5
-          },
-          {
-            "day": 25,
-            "system": "engines",
-            "targetLevel": 6,
-            "startedAt": 1792152000000,
-            "endAt": 1792159200000,
-            "skippedFor": 20
-          },
-          {
-            "day": 26,
-            "system": "weapons",
-            "targetLevel": 4,
-            "startedAt": 1792238400000,
-            "endAt": 1792240200000,
-            "skippedFor": 5
-          },
-          {
-            "day": 26,
-            "system": "shields",
-            "targetLevel": 5,
-            "startedAt": 1792238400000,
-            "endAt": 1792242000000,
-            "skippedFor": 10
-          },
-          {
-            "day": 27,
-            "system": "cargo",
-            "targetLevel": 7,
-            "startedAt": 1792324800000,
-            "endAt": 1792339200000
-          },
-          {
-            "day": 28,
-            "system": "sensors",
-            "targetLevel": 5,
-            "startedAt": 1792411200000,
-            "endAt": 1792414800000,
-            "skippedFor": 10
-          }
-        ],
-        "finalWallet": {
-          "credits": 315,
-          "fuel": 1,
-          "gems": 10,
-          "medals": 26,
-          "reputation": 536
-        },
-        "systemLevels": {
-          "engines": 6,
-          "shields": 5,
-          "cargo": 7,
-          "weapons": 4,
-          "quarters": 2,
-          "sensors": 5,
-          "medbay": 4
-        },
-        "reconciliation": {
-          "ok": true,
-          "differences": {}
-        }
-      },
-      {
-        "seed": 17031,
-        "strategy": "ambitious",
-        "captain": "captain_gunner",
-        "gemPolicy": "all",
-        "wallFuelReserve": 0,
-        "sessionOrder": "away-first",
-        "policy": {
-          "ads": false,
-          "purchases": false,
-          "skips": true,
-          "forceComplete": false
-        },
-        "metrics": {
-          "usefulSessions": 28,
-          "noUsefulActionDays": 0,
-          "fuelStarvedDays": 0,
-          "upgrades": 24,
-          "completedContracts": 110,
-          "completedExpeditions": 29,
-          "rallies": {
-            "free": 1,
-            "paid": 0,
-            "declined": 5
-          },
-          "wallArrivalDay": 3,
-          "wallFellOnDay": 3,
-          "wallDaysToBreak": 1,
-          "wallAttempts": 3,
-          "wallAttemptsPerAttemptDay": 3,
-          "wallNearMissLosses": 0,
-          "gemsAtWall": 0,
-          "gemsEarned": 120,
-          "gemsSpent": 115,
-          "wallsBroken": 3,
-          "upgradeLevels": 32,
-          "drydockBusyDays": 2,
-          "hullRepairCredits": 4480,
-          "exploreJumps": 32,
-          "exploreEvents": 21,
-          "exploreFights": 11,
-          "exploreCredits": 3703,
-          "exploreCreditShare": 23,
-          "fightWinPctDay7": 100,
-          "fightWinPctDay30": 100,
-          "wallWinPct": 13,
-          "creditsPerDay": 534,
-          "crewHires": 30,
-          "crewLevelUps": 43,
-          "crewSize": 6,
-          "crewPower": 222
-        },
-        "walls": {
-          "spur": {
-            "id": "spur",
-            "pool": 100,
-            "arrivalDay": 3,
-            "gemsAtArrival": 0,
-            "fuelAtArrival": 11,
-            "fellOnDay": 3,
-            "packOffer": null,
-            "attempts": 3,
-            "attemptDays": 1,
-            "attemptsPerAttemptDay": 3,
-            "daysOnBoard": 1,
-            "daysToBreak": 1,
-            "losses": 0,
-            "nearMissLosses": 0,
-            "rallies": {
-              "free": 1,
-              "paid": 0
-            },
-            "bestDayDamage": 100
-          },
-          "veil": {
-            "id": "veil",
-            "pool": 130,
-            "arrivalDay": 4,
-            "gemsAtArrival": 20,
-            "fuelAtArrival": 3,
-            "fellOnDay": 19,
-            "packOffer": {
-              "day": 6,
-              "reason": "stuck"
-            },
-            "attempts": 66,
-            "attemptDays": 15,
-            "attemptsPerAttemptDay": 4.4,
-            "daysOnBoard": 16,
-            "daysToBreak": 16,
-            "losses": 64,
-            "nearMissLosses": 4,
-            "rallies": {
-              "free": 0,
-              "paid": 0
-            },
             "bestDayDamage": 130
           },
           "ember": {
             "id": "ember",
             "pool": 180,
-            "arrivalDay": 24,
-            "gemsAtArrival": 20,
-            "fuelAtArrival": 7,
-            "fellOnDay": 26,
+            "arrivalDay": 23,
+            "gemsAtArrival": 0,
+            "fuelAtArrival": 8,
+            "fellOnDay": 25,
             "packOffer": {
-              "day": 25,
+              "day": 24,
               "reason": "near_miss"
             },
             "attempts": 10,
@@ -378662,17 +378455,17 @@
             "drydock_skip": 115
           },
           "end": 5,
-          "daysWithSpend": 11
+          "daysWithSpend": 10
         },
         "explore": {
-          "jumps": 32,
-          "days": 12,
-          "events": 21,
-          "fights": 11,
-          "fightWins": 11,
-          "eventFights": 2,
+          "jumps": 40,
+          "days": 15,
+          "events": 26,
+          "fights": 13,
+          "fightWins": 12,
+          "eventFights": 0,
           "downed": 0,
-          "beacons": 17,
+          "beacons": 16,
           "sectors": [
             "spur",
             "veil",
@@ -378680,23 +378473,23 @@
             "hollow"
           ],
           "earned": {
-            "credits": 3703,
+            "credits": 4442,
             "fuel": 0,
             "gems": 0,
-            "medals": 199,
-            "reputation": 166
+            "medals": 263,
+            "reputation": 189
           },
           "spent": {
             "credits": 0,
-            "fuel": 42,
+            "fuel": 53,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 3703,
+          "netCredits": 4442,
           "stops": {
-            "max_jumps": 10,
-            "hull_low": 19,
+            "hull_low": 17,
+            "max_jumps": 12,
             "fuel_reserve": 1
           }
         },
@@ -378718,32 +378511,56 @@
             "skippedFor": 5
           },
           {
-            "day": 11,
+            "day": 13,
             "system": "cargo",
             "targetLevel": 5,
-            "startedAt": 1790942400000,
-            "endAt": 1790946000000,
+            "startedAt": 1791115200000,
+            "endAt": 1791118800000,
             "skippedFor": 10
           },
           {
-            "day": 17,
+            "day": 15,
             "system": "engines",
             "targetLevel": 5,
-            "startedAt": 1791460800000,
-            "endAt": 1791464400000,
+            "startedAt": 1791288000000,
+            "endAt": 1791291600000,
             "skippedFor": 10
           },
           {
-            "day": 20,
+            "day": 18,
             "system": "shields",
             "targetLevel": 4,
-            "startedAt": 1791720000000,
-            "endAt": 1791721800000,
+            "startedAt": 1791547200000,
+            "endAt": 1791549000000,
+            "skippedFor": 5
+          },
+          {
+            "day": 18,
+            "system": "cargo",
+            "targetLevel": 6,
+            "startedAt": 1791547200000,
+            "endAt": 1791554400000,
+            "skippedFor": 20
+          },
+          {
+            "day": 19,
+            "system": "sensors",
+            "targetLevel": 4,
+            "startedAt": 1791633600000,
+            "endAt": 1791635400000,
             "skippedFor": 5
           },
           {
             "day": 21,
-            "system": "cargo",
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1791806400000,
+            "endAt": 1791808200000,
+            "skippedFor": 5
+          },
+          {
+            "day": 21,
+            "system": "engines",
             "targetLevel": 6,
             "startedAt": 1791806400000,
             "endAt": 1791813600000,
@@ -378751,60 +378568,51 @@
           },
           {
             "day": 22,
-            "system": "sensors",
+            "system": "weapons",
             "targetLevel": 4,
             "startedAt": 1791892800000,
-            "endAt": 1791894600000,
-            "skippedFor": 5
+            "endAt": 1791894600000
           },
           {
             "day": 23,
-            "system": "medbay",
-            "targetLevel": 4,
+            "system": "shields",
+            "targetLevel": 5,
             "startedAt": 1791979200000,
-            "endAt": 1791981000000,
-            "skippedFor": 5
+            "endAt": 1791982800000
           },
           {
             "day": 24,
-            "system": "engines",
-            "targetLevel": 6,
+            "system": "cargo",
+            "targetLevel": 7,
             "startedAt": 1792065600000,
-            "endAt": 1792072800000,
-            "skippedFor": 20
+            "endAt": 1792080000000
           },
           {
             "day": 25,
-            "system": "weapons",
-            "targetLevel": 4,
-            "startedAt": 1792152000000,
-            "endAt": 1792153800000
-          },
-          {
-            "day": 26,
-            "system": "shields",
+            "system": "sensors",
             "targetLevel": 5,
-            "startedAt": 1792238400000,
-            "endAt": 1792242000000
+            "startedAt": 1792152000000,
+            "endAt": 1792155600000,
+            "skippedFor": 10
           },
           {
             "day": 27,
-            "system": "cargo",
+            "system": "medbay",
+            "targetLevel": 5,
+            "startedAt": 1792324800000,
+            "endAt": 1792328400000,
+            "skippedFor": 10
+          },
+          {
+            "day": 27,
+            "system": "engines",
             "targetLevel": 7,
             "startedAt": 1792324800000,
             "endAt": 1792339200000
           },
           {
             "day": 28,
-            "system": "sensors",
-            "targetLevel": 5,
-            "startedAt": 1792411200000,
-            "endAt": 1792414800000,
-            "skippedFor": 10
-          },
-          {
-            "day": 28,
-            "system": "medbay",
+            "system": "weapons",
             "targetLevel": 5,
             "startedAt": 1792411200000,
             "endAt": 1792414800000,
@@ -378812,34 +378620,407 @@
           },
           {
             "day": 29,
-            "system": "engines",
-            "targetLevel": 7,
+            "system": "shields",
+            "targetLevel": 6,
             "startedAt": 1792497600000,
-            "endAt": 1792512000000
+            "endAt": 1792504800000
           },
           {
             "day": 30,
-            "system": "weapons",
-            "targetLevel": 5,
+            "system": "cargo",
+            "targetLevel": 8,
             "startedAt": 1792584000000,
-            "endAt": 1792587600000,
-            "skippedFor": 10
+            "endAt": 1792612800000
           }
         ],
         "finalWallet": {
-          "credits": 181,
+          "credits": 499,
           "fuel": 7,
           "gems": 5,
-          "medals": 30,
-          "reputation": 569
+          "medals": 12,
+          "reputation": 583
         },
         "systemLevels": {
           "engines": 7,
-          "shields": 5,
+          "shields": 6,
           "cargo": 7,
           "weapons": 5,
           "quarters": 2,
           "sensors": 5,
+          "medbay": 5
+        },
+        "reconciliation": {
+          "ok": true,
+          "differences": {}
+        }
+      },
+      {
+        "seed": 17031,
+        "strategy": "ambitious",
+        "captain": "captain_gunner",
+        "gemPolicy": "all",
+        "wallFuelReserve": 0,
+        "sessionOrder": "away-first",
+        "policy": {
+          "ads": false,
+          "purchases": false,
+          "skips": true,
+          "forceComplete": false
+        },
+        "metrics": {
+          "usefulSessions": 29,
+          "noUsefulActionDays": 0,
+          "fuelStarvedDays": 0,
+          "upgrades": 29,
+          "completedContracts": 90,
+          "completedExpeditions": 29,
+          "rallies": {
+            "free": 1,
+            "paid": 0,
+            "declined": 1
+          },
+          "wallArrivalDay": 3,
+          "wallFellOnDay": 3,
+          "wallDaysToBreak": 1,
+          "wallAttempts": 3,
+          "wallAttemptsPerAttemptDay": 3,
+          "wallNearMissLosses": 0,
+          "gemsAtWall": 0,
+          "gemsEarned": 120,
+          "gemsSpent": 120,
+          "wallsBroken": 3,
+          "upgradeLevels": 36,
+          "drydockBusyDays": 5,
+          "hullRepairCredits": 3150,
+          "exploreJumps": 43,
+          "exploreEvents": 26,
+          "exploreFights": 13,
+          "exploreCredits": 4698,
+          "exploreCreditShare": 25,
+          "fightWinPctDay7": 100,
+          "fightWinPctDay30": 100,
+          "wallWinPct": 39,
+          "creditsPerDay": 616,
+          "crewHires": 30,
+          "crewLevelUps": 47,
+          "crewSize": 6,
+          "crewPower": 229
+        },
+        "walls": {
+          "spur": {
+            "id": "spur",
+            "pool": 100,
+            "arrivalDay": 3,
+            "gemsAtArrival": 0,
+            "fuelAtArrival": 11,
+            "fellOnDay": 3,
+            "packOffer": null,
+            "attempts": 3,
+            "attemptDays": 1,
+            "attemptsPerAttemptDay": 3,
+            "daysOnBoard": 1,
+            "daysToBreak": 1,
+            "losses": 1,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 100
+          },
+          "veil": {
+            "id": "veil",
+            "pool": 130,
+            "arrivalDay": 4,
+            "gemsAtArrival": 20,
+            "fuelAtArrival": 3,
+            "fellOnDay": 11,
+            "packOffer": {
+              "day": 6,
+              "reason": "stuck"
+            },
+            "attempts": 31,
+            "attemptDays": 7,
+            "attemptsPerAttemptDay": 4.43,
+            "daysOnBoard": 8,
+            "daysToBreak": 8,
+            "losses": 29,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 1,
+              "paid": 0
+            },
+            "bestDayDamage": 130
+          },
+          "ember": {
+            "id": "ember",
+            "pool": 180,
+            "arrivalDay": 19,
+            "gemsAtArrival": 5,
+            "fuelAtArrival": 6,
+            "fellOnDay": 21,
+            "packOffer": {
+              "day": 20,
+              "reason": "near_miss"
+            },
+            "attempts": 10,
+            "attemptDays": 2,
+            "attemptsPerAttemptDay": 5,
+            "daysOnBoard": 3,
+            "daysToBreak": 3,
+            "losses": 5,
+            "nearMissLosses": 1,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 180
+          },
+          "hollow": {
+            "id": "hollow",
+            "pool": 220,
+            "arrivalDay": 27,
+            "gemsAtArrival": 5,
+            "fuelAtArrival": 6,
+            "fellOnDay": null,
+            "packOffer": {
+              "day": 29,
+              "reason": "stuck"
+            },
+            "attempts": 15,
+            "attemptDays": 3,
+            "attemptsPerAttemptDay": 5,
+            "daysOnBoard": 4,
+            "daysToBreak": null,
+            "losses": 1,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 210
+          }
+        },
+        "gems": {
+          "earned": 120,
+          "earnedBySource": {
+            "daily-login": 60,
+            "wall:contract-claim": 60
+          },
+          "spent": 120,
+          "spentBySink": {
+            "rally": 0,
+            "fuel_refill": 0,
+            "drydock_skip": 120
+          },
+          "end": 0,
+          "daysWithSpend": 12
+        },
+        "explore": {
+          "jumps": 43,
+          "days": 16,
+          "events": 26,
+          "fights": 13,
+          "fightWins": 13,
+          "eventFights": 0,
+          "downed": 0,
+          "beacons": 18,
+          "sectors": [
+            "spur",
+            "veil",
+            "ember",
+            "hollow"
+          ],
+          "earned": {
+            "credits": 4698,
+            "fuel": 0,
+            "gems": 0,
+            "medals": 293,
+            "reputation": 203
+          },
+          "spent": {
+            "credits": 0,
+            "fuel": 56,
+            "gems": 0,
+            "medals": 0,
+            "reputation": 0
+          },
+          "netCredits": 4698,
+          "stops": {
+            "max_jumps": 13,
+            "hull_low": 16,
+            "fuel_reserve": 1
+          }
+        },
+        "builds": [
+          {
+            "day": 5,
+            "system": "cargo",
+            "targetLevel": 4,
+            "startedAt": 1790424000000,
+            "endAt": 1790425800000,
+            "skippedFor": 5
+          },
+          {
+            "day": 8,
+            "system": "engines",
+            "targetLevel": 4,
+            "startedAt": 1790683200000,
+            "endAt": 1790685000000,
+            "skippedFor": 5
+          },
+          {
+            "day": 12,
+            "system": "cargo",
+            "targetLevel": 5,
+            "startedAt": 1791028800000,
+            "endAt": 1791032400000,
+            "skippedFor": 10
+          },
+          {
+            "day": 14,
+            "system": "engines",
+            "targetLevel": 5,
+            "startedAt": 1791201600000,
+            "endAt": 1791205200000,
+            "skippedFor": 10
+          },
+          {
+            "day": 16,
+            "system": "shields",
+            "targetLevel": 4,
+            "startedAt": 1791374400000,
+            "endAt": 1791376200000,
+            "skippedFor": 5
+          },
+          {
+            "day": 17,
+            "system": "cargo",
+            "targetLevel": 6,
+            "startedAt": 1791460800000,
+            "endAt": 1791468000000,
+            "skippedFor": 20
+          },
+          {
+            "day": 17,
+            "system": "sensors",
+            "targetLevel": 4,
+            "startedAt": 1791460800000,
+            "endAt": 1791462600000,
+            "skippedFor": 5
+          },
+          {
+            "day": 19,
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1791633600000,
+            "endAt": 1791635400000,
+            "skippedFor": 5
+          },
+          {
+            "day": 19,
+            "system": "engines",
+            "targetLevel": 6,
+            "startedAt": 1791633600000,
+            "endAt": 1791640800000
+          },
+          {
+            "day": 20,
+            "system": "weapons",
+            "targetLevel": 4,
+            "startedAt": 1791720000000,
+            "endAt": 1791721800000,
+            "skippedFor": 5
+          },
+          {
+            "day": 21,
+            "system": "shields",
+            "targetLevel": 5,
+            "startedAt": 1791806400000,
+            "endAt": 1791810000000,
+            "skippedFor": 10
+          },
+          {
+            "day": 22,
+            "system": "cargo",
+            "targetLevel": 7,
+            "startedAt": 1791892800000,
+            "endAt": 1791907200000
+          },
+          {
+            "day": 23,
+            "system": "sensors",
+            "targetLevel": 5,
+            "startedAt": 1791979200000,
+            "endAt": 1791982800000,
+            "skippedFor": 10
+          },
+          {
+            "day": 25,
+            "system": "medbay",
+            "targetLevel": 5,
+            "startedAt": 1792152000000,
+            "endAt": 1792155600000,
+            "skippedFor": 10
+          },
+          {
+            "day": 26,
+            "system": "engines",
+            "targetLevel": 7,
+            "startedAt": 1792238400000,
+            "endAt": 1792252800000
+          },
+          {
+            "day": 27,
+            "system": "weapons",
+            "targetLevel": 5,
+            "startedAt": 1792324800000,
+            "endAt": 1792328400000
+          },
+          {
+            "day": 28,
+            "system": "shields",
+            "targetLevel": 6,
+            "startedAt": 1792411200000,
+            "endAt": 1792418400000,
+            "skippedFor": 20
+          },
+          {
+            "day": 28,
+            "system": "cargo",
+            "targetLevel": 8,
+            "startedAt": 1792411200000,
+            "endAt": 1792440000000
+          },
+          {
+            "day": 29,
+            "system": "sensors",
+            "targetLevel": 6,
+            "startedAt": 1792497600000,
+            "endAt": 1792504800000
+          },
+          {
+            "day": 30,
+            "system": "medbay",
+            "targetLevel": 6,
+            "startedAt": 1792584000000,
+            "endAt": 1792591200000
+          }
+        ],
+        "finalWallet": {
+          "credits": 1586,
+          "fuel": 1,
+          "gems": 0,
+          "medals": 38,
+          "reputation": 733
+        },
+        "systemLevels": {
+          "engines": 7,
+          "shields": 6,
+          "cargo": 8,
+          "weapons": 5,
+          "quarters": 2,
+          "sensors": 6,
           "medbay": 5
         },
         "reconciliation": {
@@ -378861,43 +379042,43 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 25,
+          "usefulSessions": 30,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
-          "upgrades": 16,
-          "completedContracts": 128,
+          "upgrades": 27,
+          "completedContracts": 85,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
             "paid": 0,
-            "declined": 3
+            "declined": 2
           },
           "wallArrivalDay": 3,
           "wallFellOnDay": 3,
           "wallDaysToBreak": 1,
-          "wallAttempts": 4,
-          "wallAttemptsPerAttemptDay": 4,
-          "wallNearMissLosses": 1,
+          "wallAttempts": 3,
+          "wallAttemptsPerAttemptDay": 3,
+          "wallNearMissLosses": 0,
           "gemsAtWall": 0,
-          "gemsEarned": 100,
-          "gemsSpent": 90,
-          "wallsBroken": 2,
-          "upgradeLevels": 22,
+          "gemsEarned": 120,
+          "gemsSpent": 110,
+          "wallsBroken": 3,
+          "upgradeLevels": 34,
           "drydockBusyDays": 0,
-          "hullRepairCredits": 6020,
-          "exploreJumps": 12,
-          "exploreEvents": 9,
-          "exploreFights": 3,
-          "exploreCredits": 1003,
-          "exploreCreditShare": 8,
-          "fightWinPctDay7": 78,
-          "fightWinPctDay30": 82,
-          "wallWinPct": 7,
-          "creditsPerDay": 419,
+          "hullRepairCredits": 3395,
+          "exploreJumps": 44,
+          "exploreEvents": 29,
+          "exploreFights": 10,
+          "exploreCredits": 3965,
+          "exploreCreditShare": 25,
+          "fightWinPctDay7": 100,
+          "fightWinPctDay30": 95,
+          "wallWinPct": 28,
+          "creditsPerDay": 537,
           "crewHires": 30,
-          "crewLevelUps": 33,
-          "crewSize": 4,
-          "crewPower": 156
+          "crewLevelUps": 45,
+          "crewSize": 6,
+          "crewPower": 233
         },
         "walls": {
           "spur": {
@@ -378907,19 +379088,16 @@
             "gemsAtArrival": 0,
             "fuelAtArrival": 11,
             "fellOnDay": 3,
-            "packOffer": {
-              "day": 3,
-              "reason": "near_miss"
-            },
-            "attempts": 4,
+            "packOffer": null,
+            "attempts": 3,
             "attemptDays": 1,
-            "attemptsPerAttemptDay": 4,
+            "attemptsPerAttemptDay": 3,
             "daysOnBoard": 1,
             "daysToBreak": 1,
-            "losses": 2,
-            "nearMissLosses": 1,
+            "losses": 1,
+            "nearMissLosses": 0,
             "rallies": {
-              "free": 1,
+              "free": 0,
               "paid": 0
             },
             "bestDayDamage": 100
@@ -378927,20 +379105,20 @@
           "veil": {
             "id": "veil",
             "pool": 130,
-            "arrivalDay": 6,
-            "gemsAtArrival": 20,
+            "arrivalDay": 5,
+            "gemsAtArrival": 15,
             "fuelAtArrival": 4,
-            "fellOnDay": 15,
+            "fellOnDay": 11,
             "packOffer": {
-              "day": 8,
+              "day": 7,
               "reason": "stuck"
             },
-            "attempts": 40,
-            "attemptDays": 9,
-            "attemptsPerAttemptDay": 4.44,
-            "daysOnBoard": 10,
-            "daysToBreak": 10,
-            "losses": 38,
+            "attempts": 20,
+            "attemptDays": 6,
+            "attemptsPerAttemptDay": 3.33,
+            "daysOnBoard": 7,
+            "daysToBreak": 7,
+            "losses": 17,
             "nearMissLosses": 0,
             "rallies": {
               "free": 0,
@@ -378951,149 +379129,234 @@
           "ember": {
             "id": "ember",
             "pool": 180,
-            "arrivalDay": 18,
-            "gemsAtArrival": 50,
-            "fuelAtArrival": 7,
-            "fellOnDay": null,
+            "arrivalDay": 16,
+            "gemsAtArrival": 10,
+            "fuelAtArrival": 6,
+            "fellOnDay": 23,
             "packOffer": {
-              "day": 20,
+              "day": 18,
               "reason": "stuck"
             },
-            "attempts": 53,
-            "attemptDays": 12,
-            "attemptsPerAttemptDay": 4.42,
-            "daysOnBoard": 13,
-            "daysToBreak": null,
-            "losses": 50,
-            "nearMissLosses": 1,
+            "attempts": 31,
+            "attemptDays": 7,
+            "attemptsPerAttemptDay": 4.43,
+            "daysOnBoard": 8,
+            "daysToBreak": 8,
+            "losses": 21,
+            "nearMissLosses": 2,
             "rallies": {
-              "free": 0,
+              "free": 1,
               "paid": 0
             },
-            "bestDayDamage": 162
+            "bestDayDamage": 180
           }
         },
         "gems": {
-          "earned": 100,
+          "earned": 120,
           "earnedBySource": {
             "daily-login": 60,
-            "wall:contract-claim": 40
+            "wall:contract-claim": 60
           },
-          "spent": 90,
+          "spent": 110,
           "spentBySink": {
             "rally": 0,
-            "fuel_refill": 50,
-            "drydock_skip": 40
+            "fuel_refill": 0,
+            "drydock_skip": 110
           },
           "end": 10,
-          "daysWithSpend": 7
+          "daysWithSpend": 13
         },
         "explore": {
-          "jumps": 12,
-          "days": 5,
-          "events": 9,
-          "fights": 3,
-          "fightWins": 2,
-          "eventFights": 0,
+          "jumps": 44,
+          "days": 16,
+          "events": 29,
+          "fights": 10,
+          "fightWins": 9,
+          "eventFights": 1,
           "downed": 0,
-          "beacons": 8,
+          "beacons": 14,
           "sectors": [
             "spur",
             "veil",
-            "ember"
+            "ember",
+            "hollow"
           ],
           "earned": {
-            "credits": 1003,
+            "credits": 3965,
             "fuel": 0,
             "gems": 0,
-            "medals": 26,
-            "reputation": 56
+            "medals": 283,
+            "reputation": 143
           },
           "spent": {
             "credits": 0,
-            "fuel": 16,
+            "fuel": 58,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 1003,
+          "netCredits": 3965,
           "stops": {
-            "hull_low": 27,
-            "max_jumps": 3
+            "hull_low": 16,
+            "max_jumps": 14
           }
         },
         "builds": [
           {
-            "day": 6,
+            "day": 5,
             "system": "cargo",
             "targetLevel": 4,
-            "startedAt": 1790510400000,
-            "endAt": 1790512200000,
+            "startedAt": 1790424000000,
+            "endAt": 1790425800000,
+            "skippedFor": 5
+          },
+          {
+            "day": 7,
+            "system": "engines",
+            "targetLevel": 4,
+            "startedAt": 1790596800000,
+            "endAt": 1790598600000,
             "skippedFor": 5
           },
           {
             "day": 10,
-            "system": "engines",
-            "targetLevel": 4,
+            "system": "cargo",
+            "targetLevel": 5,
             "startedAt": 1790856000000,
-            "endAt": 1790857800000,
+            "endAt": 1790859600000,
+            "skippedFor": 10
+          },
+          {
+            "day": 12,
+            "system": "engines",
+            "targetLevel": 5,
+            "startedAt": 1791028800000,
+            "endAt": 1791032400000,
+            "skippedFor": 10
+          },
+          {
+            "day": 14,
+            "system": "shields",
+            "targetLevel": 4,
+            "startedAt": 1791201600000,
+            "endAt": 1791203400000,
             "skippedFor": 5
           },
           {
             "day": 15,
             "system": "cargo",
-            "targetLevel": 5,
+            "targetLevel": 6,
             "startedAt": 1791288000000,
-            "endAt": 1791291600000,
-            "skippedFor": 10
+            "endAt": 1791295200000,
+            "skippedFor": 20
           },
           {
-            "day": 18,
+            "day": 16,
+            "system": "sensors",
+            "targetLevel": 4,
+            "startedAt": 1791374400000,
+            "endAt": 1791376200000,
+            "skippedFor": 5
+          },
+          {
+            "day": 17,
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1791460800000,
+            "endAt": 1791462600000,
+            "skippedFor": 5
+          },
+          {
+            "day": 19,
             "system": "engines",
-            "targetLevel": 5,
-            "startedAt": 1791547200000,
-            "endAt": 1791550800000,
-            "skippedFor": 10
+            "targetLevel": 6,
+            "startedAt": 1791633600000,
+            "endAt": 1791640800000
           },
           {
             "day": 21,
-            "system": "shields",
+            "system": "weapons",
             "targetLevel": 4,
             "startedAt": 1791806400000,
             "endAt": 1791808200000,
             "skippedFor": 5
           },
           {
-            "day": 26,
+            "day": 23,
+            "system": "shields",
+            "targetLevel": 5,
+            "startedAt": 1791979200000,
+            "endAt": 1791982800000,
+            "skippedFor": 10
+          },
+          {
+            "day": 24,
             "system": "cargo",
-            "targetLevel": 6,
-            "startedAt": 1792238400000,
-            "endAt": 1792245600000
+            "targetLevel": 7,
+            "startedAt": 1792065600000,
+            "endAt": 1792080000000
+          },
+          {
+            "day": 25,
+            "system": "sensors",
+            "targetLevel": 5,
+            "startedAt": 1792152000000,
+            "endAt": 1792155600000,
+            "skippedFor": 10
+          },
+          {
+            "day": 27,
+            "system": "medbay",
+            "targetLevel": 5,
+            "startedAt": 1792324800000,
+            "endAt": 1792328400000,
+            "skippedFor": 10
+          },
+          {
+            "day": 27,
+            "system": "engines",
+            "targetLevel": 7,
+            "startedAt": 1792324800000,
+            "endAt": 1792339200000
           },
           {
             "day": 28,
-            "system": "sensors",
-            "targetLevel": 4,
+            "system": "weapons",
+            "targetLevel": 5,
             "startedAt": 1792411200000,
-            "endAt": 1792413000000,
-            "skippedFor": 5
+            "endAt": 1792414800000,
+            "skippedFor": 10
+          },
+          {
+            "day": 29,
+            "system": "shields",
+            "targetLevel": 6,
+            "startedAt": 1792497600000,
+            "endAt": 1792504800000
+          },
+          {
+            "day": 30,
+            "system": "cargo",
+            "targetLevel": 8,
+            "startedAt": 1792584000000,
+            "endAt": 1792612800000
           }
         ],
         "finalWallet": {
-          "credits": 31,
-          "fuel": 6,
+          "credits": 192,
+          "fuel": 7,
           "gems": 10,
-          "medals": 23,
-          "reputation": 411
+          "medals": 59,
+          "reputation": 584
         },
         "systemLevels": {
-          "engines": 5,
-          "shields": 4,
-          "cargo": 6,
-          "weapons": 3,
-          "quarters": 1,
-          "sensors": 4,
-          "medbay": 3
+          "engines": 7,
+          "shields": 6,
+          "cargo": 7,
+          "weapons": 5,
+          "quarters": 2,
+          "sensors": 5,
+          "medbay": 5
         },
         "reconciliation": {
           "ok": true,
@@ -379445,16 +379708,16 @@
           "forceComplete": false
         },
         "metrics": {
-          "usefulSessions": 23,
+          "usefulSessions": 28,
           "noUsefulActionDays": 0,
           "fuelStarvedDays": 0,
-          "upgrades": 17,
-          "completedContracts": 129,
+          "upgrades": 26,
+          "completedContracts": 94,
           "completedExpeditions": 29,
           "rallies": {
             "free": 1,
             "paid": 0,
-            "declined": 3
+            "declined": 4
           },
           "wallArrivalDay": 3,
           "wallFellOnDay": 3,
@@ -379463,25 +379726,25 @@
           "wallAttemptsPerAttemptDay": 4,
           "wallNearMissLosses": 0,
           "gemsAtWall": 0,
-          "gemsEarned": 100,
-          "gemsSpent": 60,
-          "wallsBroken": 2,
-          "upgradeLevels": 21,
-          "drydockBusyDays": 0,
-          "hullRepairCredits": 7175,
-          "exploreJumps": 15,
-          "exploreEvents": 9,
-          "exploreFights": 5,
-          "exploreCredits": 1120,
-          "exploreCreditShare": 8,
-          "fightWinPctDay7": 75,
-          "fightWinPctDay30": 91,
-          "wallWinPct": 11,
-          "creditsPerDay": 445,
+          "gemsEarned": 120,
+          "gemsSpent": 115,
+          "wallsBroken": 3,
+          "upgradeLevels": 35,
+          "drydockBusyDays": 8,
+          "hullRepairCredits": 3815,
+          "exploreJumps": 45,
+          "exploreEvents": 28,
+          "exploreFights": 12,
+          "exploreCredits": 4587,
+          "exploreCreditShare": 26,
+          "fightWinPctDay7": 88,
+          "fightWinPctDay30": 95,
+          "wallWinPct": 32,
+          "creditsPerDay": 594,
           "crewHires": 30,
-          "crewLevelUps": 33,
-          "crewSize": 4,
-          "crewPower": 152
+          "crewLevelUps": 44,
+          "crewSize": 6,
+          "crewPower": 226
         },
         "walls": {
           "spur": {
@@ -379497,7 +379760,7 @@
             "attemptsPerAttemptDay": 4,
             "daysOnBoard": 1,
             "daysToBreak": 1,
-            "losses": 2,
+            "losses": 1,
             "nearMissLosses": 0,
             "rallies": {
               "free": 1,
@@ -379508,21 +379771,21 @@
           "veil": {
             "id": "veil",
             "pool": 130,
-            "arrivalDay": 7,
-            "gemsAtArrival": 30,
-            "fuelAtArrival": 4,
-            "fellOnDay": 9,
+            "arrivalDay": 4,
+            "gemsAtArrival": 20,
+            "fuelAtArrival": 3,
+            "fellOnDay": 11,
             "packOffer": {
-              "day": 9,
+              "day": 6,
               "reason": "stuck"
             },
-            "attempts": 8,
-            "attemptDays": 2,
+            "attempts": 28,
+            "attemptDays": 7,
             "attemptsPerAttemptDay": 4,
-            "daysOnBoard": 3,
-            "daysToBreak": 3,
-            "losses": 6,
-            "nearMissLosses": 0,
+            "daysOnBoard": 8,
+            "daysToBreak": 8,
+            "losses": 25,
+            "nearMissLosses": 3,
             "rallies": {
               "free": 0,
               "paid": 0
@@ -379532,86 +379795,110 @@
           "ember": {
             "id": "ember",
             "pool": 180,
-            "arrivalDay": 11,
+            "arrivalDay": 13,
             "gemsAtArrival": 35,
             "fuelAtArrival": 7,
-            "fellOnDay": null,
+            "fellOnDay": 16,
             "packOffer": {
-              "day": 13,
+              "day": 15,
               "reason": "stuck"
             },
-            "attempts": 87,
-            "attemptDays": 19,
-            "attemptsPerAttemptDay": 4.58,
-            "daysOnBoard": 20,
-            "daysToBreak": null,
-            "losses": 80,
-            "nearMissLosses": 3,
+            "attempts": 16,
+            "attemptDays": 3,
+            "attemptsPerAttemptDay": 5.33,
+            "daysOnBoard": 4,
+            "daysToBreak": 4,
+            "losses": 12,
+            "nearMissLosses": 0,
             "rallies": {
               "free": 0,
               "paid": 0
             },
-            "bestDayDamage": 171
+            "bestDayDamage": 180
+          },
+          "hollow": {
+            "id": "hollow",
+            "pool": 220,
+            "arrivalDay": 27,
+            "gemsAtArrival": 0,
+            "fuelAtArrival": 6,
+            "fellOnDay": null,
+            "packOffer": {
+              "day": 29,
+              "reason": "stuck"
+            },
+            "attempts": 15,
+            "attemptDays": 3,
+            "attemptsPerAttemptDay": 5,
+            "daysOnBoard": 4,
+            "daysToBreak": null,
+            "losses": 5,
+            "nearMissLosses": 0,
+            "rallies": {
+              "free": 0,
+              "paid": 0
+            },
+            "bestDayDamage": 210
           }
         },
         "gems": {
-          "earned": 100,
+          "earned": 120,
           "earnedBySource": {
             "daily-login": 60,
-            "wall:contract-claim": 40
+            "wall:contract-claim": 60
           },
-          "spent": 60,
+          "spent": 115,
           "spentBySink": {
             "rally": 0,
-            "fuel_refill": 0,
-            "drydock_skip": 60
+            "fuel_refill": 50,
+            "drydock_skip": 65
           },
-          "end": 40,
-          "daysWithSpend": 7
+          "end": 5,
+          "daysWithSpend": 9
         },
         "explore": {
-          "jumps": 15,
-          "days": 6,
-          "events": 9,
-          "fights": 5,
-          "fightWins": 4,
-          "eventFights": 0,
-          "downed": 0,
-          "beacons": 11,
+          "jumps": 45,
+          "days": 16,
+          "events": 28,
+          "fights": 12,
+          "fightWins": 11,
+          "eventFights": 1,
+          "downed": 1,
+          "beacons": 17,
           "sectors": [
             "spur",
             "veil",
-            "ember"
+            "ember",
+            "hollow"
           ],
           "earned": {
-            "credits": 1120,
+            "credits": 4587,
             "fuel": 0,
             "gems": 0,
-            "medals": 57,
-            "reputation": 57
+            "medals": 299,
+            "reputation": 184
           },
           "spent": {
             "credits": 0,
-            "fuel": 21,
+            "fuel": 55,
             "gems": 0,
             "medals": 0,
             "reputation": 0
           },
-          "netCredits": 1120,
+          "netCredits": 4587,
           "stops": {
-            "hull_low": 24,
-            "max_jumps": 4,
-            "busy": 1,
-            "fuel_reserve": 1
+            "hull_low": 12,
+            "max_jumps": 14,
+            "fuel_reserve": 4
           }
         },
         "builds": [
           {
-            "day": 7,
+            "day": 6,
             "system": "cargo",
             "targetLevel": 4,
-            "startedAt": 1790596800000,
-            "endAt": 1790598600000,
+            "startedAt": 1790510400000,
+            "endAt": 1790512200000,
             "skippedFor": 5
           },
           {
@@ -379623,61 +379910,146 @@
             "skippedFor": 5
           },
           {
-            "day": 11,
+            "day": 13,
             "system": "cargo",
             "targetLevel": 5,
-            "startedAt": 1790942400000,
-            "endAt": 1790946000000,
+            "startedAt": 1791115200000,
+            "endAt": 1791118800000,
             "skippedFor": 10
           },
           {
-            "day": 14,
+            "day": 16,
             "system": "engines",
             "targetLevel": 5,
-            "startedAt": 1791201600000,
-            "endAt": 1791205200000,
-            "skippedFor": 10
+            "startedAt": 1791374400000,
+            "endAt": 1791378000000
+          },
+          {
+            "day": 17,
+            "system": "shields",
+            "targetLevel": 4,
+            "startedAt": 1791460800000,
+            "endAt": 1791462600000,
+            "skippedFor": 5
           },
           {
             "day": 18,
-            "system": "shields",
-            "targetLevel": 4,
+            "system": "cargo",
+            "targetLevel": 6,
             "startedAt": 1791547200000,
-            "endAt": 1791549000000,
+            "endAt": 1791554400000
+          },
+          {
+            "day": 19,
+            "system": "sensors",
+            "targetLevel": 4,
+            "startedAt": 1791633600000,
+            "endAt": 1791635400000,
+            "skippedFor": 5
+          },
+          {
+            "day": 20,
+            "system": "medbay",
+            "targetLevel": 4,
+            "startedAt": 1791720000000,
+            "endAt": 1791721800000,
             "skippedFor": 5
           },
           {
             "day": 21,
-            "system": "cargo",
+            "system": "engines",
             "targetLevel": 6,
             "startedAt": 1791806400000,
             "endAt": 1791813600000,
             "skippedFor": 20
           },
           {
-            "day": 28,
-            "system": "sensors",
+            "day": 22,
+            "system": "weapons",
             "targetLevel": 4,
+            "startedAt": 1791892800000,
+            "endAt": 1791894600000
+          },
+          {
+            "day": 23,
+            "system": "shields",
+            "targetLevel": 5,
+            "startedAt": 1791979200000,
+            "endAt": 1791982800000
+          },
+          {
+            "day": 24,
+            "system": "cargo",
+            "targetLevel": 7,
+            "startedAt": 1792065600000,
+            "endAt": 1792080000000
+          },
+          {
+            "day": 25,
+            "system": "sensors",
+            "targetLevel": 5,
+            "startedAt": 1792152000000,
+            "endAt": 1792155600000
+          },
+          {
+            "day": 26,
+            "system": "medbay",
+            "targetLevel": 5,
+            "startedAt": 1792238400000,
+            "endAt": 1792242000000
+          },
+          {
+            "day": 27,
+            "system": "engines",
+            "targetLevel": 7,
+            "startedAt": 1792324800000,
+            "endAt": 1792339200000
+          },
+          {
+            "day": 28,
+            "system": "weapons",
+            "targetLevel": 5,
             "startedAt": 1792411200000,
-            "endAt": 1792413000000,
-            "skippedFor": 5
+            "endAt": 1792414800000,
+            "skippedFor": 10
+          },
+          {
+            "day": 28,
+            "system": "shields",
+            "targetLevel": 6,
+            "startedAt": 1792411200000,
+            "endAt": 1792418400000
+          },
+          {
+            "day": 29,
+            "system": "cargo",
+            "targetLevel": 8,
+            "startedAt": 1792497600000,
+            "endAt": 1792526400000
+          },
+          {
+            "day": 30,
+            "system": "sensors",
+            "targetLevel": 6,
+            "startedAt": 1792584000000,
+            "endAt": 1792591200000
           }
         ],
         "finalWallet": {
-          "credits": 62,
-          "fuel": 0,
-          "gems": 40,
-          "medals": 103,
-          "reputation": 451
+          "credits": 910,
+          "fuel": 1,
+          "gems": 5,
+          "medals": 76,
+          "reputation": 686
         },
         "systemLevels": {
-          "engines": 5,
-          "shields": 4,
-          "cargo": 6,
-          "weapons": 3,
-          "quarters": 0,
-          "sensors": 4,
-          "medbay": 3
+          "engines": 7,
+          "shields": 6,
+          "cargo": 8,
+          "weapons": 5,
+          "quarters": 2,
+          "sensors": 5,
+          "medbay": 5
         },
         "reconciliation": {
           "ok": true,

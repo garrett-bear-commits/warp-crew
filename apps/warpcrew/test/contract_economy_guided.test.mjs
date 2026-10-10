@@ -3,7 +3,8 @@ process.env.TZ = 'UTC';
 import assert from 'node:assert/strict';
 import { simulateFreePlayer30Days, reconcileLedger, runEconomySeedSet, renderEconomyMarkdown, GUIDED_STRATEGIES, EXPLORE_STRATEGIES, CREW_STRATEGIES } from '../src/sim/contractEconomy.js';
 import { hasLane } from '../src/data/sectorMaps.js';
-import { WALL_BY_ID, SIEGE_SEGMENT } from '../src/systems/walls.js';
+import { WALL_BY_ID, SIEGE_SEGMENT, WALL_TAKEDOWN_GEMS } from '../src/systems/walls.js';
+import { encounterById } from '../src/systems/combat.js';
 import { buildSkipGems, UPGRADE_BUILD } from '../src/systems/hangar.js';
 import { RALLY } from '../src/systems/gemSinks.js';
 
@@ -34,11 +35,12 @@ function checkRun(run) {
   assert.equal(run.metrics.rallies.free <= 1, true, `${label}: one free Rally per captain`);
   assert.equal(run.gems.spentBySink.rally, run.metrics.rallies.paid * RALLY.gems, label);
   const broken = Object.values(run.walls).filter(w => w.fellOnDay).length;
-  // +20 gems per takedown; since growing crews reach the Crown (balance pass 2026-10-09), its Eclipse Throne
-  // also pays its own listed gems on every segment won (the only flagship with gems in its prize).
-  const segmentGems = run.wallAttempts.filter(a => a.success && !a.defeated).reduce((sum, a) => sum + (a.rewards?.gems || 0), 0);
-  assert.ok(run.wallAttempts.every(a => a.defeated || !(a.rewards?.gems > 0) || a.wall === 'crown'), `${label}: only the Crown pays gems before it falls`);
-  assert.equal(run.gems.earnedBySource['wall:contract-claim'] || 0, 20 * broken + segmentGems, `${label}: +20 gems per takedown`);
+  // +20 gems per takedown plus the flagship's own listed gems (only the Eclipse Throne lists any), paid once when
+  // the wall falls; a segment won before that pays no gems (the Crown once paid 8 on every segment won).
+  assert.ok(run.wallAttempts.every(a => a.defeated || !(a.rewards?.gems > 0)), `${label}: no wall pays gems before it falls`);
+  const flagshipGems = Object.keys(run.walls).filter(id => run.walls[id].fellOnDay)
+    .reduce((sum, id) => sum + (encounterById(WALL_BY_ID[id].encounterId).rewards.gems || 0), 0);
+  assert.equal(run.gems.earnedBySource['wall:contract-claim'] || 0, WALL_TAKEDOWN_GEMS * broken + flagshipGems, `${label}: gems per takedown`);
 
   // Wall attempts: a segment is at most 42 hull; damage holds within a day and resets on the next.
   assert.ok(run.wallAttempts.length > 0, `${label}: the wall is attempted`);
