@@ -438,8 +438,8 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
     player = prepareSession(player, now);
     day.offers = player.contractBoard.offers.map(o => ({ id: o.id, profile: o.profile, destinationId: o.destinationId }));
     // Plays one accepted contract to its claim; returns the settled result (or null).
-    const drive = (record, { wall = false } = {}) => {
-      const tag = action => wall ? `wall:${action}` : action;
+    const drive = (record, { wall = false, story = false } = {}) => {
+      const tag = action => wall ? `wall:${action}` : story ? `story:${action}` : action;
       let settled = null;
       // Finite stages; stop at the first failed production validation.
       for (let step = 0; step < 4 && player.activeContract; step++) {
@@ -536,7 +536,7 @@ export function simulateFreePlayer30Days({ seed, strategy, startAt = ECONOMY_STA
         const record = { day: index + 1, when, offerId: offer.id, story: offer.story?.id || null, loyalty: offer.loyalty?.templateId || null, route: null, order: null, outcome: null };
         if (!(act('contract-review', { offer: offer.id }, 'story:contract-review') && act('contract-accept', { offer: offer.id }, 'story:contract-accept'))) return;
         const chaptersBefore = (player.campaign?.chapters || []).length;
-        drive(record);
+        drive(record, { story: true });
         record.won = record.outcome?.success === true;
         day.story.push(record);
         run.story.attempts += 1;

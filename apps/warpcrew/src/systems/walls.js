@@ -10,18 +10,20 @@ import { encounterById } from './combat.js';
 import { campaignAllowsWall } from './campaign.js';
 
 /**
- * Pools and threat floors (balance pass 2026-10-09, docs/qa/2026-10-09-balance-pass.md). Damage resets each day,
- * so a pool is the 42-hull segments one check-in must win in a row: 3 for the Spur, 4 for the Veil, 5 for the
- * Ember, 6 for the Hollow and 7 for the Crown; later flagships also fight at a higher threat floor (the Hollow
- * and the Crown are Deadly). Simulated free captains break the Veil about 2 days after reaching it, the Ember
- * about a week, the Hollow about two weeks.
+ * Pools and threat floors. Damage resets each day, so a pool is the 42-hull segments one check-in must win in a row:
+ * 3 for the Spur, 4 for the Veil, 5 for the Ember, 7 for the Hollow and 8 for the Crown. Later flagships also fight
+ * at a higher threat floor. Retuned for Phase 3 (docs/qa/2026-10-10-phase3-world.md): the story missions, the
+ * chapter recruits and Phase 2's rewards made a daily captain stronger, so the Ember fights at 1.45 (was 1.25), the
+ * Hollow takes seven segments at 1.4 (was 220 at 1.3) and the Crown eight at 1.45 (was 270 at 1.35). In the 30-day
+ * sim balanced captains break the Ember on days 15-22 and ambitious ones reach the Hollow's fall around day 28.
+ * A sixth Ember segment was tried and rejected: it is a fuel wall (twelve fuel in one check-in), not a harder fight.
  */
 export const WALLS = Object.freeze([
   { id: 'spur', encounterId: 'corsair_king', destinationId: 'pirate_nest', pool: 100, threatFloor: 1.2, opens: 'veil_gate', minDay: 3 },
   { id: 'veil', encounterId: 'swarm_frigate', destinationId: 'swarm_scar', pool: 130, threatFloor: 1.2, opens: 'ember_gate' },
-  { id: 'ember', encounterId: 'ember_raider', destinationId: 'kiln_reach', pool: 180, threatFloor: 1.25, opens: 'hollow_mouth' },
-  { id: 'hollow', encounterId: 'hollow_shade', destinationId: 'dark_well', pool: 220, threatFloor: 1.3, opens: 'halo_approach' },
-  { id: 'crown', encounterId: 'eclipse_throne', destinationId: 'eclipse_crown', pool: 270, threatFloor: 1.35, opens: null },
+  { id: 'ember', encounterId: 'ember_raider', destinationId: 'kiln_reach', pool: 180, threatFloor: 1.45, opens: 'hollow_mouth' },
+  { id: 'hollow', encounterId: 'hollow_shade', destinationId: 'dark_well', pool: 270, threatFloor: 1.4, opens: 'halo_approach' },
+  { id: 'crown', encounterId: 'eclipse_throne', destinationId: 'eclipse_crown', pool: 320, threatFloor: 1.45, opens: null },
 ].map(wall => Object.freeze(wall)));
 export const WALL_BY_ID = Object.fromEntries(WALLS.map(wall => [wall.id, wall]));
 /** A flagship is never easier than Dangerous when the captain first reaches it (the first walls' floor). */
