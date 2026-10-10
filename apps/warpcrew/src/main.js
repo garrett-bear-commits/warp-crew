@@ -52,6 +52,7 @@ import { sfx, unlockSfx } from './ui/juice.js';
 import { toggleSfxMuted, preloadSfx } from './ui/sound.js';
 import { unlockMusic, setMusicScene, toggleMusicMuted } from './ui/music.js';
 import { musicScene } from './data/musicManifest.js';
+import { rewardEntry, rewardItems, walletGain, rewardCardRects, centreCards, flyToWallet, productArt, TIER_SOUNDS } from './ui/rewardReveal.js';
 import { startStageLoop } from './ui/stageLoop.js';
 import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
@@ -79,6 +80,8 @@ let selectedCrewId = null;
 let confirmRestartSave = false;
 /** The hire reveal on screen (pods and cards), and whether the odds sheet is open. UI only, never saved. */
 let hireReveal = null;
+/** Reward reveals waiting their turn (src/ui/rewardReveal.js). UI only, never saved. */
+let rewardQueue = [];
 let hireOddsOpen = false;
 /** Cancel-save sheet for the Captain's Commission subscription. */
 let commissionWinback = false;
@@ -120,6 +123,17 @@ export function freshBootCrewMessage(currentPlayer) {
   const names = (currentPlayer?.crew || []).map(member => member.name);
   if (!names.length) return 'No crew on deck yet. Choose your captain.';
   return `Crew on deck — ${names.join(' and ')}.`;
+}
+
+/** Queue a reward reveal (null entries are ignored); the first one sounds as it opens. */
+function showReward(entry) {
+  if (!entry) return;
+  rewardQueue.push(entry);
+  if (rewardQueue.length === 1) rewardSound(entry);
+}
+
+function rewardSound(entry) {
+  (TIER_SOUNDS[entry.tier] || TIER_SOUNDS.small).forEach((name, i) => sfx(name, { delay: i * 0.22 }));
 }
 
 function showToast(next) {
@@ -225,13 +239,14 @@ function claimCommissionPerks() {
   if (!daily.granted) return;
   player = daily.player;
   pushLog(`Captain's Commission: +${daily.granted.gems} gems, +${daily.granted.drydockFinishes} drydock finish.`);
-  showToast({ title: "Commission daily", rewards: { gems: daily.granted.gems } });
+  showReward(rewardEntry({ source: 'commission', title: "Captain's Commission", subtitle: 'Today\'s perks',
+    items: rewardItems({ gems: daily.granted.gems }) }));
 }
 
 /** Online boot work: incomplete purchases, waiting grants (any device), one-time ownership. */
 async function syncServerOnBoot() {
   if (!wc?.online) return;
-  const before = player?.wallet?.gems || 0;
+  const before = { ...(player?.wallet || {}) };
   // Leader only: a follower tab defers this until it leads (src/core/client.js serverSync).
   const work = await wc.serverSync();
   if (work.deferred) return;
@@ -239,7 +254,8 @@ async function syncServerOnBoot() {
   player = wc.state();
   if (pending.claimed.length || recovered.completed) {
     pushLog(`Purchases delivered: ${pending.claimed.map(g => productName(g.reason.replace(/^purchase /, ''))).join(', ') || `${recovered.completed} restored`}.`);
-    if ((player.wallet?.gems || 0) > before) showToast({ title: 'Purchase delivered', rewards: { gems: player.wallet.gems - before } });
+    showReward(rewardEntry({ source: 'purchase', title: 'Purchase delivered', subtitle: 'Thank you, Captain',
+      items: rewardItems(walletGain(before, player.wallet)) }));
   }
 }
 
@@ -262,11 +278,13 @@ function finishExpeditionResult(res) {
       ? `Expedition success${skipNote}! ${paid}${res.flavor ? ` — ${res.flavor}` : ''}`
       : `Expedition failed${skipNote}. ${paid}${res.flavor ? ` — ${res.flavor}` : ''}`
   );
-  showToast({
-    title: res.success ? 'Expedition complete' : res.aborted ? 'Early extract' : 'Expedition failed',
-    rewards: res.rewards,
-  });
-  sfx(res.success ? 'coin' : 'hit');
+  const reveal = res.success ? rewardEntry({ source: 'expedition', title: 'Expedition complete', subtitle: res.flavor || '',
+    items: rewardItems(res.rewards) }) : null;
+  if (reveal) showReward(reveal);
+  else {
+    showToast({ title: res.success ? 'Expedition complete' : res.aborted ? 'Early extract' : 'Expedition failed', rewards: res.rewards });
+    sfx(res.success ? 'coin' : 'hit');
+  }
 }
 
 function tryResolveExpedition({ force = false } = {}) {
@@ -317,8 +335,8 @@ function hydratePlayer({ fresh, newCaptain }) {
     player = daily.player;
     if (daily.isNewDay) {
       pushLog(loginBonusLine(daily.bonus));
-      showToast({ title: `Day ${daily.bonus.streak} bonus`, rewards: daily.bonus });
-      sfx('coin');
+      showReward(rewardEntry({ source: 'login', title: `Day ${daily.bonus.streak} login`, subtitle: 'Welcome back, Captain',
+        items: rewardItems(daily.bonus) }));
     }
   } else if (daily.isNewDay) {
     // Hold the day-1 streak without dumping extra currencies into the intro.
@@ -514,6 +532,7 @@ function render() {
     confirmRestartSave,
     commissionWinback,
     hireReveal,
+    rewardReveal: rewardQueue[0] || null,
     hireOddsOpen,
     ftlSelectedCrewId,
     ftlPaused,
@@ -692,9 +711,14 @@ async function userAction(act, data = {}) {
   unlockMusic();
   if (act === 'map-select') sfx('beacon');
   else if (!QUIET_TAP_ACTS.has(act)) sfx(CONFIRM_ACTS.has(act) ? 'confirm' : 'tap');
+  const walletBefore = { ...(player?.wallet || {}) };
   const result = await handleAction(act, data);
   if (result?.ok === false) sfx('error');
-  else if (result?.ok && COIN_ACTS.has(act)) sfx('coin', { delay: 0.08 });
+  else if (result?.ok && COIN_ACTS.has(act)) {
+    sfx('coin', { delay: 0.08 });
+    // Contract and fight claims keep their result screen; what they paid flies from mid-screen to the wallet.
+    flyToWallet(app, centreCards(walletGain(walletBefore, player?.wallet)));
+  }
   return result;
 }
 
@@ -886,6 +910,14 @@ async function handleAction(act, data = {}) {
   if (act === 'close-room') {
     selectedRoom = null;
     render();
+    return;
+  }
+  if (act === 'reward-close') {
+    const cards = rewardCardRects(app);
+    rewardQueue.shift();
+    render();
+    flyToWallet(app, cards);
+    if (rewardQueue[0]) rewardSound(rewardQueue[0]);
     return;
   }
   if (act === 'close-toast') {
@@ -1106,6 +1138,7 @@ async function handleAction(act, data = {}) {
       return;
     }
     pushLog(`Buying ${productName(sku)}…`);
+    const walletBefore = { ...player.wallet };
     // The core server verifies the receipt and mints the pack as a grant; the grant is claimed
     // and applied (src/core/purchases.js), then the Jest purchase is completed.
     const res = await wc.purchases.buy(sku);
@@ -1129,8 +1162,10 @@ async function handleAction(act, data = {}) {
       if (sku === STARTER_OFFER.sku) player = markStarterOffer(player, { purchased: true, seen: true });
       if (sku.startsWith('wc_wall_')) player = markWallPackSeen(player, sku.slice('wc_wall_'.length));
       pushLog(`Bought ${productName(sku)}. Rewards are aboard.`);
-      showToast({ title: 'Purchase applied' });
-      sfx('coin');
+      const reveal = rewardEntry({ source: 'purchase', title: productName(sku), subtitle: 'Thank you, Captain', art: productArt(sku),
+        items: rewardItems(walletGain(walletBefore, player.wallet)) });
+      if (reveal) showReward(reveal);
+      else { showToast({ title: 'Purchase applied' }); sfx('coin'); }
       captureEvent('iap_success', { sku });
       await refreshNotifs();
     }

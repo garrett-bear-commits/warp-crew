@@ -34,6 +34,7 @@ import { syncCrewLayer, crewAgentAt } from './crewWalk.js';
 import { bindFtlCrewDrag } from './ftlCrewDrag.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatView.js';
+import { renderRewardReveal } from './rewardReveal.js';
 import { unlockSfx } from './juice.js';
 import { isSfxMuted } from './sound.js';
 import { isMusicMuted } from './music.js';
@@ -407,6 +408,7 @@ function buildShell() {
       <div data-slot="departure-status"></div>
       <div data-slot="coach"></div>
       <div data-slot="modal"></div>
+      <div data-slot="reward"></div>
     </div>
   `;
 }
@@ -623,6 +625,8 @@ function patchShell(root, ctx) {
   (ftlOverlay ? (slot, html) => morphInto(overlaysEl, html) : (slot, html) => setSlot(root, slot, html))('overlays', fighting ? '' : renderOverlays(player, { step, selectedRoom, fuel, now, tab, isHome, activeContractView, activeTravelView, cameraCueDismissed: root._wcCameraCueDismissed, captainCardOpen: root._wcCaptainCardOpen })
     + (isHome && player.activeEncounter?.version === 3 ? renderOffscreenThreats(root, (player.activeContract ? activeContractView : activeTravelView)?.encounter) : ''));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
+  // Rewards wait out a fight, then show above everything else.
+  setSlot(root, 'reward', fighting ? '' : renderRewardReveal(ctx.rewardReveal));
   setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
     && tab !== 'missions' && !cinematic && !selectedCrewId && player.flags?.splashSeen
@@ -648,23 +652,23 @@ function patchShell(root, ctx) {
 function renderHud(player, fuel, chips, firstSession = false) {
   const map = {
     fuel: `
-      <${firstSession ? 'div' : 'button'} class="hud-chip ${fuel.pendingWhole && !firstSession ? 'has-claim' : ''}" ${firstSession ? '' : 'data-act="claim"'}>
+      <${firstSession ? 'div' : 'button'} class="hud-chip ${fuel.pendingWhole && !firstSession ? 'has-claim' : ''}" data-currency="fuel" ${firstSession ? '' : 'data-act="claim"'}>
         <img src="${ICONS.fuel}" alt="" />
         <b>${fuel.current}</b><span>/${fuel.max}</span>
         ${fuel.pendingWhole && !firstSession ? '<i class="claim-pip"></i>' : ''}
       </${firstSession ? 'div' : 'button'}>`,
     credits: `
-      <div class="hud-chip">
+      <div class="hud-chip" data-currency="credits">
         <img src="${ICONS.credits}" alt="" />
         <b>${player.wallet.credits}</b>
       </div>`,
     gems: `
-      <div class="hud-chip premium">
+      <div class="hud-chip premium" data-currency="gems">
         <img src="${ICONS.gems}" alt="" />
         <b>${player.wallet.gems}</b>
       </div>`,
     medals: `
-      <div class="hud-chip">
+      <div class="hud-chip" data-currency="medals">
         <img src="${ICONS.medals}" alt="" />
         <b>${player.wallet.medals}</b>
       </div>`,

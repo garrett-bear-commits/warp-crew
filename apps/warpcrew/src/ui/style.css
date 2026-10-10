@@ -3368,3 +3368,37 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .family-chip.is-live { border-style: solid; border-color: #6fd3ff; background: rgba(111, 211, 255, 0.08); }
 .family-chip.is-live small { color: #b9f3ff; }
 .dossier-family { margin: 0; font-size: 13px; color: #c8d3de; }
+
+/* The reward reveal (src/ui/rewardReveal.js): one screen for everything earned. The frame and glow grow with the size. */
+.modal-backdrop.reward-backdrop { z-index: 60; align-items: center; background: rgba(4, 8, 16, 0.8); }
+.reward-reveal { --tier: #8fb3d9; width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; font-family: var(--font-sans);
+  display: grid; gap: 10px; justify-items: center; text-align: center; padding: 18px 16px; border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, #122039, #0b1220); border: 2px solid var(--tier); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 28px -6px var(--tier);
+  animation: reward-in 280ms var(--ease-out, ease-out) both; }
+.reward-reveal.tier-medium { --tier: #58e1ff; }
+.reward-reveal.tier-large { --tier: #f1b66b; }
+.reward-reveal.tier-huge { --tier: #ffd76a; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 48px 0 rgba(255, 215, 106, 0.55); }
+.reward-reveal h2 { margin: 0; font: 800 22px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--tier); }
+.reward-sub { margin: 0; color: var(--muted); font-size: var(--size); }
+.reward-art { width: 112px; height: 112px; object-fit: contain; image-rendering: auto; animation: reward-art 900ms ease-out both; }
+.reward-cards { list-style: none; margin: 4px 0; padding: 0; width: 100%; display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+.reward-card { display: grid; justify-items: center; gap: 2px; padding: 10px 6px; border-radius: var(--radius-md);
+  background: #16243b; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  animation: reward-card 420ms cubic-bezier(0.2, 1.4, 0.4, 1) both; animation-delay: calc(var(--i, 0) * 140ms + 160ms); }
+.reward-card img { width: 48px; height: 48px; object-fit: contain; image-rendering: auto; }
+.reward-card b { font: 800 22px var(--font-display); color: var(--text); }
+.reward-card span { font-size: var(--size-min); color: var(--muted); text-transform: capitalize; }
+.reward-card.is-crew img { width: 72px; height: 72px; border-radius: 10px; background: #0b1220; }
+.reward-reveal .primary { width: 100%; min-height: 48px; }
+.reward-fly { position: fixed; z-index: 80; width: 32px; height: 32px; pointer-events: none; image-rendering: auto;
+  animation: reward-fly 700ms cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+.hud-chip.is-gaining { animation: chip-gain 900ms ease-out; }
+@keyframes reward-in { from { transform: translateY(18px) scale(0.96); opacity: 0; } }
+@keyframes reward-art { from { transform: scale(0.6) rotate(-6deg); opacity: 0; } 60% { transform: scale(1.08); } }
+@keyframes reward-card { from { transform: scale(0.4); opacity: 0; } }
+@keyframes reward-fly { to { transform: translate(var(--dx), var(--dy)) scale(0.55); opacity: 0.35; } }
+@keyframes chip-gain { 30% { transform: scale(1.14); filter: brightness(1.6); } }
+@media (prefers-reduced-motion: reduce) {
+  .reward-reveal, .reward-card, .reward-art, .hud-chip.is-gaining { animation: none; }
+}
