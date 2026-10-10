@@ -163,7 +163,98 @@ hour; full in 3 h."
 
 ## D. Fights that feel like FTL
 
-Designed from a map of today's fight effects; see §D below once that map is in.
+### What a fight shows today (mapped 2026-10-10)
+
+- **Shots never cross between the ships.**
+  - Our bolts are clipped at the top of the ship view and never reach the enemy.
+  - Every enemy bolt starts at their Weapons room, whichever gun fired. The art's gun mounts are measured but
+    unused.
+- **Hits on the enemy are a 0.45 s room flash,** with no sparks or explosion.
+- **Our hull hits** get 16 sparks and a small shake.
+- **Nobody sees damage numbers,** and nothing explodes.
+- **Hit-stop is wired but invisible:** the fight canvas ignores the freeze.
+- **The shake moves only our ship.**
+- **The ship's panels update before the bolts land:** a room loses its health a third of a second before the shot
+  that did it arrives.
+- **A re-render can strip a flash** halfway through it.
+- **Fires are static icons,** with no smoke, and offline rooms don't spark.
+- **Our ship has no shield bubble.** A win greys the enemy out and plays one boom.
+- **Many moments are silent:**
+  - misses;
+  - shields coming back;
+  - crits;
+  - a gun ready;
+  - a room going offline;
+  - fires on the enemy.
+
+  The rest reuse a few sounds at one pitch.
+
+### The plan (effects in code first; sprites only where code can't match pixel art)
+
+1. **One effects canvas over the whole fight,** the enemy panel and our ship, so a shot flies from the gun that
+   fired to the room it hits.
+   - Mount and room positions are measured once per render, never per frame.
+2. **Weapons look like what they are:**
+   - lasers: bright bolts with a short trail;
+   - heavy lasers: thicker and slower;
+   - missiles: an arc with a smoke trail;
+   - ion: a crackling blue orb;
+   - beams: a line that sweeps across the room for 0.4 s;
+   - drones: small darts in a stream;
+   - misses: fly past the hull and off screen;
+   - shield hits: stop at the bubble.
+3. **Impacts:**
+   - pixel explosions (chunky particles: white, yellow, orange, red, then smoke);
+   - sparks and debris;
+   - a damage number ("−2", crits bigger and gold: "CRIT −4");
+   - a hex ripple where a shot meets a shield;
+   - a room flash that a re-render can't strip.
+4. **Weight:**
+   - **real hit-stop:** effects freeze 50 ms on hull hits and 90 ms on crits and kills;
+   - **shake** on the whole fight with a direction (our hits jolt their panel, theirs shake our ship);
+   - **panel updates wait** until the shot lands.
+5. **Damage that stays visible:**
+   - fire with flicker and a smoke column in burning rooms on both ships;
+   - sparks from offline rooms;
+   - scorch on damaged rooms (our room markers get damage styles).
+6. **Our shield:** a bubble around the Sparrow, brighter per layer. It ripples on hits, collapses when knocked
+   down, and sweeps back up when it recharges.
+7. **Guns:**
+   - a muzzle flash at our weapon mount;
+   - the weapon card flashes when it fires;
+   - a soft ping when a gun is ready;
+   - the enemy's guns glow as they charge.
+8. **The enemy ship lives:** a slow drift and bob, and engine flicker. The cloak shimmers.
+9. **The kill:**
+   - a chain of explosions across their rooms over about 1.6 s;
+   - a white flash;
+   - the hull splits into two or three pieces that drift and turn apart, with debris;
+   - then the win panel. The claim waits for the show; a tap skips it.
+10. **Sound:**
+    - every clip gets a small random pitch and volume change;
+    - new cues for misses, crits, shields back up, a gun ready, a room offline, their fires, and the kill chain;
+    - cues are synthesised in Web Audio where no clip fits (no downloads).
+11. **Reduced motion keeps today's calm version:** flashes and numbers, no particles or shake.
+12. **Budget:**
+    - at most 400 live particles;
+    - pixel-snapped drawing;
+    - no `shadowBlur` on every particle.
+
+    It must hold 60 fps on a mid phone at 390 px.
+
+Sprites: an explosion sheet and a smoke puff from Flora are allowed within Garrett's $3 (2026-10-10). The
+procedural version comes first, so the sprites are an upgrade, not a dependency.
+
+### Success tests (fights)
+
+1. **Every shot event becomes an effect** with the right path, timing and impact: a pure mapping from beat events to
+   effects, tested for every weapon and outcome.
+2. **Panels change only after the impact,** and no flash is lost to a re-render.
+3. **Hit-stop and shake follow their table,** and reduced motion turns both off.
+4. **The kill sequence plays, then the claim shows.** A tap skips it, and a reload mid-sequence lands on the claim.
+5. **The particle cap holds,** with no per-frame layout reads (pinned by a test that counts
+   `getBoundingClientRect` calls per frame).
+6. **Every existing fight test passes,** and a browser capture of a fight shows each effect.
 
 ## Success tests
 

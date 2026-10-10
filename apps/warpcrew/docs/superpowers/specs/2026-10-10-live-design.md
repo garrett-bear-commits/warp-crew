@@ -10,8 +10,8 @@ Rules that hold:
   - the premium track is built and testable with mock purchases;
   - its Jest product, real sales and minting wait for staging and Garrett's yes;
   - nothing sells below $1.99, and each product is its own SKU.
-- **"Social later":** leaderboards are built behind a flag that stays off until Garrett turns them on. There are no
-  guilds and no PvP.
+- **Leaderboards** are built behind a flag that is turned on at staging (Garrett, 2026-10-10). There are no guilds
+  and no PvP.
 - **One reset time:** seasons and weeks turn at local midnight on the game's own day and week keys
   (`localDayKey`, `weekKey`).
 - **Free gems stay under 35 a day** (today 21-30), so the free track's gems are small.
@@ -61,7 +61,7 @@ calendar first. The server only adds the ability to move dates without a release
   - a few shards;
   - **the event merc at tier 20**;
   - at most 100 gems over the season (about 2.4 a day).
-- **Premium track** (mock checkout, SKU `wc_pass_s1`, suggested $9.99, waiting on Garrett) adds:
+- **Premium track** (mock checkout, SKU `wc_pass_s1`, $9.99) adds:
   - more of each reward and more gems (about 900 over the season);
   - a second copy of the event merc (a star);
   - a season portrait frame.
@@ -110,7 +110,7 @@ The endless frontier past the story. It opens once the Veil wall falls (chapter 
   week.
 - **Offline** you see your best floor this week and ever.
 
-## 5. Leaderboards (flagged off)
+## 5. Leaderboards (on at staging)
 
 - One board, `rift_weekly`, the deepest floor this week, on the core's leaderboard feature:
   - the server stamps the run's start and checks its time;
@@ -119,7 +119,7 @@ The endless frontier past the story. It opens once the Veil wall falls (chapter 
   - The top 20 is held for review.
 - The core has no automatic weekly rollover, so it needs a small scheduled job or an admin step. That is staging
   work.
-- **Hidden behind the flag `rift_leaderboard`** until staging passes and Garrett turns it on.
+- **Behind the flag `rift_leaderboard`,** turned on at staging. Offline and in the QA build it stays off.
 
 ## 6. Server plumbing
 
@@ -148,21 +148,18 @@ The guided test gates these. The balance evidence is regenerated.
 ## Build order
 
 1. **The season clock,** pass (free track), points and claims, with saves and tests.
-2. **The event:** Forge Moon missions and transmissions, Uprising jobs, scrip, the event shop, the event merc (art
-   after Garrett's yes).
+2. **The event:** Forge Moon missions and transmissions, Uprising jobs, scrip, the event shop, the event merc.
 3. **The Rift:** dives, floors, boons, weekly seed, personal bests.
 4. **Weekly rotations and challenges.**
 5. **Server:** liveops on, schedules, flags, and the leaderboard behind its flag.
 6. **The premium track** on mock checkout.
 7. **Sim gates,** an independent audit, then merge and publish.
 
-## Questions for Garrett
+## Garrett's answers (2026-10-10)
 
-1. **Art:** about $2 on your personal Flora account for:
-   - the event merc's portrait;
-   - an event card scene;
-   - the pass banner;
-   - the Rift's look.
-2. **The premium pass:** is $9.99 right? Its Jest product gets created only at staging, with your yes.
-3. **Leaderboards:** turn on at staging, or keep them off until Jest numbers say social is worth it?
-4. **Season length:** is six weeks right? (The deep dive suggested 4-6.)
+- **Art:** up to $3 on his personal Flora account, for this phase's art and the fight-effect sprites (the
+  first-hour design, §D).
+- **The premium pass:** $9.99 in the mock. Its Jest product is created only at staging, with his yes.
+- **Leaderboards:** on at staging. The flag `rift_leaderboard` is turned on once the Railway server is live and
+  the staging checks pass.
+- **Season length:** 6 weeks.
