@@ -15,6 +15,7 @@ import { beginContractEncounter, applyEncounterAction, applyEncounterCommand, no
 import { tacticStatus, repelStatus } from './autoCombat.js';
 import { ftlPolicyStep, FTL_VERSION, MAX_FIGHT_BEATS } from './ftlCombat.js';
 import { recordSiege } from './walls.js';
+import { flavorBoard } from './contractFlavor.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -128,14 +129,15 @@ export function generateContractBoard(player, now = trustedNow()) {
       ? NODES.lane_a : pick(candidates, rng) || fallbackFor(profile);
     const offer = offerFor(profile, destination, boardDay, rng);
     return firstCrewJob && profile.id === 'reliable'
-      ? { ...offer, title: 'Dust Lane Patrol',
+      ? { ...offer, fixedCopy: true, title: 'Dust Lane Patrol',
         brief: 'Pirates are testing the lane. Your crew can stop them.',
         favoredTrait: { kind: 'role', id: 'gunner', label: 'Gunner', why: 'A gunner keeps pressure on the pirate.' } }
       : offer;
   });
   // This is a durable claim ledger, including previous local dates. Clock or
   // timezone recovery may revisit a day, but cannot reopen its claimed offers.
-  return { dayKey: boardDay, offers, completedOfferIds: [...new Set(player?.contractBoard?.completedOfferIds || [])] };
+  // Phase 3: every daily offer then gets a client, a job, cargo and maybe a twist, on its own seeded stream.
+  return { dayKey: boardDay, offers: flavorBoard(offers), completedOfferIds: [...new Set(player?.contractBoard?.completedOfferIds || [])] };
 }
 
 export function ensureContractBoard(player, now = trustedNow()) {

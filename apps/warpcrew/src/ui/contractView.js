@@ -2,6 +2,9 @@ import { renderFtlControls } from './ftlView.js';
 import { SPACE_ART, NODE_ART } from '../data/portraits.js';
 import { speakerFor } from '../data/speakers.js';
 import { CHAPTERS } from '../data/campaign.js';
+import { factionOf } from '../data/factions.js';
+import { describeTwist } from '../data/twists.js';
+import { artUrl } from '../shared/artUrl.js';
 
 /** Pure presentation. Callers supply costs, availability, previews and selected crew.
  * No player mutations, reward calculations, party recommendations or route decisions.
@@ -16,19 +19,15 @@ const PROFILE_ART = { reliable: SPACE_ART.trader, risky: SPACE_ART.pirate, stran
 const dangerKey = (value) => String(value || '').toLowerCase().replace(/[^a-z]/g, '') || 'unknown';
 const profileLabel = (offer) => offer.profileLabel || ({ reliable: 'Reliable', risky: 'Risky', strange: 'Strange', distress: 'Distress' }[offer.profile] || offer.profile || 'Contract');
 const profileIcon = (offer) => ({ reliable: '◆', risky: '⚔', strange: '✦', distress: '!' }[offer.profile] || '◇');
-/** The set-piece rule on a card (the fight engine owns the numbers; this is the one line the card shows). */
-const TWIST_COPY = {
-  escort: { label: 'Escort', rule: 'A freighter flies beside you. Keep it alive for more pay.' },
-  rush: { label: 'Rush', rule: 'Win before the clock runs out for more pay.' },
-  bounty: { label: 'Bounty', rule: 'A named elite. Harder, and it pays more.' },
-  holdout: { label: 'Holdout', rule: 'Survive until the clock runs out, or destroy them.' },
-  waves: { label: 'Two waves', rule: 'When the first ship falls, a second one arrives.' },
-};
+/** The set-piece twist on a card: its rule and what it pays (src/data/twists.js). */
 const twistLine = (offer) => {
-  const twist = offer.twistView || (offer.twist && TWIST_COPY[offer.twist.id]);
-  if (!twist) return '';
-  const elite = offer.twist?.elite?.name ? ` Target: ${offer.twist.elite.name}.` : '';
-  return `<p class="contract-twist" data-twist="${e(offer.twist?.id)}"><b>${e(twist.label)}</b> · ${e(twist.rule)}${e(elite)}</p>`;
+  const twist = describeTwist(offer.twist);
+  return twist ? `<p class="contract-twist" data-twist="${e(twist.id)}"><b>${e(twist.label)}</b> · ${e(twist.rule)} <span>${e(twist.payLine)}</span></p>` : '';
+};
+/** Who you will fight, and what they do (Phase 3 §4). */
+const factionLine = (offer) => {
+  const faction = factionOf(offer.routeContent?.encounterId || offer.encounterId);
+  return faction ? `<p class="contract-faction" data-faction="${e(faction.id)}"><img src="${e(artUrl(`art/pixel/ui/faction-${faction.id}.png`))}" alt="" /><b>${e(faction.chip)}</b></p>` : '';
 };
 const PAY_LABEL = { credits: 'credits', medals: 'medals', gems: 'gems', reputation: 'rep', fuel: 'fuel' };
 const storyPay = (offer) => {
@@ -76,7 +75,7 @@ export function renderContractBoard(model = {}) {
         <p class="contract-profile"><span aria-hidden="true">${cardIcon(offer)}</span> ${e(cardLabel(offer))}${offer.completed ? ' · ✓ Completed' : ''}</p>
         ${art ? `<img class="contract-art" src="${e(art)}" alt="" />` : ''}${clientBanner(offer)}
       </div>
-      <h3>${e(offer.title)}</h3><p class="contract-brief">${e(offer.brief)}</p>${twistLine(offer)}${storyPay(offer)}${siege}
+      <h3>${e(offer.title)}</h3><p class="contract-brief">${e(offer.brief)}</p>${twistLine(offer)}${factionLine(offer)}${storyPay(offer)}${siege}
       <dl class="contract-facts"><div class="fact-fuel"><dt>Normal fuel</dt><dd>${e(offer.normalFuel)}F</dd></div><div class="fact-length"><dt>Length</dt><dd>${e(offer.beatLabel || `${offer.beats} beats`)}</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(offer))}</dd></div></dl>
       ${fightOddsLine(odds)}${trait(offer.favoredTrait)}<button type="button" class="contract-review-btn" data-act="contract-review" data-offer="${e(offer.id)}" aria-label="${e(label)}" ${offer.completed || offer.enabled === false ? 'disabled' : ''}>${offer.completed ? 'Completed' : 'Review'}</button>
     </article>`;
@@ -89,7 +88,7 @@ export function renderContractReview(model = {}) {
     <button type="button" class="icon-close" data-act="contract-review-close" aria-label="Close contract review">×</button>
     <div class="contract-banner" data-profile="${e(offer.story ? 'story' : offer.profile)}"><p class="contract-profile">${e(cardLabel(offer))}</p>${!offer.client && PROFILE_ART[offer.profile] ? `<img class="contract-art" src="${e(PROFILE_ART[offer.profile])}" alt="" />` : ''}${clientBanner(offer)}</div>
     <h2 id="contract-review-title">${e(offer.title)}</h2>
-    <p class="contract-brief">${e(offer.brief)}</p>${twistLine(offer)}${storyPay(offer)}${model.briefingId ? `<button type="button" class="ghost tx-replay" data-act="tx-replay" data-id="${e(model.briefingId)}">Replay the briefing</button>` : ''}<p class="contract-destination">Destination: ${e(model.destinationName || offer.destinationName)}</p>
+    <p class="contract-brief">${e(offer.brief)}</p>${twistLine(offer)}${factionLine(offer)}${storyPay(offer)}${model.briefingId ? `<button type="button" class="ghost tx-replay" data-act="tx-replay" data-id="${e(model.briefingId)}">Replay the briefing</button>` : ''}<p class="contract-destination">Destination: ${e(model.destinationName || offer.destinationName)}</p>
     <dl class="contract-facts"><div class="fact-fuel"><dt>Payable route fuel</dt><dd>${e(model.cost?.fuel)}F</dd></div><div class="fact-danger" data-danger="${e(dangerKey(offer.danger))}"><dt>Danger</dt><dd>${e(offer.danger)}</dd></div><div class="fact-pay"><dt>Possible payout now</dt><dd>${e(rewardLabel(model))}</dd></div></dl>
     ${model.fightThreat ? `<p class="fight-threat" data-threat="${e(model.fightThreat.label.toLowerCase())}">Fight: <b>${e(model.fightThreat.label)}</b>${model.fightThreat.odds ? ` · ${e(model.fightThreat.odds.text)} with the crew aboard` : ''}${model.fightThreat.awayCount ? ` · ${e(model.fightThreat.awayCount)} crew away` : ''}</p>` : ''}
     ${reason(model.consequence)}${trait(model.favoredTrait || offer.favoredTrait)}${reason(model.reason)}

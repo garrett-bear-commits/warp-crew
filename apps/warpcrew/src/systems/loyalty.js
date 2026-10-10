@@ -15,6 +15,7 @@ import { encounterById } from './combat.js';
 import { grant } from './economy.js';
 import { storyProgress } from './story.js';
 import { referencePower } from './encounterState.js';
+import { ELITE_NAMES } from '../data/factions.js';
 export { bondTransmission } from './transmissions.js';
 
 export const LOYALTY = Object.freeze({ trusted: 10, close: 25, mission: 40, max: 60, contract: 2, away: 1 });
@@ -150,7 +151,8 @@ export function loyaltyOffer(player, templateId) {
   const id = `offer_loyal_${templateId}_${attempt}`;
   const encounterId = loyaltyEncounter(player, bond.mission.enemy);
   const twistId = ROLE_TWIST[merc.role] || 'rush';
-  const twist = twistId === 'bounty' ? { id: 'bounty', elite: { name: `${merc.name}'s old grudge`, modifier: ELITE_MODIFIER[bond.mission.enemy] || 'veteran' } } : { id: twistId };
+  const names = ELITE_NAMES[bond.mission.enemy] || ELITE_NAMES.corsairs;
+  const twist = twistId === 'bounty' ? { id: 'bounty', elite: { name: names[hashSeed(templateId) % names.length], modifier: ELITE_MODIFIER[bond.mission.enemy] || 'veteran' } } : { id: twistId };
   const outcome = { kind: 'combat', encounter: encounterId };
   return {
     id,
