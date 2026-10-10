@@ -27,6 +27,15 @@ export const SFX = Object.freeze({
   rally: { clips: ['rally'], volume: 0.6, voices: 1, gap: 0.3 },
   lock: { clips: ['lock'], volume: 0.45, voices: 1, gap: 0.5 },
   win: { clips: ['win'], volume: 0.6, voices: 1, gap: 0.5 },
+  // Enemy factions and twists (Phase 3): the same Kenney clips, mixed for their moment.
+  missile: { clips: ['launch'], volume: 0.4, voices: 1, gap: 0.3 },
+  drones: { clips: ['shot_burst_1', 'shot_burst_2', 'shot_burst_3'], volume: 0.28, voices: 3, gap: 0.03 },
+  ion_shot: { clips: ['shield_2'], volume: 0.4, voices: 1, gap: 0.2 },
+  ion_lock: { clips: ['lock'], volume: 0.5, voices: 1, gap: 0.4 },
+  cloak: { clips: ['jump'], volume: 0.35, voices: 1, gap: 1 },
+  decloak: { clips: ['arrive'], volume: 0.35, voices: 1, gap: 1 },
+  regrow: { clips: ['fire_out'], volume: 0.18, voices: 1, gap: 0.9 },
+  wave: { clips: ['alarm'], volume: 0.45, voices: 1, gap: 2 },
   // Flight and ship
   launch: { clips: ['launch'], volume: 0.55, voices: 1, gap: 1 },
   jump: { clips: ['jump'], volume: 0.55, voices: 1, gap: 0.5 },

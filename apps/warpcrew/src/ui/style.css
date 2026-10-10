@@ -3106,6 +3106,85 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .ftl-enemy-room { overflow: visible; }
 .ftl-room-tag { white-space: nowrap; }
 
+/* Enemy factions and twists (Phase 3): tags, cloak, harmonics, regrowth, frozen rooms, the escort, banners. */
+.ftl-enemy-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; min-width: 0; }
+.ftl-tag { display: inline-flex; align-items: center; gap: 3px; max-width: 100%; padding: 1px 7px; border: 1px solid currentColor; border-radius: 999px;
+  font: 600 11px/1.4 var(--font-sans); color: #c9d6e6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ftl-tag .ftl-icon { width: 11px; height: 11px; }
+.ftl-tag.tag-elite { color: #ffd166; background: rgba(255, 209, 102, 0.1); }
+.ftl-tag.tag-harmonic { color: var(--muted); }
+.ftl-tag.tag-harmonic.is-on { color: #ffd166; }
+.ftl-tag.tag-wave { color: #ffb3a7; }
+.ftl-tag.tag-clock { color: #6fd3ff; font-variant-numeric: tabular-nums; }
+.ftl-tag.tag-clock.is-low { color: #ff8f7f; }
+.ftl-tag.tag-cloak-off { color: var(--good); }
+.ftl-enemy-gun.gun-missile span { color: #ffb070; }
+.ftl-enemy-gun.gun-drones span { color: #b8e58a; }
+.ftl-enemy-gun.gun-ion span { color: #8fc8ff; }
+.ftl-enemy-gun.is-at-escort span { text-decoration: underline dotted; }
+/* Cloak: the ship fades to a ghost, its rooms dim, a banner says how long. */
+.ftl-enemy.is-cloaked .ftl-enemy-ship img { opacity: 0.22; filter: saturate(0.3) brightness(1.4) drop-shadow(0 0 6px rgba(180, 140, 255, 0.7)); }
+.ftl-enemy.is-cloaked .ftl-enemy-room { opacity: 0.45; }
+.ftl-banner { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; padding: 3px 12px; border-radius: 6px; pointer-events: none;
+  font: 700 13px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.ftl-banner.is-cloak { color: #e7dcff; border: 1px solid #b48cff; background: rgba(30, 18, 56, 0.85); box-shadow: 0 0 14px rgba(180, 140, 255, 0.5); }
+.ftl-banner b { font-weight: 900; }
+.ftl-hint.is-cloak-hint { color: #d9c8ff; }
+.ftl-hold.is-advised { border-color: #b48cff; color: #e7dcff; box-shadow: 0 0 0 2px rgba(180, 140, 255, 0.45); }
+/* Harmonics: a gold shimmer on the shield bubble while the room above half keeps it humming. */
+.ftl-enemy.is-harmonic .ftl-enemy-bubble { border-color: rgba(255, 209, 102, 0.7); box-shadow: inset 0 0 22px rgba(255, 209, 102, 0.25), 0 0 16px rgba(255, 209, 102, 0.3); }
+.ftl-regrow { margin: 2px 0 0; font-size: 11px; color: #b8e58a; }
+.ftl-regrow.is-burning { color: #ffb070; }
+.ftl-wave-tag { position: absolute; left: 4px; top: 4px; z-index: 3; padding: 1px 6px; border-radius: 4px; background: rgba(90, 20, 20, 0.85); color: #ffd0c8;
+  font: 700 11px var(--font-display); text-transform: uppercase; pointer-events: none; }
+/* Escort: the freighter beside you, its hull and when a gun is on it. */
+.ftl-escort { display: grid; grid-template-columns: 40px auto 1fr auto; gap: 6px; align-items: center; margin-top: 4px; padding: 3px 6px; border-radius: 8px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); font-size: 12px; min-width: 0; }
+/* The top-down freighter art turned on its side, nose toward the enemy. */
+.ftl-escort img { width: 22px; height: 34px; margin: -6px auto; object-fit: contain; transform: rotate(90deg); image-rendering: pixelated; }
+.ftl-escort span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ftl-escort b { font: 700 13px var(--font-display); }
+.ftl-bar.hull.escort > span { background: #8fd0a0; }
+.ftl-escort.is-targeted { border-color: rgba(255, 107, 107, 0.8); box-shadow: 0 0 10px rgba(255, 107, 107, 0.35); }
+.ftl-escort.is-targeted span { color: #ffb3a7; }
+.ftl-escort.is-lost { opacity: 0.6; }
+.ftl-escort.is-lost img { filter: grayscale(1) brightness(0.6); }
+/* Ion: a frozen room gets frost and a countdown; a stalled shield says so. */
+.ftl-room-marker.is-frozen::before { content: ''; position: absolute; inset: -26px -36px; border-radius: 12px; z-index: -1;
+  background: radial-gradient(rgba(150, 215, 255, 0.4), rgba(150, 215, 255, 0.08) 60%, transparent 72%); }
+.ftl-frost { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px; border-radius: 4px; background: rgba(20, 50, 80, 0.9); color: #bfe6ff; font: 700 11px var(--font-display); }
+.ftl-frost .ftl-icon { width: 11px; height: 11px; }
+.ftl-stalled { margin-left: 2px; font: 600 10px var(--font-sans); font-style: normal; color: #8fc8ff; }
+.ftl-alert.is-frost { background: rgba(110, 170, 255, 0.14); color: #cfe8ff; }
+/* Pops and banners. */
+.ftl-pop.is-regrow { color: #b8e58a; text-shadow: 0 2px 0 #1f3a00; font-size: 13px; }
+.ftl-pop.is-frost { color: #cfe8ff; text-shadow: 0 2px 0 #0b2a44, 0 0 8px rgba(120, 200, 255, 0.8); }
+.ftl-pop.is-missile { color: #ffb070; font-size: 14px; }
+.ftl-pop.is-cloak { color: #e7dcff; text-shadow: 0 2px 0 #2a1650; font-size: 13px; }
+.ftl-pop.is-good { color: #b8f0b0; text-shadow: 0 2px 0 #12350c; font-size: 13px; }
+.ftl-pop.is-bad { color: #ffb3a7; text-shadow: 0 2px 0 #4a0f0a; font-size: 13px; }
+.ftl-banner-layer { position: fixed; left: 0; right: 0; top: 22%; z-index: 62; display: grid; justify-items: center; pointer-events: none; padding: 0 16px; }
+.ftl-big-banner { max-width: 100%; padding: 6px 18px; border-radius: 10px; border: 2px solid #ffb65f; background: rgba(12, 14, 24, 0.9);
+  font: 900 22px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: #ffd9a8; white-space: nowrap;
+  animation: ftl-banner-in 1.5s cubic-bezier(.2,.9,.25,1) forwards; }
+.ftl-big-banner.is-cloak { border-color: #b48cff; color: #e7dcff; }
+.ftl-big-banner.is-wave { border-color: #ff6b6b; color: #ffd0c8; }
+.ftl-big-banner.is-bad { border-color: #ff6b6b; color: #ffb3a7; }
+.ftl-big-banner.is-good { border-color: #8fd0a0; color: #c9f5d0; }
+@keyframes ftl-banner-in { 0% { transform: scale(0.7); opacity: 0; } 14% { transform: scale(1.06); opacity: 1; } 24% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .ftl-enemy.is-harmonic .ftl-enemy-bubble { animation: ftl-harmonic 1.6s ease-in-out infinite; }
+  .ftl-enemy.is-cloaked .ftl-enemy-ship img { animation: ftl-ghost 1.4s ease-in-out infinite alternate; }
+  .ftl-escort.is-targeted { animation: ftl-escort-alarm 1s ease-in-out infinite; }
+  .ftl-hold.is-advised { animation: ftl-ability-ready 1.1s ease-in-out infinite; }
+}
+@keyframes ftl-harmonic { 50% { border-color: rgba(255, 240, 190, 0.95); box-shadow: inset 0 0 30px rgba(255, 209, 102, 0.4), 0 0 22px rgba(255, 209, 102, 0.45); } }
+@keyframes ftl-ghost { from { opacity: 0.14; transform: translateX(-2px); } to { opacity: 0.3; transform: translateX(2px); } }
+@keyframes ftl-escort-alarm { 50% { box-shadow: 0 0 16px rgba(255, 107, 107, 0.6); } }
+@media (prefers-reduced-motion: reduce) {
+  .ftl-big-banner { animation: ftl-cast-fade 1.5s linear forwards; }
+}
+
 /* ---------------------------------------------------------------------------
    Sector map and events (FTL-lite phase 3).
    --------------------------------------------------------------------------- */
