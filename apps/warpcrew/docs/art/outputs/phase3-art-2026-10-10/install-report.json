@@ -1,0 +1,344 @@
+[
+ {
+  "name": "vell",
+  "file": "public/art/pixel/cast/vell.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 23003
+ },
+ {
+  "name": "crane",
+  "file": "public/art/pixel/cast/crane.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 16379
+ },
+ {
+  "name": "tarrow",
+  "file": "public/art/pixel/cast/tarrow.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 17553
+ },
+ {
+  "name": "choir",
+  "file": "public/art/pixel/cast/choir.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 13759
+ },
+ {
+  "name": "wren",
+  "file": "public/art/pixel/cast/wren.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 19033
+ },
+ {
+  "name": "fenn",
+  "file": "public/art/pixel/clients/fenn.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 20753
+ },
+ {
+  "name": "ledgers",
+  "file": "public/art/pixel/clients/ledgers.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 27762
+ },
+ {
+  "name": "sato",
+  "file": "public/art/pixel/clients/sato.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 17002
+ },
+ {
+  "name": "grudge",
+  "file": "public/art/pixel/clients/grudge.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 16566
+ },
+ {
+  "name": "bask",
+  "file": "public/art/pixel/clients/bask.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 18462
+ },
+ {
+  "name": "ossory",
+  "file": "public/art/pixel/clients/ossory.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 17493
+ },
+ {
+  "name": "quist",
+  "file": "public/art/pixel/clients/quist.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 23026
+ },
+ {
+  "name": "ulama",
+  "file": "public/art/pixel/clients/ulama.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 20067
+ },
+ {
+  "name": "nobody",
+  "file": "public/art/pixel/clients/nobody.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 14944
+ },
+ {
+  "name": "sallow",
+  "file": "public/art/pixel/clients/sallow.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 15733
+ },
+ {
+  "name": "ash",
+  "file": "public/art/pixel/clients/ash.png",
+  "size": [
+   768,
+   768
+  ],
+  "bytes": 16847
+ },
+ {
+  "name": "factions-a",
+  "file": "public/art/pixel/ui/faction-corsairs.png",
+  "size": [
+   250,
+   256
+  ],
+  "bytes": 18492
+ },
+ {
+  "name": "factions-a",
+  "file": "public/art/pixel/ui/faction-scrappers.png",
+  "size": [
+   256,
+   221
+  ],
+  "bytes": 19341
+ },
+ {
+  "name": "factions-a",
+  "file": "public/art/pixel/ui/faction-swarm.png",
+  "size": [
+   256,
+   207
+  ],
+  "bytes": 19063
+ },
+ {
+  "name": "factions-a",
+  "file": "public/art/pixel/ui/faction-ice.png",
+  "size": [
+   210,
+   256
+  ],
+  "bytes": 17954
+ },
+ {
+  "name": "factions-b",
+  "file": "public/art/pixel/ui/faction-shades.png",
+  "size": [
+   239,
+   256
+  ],
+  "bytes": 16661
+ },
+ {
+  "name": "factions-b",
+  "file": "public/art/pixel/ui/faction-wardens.png",
+  "size": [
+   198,
+   256
+  ],
+  "bytes": 16950
+ },
+ {
+  "name": "factions-b",
+  "file": "public/art/pixel/ui/faction-eclipse.png",
+  "size": [
+   255,
+   256
+  ],
+  "bytes": 15473
+ },
+ {
+  "name": "factions-b",
+  "file": "public/art/pixel/ui/almanac.png",
+  "size": [
+   220,
+   256
+  ],
+  "bytes": 21624
+ },
+ {
+  "name": "twists-a",
+  "file": "public/art/pixel/ui/twist-escort.png",
+  "size": [
+   253,
+   256
+  ],
+  "bytes": 22015
+ },
+ {
+  "name": "twists-a",
+  "file": "public/art/pixel/ui/twist-rush.png",
+  "size": [
+   215,
+   256
+  ],
+  "bytes": 17948
+ },
+ {
+  "name": "twists-a",
+  "file": "public/art/pixel/ui/twist-bounty.png",
+  "size": [
+   193,
+   256
+  ],
+  "bytes": 18265
+ },
+ {
+  "name": "twists-a",
+  "file": "public/art/pixel/ui/twist-holdout.png",
+  "size": [
+   194,
+   256
+  ],
+  "bytes": 15526
+ },
+ {
+  "name": "twists-b",
+  "file": "public/art/pixel/ui/twist-waves.png",
+  "size": [
+   220,
+   256
+  ],
+  "bytes": 16666
+ },
+ {
+  "name": "twists-b",
+  "file": "public/art/pixel/ui/story.png",
+  "size": [
+   245,
+   256
+  ],
+  "bytes": 21004
+ },
+ {
+  "name": "twists-b",
+  "file": "public/art/pixel/ui/loyalty.png",
+  "size": [
+   235,
+   256
+  ],
+  "bytes": 19861
+ },
+ {
+  "name": "twists-b",
+  "file": "public/art/pixel/ui/discovery.png",
+  "size": [
+   246,
+   256
+  ],
+  "bytes": 26144
+ },
+ {
+  "name": "chapter-spur",
+  "file": "public/art/pixel/cinematic/v2/chapter-spur.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 287152
+ },
+ {
+  "name": "chapter-veil",
+  "file": "public/art/pixel/cinematic/v2/chapter-veil.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 247033
+ },
+ {
+  "name": "almanac",
+  "file": "public/art/pixel/cinematic/v2/almanac.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 349257
+ },
+ {
+  "name": "freighter",
+  "file": "public/art/pixel/ships/v2/freighter-mabel.png",
+  "size": [
+   512,
+   179
+  ],
+  "bytes": 35921
+ },
+ {
+  "name": "constant",
+  "file": "public/art/pixel/cinematic/v2/constant.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 355987
+ },
+ {
+  "name": "buoy",
+  "file": "public/art/pixel/cinematic/v2/buoy.png",
+  "size": [
+   1280,
+   720
+  ],
+  "bytes": 197601
+ }
+]
