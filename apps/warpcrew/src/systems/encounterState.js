@@ -11,6 +11,8 @@ import { RALLY } from './gemSinks.js';
 import { isCanonicalGuidedContract } from './contractState.js';
 import { startFtlEncounter, advanceFtlEncounter, applyFtlCommand, validFtlBody, FTL_VERSION, OVERCHARGE } from './ftlCombat.js';
 import { shipLoadout } from './armory.js';
+import { factionOf } from '../data/factions.js';
+import { cleanTwist } from '../data/twists.js';
 
 const STATIONS = ['helm', 'shields', 'weapons', 'engineering'];
 const numberIn = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
@@ -238,9 +240,22 @@ export function enemyTierFor(encounterId) {
   return power >= 52 ? 2 : power >= 38 ? 1 : 0;
 }
 
-export function startCrewFight(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null, guided = false, flagship = 0 }, now = trustedNow()) {
+/**
+ * Start a v3 crew fight for a contract, a wall attempt or an Explore jump. The enemy's faction comes from the
+ * encounter (factions.js); a contract's twist arrives as `twist` (contractFightArgs reads it off the contract).
+ * The guided first fight has neither, and walls never take a twist.
+ */
+export function startCrewFight(player, args, now = trustedNow()) {
+  return startFtlEncounter(crewFightSetup(player, args, now));
+}
+
+/** What startCrewFight hands startFtlEncounter (the faction evidence replays fights from it). */
+export function crewFightSetup(player, { acceptanceId, encounterId, seed, threat, enemyHull = null, remainingBefore = null, guided = false, flagship = 0, twist = null }, now = trustedNow()) {
   const systems = player.ship?.systems || {};
-  return startFtlEncounter({
+  const wallFight = Number.isInteger(enemyHull);
+  return {
+    faction: guided ? null : factionOf(encounterId)?.id || null,
+    twist: guided || wallFight ? null : cleanTwist(twist),
     // The ship as fitted at the drydock: levels shape shields, charge, evasion and aim; the loadout is its guns.
     shipLevels: guided ? null : { shields: systems.shields || 1, weapons: systems.weapons || 1, engines: systems.engines || 1, sensors: Math.min(20, (systems.sensors || 0) + 1) },
     loadout: guided ? undefined : shipLoadout(player),
@@ -259,7 +274,7 @@ export function startCrewFight(player, { acceptanceId, encounterId, seed, threat
     tactics: guided ? [] : unlockedTactics(player),
     boarders: !guided && boardersUnlocked(player) && BOARDING_ENEMIES.includes(String(encounterId)),
     guided,
-  });
+  };
 }
 
 /** The script-5 tutorial's first fight is an easy FTL-lite fight that teaches targeting. */
@@ -296,6 +311,8 @@ export function contractFightArgs(player, contract, now = trustedNow()) {
     remainingBefore: wall ? wall.remainingBefore : null,
     // The first wall's flagship fights as tuned; later walls' flagships carry an extra shield layer.
     flagship: wall ? (contract.wall.id === 'spur' ? 0 : 2) : 0,
+    // The contract's twist rides into the fight (never on a wall or the guided first fight).
+    twist: wall || contract.profile === 'distress' ? null : cleanTwist(contract.twist),
   };
 }
 
@@ -382,6 +399,18 @@ export function validEncounterBody(encounter) {
   return true;
 }
 
+/**
+ * A fight's twist is the contract's twist, exactly (id and elite), and only a contract fight off the wall
+ * carries one. A fight with a twist is new, so it must also carry its encounter's faction.
+ */
+export function fightTwistMatches(encounter, contract) {
+  const twist = encounter?.twist;
+  const expected = contract?.wall || contract?.profile === 'distress' ? null : cleanTwist(contract?.twist);
+  if (!twist) return encounter?.version !== FTL_VERSION || !expected;
+  if (!expected || twist.id !== expected.id || JSON.stringify(twist.elite ?? null) !== JSON.stringify(expected.elite ?? null)) return false;
+  return !factionOf(encounter.encounterId) || Object.hasOwn(encounter, 'faction');
+}
+
 function validSnapshot(encounter, contract, tutorial, player = null) {
   if (player && !kitCrewMatchesRoster(player, encounter)) return false;
   // New-mode entry paths are distress Launch (one route action) and any
@@ -402,7 +431,8 @@ function validSnapshot(encounter, contract, tutorial, player = null) {
     || contract.revision !== entryRevision + encounter.beat
     || !validEncounterBody(encounter)
     // v3 fights carry their crew: only crew who launched with the contract can be in it.
-    || (encounter.version === FTL_VERSION && !fightCrewLaunched(encounter, contract.participantIds))) return false;
+    || (encounter.version === FTL_VERSION && !fightCrewLaunched(encounter, contract.participantIds))
+    || !fightTwistMatches(encounter, contract)) return false;
   if (contract.stage === 'return') {
     const settled = (encounter.result === 'win' && contract.result?.success === true)
       || (encounter.result === 'loss' && contract.profile !== 'distress' && contract.result?.success === false);

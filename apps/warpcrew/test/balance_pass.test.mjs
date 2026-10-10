@@ -84,7 +84,9 @@ test('a fight saved before the balance pass keeps its threat, loads and plays to
   const oldThreat = 1.37;
   assert.notEqual(p.activeEncounter.enemy.threat, oldThreat);
   const load = enemyLoadout(oldThreat, { tier: p.activeEncounter.enemy.tier || 0, kits: true });
-  const saved = clone({ ...p, activeEncounter: { ...p.activeEncounter, enemy: { ...p.activeEncounter.enemy, threat: oldThreat,
+  // A save from before the balance pass also predates enemy factions (Phase 3): it carries no faction block.
+  const { faction: _faction, ...oldFight } = p.activeEncounter;
+  const saved = clone({ ...p, activeEncounter: { ...oldFight, enemy: { ...p.activeEncounter.enemy, threat: oldThreat,
     evasion: load.evasion, repairPerSec: load.repairPerSec, shields: { layers: load.shieldLayers, max: load.shieldLayers, rechargeMs: 0 },
     weapons: load.weapons.map((w, i) => ({ ...w, progressMs: p.activeEncounter.enemy.weapons[i]?.progressMs ?? 0, target: p.activeEncounter.enemy.weapons[i]?.target ?? 'helm' })) } } });
   assert.equal(validFtlBody(saved.activeEncounter), true);

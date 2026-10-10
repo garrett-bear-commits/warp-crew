@@ -8,6 +8,8 @@ import { scaleSitePayout } from './economy.js';
 import { combatBonuses, hullAfterCombat, injuryMinutesFor, tradePayout } from './passives.js';
 import { applyStoryFlag } from './story.js';
 import { grantCrewXp } from './player.js';
+import { applyTwistPay, cleanTwist, twistOutcomeLine } from '../data/twists.js';
+import { ftlTwistOutcome } from './ftlCombat.js';
 
 export const CURRENCIES = ['credits', 'medals', 'reputation', 'gems', 'fuel'];
 
@@ -191,7 +193,10 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
     : normalizeCurrencyReward(scaleSitePayout(rawRewards, player, { kind: 'combat', visits }));
   // Traders aboard (their passive) and salvage moves (Already Sold It) add to a won fight's credits.
   const salvagePct = lost ? 0 : fightSalvagePct(encounter);
-  const rewards = salvagePct > 0 ? { ...scaled, credits: Math.round(scaled.credits * (1 + salvagePct / 100)) } : scaled;
+  const salvaged = salvagePct > 0 ? { ...scaled, credits: Math.round(scaled.credits * (1 + salvagePct / 100)) } : scaled;
+  // The contract's twist (Phase 3 §3): its pay on a won fight, from what the fight says happened.
+  const twist = contractTwistOutcome(contract, encounter);
+  const rewards = twist ? applyTwistPay(salvaged, twist, !lost) : salvaged;
   // v3 fights run on the ship's own hull; older fights ran on a 30-point fight hull.
   const ftl = encounter.version === 3;
   const hullLoss = Math.max(0, ftl ? encounter.startHull - encounter.hull : 30 - encounter.hull);
@@ -228,12 +233,21 @@ export function resolveSimulatedCombatPayout(player, contract, encounter, now = 
       hullLoss,
       injuredCrewId,
       storyFlag: null,
-      summary: flagshipDown ? `${catalog.name} is broken. The way ahead is open.`
+      summary: (flagshipDown ? `${catalog.name} is broken. The way ahead is open.`
         : wallOutcome && !lost ? `${catalog.name} limps away. Its damage holds until the daily reset.`
-          : lost ? (catalog.fail || 'The crew breaks off. Salvage recovered.') : (catalog.win || 'The enemy ship breaks off. Cargo aboard.'),
+          : lost ? (catalog.fail || 'The crew breaks off. Salvage recovered.') : (catalog.win || 'The enemy ship breaks off. Cargo aboard.'))
+        + (twist && !lost && twistOutcomeLine(contract.twist, twist) ? ` ${twistOutcomeLine(contract.twist, twist)}` : ''),
       ...(wallOutcome ? { wall: wallOutcome } : {}),
+      ...(twist ? { twist } : {}),
     },
   };
+}
+
+/** The twist a settled contract fight ran: { id, met } when the contract and its fight carry the same twist. */
+export function contractTwistOutcome(contract, encounter) {
+  const twist = cleanTwist(contract?.twist);
+  if (!twist || contract.wall || encounter?.twist?.id !== twist.id) return null;
+  return ftlTwistOutcome(encounter);
 }
 
 

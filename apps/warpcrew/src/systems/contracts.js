@@ -15,6 +15,7 @@ import { beginContractEncounter, applyEncounterAction, applyEncounterCommand, no
 import { tacticStatus, repelStatus } from './autoCombat.js';
 import { ftlPolicyStep, FTL_VERSION, MAX_FIGHT_BEATS } from './ftlCombat.js';
 import { recordSiege } from './walls.js';
+import { cleanTwist } from '../data/twists.js';
 
 export { CONTRACT_PROFILES } from '../data/contracts.js';
 
@@ -360,6 +361,8 @@ export function acceptContract(player, offerId, now = trustedNow()) {
     storyFlag: content.storyFlag,
     beats: offer.beats,
     ...(offer.wall ? { wall: { id: offer.wall.id } } : {}),
+    // A twist (Phase 3 §3) rides from the offer into the fight; never on a wall or the tutorial job.
+    ...(!offer.wall && offer.profile !== 'distress' && cleanTwist(offer.twist) ? { twist: cleanTwist(offer.twist) } : {}),
     fuelSpent: offer.profile === 'distress' ? player.tutorial?.contractRecoveryFuelSpent || 0 : 0,
     acceptedAt: now,
   };
@@ -580,9 +583,10 @@ function enumerateRewardPaths(player, offer, now) {
       return;
     }
     if (current.activeEncounter) {
-      // A payout is possible if hands-off crew or a simple defensive order policy can win.
+      // A payout is possible if hands-off crew or a simple defensive order policy can win. The sharp captain
+      // plays the faction's and twist's counters (an escort kept alive, a rush won in time).
       const ftl = current.activeEncounter.version === FTL_VERSION;
-      for (const policy of ftl ? ['idle', 'smart', 'initiative'] : ENCOUNTER_POLICIES) {
+      for (const policy of ftl ? ['idle', 'smart', 'initiative', 'sharp'] : ENCOUNTER_POLICIES) {
         let branch = current;
         for (let beat = 0; beat < (ftl ? MAX_FIGHT_BEATS : 40) && !branch.activeEncounter.result; beat += 1) {
           const { acceptanceId, revision } = branch.activeEncounter;

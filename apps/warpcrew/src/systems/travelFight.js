@@ -63,6 +63,8 @@ export function validTravelFight(player) {
     || ![FTL_VERSION, rulesetFor(fight.encounterId) === 'v2' ? 2 : 1].includes(encounter.version)
     || encounter.seed !== fight.seed || fight.revision !== encounter.beat
     || !Number.isFinite(encounter.enemy?.threat) || Object.hasOwn(encounter.enemy, 'startHull')
+    // Twists belong to contracts: an Explore fight never carries one.
+    || Object.hasOwn(encounter, 'twist')
     || !validEncounterBody(encounter)
     || (encounter.version === FTL_VERSION && !fightCrewLaunched(encounter, fight.participantIds))
     || !kitCrewMatchesRoster(player, encounter)) return false;
