@@ -111,8 +111,8 @@ const deepFreeze = value => Object.freeze(Object.fromEntries(Object.entries(valu
  * Faction fight rules (tuned 2026-10-10 on the balance pass's day-7 crews, docs/qa/2026-10-10-faction-mechanics.md).
  * missiles: their heavy gun (or an extra one when they carry no heavy) fires a missile of `damageMult` x the
  *   cannon's damage: through shields, but it can be dodged.
- * drones: the cannon becomes `shots` weak drones carrying `volleyMult` of its volley; each drone takes a shield
- *   layer, and their room damage is `roomMult` of a shot's.
+ * drones: the cannon becomes `shots` weak drones; each takes a shield layer. Past one layer, the drones land
+ *   `landMult` of what the cannon's volley would have; their room damage is `roomMult` of a shot's.
  * regrow: the hull grows back `perBeat` a beat unless one of their rooms is burning, up to `maxPct`% of the
  *   ship's starting hull over the whole fight (so a weak crew still wears it down).
  * ion: an extra ion gun. A hit freezes that room (its system offline) for `lockMs`, an engineer inside thawing
@@ -125,8 +125,8 @@ const deepFreeze = value => Object.freeze(Object.fromEntries(Object.entries(valu
  */
 export const FACTION_RULES = deepFreeze({
   missiles: { damageMult: 1, chargeMs: 15000 },
-  drones: { shots: 5, volleyMult: 0.6, roomMult: 0.4 },
-  regrow: { perBeat: 1, maxPct: 30 },
+  drones: { shots: 4, landMult: 0.9, roomMult: 0.8 },
+  regrow: { perBeat: 1, maxPct: 15 },
   ion: { chargeMs: 16000, lockMs: 5000, stallMs: 4000, thawMult: 2 },
   cloak: { first: 8, every: 12, beats: 4, helmMin: 50 },
   harmonics: { layers: 0, rechargeMult: 2, roomMin: 50 },
@@ -143,7 +143,7 @@ export const FACTION_LOADOUT = deepFreeze({
   ice: { damageMult: 0.85 },
   shades: { damageMult: 0.65, repairMult: 0.5 },
   wardens: { damageMult: 0.6 },
-  eclipse: { damageMult: 0.9, repairMult: 0.5, shieldLayers: -1 },
+  eclipse: { repairMult: 0.5, shieldLayers: -1 },
 });
 /** Elite modifiers: Armored +1 shield layer, Veteran repairs x1.5, Overclocked guns charge 25% faster, Heavy +30% hull. */
 export const ELITE_RULES = Object.freeze({ armoredLayers: 1, veteranRepair: 1.5, overclockedCharge: 1.25, heavyHull: 1.3 });
@@ -214,8 +214,9 @@ function reshapeLoadout(base, faction, elite, hitMult) {
   const cannon = base.weapons[0];
   let weapons = base.weapons.map(w => ({ ...w }));
   if (has('drones')) {
-    const { shots, volleyMult } = FACTION_RULES.drones;
-    weapons[0] = { id: 'drones', shots, damage: Math.max(1, Math.round(cannon.damage * cannon.shots * volleyMult / shots)), chargeMs: cannon.chargeMs };
+    // Against one shield layer the cannon lands all but one shot; the drones land all but one drone.
+    const { shots, landMult } = FACTION_RULES.drones;
+    weapons[0] = { id: 'drones', shots, damage: Math.max(1, Math.round(cannon.damage * Math.max(1, cannon.shots - 1) * landMult / (shots - 1))), chargeMs: cannon.chargeMs };
   }
   if (has('missiles')) {
     const missile = { id: 'missile', shots: 1, damage: Math.round(cannon.damage * FACTION_RULES.missiles.damageMult), chargeMs: FACTION_RULES.missiles.chargeMs };
