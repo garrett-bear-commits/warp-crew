@@ -16,7 +16,7 @@ assert.match(log, /data-act="restart-save"/);
 assert.doesNotMatch(log, /<h2>Later<\/h2>/);
 assert.doesNotMatch(log, /LiveOps|Mid-core|Season Spine|Fast follow|not shipped|\bSKUs?\b|\bIAP\b|roadmap|QA tool|tutorial/i);
 assert.match(log, /<h2>Daily orders/);
-assert.match(log, /<h2>Story<\/h2>/);
+assert.match(log, /<h2>Discoveries<\/h2>/);
 assert.match(log, /<h2>Log<\/h2>/);
 
 // The destructive action must require a second, explicit choice.

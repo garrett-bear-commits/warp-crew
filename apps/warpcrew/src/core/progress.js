@@ -81,5 +81,23 @@ export function isWarpcrewPlayer(v) {
   if (v.idle !== undefined && !(record(v.idle) && typeof v.idle.since === 'number' && Number.isFinite(v.idle.since) && v.idle.since > 0
     && (v.idle.banked === undefined || (record(v.idle.banked) && [['credits', 100000], ['medals', 10000], ['hours', 16]]
       .every(([key, max]) => typeof v.idle.banked[key] === 'number' && v.idle.banked[key] >= 0 && v.idle.banked[key] <= max))))) return false;
+  // Phase 3 (src/systems/campaign.js, almanac.js, loyalty.js): short id lists without repeats, bounded counts.
+  if (v.campaign !== undefined && !(record(v.campaign) && idList(v.campaign.done, 40)
+    && Number.isInteger(v.campaign.since) && v.campaign.since >= 0 && v.campaign.since <= 999
+    && (v.campaign.chapters === undefined || (Array.isArray(v.campaign.chapters) && v.campaign.chapters.length <= 10
+      && v.campaign.chapters.every((n) => Number.isInteger(n) && n >= 1 && n <= 10) && new Set(v.campaign.chapters).size === v.campaign.chapters.length)))) return false;
+  if (v.almanac !== undefined && !(record(v.almanac) && (v.almanac.seen === undefined || idList(v.almanac.seen, 400))
+    && (v.almanac.crew === undefined || idList(v.almanac.crew, 100))
+    && (v.almanac.enemies === undefined || (record(v.almanac.enemies) && Object.keys(v.almanac.enemies).length <= 64
+      && Object.entries(v.almanac.enemies).every(([id, wl]) => ID.test(id) && Array.isArray(wl) && wl.length === 2
+        && wl.every((n) => Number.isInteger(n) && n >= 0 && n <= MAX_LIFETIME_COUNTER)))))) return false;
+  if (v.loyalty !== undefined && !(record(v.loyalty) && (v.loyalty.loyal === undefined || idList(v.loyalty.loyal, 100))
+    && record(v.loyalty.points) && Object.keys(v.loyalty.points).length <= 100
+    && Object.entries(v.loyalty.points).every(([id, n]) => ID.test(id) && Number.isInteger(n) && n >= 0 && n <= 60))) return false;
   return true;
 }
+
+const ID = /^[a-z0-9_]{1,40}$/;
+/** A list of at most `max` distinct short ids. */
+const idList = (list, max) => Array.isArray(list) && list.length <= max && list.every((id) => typeof id === 'string' && ID.test(id))
+  && new Set(list).size === list.length;

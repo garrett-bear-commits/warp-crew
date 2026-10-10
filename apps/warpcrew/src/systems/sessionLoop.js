@@ -42,6 +42,8 @@ import { claimCalendar } from './calendar.js';
 import { startIdleClock, claimIdle, settleIdle, formatHoldSpan, holdPercent, WELCOME_BACK_MS } from './idle.js';
 import { openDailyChest, openWeeklyChest } from './chests.js';
 import { mapJumps } from './exploreNudge.js';
+import { ensureStoryOffer, reviewTransmissions, settleStoryClaim, settleChapters, markSeen, chapterOfWall } from './campaign.js';
+import { MISSIONS } from '../data/campaign.js';
 
 export function prepareSession(player, now = trustedNow()) {
   let next = ensureDailyLoop(player, now);
@@ -53,6 +55,8 @@ export function prepareSession(player, now = trustedNow()) {
     next = { ...next, contractBoard: generateContractBoard(next, now) };
   } else if (!early) next = ensureContractBoard(next, now).player;
   if (!early) next = ensureWallOffer(next, now);
+  // Phase 3: the open story mission's card sits at the top of the board.
+  if (!early) next = ensureStoryOffer(next, now);
   if (!early) next = evaluateWallPackOffer(next, currentWall(next, now), now);
   const building = next;
   next = completeShipBuild(next, now).player;
@@ -316,7 +320,9 @@ export function sessionModels(player, ui = {}, now = trustedNow(), { fightOdds: 
       const awayCount = (player.crew || []).filter(member => member.status === 'expedition').length;
       const fightThreat = fight ? { label: threatLabel(contractFightArgs(player, fight, now).threat), awayCount,
         odds: withOdds && !contract ? fightOdds(player, review.offer, now) : null } : null;
-      models.contractReview = { ...review, rewardBand, fightThreat, destinationName: NODES[review.offer.destinationId]?.name,
+      // A story card replays its briefing; a chapter boss's wall card replays the finale's opening.
+      const briefingId = review.offer.story ? MISSIONS[review.offer.story.id]?.briefing : review.offer.wall ? chapterOfWall(review.offer.wall.id)?.bossIntro : null;
+      models.contractReview = { ...review, rewardBand, fightThreat, briefingId: briefingId || null, destinationName: NODES[review.offer.destinationId]?.name,
         enabled: rewardBand.available && !contract && !player.contractBoard.completedOfferIds.includes(review.offer.id) };
     }
   }
@@ -402,6 +408,8 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
   const events = [];
   const nextUi = {};
   let effect = null;
+  // Story transmissions to play after this action (Phase 3 §1); each is recorded as seen when queued.
+  const transmissions = [];
   const fail = reason => ({ ok: false, reason, player: before });
   const v4 = player.tutorial?.script === 4 && !player.tutorial.completed;
   const v5 = player.tutorial?.script === 5 && !player.tutorial.completed;
@@ -548,6 +556,7 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
     const review = reviewContractOffer(player, data.offer);
     if (!review.ok || player.activeContract || player.contractBoard.completedOfferIds.includes(data.offer)) return fail(review.reason || 'offer_unavailable');
     nextUi.reviewedOfferId = data.offer;
+    transmissions.push(...reviewTransmissions(player, review.offer));
     events.push(event('contract_reviewed', { offerId: data.offer, profile: review.offer.profile, destination: review.offer.destinationId, fuel: review.cost.fuel, traitMatch: traitMatch(player, review.favoredTrait) }));
     tutorial('contract_reviewed', { offerId: data.offer });
   } else if (act === 'contract-review-close') nextUi.reviewedOfferId = null;
@@ -618,6 +627,14 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
       const res = claimContractReward(player, now);
       if (!res.ok) return res;
       player = { ...res.player, dailyLoop: ensureDailyLoop(before, now).dailyLoop };
+      // A won story mission pays its bonus and plays its debrief; any other claim counts towards the next one.
+      const story = settleStoryClaim(player, contract);
+      player = story.player;
+      if (story.bonus) {
+        transmissions.push(...story.transmissions);
+        events.push(event('story_mission_won', { mission: contract.story.id, chapter: contract.story.chapter, gems: story.bonus.gems || 0 }));
+        effect = { kind: 'reward', source: 'story', title: contract.title, subtitle: 'Story mission complete', rewards: story.bonus, tier: 'medium', cta: 'Continue' };
+      }
       milestone('contract');
       events.push(fromAnalytics(res.analytics));
       tutorial('contract_claimed');
@@ -865,11 +882,22 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
   } else return null;
   // Income while away (Phase 2 §4): a change to who earns or to the hold only pays from now on.
   player = settleIdle(before, player, now);
+  // A chapter completes when its boss falls (or its gate opens): the gate opens, a named merc joins, the finale plays.
+  const chapters = settleChapters(player, now);
+  if (chapters.transmissions.length) {
+    player = chapters.player;
+    transmissions.push(...chapters.transmissions);
+    for (const recruit of chapters.recruits) events.push(event('story_recruit', { templateId: recruit.templateId, rarity: recruit.rarity, kind: recruit.kind }));
+    const recruit = chapters.recruits[0];
+    if (recruit) effect = { kind: 'reward', source: 'story', title: `${recruit.name} joins the crew`, subtitle: 'Chapter complete', rewards: {}, tier: 'large', cta: 'Welcome aboard',
+      crew: { name: recruit.name, rarity: recruit.rarity, portrait: portraitFor(recruit.templateId) } };
+  }
+  if (transmissions.length) player = ensureStoryOffer(markSeen(player, transmissions), now);
   // Daily orders (Phase 2 §3): a star-map jump and a won fight count however they happened.
   if (mapJumps(player) > mapJumps(before)) milestone('jump');
   if ((player.stats?.combatsWon || 0) > (before.stats?.combatsWon || 0)) milestone('win');
   if (before.tutorial?.phase !== player.tutorial?.phase) events.push(event('tutorial_stage', { script: player.tutorial.script, phase: player.tutorial.phase, elapsedSeconds: elapsed(player.createdAt, now) }));
-  return { ok: true, player, ui: nextUi, events, effect };
+  return { ok: true, player, ui: nextUi, events, effect, transmissions: [...new Set(transmissions)] };
 }
 
 export function persistSessionTransition(result, { save, publish, capture, animate }) {

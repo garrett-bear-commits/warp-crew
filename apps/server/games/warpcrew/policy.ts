@@ -131,7 +131,68 @@ export function isWarpcrewPlayer(v: unknown): v is WarpcrewPlayer {
     )
       return false;
   }
+  // Phase 3 (campaign, Almanac, loyalty): short id lists without repeats, bounded counts.
+  if (v.campaign !== undefined) {
+    const c = v.campaign;
+    if (!(
+      record(c) &&
+      idList(c.done, 40) &&
+      Number.isInteger(c.since) &&
+      (c.since as number) >= 0 &&
+      (c.since as number) <= 999 &&
+      (c.chapters === undefined ||
+        (Array.isArray(c.chapters) &&
+          c.chapters.length <= 10 &&
+          c.chapters.every((n) => Number.isInteger(n) && n >= 1 && n <= 10) &&
+          new Set(c.chapters).size === c.chapters.length))
+    ))
+      return false;
+  }
+  if (v.almanac !== undefined) {
+    const a = v.almanac;
+    if (!(
+      record(a) &&
+      (a.seen === undefined || idList(a.seen, 400)) &&
+      (a.crew === undefined || idList(a.crew, 100)) &&
+      (a.enemies === undefined ||
+        (record(a.enemies) &&
+          Object.keys(a.enemies).length <= 64 &&
+          Object.entries(a.enemies).every(
+            ([id, wl]) =>
+              ID.test(id) &&
+              Array.isArray(wl) &&
+              wl.length === 2 &&
+              wl.every((n) => Number.isInteger(n) && n >= 0 && n <= MAX_LIFETIME_COUNTER),
+          )))
+    ))
+      return false;
+  }
+  if (v.loyalty !== undefined) {
+    const l = v.loyalty;
+    if (!(
+      record(l) &&
+      (l.loyal === undefined || idList(l.loyal, 100)) &&
+      record(l.points) &&
+      Object.keys(l.points).length <= 100 &&
+      Object.entries(l.points).every(
+        ([id, n]) =>
+          ID.test(id) && Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 60,
+      )
+    ))
+      return false;
+  }
   return true;
+}
+
+const ID = /^[a-z0-9_]{1,40}$/;
+/** A list of at most `max` distinct short ids. */
+function idList(list: unknown, max: number): boolean {
+  return (
+    Array.isArray(list) &&
+    list.length <= max &&
+    list.every((id) => typeof id === 'string' && ID.test(id)) &&
+    new Set(list).size === list.length
+  );
 }
 
 /** The player inside any of the three wrappers. */
@@ -179,7 +240,9 @@ export const QA_FIELDS = [
   'activeEvent',
   'activeExpedition',
   'activeTravelFight',
+  'almanac',
   'calendar',
+  'campaign',
   'captainInstanceId',
   'chests',
   'contractBoard',
@@ -199,6 +262,7 @@ export const QA_FIELDS = [
   'lastLoginDay',
   'location',
   'loginStreak',
+  'loyalty',
   'reserve',
   'ship',
   'shipBuild',

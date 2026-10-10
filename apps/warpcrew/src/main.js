@@ -55,6 +55,8 @@ import { toggleSfxMuted, preloadSfx } from './ui/sound.js';
 import { unlockMusic, setMusicScene, toggleMusicMuted } from './ui/music.js';
 import { musicScene } from './data/musicManifest.js';
 import { rewardEntry, rewardItems, walletGain, rewardCardRects, centreCards, flyToWallet, productArt, TIER_SOUNDS } from './ui/rewardReveal.js';
+import { panelTypingMs } from './ui/transmission.js';
+import { transmissionById } from './systems/campaign.js';
 import { startStageLoop } from './ui/stageLoop.js';
 import { preloadEssentialAssets, loadEssentialImage } from './ui/essentialPreload.js';
 import { ART_VERTICAL_SLICE } from './data/artManifest.js';
@@ -84,6 +86,14 @@ let confirmRestartSave = false;
 let hireReveal = null;
 /** Reward reveals waiting their turn (src/ui/rewardReveal.js). UI only, never saved. */
 let rewardQueue = [];
+/**
+ * Story transmissions waiting their turn (src/ui/transmission.js), the panel on screen, when it opened and whether
+ * its line is shown whole. UI only: the session records a transmission as seen when it queues it.
+ */
+let transmissionQueue = [];
+let txPanel = 0;
+let txOpenedAt = 0;
+let txInstant = false;
 /** The login calendar sheet is open (UI only). It opens on the first boot of a day with a square to claim. */
 let calendarOpen = false;
 /** The welcome-back screen is open (UI only): on boot after an hour or more away with income in the hold. */
@@ -129,6 +139,21 @@ export function freshBootCrewMessage(currentPlayer) {
   const names = (currentPlayer?.crew || []).map(member => member.name);
   if (!names.length) return 'No crew on deck yet. Choose your captain.';
   return `Crew on deck — ${names.join(' and ')}.`;
+}
+
+/** Queue a story transmission by id or entry (unknown ids are ignored); the first one chirps as it opens. */
+function showTransmission(entry) {
+  const tx = typeof entry === 'string' ? transmissionById(entry) : entry;
+  if (!tx?.panels?.length) return;
+  transmissionQueue.push(tx);
+  if (transmissionQueue.length === 1) openTransmission();
+}
+
+function openTransmission() {
+  txPanel = 0;
+  txOpenedAt = performance.now();
+  txInstant = false;
+  if (transmissionQueue[0]) sfx('beacon');
 }
 
 /** Queue a reward reveal (null entries are ignored); the first one sounds as it opens. */
@@ -540,6 +565,8 @@ function render() {
     commissionWinback,
     hireReveal,
     rewardReveal: rewardQueue[0] || null,
+    transmission: transmissionQueue[0] || null,
+    transmissionView: { panel: txPanel, instant: txInstant },
     calendarOpen,
     welcomeBackOpen,
     hireOddsOpen,
@@ -709,7 +736,7 @@ function res0Blocked(sku, now = trustedNow()) {
 }
 
 // Interface sounds for taps. Fight orders and travel make their own sounds from their effects.
-const QUIET_TAP_ACTS = new Set(['encounter-advance', 'encounter-order', 'sfx-toggle', 'music-toggle', 'travel-to', 'map-select']);
+const QUIET_TAP_ACTS = new Set(['encounter-advance', 'encounter-order', 'sfx-toggle', 'music-toggle', 'travel-to', 'map-select', 'tx-next']);
 const CONFIRM_ACTS = new Set(['contract-accept', 'exp-launch', 'exp-start', 'event-choose', 'ship-upgrade', 'level-crew',
   'daily-improve', 'captain-choose', 'tutorial-fight-start', 'combat-order', 'contract-order']);
 const COIN_ACTS = new Set(['contract-claim', 'travel-claim', 'refuel-gems']);
@@ -870,6 +897,8 @@ async function handleAction(act, data = {}) {
       },
       capture: captureEvent,
       animate: (effect) => {
+        // Story first: a debrief or a chapter finale plays before its rewards fly.
+        for (const id of transition.transmissions || []) showTransmission(id);
         effectSound(act, effect);
         if ((effect.kind === 'travel' || effect.kind === 'combat') && effect.result) logTravelResult(effect.result);
         if (effect.kind === 'launch') {
@@ -939,6 +968,28 @@ async function handleAction(act, data = {}) {
   }
   if (act === 'welcome-close') {
     welcomeBackOpen = false;
+    render();
+    return;
+  }
+  if (act === 'tx-next' || act === 'tx-skip') {
+    const tx = transmissionQueue[0];
+    if (!tx) return;
+    const typing = !txInstant && performance.now() - txOpenedAt < panelTypingMs(tx.panels[txPanel]?.text);
+    if (act === 'tx-next' && typing) txInstant = true;
+    else if (act === 'tx-next' && txPanel < tx.panels.length - 1) {
+      txPanel += 1;
+      txOpenedAt = performance.now();
+      txInstant = false;
+      sfx('tap');
+    } else {
+      transmissionQueue.shift();
+      openTransmission();
+    }
+    render();
+    return;
+  }
+  if (act === 'tx-replay') {
+    showTransmission(data.id);
     render();
     return;
   }
@@ -1291,10 +1342,10 @@ function logTravelResult(r) {
   } else if (r.already) {
     pushLog(r.flavor || `Already logged at ${r.node.name}.`);
   } else if (r.beat) {
-    pushLog(`Story — ${r.beat.title}: ${r.beat.text}${pay ? ` · ${pay}` : ''}`);
-    if (r.beat.art) {
-      cinematic = { title: r.beat.title, text: r.beat.text, art: r.beat.art };
-    }
+    pushLog(`Discovery — ${r.beat.title}: ${r.beat.text}${pay ? ` · ${pay}` : ''}`);
+    // Gate openings play as a one-panel transmission over their scene (Phase 3 §1).
+    if (r.beat.art) showTransmission({ id: `beat_${r.beat.art}`, kicker: 'Discovery', title: r.beat.title, art: `art/pixel/cinematic/v2/${r.beat.art}.png`,
+      panels: [{ speaker: 'log', text: r.beat.text }] });
   } else if (r.flavor) {
     pushLog(`${r.kind} @ ${r.node.name}: ${r.flavor}${pay ? ` · ${pay}` : ''}`);
   } else if (r.rewards) {

@@ -35,6 +35,9 @@ import { bindFtlCrewDrag } from './ftlCrewDrag.js';
 import { attachSpace } from './spaceFlight.js';
 import { attachCombat, isBattlePlaying, setEncounterSnapshot } from './combatView.js';
 import { renderRewardReveal } from './rewardReveal.js';
+import { renderTransmission } from './transmission.js';
+import { campaignState, campaignLog } from '../systems/campaign.js';
+import { NEXT_CHAPTER } from '../data/campaign.js';
 import { unlockSfx } from './juice.js';
 import { isSfxMuted } from './sound.js';
 import { isMusicMuted } from './music.js';
@@ -81,7 +84,8 @@ export function renderApp(root, ctx) {
   const priorDialog = root.querySelector('[role="dialog"]');
   const priorFocus = root.ownerDocument.activeElement;
   root._wcHandlers = ctx.handlers;
-  if (!root.querySelector('.wc-shell') || !root.querySelector('[data-slot="coach"]') || !root.querySelector('[data-slot="fight-top"]')) {
+  if (!root.querySelector('.wc-shell') || !root.querySelector('[data-slot="coach"]') || !root.querySelector('[data-slot="fight-top"]')
+    || !root.querySelector('[data-slot="transmission"]')) {
     root._wcCameraController?.destroy();
     root._wcCameraResize?.disconnect();
     root._wcBound = false;
@@ -414,6 +418,7 @@ function buildShell() {
       <div data-slot="coach"></div>
       <div data-slot="modal"></div>
       <div data-slot="reward"></div>
+      <div data-slot="transmission"></div>
     </div>
   `;
 }
@@ -633,7 +638,12 @@ function patchShell(root, ctx) {
     + (isHome && player.activeEncounter?.version === 3 ? renderOffscreenThreats(root, (player.activeContract ? activeContractView : activeTravelView)?.encounter) : ''));
   setSlot(root, 'toast', fighting ? '' : renderToast(toast));
   // Rewards wait out a fight, then show above everything else.
-  setSlot(root, 'reward', fighting ? '' : renderRewardReveal(ctx.rewardReveal));
+  setSlot(root, 'reward', fighting || ctx.transmission ? '' : renderRewardReveal(ctx.rewardReveal));
+  // Story transmissions (Phase 3 §1) wait out a fight and play before any reward reveal.
+  // Compared with what was last written (not innerHTML), so a re-render never restarts the typing.
+  const txSlot = root.querySelector('[data-slot="transmission"]');
+  const txHtml = fighting ? '' : renderTransmission(ctx.transmission, player, ctx.transmissionView);
+  if (txSlot && txSlot._wcHtml !== txHtml) { txSlot.innerHTML = txHtml; txSlot._wcHtml = txHtml; }
   setSlot(root, 'departure-status', renderDepartureStatus(departureInFlight));
   const showCoach = coachStep && !step?.modal && !pendingCombat && !selectedRoom && !fighting
     && tab !== 'missions' && !cinematic && !selectedCrewId && player.flags?.splashSeen
@@ -2064,17 +2074,17 @@ export function renderLog(player, log, goals) {
     ${renderAchievements(player)}
     <div class="panel">
       <h2>Career</h2>
-      <div class="muted">${escapeHtml(rank.label)} · Ch.${prog.chapter} · ${collected} mercs</div>
+      <div class="muted">${escapeHtml(rank.label)} · ${escapeHtml(campaignLabel(player))} · ${collected} mercs</div>
     </div>
+    ${renderCampaignPanel(player)}
     <div class="panel">
-      <h2>Story</h2>
+      <h2>Discoveries</h2>
       ${prog.beats.filter((b) => b.unlocked).slice(-6).map((b) => `
         <div class="week-row">
           <span class="mark">●</span>
           <span>${escapeHtml(b.title)}</span>
-          <span class="prog">Ch.${b.chapter}</span>
         </div>
-      `).join('') || '<div class="muted">Story beacons you visit show up here.</div>'}
+      `).join('') || '<div class="muted">Strange signals you follow on the star map show up here.</div>'}
     </div>
     <div class="panel">
       <h2>Log</h2>
@@ -2082,6 +2092,27 @@ export function renderLog(player, log, goals) {
     </div>
     ${renderQaSettings()}
   `;
+}
+
+/** "Chapter 2" while the campaign runs, "Story complete" after the last written chapter. */
+function campaignLabel(player) {
+  const state = campaignState(player);
+  return state.complete ? 'Story complete' : `Chapter ${state.chapter?.n || 1}`;
+}
+
+/** The Log's campaign panel: each chapter, its missions done, and what the next mission waits for. */
+function renderCampaignPanel(player) {
+  if (isTutorialActive(player)) return '';
+  const state = campaignState(player);
+  const wait = { contract: 'Next mission after one more contract.', sector: 'Opens when its sector does.', boss: 'Break the chapter finale on the Contract Board.' }[state.waiting]
+    || (state.missionId ? 'A story mission is on the Contract Board.' : '');
+  const chapters = campaignLog(player).map(ch => `<div class="campaign-chapter${ch.complete ? ' is-complete' : ch.current ? ' is-current' : ''}">
+      <b>Chapter ${ch.n} · ${escapeHtml(ch.title)}</b>
+      <span class="campaign-ticks" aria-label="${ch.missions.filter(m => m.done).length} of ${ch.missions.length} missions">${ch.missions.map(m => `<i class="${m.done ? 'on' : ''}" title="${escapeHtml(m.title)}"></i>`).join('')}</span>
+      <span class="muted">${ch.complete ? 'Complete' : ch.current ? escapeHtml(wait) : 'Ahead'}</span>
+    </div>`).join('');
+  return `<div class="panel campaign-panel"><h2>The Long Jump</h2>${chapters}
+    <div class="campaign-chapter is-next"><b>Chapter ${NEXT_CHAPTER.n} · ${escapeHtml(NEXT_CHAPTER.title)}</b><span class="muted">Coming soon</span></div></div>`;
 }
 
 function escapeHtml(s) {

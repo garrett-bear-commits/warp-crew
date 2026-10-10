@@ -7,6 +7,7 @@
 import { trustedNow, localDayKey } from '../shared/time.js';
 import { NODES, visibleNodes, careerDay } from '../data/sectors.js';
 import { encounterById } from './combat.js';
+import { campaignAllowsWall } from './campaign.js';
 
 /**
  * Pools and threat floors (balance pass 2026-10-09, docs/qa/2026-10-09-balance-pass.md). Damage resets each day,
@@ -58,6 +59,8 @@ export function currentWall(player, now = trustedNow()) {
   for (const wall of WALLS) {
     if (wallBeaten(player, wall.id)) continue;
     if (wall.minDay && careerDay(player, now) < wall.minDay) return null;
+    // A chapter boss waits for its chapter's story missions (Phase 3 §2).
+    if (!campaignAllowsWall(player, wall)) return null;
     return visible.has(wall.destinationId) ? wall : null;
   }
   return null;

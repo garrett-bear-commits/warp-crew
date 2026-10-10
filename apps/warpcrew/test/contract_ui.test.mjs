@@ -37,13 +37,15 @@ assert.ok(orders.includes('Not enough fuel'));
 // Live board and review expose the same literal range to sighted and screen-reader users.
 const now = Date.UTC(2026, 8, 22, 12);
 const livePlayer = prepareSession({ ...createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 }), tutorial: { script: 3, completed: true, phase: 'done' } }, now);
-const liveOffer = livePlayer.contractBoard.offers[0];
+// The first daily offer (a story card, when one is open, sits above them).
+const liveIndex = livePlayer.contractBoard.offers.findIndex(offer => !offer.story);
+const liveOffer = livePlayer.contractBoard.offers[liveIndex];
 const boardModel = sessionModels(livePlayer, {}, now).contractBoard;
 const boardHtml = renderContractBoard(boardModel);
 assert.match(boardHtml, /<dt>Possible payout now<\/dt>/);
-assert.ok(boardModel.offers[0].rewardBand.label.includes('credits'));
-assert.ok(boardHtml.includes(boardModel.offers[0].rewardBand.label));
-assert.ok(boardHtml.includes(`Possible payout now: ${boardModel.offers[0].rewardBand.label}"`));
+assert.ok(boardModel.offers[liveIndex].rewardBand.label.includes('credits'));
+assert.ok(boardHtml.includes(boardModel.offers[liveIndex].rewardBand.label));
+assert.ok(boardHtml.includes(`Possible payout now: ${boardModel.offers[liveIndex].rewardBand.label}"`));
 const reviewModel = sessionModels(livePlayer, { reviewedOfferId: liveOffer.id }, now).contractReview;
 const reviewHtml = renderContractReview(reviewModel);
 assert.match(reviewHtml, /<dt>Possible payout now<\/dt>/);

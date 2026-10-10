@@ -15,6 +15,8 @@ import { clampFuel } from './economy.js';
 import { normalizeAssignments } from './stations.js';
 import { settleIdle, normalizeIdle } from './idle.js';
 import { normalizeCalendar } from './calendar.js';
+import { normalizeCampaign } from './campaign.js';
+import { normalizeAlmanac } from './almanac.js';
 import { normalizeEncounterState } from './encounterState.js';
 import { normalizeTravelFightState } from './travelFight.js';
 import { normalizeEventState } from './travelEvents.js';
@@ -143,6 +145,9 @@ export function migratePlayer(player) {
     // Phase 2 clocks, cleaned so an odd saved value never fails the save check (see core/progress.js).
     calendar: player.calendar === undefined ? undefined : normalizeCalendar(player.calendar),
     idle: normalizeIdle(player.idle),
+    // Phase 3: the campaign and the Almanac, cleaned the same way.
+    campaign: player.campaign === undefined ? undefined : normalizeCampaign(player.campaign),
+    almanac: player.almanac === undefined ? undefined : normalizeAlmanac(player.almanac),
     story,
     flags,
     tutorial,

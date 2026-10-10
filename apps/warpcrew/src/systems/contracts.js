@@ -360,6 +360,9 @@ export function acceptContract(player, offerId, now = trustedNow()) {
     storyFlag: content.storyFlag,
     beats: offer.beats,
     ...(offer.wall ? { wall: { id: offer.wall.id } } : {}),
+    // Phase 3: a story mission names itself; a twist travels into the fight and the pay.
+    ...(offer.story ? { story: { id: offer.story.id, chapter: offer.story.chapter } } : {}),
+    ...(offer.twist ? { twist: JSON.parse(JSON.stringify(offer.twist)) } : {}),
     fuelSpent: offer.profile === 'distress' ? player.tutorial?.contractRecoveryFuelSpent || 0 : 0,
     acceptedAt: now,
   };

@@ -127,7 +127,9 @@ test('committed script-5 captain, hire, target order, claim, name, pull and Skip
   assert.equal(player.tutorial.phase, 'done');
   assert.equal(player.tutorial.completed, true);
   assert.equal(player.tutorial.registered, false);
-  assert.equal(player.contractBoard.offers.length, 3);
+  // Three daily offers, and chapter 1's first story mission on top (Phase 3).
+  assert.equal(player.contractBoard.offers.filter(offer => !offer.story).length, 3);
+  assert.equal(player.contractBoard.offers[0].story?.id, 'c1_first_job');
   assert.equal(player.wallet.credits, beforeClaim.credits + reward.credits);
   assert.equal(player.gacha.pulls, 1);
   assert.equal(act(player, 'tutorial-register-skip').ok, false);

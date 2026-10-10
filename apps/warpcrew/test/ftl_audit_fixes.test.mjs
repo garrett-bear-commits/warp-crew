@@ -34,7 +34,9 @@ function fight() {
   const day3 = now + 2 * 86_400_000;
   const base = createNewPlayer({ tutorialScript: 4, now, rng: () => 0.1 });
   let player = prepareSession({ ...base, createdAt: now, tutorial: { ...base.tutorial, completed: true, phase: 'done' },
-    wallet: { ...base.wallet, fuel: 10 }, stats: { ...base.stats, contractsCompleted: 6 } }, day3);
+    wallet: { ...base.wallet, fuel: 10 }, stats: { ...base.stats, contractsCompleted: 6 },
+    // The Spur wall is chapter 1's boss (Phase 3): its story missions are done.
+    campaign: { done: ['c1_first_job', 'c1_big_mabel', 'c1_two_tooth', 'c1_static_song', 'c1_tarrow_terms'], since: 1 } }, day3);
   const wall = currentWall(player, day3);
   assert.ok(wall, 'a wall is on the board');
   const offer = player.contractBoard.offers.find(o => o.wall);

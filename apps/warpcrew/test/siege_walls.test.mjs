@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { CHAPTERS } from '../src/data/campaign.js';
 import { createNewPlayer, migratePlayer } from '../src/systems/player.js';
 import { prepareSession } from '../src/systems/sessionLoop.js';
 import { acceptContract, previewContractAction, commitContractAction, claimContractReward } from '../src/systems/contracts.js';
@@ -16,7 +17,9 @@ function captain(now, { power = 60 } = {}) {
   const base = createNewPlayer({ tutorialScript: 4, now: start, rng: () => 0.1 });
   return prepareSession({ ...base, createdAt: start, crew: base.crew.map(member => ({ ...member, power })),
     tutorial: { ...base.tutorial, completed: true, phase: 'done' }, wallet: { ...base.wallet, fuel: 10, credits: 0 },
-    stats: { ...base.stats, contractsCompleted: 6 } }, now);
+    stats: { ...base.stats, contractsCompleted: 6 },
+    // Phase 3: the Spur wall is chapter 1's boss and waits for its five story missions.
+    campaign: { done: CHAPTERS[0].missions, since: 1 } }, now);
 }
 const wallOfferOf = player => player.contractBoard.offers.find(offer => offer.wall);
 function attempt(player, now) {
