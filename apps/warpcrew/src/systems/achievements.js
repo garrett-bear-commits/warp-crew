@@ -2,7 +2,7 @@
 /**
  * Achievements (Phase 2 design §5, docs/superpowers/specs/2026-10-10-reward-feel-retention-design.md).
  *
- * Eleven lines in six tracks, three tiers each (33 to earn). Progress is read from the save as it is (stats, crew,
+ * Twelve lines in six tracks, three tiers each (36 to earn; Archivist joined in Phase 3). Progress is read from the save as it is (stats, crew,
  * ship, walls), never from a separate counter, so a reload or a second device cannot double it; the save only keeps
  * how many tiers of each line were claimed. Rewards are medals and credits, with gems on tiers 2 and 3 (credits kept
  * small so Phase 2 stays under a third of a free captain's credits in the 30-day sim). All gems
@@ -13,6 +13,7 @@ import { grant } from './economy.js';
 import { listOwnedHulls } from './hangar.js';
 import { WALLS } from './walls.js';
 import { catalogById, RARITY, STARTER_CAPTAINS, CREW_CATALOG } from '../data/crewRoster.js';
+import { almanacPercent } from './almanac.js';
 
 export const ACHIEVEMENT_GEM_BUDGET = 1500;
 export const ACHIEVEMENT_TRACKS = [
@@ -50,6 +51,9 @@ export const ACHIEVEMENTS = [
     tiers: [[10, { credits: 30, medals: 15 }], [25, { credits: 110, medals: 40, gems: 25 }], [HIREABLE, { credits: 450, medals: 120, gems: 100 }]] },
   { id: 'rare_finds', track: 'collection', title: 'Rare finds', unit: 'Epic or better', read: p => [...hires(p)].filter(id => rank(id) >= RARITY.epic.rank).length,
     tiers: [[1, { credits: 40, medals: 20 }], [5, { credits: 150, medals: 50, gems: 25 }], [15, { credits: 450, medals: 120, gems: 75 }]] },
+  // Phase 3 §6: filling in the Captain's Almanac.
+  { id: 'archivist', track: 'collection', title: 'Archivist', unit: '% of the Almanac', read: p => almanacPercent(p),
+    tiers: [[25, { credits: 30, medals: 15, gems: 15 }], [50, { credits: 100, medals: 40, gems: 30 }], [100, { credits: 300, medals: 100, gems: 60 }]] },
 ].map(line => ({ ...line, tiers: line.tiers.map(([goal, reward]) => ({ goal, reward })) }));
 
 export const ACHIEVEMENT_BY_ID = Object.fromEntries(ACHIEVEMENTS.map(line => [line.id, line]));

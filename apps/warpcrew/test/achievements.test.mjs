@@ -11,7 +11,8 @@ import { completeFreshTutorial } from './helpers/tutorialFlow.mjs';
 
 // Shape: six tracks, every line three rising goals, a badge for every track, gems within the budget.
 assert.deepEqual(ACHIEVEMENT_TRACKS.map(t => t.id), ['combat', 'crew', 'ship', 'explore', 'walls', 'collection']);
-assert.equal(ACHIEVEMENTS.reduce((n, line) => n + line.tiers.length, 0), 33);
+// Twelve lines (the Archivist joined in Phase 3), three tiers each.
+assert.equal(ACHIEVEMENTS.reduce((n, line) => n + line.tiers.length, 0), 36);
 for (const line of ACHIEVEMENTS) {
   assert.ok(ACHIEVEMENT_TRACKS.some(t => t.id === line.track), `${line.id} track`);
   assert.ok(line.tiers.every((tier, i) => i === 0 || tier.goal > line.tiers[i - 1].goal), `${line.id} goals rise`);

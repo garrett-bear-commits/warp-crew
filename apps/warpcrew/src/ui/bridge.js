@@ -40,6 +40,7 @@ import { campaignState, campaignLog } from '../systems/campaign.js';
 import { hasBond, loyaltyLevel, openedScenes, pendingScenes, bondTransmission, LOYALTY } from '../systems/loyalty.js';
 import { BONDS } from '../data/bonds.js';
 import { NEXT_CHAPTER } from '../data/campaign.js';
+import { renderAlmanac, renderAlmanacCard } from './almanacView.js';
 import { unlockSfx } from './juice.js';
 import { isSfxMuted } from './sound.js';
 import { isMusicMuted } from './music.js';
@@ -597,7 +598,8 @@ function patchShell(root, ctx) {
   const baseModal = ctx.hireReveal ? renderHireReveal(ctx.hireReveal) : ctx.hireOddsOpen ? renderHireOdds(player, now)
     : ctx.confirmRestartSave ? renderRestartSaveConfirm() : ctx.commissionWinback ? renderCommissionWinback(player) : fighting ? '' : eventModal
     || (ctx.welcomeBackOpen && player.flags?.splashSeen && !isTutorialActive(player) && idleHaul(player, now).ready ? renderWelcomeBack(player, now) : '')
-    || (ctx.calendarOpen && player.flags?.splashSeen && !isTutorialActive(player) ? renderCalendar(player, now) : '') || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
+    || (ctx.calendarOpen && player.flags?.splashSeen && !isTutorialActive(player) ? renderCalendar(player, now) : '')
+    || (ctx.almanacSection && player.flags?.splashSeen && !isTutorialActive(player) ? renderAlmanac(player, ctx.almanacSection) : '') || renderModals(player, { pendingCombat, combatOrders, contractReview, awayPicker, step, selectedCrewId, cinematic, confirmAbandon: ctx.confirmAbandon, jestLive: ctx.jestLive, splashProgress: ctx.splashProgress, splashReady: ctx.splashReady, splashScene: ctx.splashScene });
   const starter = starterOfferState(player, now);
   const wallPack = wallPackState(player, currentWall(player, now));
   const calm = !baseModal.trim() && isHome && !fighting && !player.activeEncounter && !selectedRoom;
@@ -2095,6 +2097,7 @@ export function renderLog(player, log, goals) {
   const rank = reputationRank(player.wallet.reputation || 0);
   const cal = calendarState(player);
   return `
+    ${isTutorialActive(player) ? '' : renderAlmanacCard(player)}
     ${isTutorialActive(player) ? '' : `<div class="panel calendar-row"><img src="${artUrl('art/pixel/ui/merc-pod.png')}" alt="" />
       <div><h2>Login calendar</h2><span class="muted">${cal.canClaim ? `Day ${cal.nextDay} of ${CALENDAR_LENGTH} is ready` : `Day ${cal.claimed} of ${CALENDAR_LENGTH} claimed · back tomorrow`}</span></div>
       <button class="${cal.canClaim ? 'primary' : ''}" data-act="calendar-open">${cal.canClaim ? 'Claim' : 'View'}</button></div>`}

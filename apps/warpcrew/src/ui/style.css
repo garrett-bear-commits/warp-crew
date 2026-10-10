@@ -3608,3 +3608,53 @@ button.primary:active { background: linear-gradient(180deg, #ffe2a6, #f0a23a); }
 .contract-faction img { width: 22px; height: 22px; object-fit: contain; }
 .contract-faction b { color: var(--text); font-weight: 600; }
 .contract-twist span { display: block; color: var(--muted); font-size: 13px; }
+
+/* Phase 3: the Captain's Almanac (src/ui/almanacView.js). */
+.alm-card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; min-height: 64px;
+  border: 1px solid rgba(241, 182, 107, 0.45); background: linear-gradient(90deg, rgba(241, 182, 107, 0.12), transparent 70%), var(--panel); }
+.alm-card img { width: 52px; height: 52px; object-fit: contain; }
+.alm-card span { display: grid; gap: 2px; }
+.alm-card small { color: var(--muted); }
+.modal-backdrop.alm-backdrop { z-index: 55; align-items: stretch; padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)); }
+.alm-book { width: min(560px, 100%); margin: 0 auto; display: grid; grid-template-rows: auto auto minmax(0, 1fr); border-radius: var(--radius-lg, 16px);
+  background: #0e1626; border: 2px solid rgba(241, 182, 107, 0.6); overflow: hidden; font-family: var(--font-sans); }
+.alm-head { position: relative; display: flex; align-items: flex-end; justify-content: space-between; min-height: 120px; padding: 12px 14px;
+  background-size: cover; background-position: center; box-shadow: inset 0 -60px 50px -10px rgba(14, 22, 38, 0.95); }
+.alm-head div { display: grid; gap: 2px; text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9); }
+.alm-head b { font: 800 22px var(--font-display); }
+.alm-head small { color: var(--muted); }
+.alm-head .icon-close { position: absolute; top: 8px; right: 8px; }
+.alm-tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 6px; background: #0b1220; }
+.alm-tabs button { min-height: 48px; padding: 4px 2px; font-size: 12px; display: grid; gap: 1px; justify-items: center; line-height: 1.1; }
+.alm-tabs button small { color: var(--muted); font-size: 11px; }
+.alm-tabs button[aria-pressed="true"] { border-color: #f1b66b; color: #f1b66b; }
+.alm-body { overflow: auto; padding: 10px 12px 16px; display: grid; gap: 8px; align-content: start; }
+.alm-sub { margin: 8px 0 0; font: 700 13px var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; color: #f1b66b; }
+.alm-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.alm-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.03); }
+.alm-list li span { display: grid; gap: 2px; min-width: 0; }
+.alm-list li small { color: var(--muted); font-size: 13px; }
+.alm-list button { min-height: 40px; flex: none; }
+.alm-locked { color: var(--muted); font-size: 12px; }
+.is-locked { opacity: 0.55; }
+.alm-crew { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.alm-crew > li { border-radius: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid color-mix(in srgb, var(--rc, #9aa4b2) 45%, transparent); padding: 6px; }
+.alm-crew summary { list-style: none; display: grid; justify-items: center; gap: 2px; text-align: center; cursor: pointer; }
+.alm-crew summary::-webkit-details-marker { display: none; }
+.alm-crew img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: #0b1220; }
+.alm-crew > li.is-locked { display: grid; justify-items: center; gap: 2px; text-align: center; }
+.alm-silhouette { filter: brightness(0) drop-shadow(0 0 2px rgba(255, 255, 255, 0.35)); }
+.alm-crew small { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+.alm-file { display: grid; gap: 4px; margin-top: 6px; font-size: 13px; text-align: left; }
+.alm-file blockquote { margin: 0; color: #f1b66b; font-style: italic; }
+.alm-faction { border-radius: 10px; padding: 10px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 6px; }
+.alm-faction header { display: flex; align-items: center; gap: 10px; }
+.alm-faction header img { width: 40px; height: 40px; object-fit: contain; }
+.alm-faction header div { display: grid; }
+.alm-faction small { color: var(--muted); }
+.alm-faction p { margin: 0; font-size: 14px; }
+.alm-ships { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.alm-ships li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.alm-ships img { width: 56px; height: 36px; object-fit: contain; }
+.alm-ships span { display: grid; min-width: 0; flex: 1; }
+.alm-record { flex: none !important; color: var(--muted); white-space: nowrap; }

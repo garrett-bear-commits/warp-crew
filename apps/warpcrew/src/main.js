@@ -94,6 +94,8 @@ let transmissionQueue = [];
 let txPanel = 0;
 let txOpenedAt = 0;
 let txInstant = false;
+/** The Almanac's open section, or null when it is shut (UI only). */
+let almanacSection = null;
 /** The login calendar sheet is open (UI only). It opens on the first boot of a day with a square to claim. */
 let calendarOpen = false;
 /** The welcome-back screen is open (UI only): on boot after an hour or more away with income in the hold. */
@@ -566,6 +568,7 @@ function render() {
     hireReveal,
     rewardReveal: rewardQueue[0] || null,
     transmission: transmissionQueue[0] || null,
+    almanacSection,
     transmissionView: { panel: txPanel, instant: txInstant },
     calendarOpen,
     welcomeBackOpen,
@@ -985,6 +988,11 @@ async function handleAction(act, data = {}) {
       transmissionQueue.shift();
       openTransmission();
     }
+    render();
+    return;
+  }
+  if (act === 'almanac-open' || act === 'almanac-section' || act === 'almanac-close') {
+    almanacSection = act === 'almanac-close' ? null : data.section || almanacSection || 'story';
     render();
     return;
   }

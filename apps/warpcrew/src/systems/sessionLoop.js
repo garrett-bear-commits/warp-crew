@@ -45,6 +45,7 @@ import { mapJumps } from './exploreNudge.js';
 import { ensureStoryOffer, reviewTransmissions, settleStoryClaim, settleChapters, markSeen, chapterOfWall } from './campaign.js';
 import { MISSIONS } from '../data/campaign.js';
 import { ensureLoyaltyOffer, settleLoyaltyClaim, contractFlyers, openedScenes, pendingScenes } from './loyalty.js';
+import { noteCrew, noteFight } from './almanac.js';
 
 export function prepareSession(player, now = trustedNow()) {
   let next = ensureDailyLoop(player, now);
@@ -69,6 +70,8 @@ export function prepareSession(player, now = trustedNow()) {
   next = syncCommission(next, now);
   // Income while away starts once the tutorial is over (Phase 2 §4).
   if (!isTutorialActive(next)) next = startIdleClock(next, now);
+  // The Almanac keeps a file on every merc who has been aboard (Phase 3 §6).
+  if (!isTutorialActive(next)) next = noteCrew(next);
   return evaluateStarterOffer(next, now);
 }
 
@@ -904,6 +907,11 @@ export function sessionAction(player, ui, act, data = {}, { now = trustedNow(), 
   } else return null;
   // Income while away (Phase 2 §4): a change to who earns or to the hold only pays from now on.
   player = settleIdle(before, player, now);
+  // The Almanac (Phase 3 §6) keeps every merc who has been aboard and every finished fight.
+  const fought = before.activeEncounter;
+  if (fought?.result && fought.encounterId && (!player.activeEncounter || player.activeEncounter.acceptanceId !== fought.acceptanceId)) {
+    player = noteFight(player, fought.encounterId, fought.result === 'win');
+  }
   // A chapter completes when its boss falls (or its gate opens): the gate opens, a named merc joins, the finale plays.
   const chapters = settleChapters(player, now);
   if (chapters.transmissions.length) {
